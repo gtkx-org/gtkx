@@ -1,6 +1,14 @@
 import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
-import type { ByRoleOptions, ByRoleValue, Matcher, MatcherOptions, NormalizerFn, QueryFamilies } from "./types.js";
+import type {
+    ByRoleOptions,
+    ByRoleValue,
+    Matcher,
+    MatcherOptions,
+    NormalizerFn,
+    QueryFamilies,
+    WaitForOptions,
+} from "./types.js";
 import { buildQueries, type BuiltQueries, type QueryAllBy } from "./build-queries.js";
 import { multipleFoundError, notFoundError } from "./errors.js";
 import { getDefaultNormalizer } from "./normalize.js";
@@ -301,10 +309,22 @@ const hasMatchingAccessibleOptions = (widget: Gtk.Widget, options?: ByRoleOption
     return hasMatchingAccessibleName(widget, options) && hasMatchingAccessibleStates(widget, options);
 };
 
-function nameQueryFamily<Args extends unknown[], Element extends Gtk.Accessible>(
+function withWaitForOptions<Expected, Result>(
+    find: (container: Container, expected: Expected, options?: MatcherOptions<Gtk.Widget>) => Promise<Result>,
+) {
+    return (
+        container: Container,
+        expected: Expected,
+        options?: MatcherOptions<Gtk.Widget>,
+        waitForOptions?: WaitForOptions,
+    ): Promise<Result> =>
+        find(container, expected, waitForOptions === undefined ? options : { ...options, ...waitForOptions });
+}
+
+function nameQueryFamily<Expected, Element extends Gtk.Accessible>(
     suffix: string,
-    queryAllBy: QueryAllBy<Args, Element>,
-    built: BuiltQueries<Args, Element>,
+    queryAllBy: QueryAllBy<[expected: Expected, options?: MatcherOptions<Gtk.Widget>], Element>,
+    built: BuiltQueries<[expected: Expected, options?: MatcherOptions<Gtk.Widget>], Element>,
 ): Record<string, unknown> {
     const [queryBy, getAllBy, getBy, findAllBy, findBy] = built;
 
@@ -313,8 +333,8 @@ function nameQueryFamily<Args extends unknown[], Element extends Gtk.Accessible>
         [`queryAllBy${suffix}`]: queryAllBy,
         [`getBy${suffix}`]: getBy,
         [`getAllBy${suffix}`]: getAllBy,
-        [`findBy${suffix}`]: findBy,
-        [`findAllBy${suffix}`]: findAllBy,
+        [`findBy${suffix}`]: withWaitForOptions(findBy),
+        [`findAllBy${suffix}`]: withWaitForOptions(findAllBy),
     };
 }
 

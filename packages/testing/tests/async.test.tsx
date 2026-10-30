@@ -222,6 +222,27 @@ describe("waitFor", () => {
         await expect(findByText(container, "Missing", { timeout: 100, onTimeout })).rejects.toThrow();
         expect(timeoutCalls).toBe(2);
     });
+
+    it("takes Testing Library's wait options as a find query's third argument", async () => {
+        let timeoutCalls = 0;
+
+        const onTimeout = (): Error => {
+            timeoutCalls += 1;
+
+            return new Error("custom");
+        };
+
+        await render(<DebouncedLabel />);
+        await expect(screen.findByText("Settled", undefined, { timeout: TEST_TIMEOUT })).resolves.toBeDefined();
+        await expect(
+            screen.findAllByRole(Gtk.AccessibleRole.LABEL, { name: "Settled" }, { interval: 10 }),
+        ).resolves.toHaveLength(1);
+        await expect(screen.findByText("Missing", { onTimeout }, { timeout: 100 })).rejects.toThrow("custom");
+        await expect(
+            screen.findAllByText("Missing", { timeout: TEST_TIMEOUT }, { timeout: 100, onTimeout }),
+        ).rejects.toThrow("custom");
+        expect(timeoutCalls).toBe(2);
+    });
 });
 
 describe("waitForElementToBeRemoved", () => {
