@@ -138,6 +138,15 @@ describe("CLI commands", () => {
         expect(readFileSync(join(project.root, "keep.txt"), "utf8")).toBe("keep");
     });
 
+    it("rejects arguments after -- for commands that start no application", async () => {
+        using project = createProject();
+
+        await expect(
+            invoke(["build", "--cwd", project.root], createCommand({ applicationArgs: ["--out", "build/helper"] })),
+        ).rejects.toThrow();
+        expect(existsSync(join(project.root, "dist"))).toBe(false);
+    });
+
     it("keeps builds out of the deploy output directory that each deployment replaces", async () => {
         using project = createProject({ deploy: { outDir: "packages" } });
 

@@ -1,3 +1,5 @@
+import type { ArgsDef, CommandDef } from "citty";
+
 const APPLICATION_ARGS_SEPARATOR = "--";
 
 const splitApplicationArgs = (argv: string[]): { cliArgs: string[]; applicationArgs: string[] } => {
@@ -10,4 +12,32 @@ const splitApplicationArgs = (argv: string[]): { cliArgs: string[]; applicationA
     return { cliArgs: argv.slice(0, separator), applicationArgs: argv.slice(separator + 1) };
 };
 
-export { splitApplicationArgs };
+const withoutApplicationArgs = <T extends ArgsDef>(
+    name: string,
+    command: CommandDef<T>,
+    applicationArgs: string[] | undefined,
+): CommandDef<T> => {
+    const run = command.run;
+
+    if (run === undefined) {
+        return command;
+    }
+
+    return {
+        ...command,
+        run: async (context): Promise<unknown> => {
+            const ignored = (applicationArgs ?? splitApplicationArgs(context.rawArgs).applicationArgs).join(" ");
+
+            if (ignored !== "") {
+                throw new Error(
+                    `gtkx ${name} takes no application arguments after "--", so it would ignore "${ignored}". ` +
+                        `pnpm and Yarn pass "--" on to package scripts; leave it out there, as in "pnpm run ${name} ${ignored}".`,
+                );
+            }
+
+            return await run(context);
+        },
+    };
+};
+
+export { splitApplicationArgs, withoutApplicationArgs };

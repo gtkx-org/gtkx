@@ -1,5 +1,6 @@
 import type { ServerOptions } from "@gtkx/mcp/server";
 import { type ArgsDef, type CommandDef, defineCommand } from "citty";
+import { withoutApplicationArgs } from "./internal/application-args.js";
 import { withErrorBoundary } from "./internal/errors.js";
 import packageManifest from "../package.json" with { type: "json" };
 
@@ -38,42 +39,66 @@ const createCommand = (options: CommandOptions = {}) =>
             build: async () => {
                 const { build } = await import("./commands/build.js");
 
-                return withVersionSkewWarning(build, options.onError);
+                return withVersionSkewWarning(
+                    withoutApplicationArgs("build", build, options.applicationArgs),
+                    options.onError,
+                );
             },
             deploy: async () => {
                 const { deploy } = await import("./commands/deploy.js");
 
-                return withVersionSkewWarning(deploy, options.onError);
+                return withVersionSkewWarning(
+                    withoutApplicationArgs("deploy", deploy, options.applicationArgs),
+                    options.onError,
+                );
             },
             codegen: async () => {
                 const { codegen } = await import("./commands/codegen.js");
 
-                return withVersionSkewWarning(codegen, options.onError);
+                return withVersionSkewWarning(
+                    withoutApplicationArgs("codegen", codegen, options.applicationArgs),
+                    options.onError,
+                );
             },
             docs: async () => {
                 const { docs } = await import("./commands/docs.js");
 
-                return withErrorBoundary(docs, options.onError);
+                return withErrorBoundary(
+                    withoutApplicationArgs("docs", docs, options.applicationArgs),
+                    options.onError,
+                );
             },
             mcp: async () => {
                 const { createMcpCommand } = await import("./commands/mcp.js");
 
-                return withVersionSkewWarning(createMcpCommand(options), options.onError);
+                return withVersionSkewWarning(
+                    withoutApplicationArgs("mcp", createMcpCommand(options), options.applicationArgs),
+                    options.onError,
+                );
             },
             create: async () => {
                 const { scaffoldCommand } = await import("create-gtkx");
 
-                return withErrorBoundary(scaffoldCommand, options.onError);
+                return withErrorBoundary(
+                    withoutApplicationArgs("create", scaffoldCommand, options.applicationArgs),
+                    options.onError,
+                );
             },
             cleanup: async () => {
                 const { cleanup } = await import("./commands/cleanup.js");
 
-                return withErrorBoundary(cleanup, options.onError);
+                return withErrorBoundary(
+                    withoutApplicationArgs("cleanup", cleanup, options.applicationArgs),
+                    options.onError,
+                );
             },
             upgrade: async () => {
                 const { upgrade } = await import("./commands/upgrade.js");
 
-                return withErrorBoundary(upgrade, options.onError);
+                return withErrorBoundary(
+                    withoutApplicationArgs("upgrade", upgrade, options.applicationArgs),
+                    options.onError,
+                );
             },
         },
     });
