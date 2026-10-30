@@ -90,6 +90,15 @@ An object that first reaches JavaScript through a callback GIR types only as a `
 if (!(invocation instanceof Gio.DBusMethodInvocation)) throw new TypeError("Expected a D-Bus method invocation");
 ```
 
+`Gtk.ClosureExpression` callbacks follow the same rule. An `AdwComboRow` whose `expression` names the items of an `AdwEnumListModel` receives `Adw.EnumListItem` objects; without a value reference to that class, the bundle passes plain objects and `item.getValue()` throws when the row first renders:
+
+```ts
+const easingName = Gtk.ClosureExpression.new(GObject.TYPE_STRING, (item: unknown) => {
+    if (!(item instanceof Adw.EnumListItem)) throw new TypeError("Expected an enum list item");
+    return item.getName();
+}, null);
+```
+
 ## Monorepos
 
 GTKX apps work in pnpm, npm and Yarn workspaces with the package manager's default `node_modules` layout, alongside shared packages of components. In a pnpm workspace, `pnpm create gtkx apps/my-app` adds the app to the workspace and prints any `allowBuilds` entries to add to its root `pnpm-workspace.yaml`; see [Scaffold Options](/v2/guide/scaffold-options#workspaces).
