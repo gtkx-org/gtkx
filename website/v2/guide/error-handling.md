@@ -27,7 +27,7 @@ const parseKeyFile = (contents: string) => {
 };
 ```
 
-Checking a domain narrows the value to an error with `domain` and `code`. Check `error instanceof GLib.Error` when you need its native methods, such as `matches` or `copy`. The generated reference describes each library's domains and codes.
+Checking a domain narrows the value to an error with `domain` and `code`. Check `error instanceof GLib.Error` when you need its native methods, such as `matches` or `copy`. As in GJS, `matches` accepts a generated domain in place of its quark, as in `error.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED)`. The generated reference describes each library's domains and codes.
 
 For a native callback that expects an error value, create one through the generated `GLib.Error` API.
 
