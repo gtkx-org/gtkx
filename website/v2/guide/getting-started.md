@@ -114,7 +114,9 @@ GTKX packages are released together under one version. To update them, run this 
 npx gtkx upgrade
 ```
 
-It moves every `@gtkx/*` package in the project, or in each package of its workspace, to the newest release on the dist-tag the project follows, such as `beta`. Pass a version or dist-tag to choose one, as in `npx gtkx upgrade 2.0.1`. The command rewrites the versions in each `package.json` and in pnpm catalogs, keeping their range operators, then installs and deduplicates with the project's package manager.
+It moves every `@gtkx/*` package in the project, or in each package of its workspace, to the newest release on the dist-tag the project follows, such as `beta`. Pass a version or dist-tag to choose one, as in `npx gtkx upgrade 2.0.1`. The command rewrites the versions in each `package.json` and in pnpm catalogs, keeping their range operators, then installs and deduplicates with the project's package manager. It fails, naming the packages, when the install leaves some on another version, for example through a Yarn catalog, `overrides` or `resolutions`; set those to the same version and install again.
+
+The CLI of 2.0.0-beta.12 and earlier releases has no `upgrade` command. Run the newer one once with `npx @gtkx/cli@beta upgrade`.
 
 `gtkx dev`, `gtkx build` and the other project commands warn when the installed GTKX packages are not all on one version.
 
