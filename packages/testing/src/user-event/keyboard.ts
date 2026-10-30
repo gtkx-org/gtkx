@@ -424,6 +424,7 @@ const isKeyStopController = (controller: Gtk.EventController, widget: Gtk.Widget
         controller instanceof Gtk.EventControllerKey &&
         (widget instanceof Gtk.TextView ||
             widget instanceof Gtk.Popover ||
+            widget instanceof Gtk.Button ||
             hasSignalListener(controller, KEY_CONTROLLER_SIGNALS))
     );
 };

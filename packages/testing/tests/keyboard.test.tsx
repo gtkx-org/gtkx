@@ -14,7 +14,7 @@ import {
     GtkShortcutController,
     GtkTextView,
 } from "@gtkx/jsx/gtk";
-import { render, screen, userEvent, waitFor } from "@gtkx/testing";
+import { render, screen, userEvent } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 
 describe("Unicode keyboard input", () => {
@@ -214,7 +214,26 @@ describe("keyboard focus movement", () => {
         first.grabFocus();
         await userEvent.keyboard(first, "{ArrowDown}{Enter}");
         expect(screen.getByName("second")).toHaveFocus();
-        await waitFor(() => expect(activated).toEqual(["second"]));
+        expect(activated).toEqual(["second"]);
+    });
+
+    it.each(["{Enter}", "{Space}"])("clicks a focused button when %s is released", async (input) => {
+        let clicks = 0;
+
+        await render(
+            <GtkButton
+                name="apply"
+                label="Apply"
+                onClicked={() => {
+                    clicks++;
+                }}
+            />,
+        );
+
+        const apply = screen.getByName("apply");
+        apply.grabFocus();
+        await userEvent.keyboard(apply, input);
+        expect(clicks).toBe(1);
     });
 
     it("keeps a text view's Tab and Return as text instead of moving focus", async () => {
