@@ -93,6 +93,11 @@ describe("runtime configuration", () => {
                 `po/${locale}.po`,
                 `${readFileSync(join(project.root, `po/${locale}.po`), "utf8")}\nmsgid "CLI Example"\nmsgstr "${name}"\n`,
             );
+        const configPath = join(project.root, "gtkx.config.ts");
+        project.write(
+            "gtkx.config.ts",
+            readFileSync(configPath, "utf8").replace("Exercises translated deployment", "Ships translated catalogs"),
+        );
         translateName("fr", "CLI Example");
         translateName("zh_CN", "CLI 示例");
         await runCommand(createCommand(), {
@@ -104,6 +109,7 @@ describe("runtime configuration", () => {
             '<name xml:lang="fr">CLI Example</name>',
             '<name xml:lang="zh-Hans-CN">CLI 示例</name>',
         ]);
+        expect(metainfo).toContain("<summary>Ships translated catalogs</summary>");
         const relocated = join(project.root, "relocated");
         cpSync(stage, relocated, { recursive: true });
         const [binary] = readdirSync(join(relocated, "lib"));

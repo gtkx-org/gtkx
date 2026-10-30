@@ -48,9 +48,12 @@ const canonicalConfig = (value: unknown): unknown => {
     );
 };
 
-const configDigest = (config: unknown): string =>
+const buildConfig = (config: object): object =>
+    Object.fromEntries(Object.entries(config).filter(([key]) => key !== "deploy"));
+
+const configDigest = (config: object): string =>
     createHash("sha256")
-        .update(JSON.stringify(canonicalConfig(config)))
+        .update(JSON.stringify(canonicalConfig(buildConfig(config))))
         .digest("hex");
 
 const createBuildManifestCollector = (): BuildManifestCollector => ({ schemas: [] });

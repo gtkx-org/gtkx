@@ -109,7 +109,7 @@ gtkx deploy --skip-build
 `--skip-build` always reads `dist/`, regardless of the deployment's `--out` directory. Keep
 `dist/gtkx-schemas.json` beside the bundle: it records the build's configuration, imported schemas, and
 dependency notices. Deployment rejects a different production configuration or an older metadata format;
-rebuild to update it.
+rebuild to update it. Changes to the `deploy` block alone do not need a rebuild.
 
 Each deployment replaces its managed output directory. Choose an empty directory or an earlier GTKX deploy
 directory below the project root, outside `dist/`; symlinked output paths and unrelated files are rejected.

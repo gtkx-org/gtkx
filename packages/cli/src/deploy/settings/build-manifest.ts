@@ -68,7 +68,9 @@ const assertBuildConfig = (
     const expectedFile = toPosixPath(relative(settings.paths.root, expected.configFile));
 
     if (manifest.configFile !== expectedFile || manifest.configDigest !== configDigest(expected.config)) {
-        throw new Error(`Cannot deploy: ${manifestPath} was built from a different GTKX configuration.`);
+        throw new Error(
+            `Cannot deploy: ${manifestPath} was built from a different GTKX configuration. Run \`gtkx build\` again.`,
+        );
     }
 };
 
