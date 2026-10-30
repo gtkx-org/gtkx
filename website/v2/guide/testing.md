@@ -47,6 +47,24 @@ With the GTKX Vitest plugin, importing `@gtkx/testing` registers widget matchers
 
 The private session bus contains GTKX's minimal notifications service. Other desktop services, such as portals and keyrings, are absent; provide any D-Bus services the component under test needs on that bus.
 
+Tests share the user's files: `GLib.getUserDataDir()` and the other XDG directories point where the app's do. To keep test data apart, set the XDG variables in a [setup file](https://vitest.dev/config/setupfiles). GLib reads each XDG variable once, and GTK reads the data, configuration and cache directories as soon as a test file imports `@gtkx/react` or `@gtkx/testing`, so setting `process.env.XDG_DATA_HOME` in `beforeEach` or in a test has no effect.
+
+```ts [tests/setup.ts]
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterAll } from "vitest";
+
+const dataHome = mkdtempSync(join(tmpdir(), "my-app-test-"));
+process.env.XDG_DATA_HOME = dataHome;
+
+afterAll(() => {
+    rmSync(dataHome, { recursive: true, force: true });
+});
+```
+
+List it under `test.setupFiles` in `vitest.config.ts`, and clear the app's files in `beforeEach` when tests must not see each other's data.
+
 Headless development uses the same environment:
 
 ```bash
