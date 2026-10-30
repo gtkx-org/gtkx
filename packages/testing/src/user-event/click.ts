@@ -3,7 +3,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { hasSignalListener } from "@gtkx/runtime/internal";
 import { callBooleanGetter, getCallableMethod, hasWidgetMethod } from "../widget-getters.js";
 import { queryAllControllers } from "./controller.js";
-import { wrapEvent } from "./event-wrapper.js";
+import { wrapPointerEvent } from "./event-wrapper.js";
 import { hasIndexedChildren, selectContainerChild, SELECTED_PROBE, unselectOtherChildren } from "./indexed-children.js";
 import { isClickTransparent, type NativeClick, nativeClickFor } from "./native-click.js";
 
@@ -247,7 +247,7 @@ const applyClickOutcomes = (targets: ClickTarget[], nPress: number): void => {
 };
 
 const deliverClick = (widget: Gtk.Widget, nPress: number): Promise<void> =>
-    wrapEvent(widget, () => {
+    wrapPointerEvent(widget, () => {
         const targets = collectClickTargets(widget);
         const sites = targets.flatMap((target) => targetSites(widget, target));
         emitClickSequence(sites, nPress);
@@ -261,7 +261,7 @@ const tryActivate = async (widget: Gtk.Widget): Promise<boolean> => {
 
     let isActivated = false;
 
-    await wrapEvent(widget, () => {
+    await wrapPointerEvent(widget, () => {
         isActivated = Gtk.Widget.prototype.activate.call(widget);
     });
 

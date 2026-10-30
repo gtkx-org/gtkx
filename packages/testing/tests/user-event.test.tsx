@@ -91,6 +91,16 @@ const editableText = (entry: Gtk.Widget): string => {
     return entry.getText();
 };
 
+const pointerTargetAt = (widget: Gtk.Widget): Gtk.Widget => {
+    let target = widget;
+
+    for (let current: Gtk.Widget | null = widget; current !== null; current = current.getParent()) {
+        target = current.getCanTarget() ? target : (current.getParent() ?? target);
+    }
+
+    return target;
+};
+
 const renderScoped = async (element: ReactNode): Promise<BoundQueries> => {
     const { container } = await render(element);
 
@@ -542,7 +552,8 @@ describe("userEvent.click", () => {
             throw new Error("expected an overview thumbnail title");
         }
 
-        await userEvent.click(thumbnail);
+        await expect(userEvent.click(thumbnail)).rejects.toThrow();
+        await userEvent.click(pointerTargetAt(thumbnail));
         expect(view.getSelectedPage()?.getTitle()).toBe("Second");
         expect(overview.current?.getOpen()).toBe(false);
     });

@@ -7,7 +7,7 @@ import { toValue } from "@gtkx/runtime/internal";
 import { runInAct } from "../act.js";
 import { findControllerOwner } from "./controller.js";
 import { dispatchOnControllers, dispatchOnOrCreateControllers } from "./dispatch.js";
-import { wrapEvent } from "./event-wrapper.js";
+import { wrapPointerEvent } from "./event-wrapper.js";
 
 /** The value delivered to a drop target: a primitive (converted to a GObject.Value) or an explicit GObject.Value. */
 type DropContent = string | number | boolean | GObject.Value;
@@ -226,7 +226,7 @@ const drag = async (widget: Gtk.Widget, dx: number, dy: number, options: DragOpt
 
     const updates = resolveDragUpdates(dx, dy, options);
 
-    await wrapEvent(widget, () => {
+    await wrapPointerEvent(widget, () => {
         const owner = findControllerOwner(widget, Gtk.GestureDrag);
         const start = toOwnerPoint(widget, owner.widget, options.startX ?? 0, options.startY ?? 0);
         runDragSequence(owner.controllers, start, updates);
@@ -351,7 +351,7 @@ const didEmitProviderDrop = (target: Gtk.Widget, drags: ActiveDrag[], options: D
 
 /** Drops content on a widget. */
 const drop = (widget: Gtk.Widget, content: DropContent, options: DropOptions = {}): Promise<void> =>
-    wrapEvent(widget, () => {
+    wrapPointerEvent(widget, () => {
         didEmitAcceptedDrop(widget, content, options);
     });
 
@@ -366,12 +366,12 @@ const dragAndDrop = async (
     let isAccepted = false;
 
     try {
-        await wrapEvent(source, () => {
+        await wrapPointerEvent(source, () => {
             const owner = findControllerOwner(source, Gtk.DragSource);
             activeDrags = beginDragSources(owner.widget, owner.controllers, content);
         });
 
-        await wrapEvent(target, () => {
+        await wrapPointerEvent(target, () => {
             isAccepted =
                 content === undefined
                     ? didEmitProviderDrop(target, activeDrags, options)

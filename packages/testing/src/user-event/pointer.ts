@@ -1,7 +1,7 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { UserEventState } from "./state.js";
 import { type DirectClick, directClickFor, emitSitePhase } from "./click.js";
-import { wrapEvent } from "./event-wrapper.js";
+import { wrapPointerEvent } from "./event-wrapper.js";
 import { isClickTransparent } from "./native-click.js";
 
 /**
@@ -74,7 +74,7 @@ const applyPointerInput = (widget: Gtk.Widget, state: UserEventState, input: Poi
 };
 
 const pointer = (state: UserEventState, widget: Gtk.Widget, input: PointerInput): Promise<void> =>
-    wrapEvent(widget, () => {
+    wrapPointerEvent(widget, () => {
         applyPointerInput(widget, state, input);
     });
 

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
+import { AdwDialog, AdwWindow } from "@gtkx/jsx/adw";
 import {
     GtkBox,
     GtkButton,
@@ -430,14 +431,18 @@ describe("userEvent actionability - targets outside a mapped toplevel", () => {
         expect(clicks.count).toBe(1);
     });
 
-    it("clicks inside a drag icon, whose root is no window", async () => {
+    it("presses a button inside a drag icon, whose root is no window, but refuses to click it", async () => {
         const { button, clicks } = await renderDragIconButton(true);
 
         await waitFor(() => {
             expect(button.getMapped()).toBe(true);
         });
 
-        await userEvent.click(button);
+        await userEvent.keyboard(button, "{Enter}");
+        await waitFor(() => {
+            expect(clicks.count).toBe(1);
+        });
+        await expect(userEvent.click(button)).rejects.toThrow();
         expect(clicks.count).toBe(1);
     });
 
@@ -503,6 +508,69 @@ describe("userEvent actionability - modal toplevels", () => {
         expect(nested.getTransientFor()).toBe(dialog);
         await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Confirm" }));
         expect(confirmations.count).toBe(1);
+    });
+});
+
+const DialogOverMain = ({ onBump }: { onBump: () => void }): ReactNode => {
+    const [isOpen, setIsOpen] = useState(true);
+
+    return (
+        <AdwWindow title="Main" defaultWidth={400} defaultHeight={300}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                <GtkButton label="Bump main" onClicked={onBump} />
+                <GtkEntry text="before" />
+                <GtkLabel label="Hover me" controllers={<GtkEventControllerMotion onEnter={onBump} />} />
+                {isOpen ? (
+                    <AdwDialog title="Preferences">
+                        <GtkButton
+                            label="Done"
+                            onClicked={() => {
+                                setIsOpen(false);
+                            }}
+                        />
+                    </AdwDialog>
+                ) : null}
+            </GtkBox>
+        </AdwWindow>
+    );
+};
+
+describe("userEvent actionability - pointer input", () => {
+    setupShortTimeout();
+
+    it("refuses pointer helpers behind an open Adwaita dialog, and clicks once the dialog closes", async () => {
+        const bumps = callCounter();
+        await render(<DialogOverMain onBump={bumps.callback} />, { container: rootElement });
+        const done = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Done" });
+        const main = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Bump main" });
+        await expect(userEvent.click(main)).rejects.toThrow();
+        await expect(userEvent.dblClick(main)).rejects.toThrow();
+        await expect(userEvent.pointer(main, "click")).rejects.toThrow();
+        await expect(userEvent.hover(await screen.findByText("Hover me"))).rejects.toThrow();
+        expect(bumps.count).toBe(0);
+        await userEvent.click(done);
+        configure(initialConfig);
+        await userEvent.click(main);
+        expect(bumps.count).toBe(1);
+    });
+
+    it("refuses pointer helpers under an ancestor that cannot be targeted, leaving keyboard input alone", async () => {
+        const clicks = callCounter();
+
+        await render(
+            <GtkBox canTarget={false}>
+                <GtkButton label="Untargetable" onClicked={clicks.callback} />
+            </GtkBox>,
+        );
+
+        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Untargetable" });
+        await expect(userEvent.click(button)).rejects.toThrow();
+        await expect(userEvent.longPress(button)).rejects.toThrow();
+        expect(clicks.count).toBe(0);
+        await userEvent.keyboard(button, "{Enter}");
+        await waitFor(() => {
+            expect(clicks.count).toBe(1);
+        });
     });
 });
 

@@ -102,7 +102,7 @@ A text button's child label takes precedence over its `accessibleLabel` prop. Qu
 
 ## Interacting and waiting
 
-Await every `userEvent` call. Helpers wait for the target to become actionable and flush React updates before resolving. Use `userEvent.setup()` when a sequence needs to retain held keyboard modifiers or pointer buttons.
+Await every `userEvent` call. Helpers wait for the target to become actionable and flush React updates before resolving. Clicks and other pointer helpers also wait for a pointer to be able to reach the target, and fail naming what blocks it, such as an open dialog over the window or an ancestor whose `canTarget` is off. Use `userEvent.setup()` when a sequence needs to retain held keyboard modifiers or pointer buttons.
 
 ```ts
 const user = userEvent.setup();

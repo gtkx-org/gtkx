@@ -2,7 +2,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { formatRoleList } from "../role-helpers.js";
 import { getCallableMethod } from "../widget-getters.js";
 import { requireWidget } from "../widget-target.js";
-import { wrapEvent } from "./event-wrapper.js";
+import { wrapPointerEvent } from "./event-wrapper.js";
 import {
     getChildAtIndex,
     hasIndexedChildren,
@@ -133,7 +133,7 @@ const runSelectionEvent = (
     inListView: (view: Gtk.ListView | Gtk.GridView | Gtk.ColumnView, valueArray: number[]) => void,
     byRole: (widget: Gtk.Widget, valueArray: number[]) => void,
 ): Promise<void> =>
-    wrapEvent(widget, () => {
+    wrapPointerEvent(widget, () => {
         const valueArray = Array.isArray(values) ? values : [values];
 
         if (isListView(widget)) {
