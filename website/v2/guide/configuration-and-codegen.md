@@ -78,6 +78,12 @@ Concurrent generation waits up to ten minutes for each binding-store lock. Use `
 
 Production builds remove unused generated classes. Import a class as a runtime value when the app needs its type registration, including when using `GObject.typeFromName`. A side-effect-only namespace import initializes the namespace but does not retain every class. Development and tests do not bundle.
 
+An object that first reaches JavaScript through a callback GIR types only as a `GObject.Closure` loses its class in a production build unless the app references that class as a value. A type annotation is erased, so the object arrives as its nearest retained ancestor, often a plain `GObject.Object`. For example, the `invocation` that `Gio.DBusConnection.registerObjectWithClosures2` passes to a method-call handler lacks `returnValue`, and the first D-Bus call fails, although the same code works in `gtkx dev` and tests. The handlers given to `Gio.busOwnName` and other closure-typed functions behave the same way. Check the class in the handler to keep it in the bundle:
+
+```ts
+if (!(invocation instanceof Gio.DBusMethodInvocation)) throw new TypeError("Expected a D-Bus method invocation");
+```
+
 ## Monorepos
 
 GTKX apps work in pnpm, npm and Yarn workspaces with the package manager's default `node_modules` layout, alongside shared packages of components.
