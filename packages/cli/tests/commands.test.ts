@@ -55,6 +55,7 @@ const withSession = async (
         [name, "--cwd", root, "--headless", "--size", "640x480", ...args],
         createCommand({ signal: controller.signal, applicationArgs }),
     );
+    let output: string;
     try {
         await Promise.race([
             expect.poll(() => existsSync(readyPath), { timeout: 60_000 }).toBe(true),
@@ -65,8 +66,10 @@ const withSession = async (
         await verify();
     } finally {
         controller.abort();
-        await running;
+        output = await running;
     }
+
+    return output;
 };
 
 const withMcpClient = async (root: string, run: (client: Client) => Promise<void>) => {
@@ -1690,6 +1693,36 @@ describe("CLI commands", () => {
             await expect.poll(() => observation().badgeText, { timeout: 30_000 }).toBe("two");
             expect(observation().pid).not.toBe(initial.pid);
         });
+    });
+
+    it("skips MDX files matched by storybook patterns with a warning", async () => {
+        using project = createProject({ codegen: true });
+        const readyPath = join(project.root, "ready.txt");
+        const mdxPath = join(project.root, "mdx.txt");
+        project.write(
+            ".storybook/main.mts",
+            'export default { stories: ["stories/**/*.mdx", "stories/**/*.stories.tsx"] };',
+        );
+        project.write(
+            ".storybook/preview.tsx",
+            `import { writeFileSync } from "node:fs";
+            export default { decorators: [(Story) => { writeFileSync(${JSON.stringify(readyPath)}, "ready"); return <Story />; }] };`,
+        );
+        project.write(
+            "stories/introduction.mdx",
+            `import { writeFileSync } from "node:fs";
+            writeFileSync(${JSON.stringify(mdxPath)}, "loaded");
+            export default { title: "Introduction" }; export const Docs = { render: () => null };`,
+        );
+        project.write(
+            "stories/example.stories.tsx",
+            'export default { title: "Example" }; export const Empty = { render: () => null };',
+        );
+
+        const output = await withSession("storybook", project.root, readyPath, () => Promise.resolve());
+
+        expect(existsSync(mdxPath)).toBe(false);
+        expect(output).toContain("introduction.mdx");
     });
 
     it("registers the storybook explorer with MCP under its own application ID", async () => {

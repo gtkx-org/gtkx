@@ -217,7 +217,7 @@ const createStorybookSession = (
         server,
         handle: explorerHandle(entry),
         configured: configured === "" ? undefined : configured,
-        files: { configPath: undefined, previewPath: undefined, stories: [] },
+        files: { configPath: undefined, previewPath: undefined, stories: [], skippedMdx: [] },
         modules: new Map(),
         reloadCauses: new Map(),
         hasFailedLoad: false,

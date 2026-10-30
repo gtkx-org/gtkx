@@ -13,6 +13,7 @@ type StorybookFiles = {
     configPath: string | undefined;
     previewPath: string | undefined;
     stories: { id: string; title: string }[];
+    skippedMdx: string[];
 };
 
 const STORYBOOK_CONFIG_BASE = ".storybook/main";
@@ -20,9 +21,12 @@ const STORYBOOK_PREVIEW_BASE = ".storybook/preview";
 const CONFIG_EXTENSIONS = [".ts", ".js", ".mts", ".mjs"];
 const PREVIEW_EXTENSIONS = [".ts", ".tsx", ".js", ".jsx", ".mts", ".mjs"];
 const DEFAULT_STORIES = ["src/**/*.stories.{ts,tsx,js,jsx,mts,mjs}"];
+const MDX_EXTENSION = ".mdx";
 const DEFAULT_EXCLUDES = ["**/node_modules/**", "**/.git/**", "**/.gtkx/**", "**/dist/**", "**/build/**"];
 
 const isFile = (path: string): boolean => statSync(path, { throwIfNoEntry: false })?.isFile() === true;
+
+const isMdx = (path: string): boolean => extname(path) === MDX_EXTENSION;
 
 const findConfigFile = (root: string, base: string, extensions: string[]): string | undefined =>
     extensions.map((extension) => resolve(root, `${base}${extension}`)).find((path) => isFile(path));
@@ -126,12 +130,11 @@ const discoverStorybookFiles = (
     })
         .filter((entry) => entry.isFile())
         .map((entry) => projectPath(root, resolve(entry.parentPath, entry.name)));
-    const stories = sortStringsBy([...new Set(paths)], (path) => path).map((id) => ({
-        id,
-        title: autoTitle(root, id),
-    }));
+    const matched = sortStringsBy([...new Set(paths)], (path) => path);
+    const stories = matched.filter((path) => !isMdx(path)).map((id) => ({ id, title: autoTitle(root, id) }));
+    const skippedMdx = matched.filter(isMdx);
 
-    return { configPath, previewPath, stories };
+    return { configPath, previewPath, stories, skippedMdx };
 };
 
 const prepareStorybookFiles = async (root: string, configured?: string): Promise<StorybookFiles> => {

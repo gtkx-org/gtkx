@@ -1,5 +1,7 @@
+import { warn } from "@gtkx/utils";
 import { reapStaleHeadlessDisplaysAtStartup } from "@gtkx/vitest/headless";
 import { defineCommand } from "citty";
+import { relative } from "node:path";
 import { ensureGeneratedIn, resolveConfigWatch } from "../codegen/run-codegen.js";
 import { resolveCodegenContext } from "../codegen/store-resolver.js";
 import { startHeadlessDevDisplay } from "../dev/headless.js";
@@ -41,7 +43,14 @@ const createStorybookCommand = (options: { signal?: AbortSignal; applicationArgs
 
             const cwd = resolveCwd(args);
             assertStorybookInstalled(cwd);
-            await prepareStorybookFiles(cwd, args["storybook-config"]);
+            const { skippedMdx } = await prepareStorybookFiles(cwd, args["storybook-config"]);
+
+            if (skippedMdx.length > 0) {
+                warn(
+                    `Skipped MDX files, which the Storybook explorer does not support: ${skippedMdx.map((path) => relative(cwd, path)).join(", ")}`,
+                );
+            }
+
             const context = await resolveCodegenContext(cwd, DEV_MODE, args.config);
             await ensureGeneratedIn(context, { shouldAnnounce: true, mode: DEV_MODE });
             const entryPath = createStorybookEntry(cwd);
