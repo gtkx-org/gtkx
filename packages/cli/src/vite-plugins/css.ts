@@ -12,6 +12,7 @@ const CSS_RE = /\.css$/i;
 const INJECT_SUFFIX = ".js";
 const VIRTUAL_PREFIX = "\0gtkx-css:";
 const VIRTUAL_ID_RE = new RegExp(`^${VIRTUAL_PREFIX}`);
+const INJECTED_CSS_ID_RE = new RegExp(`^${VIRTUAL_PREFIX}.*\\${INJECT_SUFFIX}$`);
 const { isVirtual, toVirtualId, fromVirtualId, resolveToVirtual } = createVirtualNamespace(VIRTUAL_PREFIX);
 
 const injectedCssId = (filePath: string): string => toVirtualId(filePath) + INJECT_SUFFIX;
@@ -74,4 +75,4 @@ function gtkxCss(): Plugin {
     };
 }
 
-export { gtkxCss, injectedCssId };
+export { gtkxCss, INJECTED_CSS_ID_RE, injectedCssId };

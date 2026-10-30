@@ -856,7 +856,7 @@ describe("CLI commands", () => {
         }
     });
 
-    it("replaces edited global styles and stylesheets in place and refreshes their raw imports, keeping state", async () => {
+    it("replaces edited stylesheets in place, appends edited global styles and refreshes raw imports, keeping state", async () => {
         using project = createProject({ codegen: true });
         const readyPath = join(project.root, "probe.json");
         const theme = (version: number, globalRule: string) => `
@@ -944,8 +944,7 @@ describe("CLI commands", () => {
 
             project.write("src/theme.ts", theme(3, ".cli-other-probe { min-width: 241px; }"));
             await expect.poll(() => observation().version, { timeout: 30_000 }).toBe(3);
-            expect(observation()).toMatchObject({ pid, token });
-            expect(observation().global).toBeLessThan(231);
+            expect(observation()).toMatchObject({ pid, token, global: 241 });
 
             project.write("src/sheet.css", ".cli-sheet-probe { min-width: 251px; }");
             await expect.poll(() => observation().sheet, { timeout: 30_000 }).toBe(251);

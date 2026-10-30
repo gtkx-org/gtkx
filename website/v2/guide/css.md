@@ -89,7 +89,7 @@ injectGlobal`
 `;
 ```
 
-A plain `.css` import also works: the GTKX CLI turns it into an `injectGlobal` call. Global rules remain installed for the application's lifetime. During `gtkx dev`, editing a stylesheet or a module's `injectGlobal` rules replaces the rules that file or module installed, so removed rules stop applying and the app keeps its state.
+A plain `.css` import also works: the GTKX CLI turns it into an `injectGlobal` call. Global rules remain installed for the application's lifetime. During `gtkx dev`, editing a stylesheet replaces the rules that file installed, so removed rules stop applying, and the app keeps its state. Editing a module's `injectGlobal` rules re-runs the module, which adds the edited rules after the earlier ones, as Emotion does: a changed value takes effect, but a removed rule or a selector you moved keeps applying until the app restarts.
 
 ## Follow appearance preferences
 

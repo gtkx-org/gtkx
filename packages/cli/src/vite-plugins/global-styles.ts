@@ -1,7 +1,7 @@
 import type { ParseResult, Plugin } from "vite";
 import { parseSync } from "vite";
 import { sourceLanguage } from "../internal/source-imports.js";
-import { REFRESH_ID_FILTER } from "./fast-refresh/refresh-filter.js";
+import { INJECTED_CSS_ID_RE } from "./css.js";
 import { stripQuery } from "./strip-query.js";
 
 type ModuleRequest = ParseResult["module"]["staticImports"][number]["moduleRequest"];
@@ -74,7 +74,7 @@ function gtkxGlobalStyles(): Plugin {
         },
 
         transform: {
-            filter: { id: REFRESH_ID_FILTER, code: CSS_SOURCE },
+            filter: { id: INJECTED_CSS_ID_RE, code: CSS_SOURCE },
 
             handler(code, id) {
                 const requests = cssRequests(code, id);
