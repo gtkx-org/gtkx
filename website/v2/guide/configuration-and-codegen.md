@@ -231,6 +231,8 @@ Generated elements follow the native API with GTKX naming conventions:
 - Child slots that no property backs take their GtkBuilder child type, such as `start` and `end` on a header bar or `top` and `bottom` on a toolbar view.
 - Refs expose the corresponding GI instance for imperative APIs.
 
+Handlers don't report what GTKX writes for you. Writing a prop doesn't call that property's `onNotifyX` handler, and signal handlers such as `onChanged`, `onRowSelected` or `onClosePage` stay quiet while a commit changes props or children. Properties the widget changes in reaction still notify: when adding or removing children changes a property, such as the selected page after the selected tab is removed, its `onNotifyX` handler runs once the commit and its layout effects have finished, with the value at that point. If the commit writes that property itself, as a controlled `visibleChildName` does, the handler doesn't run.
+
 A prop the element does not have, such as a typo, a C-style name like `margin_top` or a prop from another toolkit, throws an error that names the element and, where it can, the closest prop it does have.
 
 Prefer JSX for object creation and child placement. The [generated element reference](#generating-element-reference-docs) shows the exact props, slots, and signals for each configured library.

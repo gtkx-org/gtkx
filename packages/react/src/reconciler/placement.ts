@@ -17,7 +17,7 @@ import {
     type PlaceableNode,
     type PlacedChild,
 } from "./node.js";
-import { applyMutation, applyWrite, disconnectAllHandlers } from "./signals.js";
+import { applyPlacement, applyWrite, disconnectAllHandlers } from "./signals.js";
 import { markTextDirty } from "./text.js";
 
 type AttachContext = { parent: ElementNode; entry: PlacedChild; index: number; sibling: GObject.Object | null };
@@ -260,7 +260,7 @@ const runAttach = (parent: ElementNode, entry: PlacedChild, index: number, sibli
 };
 
 const attachEntry = (parent: ElementNode, entry: PlacedChild, index: number, sibling: GObject.Object | null): void => {
-    applyMutation(() => {
+    applyPlacement(() => {
         runAttach(parent, entry, index, sibling);
     });
 };
@@ -293,7 +293,7 @@ const detachEntry = (
 ): void => {
     const info = detachInfo(entry, index, remaining);
 
-    applyMutation(() => {
+    applyPlacement(() => {
         runDetach(parent, entry, info);
     });
 
@@ -337,7 +337,7 @@ const moveEntry = (parent: ElementNode, entry: PlacedChild, entries: PlacedChild
         return;
     }
 
-    const claim = applyMutation(() =>
+    const claim = applyPlacement(() =>
         reorder(parent.object, entry.object, placeInfo(parent, entry, index, siblingAt(entries, index))),
     );
     adoptedFrom(parent, entry, behavior, claim);
