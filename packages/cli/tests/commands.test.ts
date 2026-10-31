@@ -1989,6 +1989,36 @@ describe("CLI commands", () => {
         });
     });
 
+    it("keeps running through an install that leaves the GTKX packages unresolvable for a while", async () => {
+        using project = createProject({ codegen: true });
+        const readyPath = join(project.root, "ready.txt");
+        const launchesPath = join(project.root, "launches.txt");
+        const runtime = join(project.root, "node_modules/@gtkx/runtime");
+        const lock = (step: number) =>
+            project.write("package-lock.json", JSON.stringify({ lockfileVersion: 3, packages: {}, step }));
+        lock(0);
+        project.write(
+            "src/index.ts",
+            `import { Application } from "@gtkx/gi/gio";
+            import { appendFileSync, writeFileSync } from "node:fs";
+            export const application = new Application({ applicationId: "org.gtkx.example" });
+            application.setDefault();
+            application.register(null);
+            application.hold();
+            appendFileSync(${JSON.stringify(launchesPath)}, "x");
+            writeFileSync(${JSON.stringify(readyPath)}, "ready");`,
+        );
+
+        await withSession("dev", project.root, readyPath, async () => {
+            renameSync(runtime, `${runtime}.moving`);
+            lock(1);
+            await setTimeout(1000);
+            renameSync(`${runtime}.moving`, runtime);
+            lock(2);
+            await expect.poll(() => readFileSync(launchesPath, "utf8"), { timeout: 30_000 }).toBe("xx");
+        });
+    });
+
     it("starts a real storybook session and stops its application", async () => {
         using project = createProject({ codegen: true });
         const readyPath = join(project.root, "ready.txt");

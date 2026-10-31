@@ -1,9 +1,10 @@
 import { error, exitCodeForSignal, info, installGracefulShutdown, isPathWithin } from "@gtkx/utils";
 import { type FSWatcher, watch as watchFs } from "chokidar";
 import { type ChildProcess, fork as nodeFork } from "node:child_process";
-import { existsSync, statSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { basename, dirname, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import packageManifest from "../../package.json" with { type: "json" };
 import { WORKER_PRELOAD_ARGS } from "../internal/worker-preload-args.js";
 import { DEV_RUNNER_READY, type DevRunnerBootstrap } from "./bootstrap.js";
 
@@ -50,6 +51,7 @@ type DevSupervisorOptions = {
 type DebounceTimer = { handle: NodeJS.Timeout | null };
 
 const DEV_RUNNER_URL = new URL("../../bin/gtkx-dev-runner.js", import.meta.url);
+const CLI_MANIFEST_PATH = fileURLToPath(new URL("../../package.json", import.meta.url));
 const FORCE_KILL_TIMEOUT_MS = 5000;
 const CONFIG_DEBOUNCE_MS = 150;
 const RESTART_EXIT_CODE = 75;
@@ -154,6 +156,14 @@ const relaunchAfterExit = (state: SupervisorState): void => {
 
 const isSupervisorShuttingDown = (state: SupervisorState): boolean => state.isShuttingDown;
 
+const resolveInputsOrPrevious = (watch: DevWatch): string[] => {
+    try {
+        return watch.resolveInputs();
+    } catch {
+        return watch.inputs;
+    }
+};
+
 const reconcileConfigWatchers = async (
     state: SupervisorState,
     paths: string[],
@@ -167,7 +177,7 @@ const reconcileConfigWatchers = async (
 
     const added = paths.filter((path) => !watch.paths.includes(path) && existsSync(path));
     watch.paths = paths;
-    watch.inputs = watch.resolveInputs();
+    watch.inputs = resolveInputsOrPrevious(watch);
     const targets = new Set([...paths, ...watch.inputs].map(configWatchDirectory));
     const pending: Promise<void>[] = [];
 
@@ -234,6 +244,25 @@ const consumeChangedPaths = (state: SupervisorState): string => {
     return changed.length === 0 ? basename(state.configFile) : changed.join(", ");
 };
 
+const installedCliVersion = (): string | null => {
+    if (!existsSync(CLI_MANIFEST_PATH)) {
+        return null;
+    }
+
+    const manifest = JSON.parse(readFileSync(CLI_MANIFEST_PATH, "utf8")) as { version?: string };
+
+    return manifest.version ?? null;
+};
+
+const stopForReinstalledCli = (state: SupervisorState, installed: string | null): void => {
+    const change = installed === null ? "was moved or removed" : `was replaced by ${installed}`;
+    error(
+        `The @gtkx/cli ${packageManifest.version} this gtkx dev runs from ${change} while it was running, ` +
+            "so it cannot reload the application or regenerate its bindings. Start gtkx dev again.",
+    );
+    void shutdownOnSignal(state, "SIGTERM").then(() => state.finish(1), state.fail);
+};
+
 const restart = async (state: SupervisorState): Promise<void> => {
     const watch = state.watch;
 
@@ -243,6 +272,14 @@ const restart = async (state: SupervisorState): Promise<void> => {
 
     if (state.isRestarting) {
         state.isRestartPending = true;
+
+        return;
+    }
+
+    const installed = installedCliVersion();
+
+    if (installed !== packageManifest.version) {
+        stopForReinstalledCli(state, installed);
 
         return;
     }
