@@ -112,7 +112,7 @@ const userEventSignalsSchema = z.record(
 
 const moduleExportSchema = z.strictObject(
     {
-        /** Module specifier containing the named export. */
+        /** Module specifier containing the named export; relative paths start at the project root. */
         module: z.string({ error: "must be a module specifier" }).min(1, { error: "must be a module specifier" }),
         /** Name of the export to import from the module. */
         export: z.string({ error: "must be an export name" }).min(1, { error: "must be an export name" }),
@@ -334,11 +334,16 @@ const elementEntryValues = <T>(
         }),
     );
 
-const resolveElementComponents = (elements: Config["elements"]): Record<string, ModuleExport> =>
-    elementEntryValues(elements, (entry) => entry.component);
+const resolveModuleSpecifier = <T extends { module: string }>(reference: T, root: string): T =>
+    reference.module.startsWith("./") || reference.module.startsWith("../")
+        ? { ...reference, module: resolve(root, reference.module) }
+        : reference;
 
-const resolveElementProps = (elements: Config["elements"]): Record<string, ElementPropsExport> =>
-    elementEntryValues(elements, (entry) => entry.props);
+const resolveElementComponents = (elements: Config["elements"], root: string): Record<string, ModuleExport> =>
+    elementEntryValues(elements, (entry) => entry.component && resolveModuleSpecifier(entry.component, root));
+
+const resolveElementProps = (elements: Config["elements"], root: string): Record<string, ElementPropsExport> =>
+    elementEntryValues(elements, (entry) => entry.props && resolveModuleSpecifier(entry.props, root));
 
 const resolveAcceptedChildTypes = (elements: Config["elements"]): Record<string, string[]> =>
     elementEntryValues(elements, (entry) => entry.acceptedChildTypes);

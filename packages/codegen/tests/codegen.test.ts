@@ -28,7 +28,7 @@ import {
     resolveStore,
     runCodegen,
 } from "../src/index.js";
-import { readBuiltinElementsForDocs, writeDocs } from "../src/internal.js";
+import { generateBindings, readBuiltinElementsForDocs, writeDocs } from "../src/internal.js";
 
 const workspace = fileURLToPath(new URL("../../..", import.meta.url));
 const createProject = () => {
@@ -739,6 +739,29 @@ describe("generated bindings", () => {
             ],
             { cwd: directory.path, stdio: "pipe", timeout: 20_000 },
         );
+    });
+
+    it("types configured element props from a module relative to the project root", async () => {
+        using directory = createProject();
+        mkdirSync(join(directory.path, "src"));
+        writeFileSync(join(directory.path, "src", "props.ts"), "export type CaptionProps = { caption?: string };");
+        await generateBindings({
+            cwd: directory.path,
+            config: {
+                applicationId: "org.gtkx.Props",
+                elements: { config: { GtkButton: { props: { module: "./src/props.ts", export: "CaptionProps" } } } },
+            },
+        });
+        const imports = 'import { createElement } from "react"; import { GtkButton } from "@gtkx/jsx/gtk";';
+        expect(
+            diagnostics(
+                directory.path,
+                `${imports} export const button = createElement(GtkButton, { caption: "Hi" });`,
+            ),
+        ).toEqual([]);
+        expect(
+            diagnostics(directory.path, `${imports} export const button = createElement(GtkButton, { caption: 42 });`),
+        ).not.toEqual([]);
     });
 
     it("indexes upstream class, function and documentation contracts", () => {

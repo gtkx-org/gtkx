@@ -233,7 +233,7 @@ const loadReference = async (requestedRoot: string): Promise<LoadedReference> =>
         libraries,
         girPath,
         resolveFrom: root,
-        props: { ...builtin.props, ...resolveElementProps(config.elements) },
+        props: { ...builtin.props, ...resolveElementProps(config.elements, root) },
         omittedProps: mergeOmittedProps(builtin.omittedProps, resolveOmittedProps(config.elements)),
         lazyElements: [...builtin.lazyElements, ...resolveLazyElements(config.elements)],
         acceptedChildTypes: { ...builtin.acceptedChildTypes, ...resolveAcceptedChildTypes(config.elements) },

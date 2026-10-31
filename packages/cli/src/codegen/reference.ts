@@ -51,7 +51,7 @@ const writeReference = async (options: WriteReferenceOptions): Promise<Reference
         declarationDir: options.declarationDir,
         basePath: REFERENCE_PATH,
         linkStyle: "file",
-        props: { ...builtin.props, ...resolveElementProps(config.elements) },
+        props: { ...builtin.props, ...resolveElementProps(config.elements, root) },
         acceptedChildTypes: { ...builtin.acceptedChildTypes, ...resolveAcceptedChildTypes(config.elements) },
         omittedProps: mergeOmittedProps(builtin.omittedProps, resolveOmittedProps(config.elements)),
         lazyElements: [...builtin.lazyElements, ...resolveLazyElements(config.elements)],

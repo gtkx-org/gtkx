@@ -73,7 +73,7 @@ const docs = defineCommand({
             outDir,
             resolveFrom: cwd,
             basePath: args["base-path"],
-            props: { ...builtin.props, ...resolveElementProps(config.elements) },
+            props: { ...builtin.props, ...resolveElementProps(config.elements, cwd) },
             acceptedChildTypes: { ...builtin.acceptedChildTypes, ...resolveAcceptedChildTypes(config.elements) },
             omittedProps: mergeOmittedProps(builtin.omittedProps, resolveOmittedProps(config.elements)),
             lazyElements: [...builtin.lazyElements, ...resolveLazyElements(config.elements)],
