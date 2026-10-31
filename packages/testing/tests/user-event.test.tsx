@@ -578,7 +578,9 @@ describe("userEvent.click", () => {
             throw new Error("expected an overview thumbnail title");
         }
 
-        await expect(userEvent.click(thumbnail)).rejects.toThrow();
+        await expect(userEvent.click(thumbnail)).rejects.toThrow(
+            /a pointer there lands on <Box role="generic">, its nearest ancestor that can/,
+        );
         await userEvent.click(pointerTargetAt(thumbnail));
         expect(view.getSelectedPage()?.getTitle()).toBe("Second");
         expect(overview.current?.getOpen()).toBe(false);

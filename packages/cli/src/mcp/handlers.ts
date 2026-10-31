@@ -172,12 +172,22 @@ const requireWidget = (registry: WidgetRegistry, widgetId: string | undefined): 
 
 const collectedErrors = (cause: unknown): unknown[] => (cause instanceof AggregateError ? cause.errors : [cause]);
 
+const withPointerTargetId = (registry: WidgetRegistry, testing: TestingModule, cause: unknown): unknown => {
+    const target = testing.getPointerTarget(cause);
+
+    if (target === null) {
+        return cause;
+    }
+
+    return new Error(`${errorMessage(cause)}. Its widget ID is "${registry.getOrCreateId(target)}".`, { cause });
+};
+
 const interact = async (ctx: HandlerContext, testing: TestingModule, run: () => Promise<void>): Promise<void> => {
     try {
         await run();
     } catch (cause) {
         if (testing.isUsageError(cause)) {
-            throw cause;
+            throw withPointerTargetId(ctx.registry, testing, cause);
         }
 
         const errors = collectedErrors(cause);

@@ -19,7 +19,10 @@ const BLOCKED_BY_MODAL = "its window is blocked by a modal window holding the gr
 const NOT_TARGETABLE = "it cannot receive pointer input (its can-target property is off)";
 const ACTIONABLE_HOP_MS = 1;
 
-type FailureFinder = (widget: Gtk.Widget) => string | null;
+type Failure = { reason: string; pointerTarget: Gtk.Widget | null };
+type FailureFinder = (widget: Gtk.Widget) => Failure | null;
+
+const pointerTargets: WeakMap<Error, Gtk.Widget> = new WeakMap();
 
 const findWindowActionabilityFailure = (window: Gtk.Window): string | null => {
     if (!window.getVisible()) {
@@ -98,14 +101,55 @@ const describePointerBlocker = (widget: Gtk.Widget, blocker: Gtk.Widget): string
     return `it is inside ${describeWidget(blocker)}, which cannot receive pointer input (its can-target property is off)`;
 };
 
-const findPointerFailure = (widget: Gtk.Widget): string | null => {
-    const blocker = [widget, ...ancestors(widget)].find((current) => !current.getCanTarget());
+const describePointerTarget = (target: Gtk.Widget | null): string =>
+    target === null
+        ? ""
+        : `; a pointer there lands on ${describeWidget(target)}, its nearest ancestor that can receive pointer input`;
 
-    return blocker === undefined ? null : describePointerBlocker(widget, blocker);
+const blocked = (reason: string | null): Failure | null => (reason === null ? null : { reason, pointerTarget: null });
+
+const findPointerFailure = (widget: Gtk.Widget): Failure | null => {
+    const chain = [widget, ...ancestors(widget)];
+    const blocker = chain.find((current) => !current.getCanTarget());
+
+    if (blocker === undefined) {
+        return null;
+    }
+
+    const pointerTarget = chain.findLast((current) => !current.getCanTarget())?.getParent() ?? null;
+
+    return {
+        reason: describePointerBlocker(widget, blocker) + describePointerTarget(pointerTarget),
+        pointerTarget,
+    };
 };
 
-const findPointerActionabilityFailure = (widget: Gtk.Widget): string | null =>
-    findActionabilityFailure(widget) ?? findPointerFailure(widget);
+const findEventActionabilityFailure = (widget: Gtk.Widget): Failure | null => blocked(findActionabilityFailure(widget));
+
+const findPointerActionabilityFailure = (widget: Gtk.Widget): Failure | null =>
+    findEventActionabilityFailure(widget) ?? findPointerFailure(widget);
+
+const actionabilityError = (widget: Gtk.Widget, timeout: number, failure: Failure): Error => {
+    const error = usageError(
+        new Error(
+            `Cannot dispatch user event: ${describeWidget(widget)} did not become actionable ` +
+                `within ${String(timeout)}ms because ${failure.reason}`,
+        ),
+    );
+
+    if (failure.pointerTarget !== null) {
+        pointerTargets.set(error, failure.pointerTarget);
+    }
+
+    return error;
+};
+
+/**
+ * The widget a real pointer would reach in place of the target of a refused pointer helper: the nearest ancestor
+ * that can receive pointer input, when the error says the target is inside one that cannot.
+ */
+const getPointerTarget = (reason: unknown): Gtk.Widget | null =>
+    (reason instanceof Error ? pointerTargets.get(reason) : undefined) ?? null;
 
 const waitForActionable = async (widget: Gtk.Widget, findFailure: FailureFinder): Promise<void> => {
     const timeout = getConfig().actionabilityTimeout;
@@ -118,12 +162,7 @@ const waitForActionable = async (widget: Gtk.Widget, findFailure: FailureFinder)
     }
 
     if (failure !== null) {
-        throw usageError(
-            new Error(
-                `Cannot dispatch user event: ${describeWidget(widget)} did not become actionable ` +
-                    `within ${String(timeout)}ms because ${failure}`,
-            ),
-        );
+        throw actionabilityError(widget, timeout, failure);
     }
 };
 
@@ -140,7 +179,7 @@ const dispatchWhenActionable = async (
 };
 
 const wrapEvent = (widget: Gtk.Widget, body: () => void | PromiseLike<void>): Promise<void> =>
-    dispatchWhenActionable(widget, findActionabilityFailure, body);
+    dispatchWhenActionable(widget, findEventActionabilityFailure, body);
 
 /**
  * Like {@link wrapEvent}, and also waits until a pointer could reach the widget: it is not behind an open Adwaita
@@ -149,4 +188,4 @@ const wrapEvent = (widget: Gtk.Widget, body: () => void | PromiseLike<void>): Pr
 const wrapPointerEvent = (widget: Gtk.Widget, body: () => void | PromiseLike<void>): Promise<void> =>
     dispatchWhenActionable(widget, findPointerActionabilityFailure, body);
 
-export { wrapEvent, wrapPointerEvent };
+export { getPointerTarget, wrapEvent, wrapPointerEvent };

@@ -410,7 +410,8 @@ function buildInteractionTools(appRouter: AppRouter): Tool[] {
                 "buttons, checkboxes, switches, list and grid rows, tree expanders, and column headers: a " +
                 "row is selected, an expander toggles its row's expansion, and a header sorts its column. A widget " +
                 "a pointer cannot reach, such as one behind an open dialog, is refused with an error naming what " +
-                "blocks it.",
+                "blocks it. A widget inside one that cannot receive pointer input, such as a tab overview title, is " +
+                "refused with the widget ID of the ancestor a pointer lands on instead; click that ID.",
             inputSchema: widgetIdShape,
             handler: async ({ applicationId, appTimeout, ...params }) => {
                 await appRouter.sendToApp(applicationId, "widget.click", params, appTimeout);

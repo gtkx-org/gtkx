@@ -1775,6 +1775,38 @@ describe("CLI commands", () => {
         });
     });
 
+    it("names the widget ID a pointer reaches when an MCP click targets a widget it cannot", async () => {
+        using project = createProject();
+        const readyPath = join(project.root, "ready.txt");
+        writeWidgetApp(
+            project,
+            readyPath,
+            `import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
+            import { useState } from "react";
+            export const Content = () => {
+                const [isArchived, setIsArchived] = useState(false);
+                return (
+                    <GtkButton onClicked={() => setIsArchived(true)}>
+                        <GtkBox canTarget={false}>
+                            <GtkLabel label={isArchived ? "Archived" : "Archive"} />
+                        </GtkBox>
+                    </GtkButton>
+                );
+            };`,
+        );
+        await withMcpClient(project.root, async (client) => {
+            await withSession("dev", project.root, readyPath, async () => {
+                const [label] = await queryWidgets(client, { by: "text", value: "Archive" });
+                const refused = await callTool(client, "gtkx_click", { widgetId: label?.id });
+                expect(refused.isError).toBe(true);
+                expect(refused.text).toContain("a pointer there lands on <Button");
+                const [, widgetId] = /widget ID is "(\d+)"/.exec(refused.text) ?? [];
+                expect((await callTool(client, "gtkx_click", { widgetId })).isError).toBe(false);
+                expect(await queryWidgets(client, { by: "text", value: "Archived" })).toHaveLength(1);
+            });
+        });
+    });
+
     it("presses keys through MCP on a widget or the focused widget", async () => {
         using project = createProject();
         const readyPath = join(project.root, "ready.txt");
