@@ -65,6 +65,22 @@ const command = t("Open", { context: "menu command" });
 
 A missing contextual entry falls back to the ordinary message. A missing message uses its source text or `defaultValue`.
 
+## Comments for translators
+
+A comment that starts with `Translators:` right before a message reaches translators as an extracted comment (`#.`) in the template and in every catalog, as xgettext's `--add-comments=Translators:` does for Meson projects:
+
+```tsx
+// Translators: {{index}} is the number of the new recording.
+const name = t("Recording {{index}}", { index });
+
+<AdwAboutDialog
+    // Translators: Replace this with your names, one per line.
+    translatorCredits={t("translator-credits")}
+/>;
+```
+
+The comment belongs to the next `t` call or `Trans` element when only whitespace and other comments come between them, so it can sit on the lines above or earlier on the same line. Before an element in JSX children, write it as `{/* Translators: ... */}`. Code between the comment and the line of the call, such as `setTitle(` on a line of its own, detaches it, and a comment goes only to the first message after it. Comments without the tag stay out of the catalogs. A message used in several places collects the comment from each place.
+
 ## Use translations in components
 
 Import the React APIs from `@gtkx/i18n` so they use the configured gettext backend:

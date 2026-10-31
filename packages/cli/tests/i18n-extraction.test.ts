@@ -191,6 +191,77 @@ msgstr ""
         });
     });
 
+    it("gives translators the Translators: comments that precede each message", async () => {
+        using project = createProject();
+        project.write("po/LINGUAS", "fr\n");
+        project.write(
+            "src/messages.tsx",
+            `import { t, useTranslation, Trans } from "@gtkx/i18n";
+// Translators: Default name of a new recording; {{index}} is its number.
+const name = \`\${t("Recording {{index}}", { index })}.ogg\`;
+/* Translators: shown for a recording modified
+   the day before. */
+t("Yesterday");
+// Not for translators
+t("Untagged");
+// Translators: lost because code comes between
+setTitle(
+    t("Detached"));
+const open = /* Translators: a menu command */ t("Open", { context: "menu" });
+// Translators: {{count}} is the number of recordings
+t("{{count}} recording", { count, defaultValue_one: "{{count}} recording", defaultValue_other: "{{count}} recordings" });
+function About() {
+    const { t } = useTranslation();
+    return <AdwAboutDialog
+        // Translators: Replace this with your names, one per line.
+        translatorCredits={t("translator-credits")}
+    >
+        {/* Translators: the recording's file name follows */}
+        <Trans i18nKey="renamed">Renamed</Trans>
+    </AdwAboutDialog>;
+}
+// Translators: a second place that shows the same message
+t("Yesterday");`,
+        );
+
+        await extract(project.root);
+
+        expect(
+            readMessages(project.root).map((message) => [
+                message.msgctxt ?? "",
+                message.msgid,
+                message.comments?.extracted,
+            ]),
+        ).toEqual([
+            ["", "Recording {{index}}", "Translators: Default name of a new recording; {{index}} is its number."],
+            [
+                "",
+                "Yesterday",
+                "Translators: shown for a recording modified\nthe day before.\nTranslators: a second place that shows the same message",
+            ],
+            ["", "Untagged", undefined],
+            ["", "Detached", undefined],
+            ["", "{{count}} recording", "Translators: {{count}} is the number of recordings"],
+            ["", "translator-credits", "Translators: Replace this with your names, one per line."],
+            ["", "Renamed", "Translators: the recording's file name follows"],
+            ["menu", "Open", "Translators: a menu command"],
+        ]);
+        expect(
+            po.parse(readFileSync(join(project.root, "po/fr.po"))).translations[""]?.["translator-credits"]?.comments
+                ?.extracted,
+        ).toBe("Translators: Replace this with your names, one per line.");
+
+        const path = join(project.root, "po/org.gtkx.example.pot");
+        const previous = readFileSync(path, "utf8");
+        const timestamp = new Date("2000-01-01T00:00:00Z");
+        utimesSync(path, timestamp, timestamp);
+
+        await extract(project.root);
+
+        expect(readFileSync(path, "utf8")).toBe(previous);
+        expect(statSync(path).mtimeMs).toBe(timestamp.getTime());
+    });
+
     it("extracts imported hooks and components while ignoring shadowed bindings", async () => {
         using project = createProject();
         project.write("po/LINGUAS", "");

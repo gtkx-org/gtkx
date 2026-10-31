@@ -16,6 +16,7 @@ type SourceLocation = {
     file: string;
     line?: number | undefined;
     column?: number | undefined;
+    comments?: string[] | undefined;
 };
 type ExtractedLocation = NonNullable<ExtractedKey["locations"]>[number];
 
@@ -29,6 +30,7 @@ type SourceMessage = {
 };
 
 type CatalogSource = {
+    comments: string[];
     message: SourceMessage;
     path: string;
     line: number;
@@ -54,13 +56,17 @@ type PluralGroup = {
 };
 
 type TranslationReferences = {
+    comments: Map<string, string[]>;
     entryLocations: Map<string, SourcePoint[]>;
     locations: Map<string, SourcePoint>;
     masks: SourceMask[];
     writtenPluralLocations: Set<string>;
 };
 type LocationTest = (location: SourceLocation) => boolean;
-type SourceMask = { end: number; start: number };
+type SourceSpan = { end: number; start: number };
+type SourceMask = SourceSpan;
+type SourceComment = SourceSpan & { value: string };
+type TranslationKeyword = { key: string; start: number };
 type SourcePoint = { column: number; line: number };
 type TranslationCallKind = "alias" | "canonical";
 type ImportedBinding = {
@@ -79,6 +85,8 @@ const CONTEXT_SEPARATOR = "\u{4}";
 const DEFAULT_NAMESPACE = "translation";
 const POTFILES_FILENAME = "POTFILES.in";
 const SYNTHETIC_FILENAME = "messages.js";
+const TRANSLATOR_COMMENT_TAG = "Translators:";
+const LINE_TERMINATOR = /[\n\r\u2028\u2029]/u;
 const UNSUPPORTED_PLURAL_OPTION = /^defaultValue_(few|many|two|zero)$/u;
 const STATIC_SOURCE_OPTION_NAMES: ReadonlySet<string> = new Set([
     "context",
@@ -1050,7 +1058,7 @@ const parseTranslationReferences = (
             babelrc: false,
             configFile: false,
             filename: projectSourcePath(root, path),
-            parserOpts: { createParenthesizedExpressions: true, plugins: parserPlugins(lang) },
+            parserOpts: { createParenthesizedExpressions: true, plugins: parserPlugins(lang), tokens: true },
             sourceType: "module",
         });
     } catch (error) {
@@ -1189,8 +1197,94 @@ const maskUnrecognizedTranslations = (source: string, references: TranslationRef
     return masked;
 };
 
+const sourceSpan = (value: unknown): SourceSpan | null =>
+    typeof value === "object" &&
+    value !== null &&
+    "start" in value &&
+    typeof value.start === "number" &&
+    "end" in value &&
+    typeof value.end === "number"
+        ? { start: value.start, end: value.end }
+        : null;
+
+const sourceComments = (file: types.File): SourceComment[] =>
+    (file.comments ?? []).flatMap(({ start, end, value }) =>
+        start === undefined || end === undefined ? [] : [{ start, end, value }],
+    );
+
+const isWithinSpan = (span: SourceSpan, outer: SourceSpan): boolean =>
+    span.start >= outer.start && span.end <= outer.end;
+
+const codeTokens = (
+    file: types.File,
+    source: string,
+    comments: SourceComment[],
+    emptyContainers: SourceSpan[],
+): SourceSpan[] => {
+    const tokens: unknown[] = file.tokens ?? [];
+    const commentStarts = new Set(comments.map((comment) => comment.start));
+
+    return tokens
+        .map((token) => sourceSpan(token))
+        .filter(
+            (span): span is SourceSpan =>
+                span !== null &&
+                !commentStarts.has(span.start) &&
+                source.slice(span.start, span.end).trim().length > 0 &&
+                !emptyContainers.some((container) => isWithinSpan(span, container)),
+        )
+        .toSorted((left, right) => left.start - right.start);
+};
+
+const translationKeyword = (expression: TranslationExpression): TranslationKeyword | null => {
+    const keyword = types.isCallExpression(expression) ? expression.callee : expression;
+    const point = sourcePoint(
+        types.isCallExpression(expression) ? (expression.arguments[0] ?? expression) : expression,
+    );
+    const span = sourceSpan(keyword);
+
+    return point === null || span === null
+        ? null
+        : { key: sourceLocationKey(point.line, point.column), start: span.start };
+};
+
+const commentRunStart = (source: string, tokens: SourceSpan[], keyword: TranslationKeyword): number =>
+    tokens.findLast(
+        (token) => token.end <= keyword.start && LINE_TERMINATOR.test(source.slice(token.end, keyword.start)),
+    )?.end ?? 0;
+
+const registerTranslatorComments = (
+    file: types.File,
+    source: string,
+    expressions: TranslationExpression[],
+    emptyContainers: SourceSpan[],
+    references: TranslationReferences,
+): void => {
+    const comments = sourceComments(file);
+    const tokens = codeTokens(file, source, comments, emptyContainers);
+    const keywords = expressions
+        .map(translationKeyword)
+        .filter((keyword) => keyword !== null)
+        .toSorted((left, right) => left.start - right.start);
+    let consumed = 0;
+
+    for (const keyword of keywords) {
+        const start = Math.max(consumed, commentRunStart(source, tokens, keyword));
+        const run = comments.filter((comment) => comment.start >= start && comment.end <= keyword.start);
+        consumed = keyword.start;
+
+        if (run.some((comment) => comment.value.includes(TRANSLATOR_COMMENT_TAG))) {
+            references.comments.set(
+                keyword.key,
+                run.map((comment) => source.slice(comment.start, comment.end)),
+            );
+        }
+    }
+};
+
 const translationReferences = (root: string, path: string, source: string): TranslationReferences => {
     const references: TranslationReferences = {
+        comments: new Map(),
         entryLocations: new Map(),
         locations: new Map(),
         masks: [],
@@ -1209,6 +1303,7 @@ const translationReferences = (root: string, path: string, source: string): Tran
     }
 
     const expressions: TranslationExpression[] = [];
+    const emptyContainers: SourceSpan[] = [];
 
     traverse(parsed, {
         CallExpression(callPath) {
@@ -1217,6 +1312,13 @@ const translationReferences = (root: string, path: string, source: string): Tran
                     expressions.push(callPath.node);
                 }
             });
+        },
+        JSXExpressionContainer(containerPath) {
+            const span = sourceSpan(containerPath.node);
+
+            if (span !== null && types.isJSXEmptyExpression(containerPath.node.expression)) {
+                emptyContainers.push(span);
+            }
         },
         JSXOpeningElement(elementPath) {
             atSourceNode(root, path, elementPath.node, () => {
@@ -1248,6 +1350,8 @@ const translationReferences = (root: string, path: string, source: string): Tran
             }
         });
     }
+
+    registerTranslatorComments(parsed, source, expressions, emptyContainers, references);
 
     return references;
 };
@@ -1648,6 +1752,31 @@ const assertAllReferencesExtracted = (
     }
 };
 
+const commentedLocation = (
+    root: string,
+    references: Map<string, TranslationReferences>,
+    location: SourceLocation,
+): SourceLocation => {
+    if (location.line === undefined || location.column === undefined) {
+        return location;
+    }
+
+    const comments = references
+        .get(extractedLocationFile(root, location.file))
+        ?.comments.get(sourceLocationKey(location.line, location.column));
+
+    return comments === undefined ? location : { ...location, comments };
+};
+
+const commentedMessage = (
+    root: string,
+    references: Map<string, TranslationReferences>,
+    message: SourceMessage,
+): SourceMessage => ({
+    ...message,
+    locations: message.locations.map((location) => commentedLocation(root, references, location)),
+});
+
 const findSourceMessages = async (root: string, sourceFiles: string[]): Promise<SourceMessage[]> => {
     if (sourceFiles.length === 0) {
         clearI18nResources(root);
@@ -1694,6 +1823,7 @@ const findSourceMessages = async (root: string, sourceFiles: string[]): Promise<
     return sourceMessages(root, extracted.values().toArray(), (location) =>
         isWrittenOutPluralLocation(root, references, location),
     )
+        .map((message) => commentedMessage(root, references, message))
         .map((message) => inferLocations(message, sources))
         .toSorted(compareMessages);
 };
@@ -1735,21 +1865,25 @@ const renderCatalogCall = (message: SourceMessage): string => {
     return message.context === null ? `gettext(${msgid});` : `pgettext(${JSON.stringify(message.context)}, ${msgid});`;
 };
 
-const sourceOwners = (
-    project: CatalogProject,
-    message: SourceMessage,
-): { path: string; line: number | undefined }[] => {
-    const owners = new Map<string, { path: string; line: number | undefined }>();
+type SourceOwner = { comments: string[]; path: string; line: number | undefined };
+
+const renderCatalogSource = ({ comments, message }: CatalogSource): string =>
+    [...comments, renderCatalogCall(message)].join("\n");
+
+const sourceOwners = (project: CatalogProject, message: SourceMessage): SourceOwner[] => {
+    const owners = new Map<string, SourceOwner>();
 
     for (const location of message.locations) {
         const path = projectPath(project.root, location.file);
 
         if (path !== null) {
-            owners.set(`${path}\0${String(location.line)}`, { path, line: location.line });
+            const key = `${path}\0${String(location.line)}`;
+            const comments = owners.get(key)?.comments ?? [];
+            owners.set(key, { comments: [...comments, ...(location.comments ?? [])], path, line: location.line });
         }
     }
 
-    return owners.size > 0 ? owners.values().toArray() : [{ path: SYNTHETIC_FILENAME, line: undefined }];
+    return owners.size > 0 ? owners.values().toArray() : [{ comments: [], path: SYNTHETIC_FILENAME, line: undefined }];
 };
 
 const catalogSources = (project: CatalogProject, messages: SourceMessage[]): CatalogSource[] => {
@@ -1823,6 +1957,7 @@ const extractSourceMessages = (project: CatalogProject, sources: CatalogSource[]
             `--package-name=${project.domain}`,
             "--force-po",
             "--no-location",
+            `--add-comments=${TRANSLATOR_COMMENT_TAG}`,
             "--keyword=gettext:1",
             "--keyword=ngettext:1,2",
             "--keyword=pgettext:1c,2",
@@ -1830,7 +1965,7 @@ const extractSourceMessages = (project: CatalogProject, sources: CatalogSource[]
             `--output=${output}`,
             "-",
         ],
-        options: { input: sources.map(({ message }) => renderCatalogCall(message)).join("\n") },
+        options: { input: sources.map(renderCatalogSource).join("\n") },
         target: output,
     });
 };
