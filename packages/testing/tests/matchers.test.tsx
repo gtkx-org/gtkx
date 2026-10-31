@@ -129,7 +129,11 @@ describe("state matchers", () => {
             </GtkBox>,
         );
 
-        expect(await screen.findByText("Faded")).not.toBeVisible();
+        const faded = await screen.findByText("Faded");
+        expect(faded).not.toBeVisible();
+        expect(() => {
+            expect(faded).toBeVisible();
+        }).toThrow(/its ancestor <GENERIC> has opacity 0/);
         await render(<GtkButton label="Save" sensitive={false} />);
         const disabled = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Save" });
         expect(disabled).toBeDisabled();

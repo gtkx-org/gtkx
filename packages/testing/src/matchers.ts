@@ -22,6 +22,7 @@ import { formatRole } from "./role-helpers.js";
 import { type Container, descendants } from "./traversal.js";
 import {
     type CheckedState,
+    findHiddenCause,
     getWidgetAccessibleName,
     getWidgetCheckedState,
     getWidgetDescribedByText,
@@ -37,7 +38,6 @@ import {
     hasDisplayValue,
     isWidgetDisabled,
     isWidgetValueMatch,
-    isWidgetVisible,
 } from "./widget-accessible-properties.js";
 import { getTypeTag } from "./widget-getters.js";
 import { isWindowActivated } from "./window-state.js";
@@ -863,8 +863,19 @@ function toBeEnabled(received: unknown): MatcherResult {
 
 function toBeVisible(received: unknown): MatcherResult {
     const widget = asWidget(received, "toBeVisible");
+    const hidden = findHiddenCause(widget);
 
-    return stateResult(widget, "visible", isWidgetVisible(widget));
+    if (!hidden) {
+        return stateResult(widget, "visible", true);
+    }
+
+    const subject = hidden.widget === widget ? "it" : `its ancestor ${describeWidget(hidden.widget)}`;
+    const reason = hidden.cause === "hidden" ? "is hidden" : "has opacity 0";
+
+    return {
+        pass: false,
+        message: () => `expected widget to be visible, but ${subject} ${reason}\n${describeWidget(widget)}`,
+    };
 }
 
 function toBeRooted(received: unknown): MatcherResult {

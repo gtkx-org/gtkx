@@ -317,21 +317,26 @@ const hasDisplayValue = (widget: Gtk.Widget): boolean => {
 
 const isWidgetDisabled = (widget: Gtk.Widget): boolean => !widget.isSensitive();
 
-const hasZeroOpacityAncestor = (widget: Gtk.Widget): boolean => {
+/** Why a widget does not count as visible: the nearest widget, itself or an ancestor, that hides it. */
+type HiddenCause = { widget: Gtk.Widget; cause: "hidden" | "transparent" };
+
+const findHiddenCause = (widget: Gtk.Widget): HiddenCause | null => {
     let current: Gtk.Widget | null = widget;
 
     while (current) {
+        if (!current.getVisible()) {
+            return { widget: current, cause: "hidden" };
+        }
+
         if (current.getOpacity() === 0) {
-            return true;
+            return { widget: current, cause: "transparent" };
         }
 
         current = current.getParent();
     }
 
-    return false;
+    return null;
 };
-
-const isWidgetVisible = (widget: Gtk.Widget): boolean => widget.isVisible() && !hasZeroOpacityAncestor(widget);
 
 const getWidgetRequiredState = (widget: Gtk.Widget): boolean | null =>
     readAccessibleBooleanProperty(widget, Gtk.AccessibleProperty.REQUIRED);
@@ -558,7 +563,7 @@ export {
     getWidgetDisplayValue,
     hasDisplayValue,
     isWidgetDisabled,
-    isWidgetVisible,
+    findHiddenCause,
     getWidgetRequiredState,
     getWidgetSelection,
     getWidgetDescribedByText,
