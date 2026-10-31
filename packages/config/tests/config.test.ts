@@ -37,7 +37,10 @@ describe("project configuration", () => {
         mkdirSync(join(directory.path, "config"));
         mkdirSync(join(directory.path, "shared"));
         writeFileSync(join(directory.path, "gtkx.config.ts"), 'export default { extends: "./shared" };');
-        writeFileSync(join(directory.path, "shared/gtkx.config.json"), '{"applicationId":"org.gtkx.default","codegen":false}');
+        writeFileSync(
+            join(directory.path, "shared/gtkx.config.json"),
+            '{"applicationId":"org.gtkx.default","codegen":false}',
+        );
         writeFileSync(
             join(directory.path, "config/custom.ts"),
             `export default {
