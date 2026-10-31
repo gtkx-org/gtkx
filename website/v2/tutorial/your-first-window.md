@@ -18,10 +18,18 @@ import { defineConfig } from "@gtkx/config";
 export default defineConfig({
     applicationId: "com.gtkx.tutorial",
     applicationIcon: "data/icons",
+    deploy: {
+        name: "Tasks",
+        summary: "A Linux application built with GTKX",
+        description: [
+            "Tasks is built with GTKX. Replace this paragraph with a description of what your application does.",
+        ],
+        categories: ["Utility"],
+    },
 });
 ```
 
-GTKX generates Adwaita and GTK4 bindings by default. The `libraries` option lists additional native libraries; see [Configuration and Codegen](/v2/guide/configuration-and-codegen).
+GTKX generates Adwaita and GTK4 bindings by default. The `libraries` option lists additional native libraries; see [Configuration and Codegen](/v2/guide/configuration-and-codegen). The `deploy` block holds the package metadata that [Package the App](/v2/tutorial/packaging) completes.
 
 Keep the application ID you chose in the introduction, and use it wherever later examples show `com.gtkx.tutorial`.
 
