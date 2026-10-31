@@ -9,7 +9,7 @@ import { EmptyState } from "./empty-state.js";
 const SourceViewer = () => {
     const { currentDemo } = useDemo();
     const styleManager = Adw.StyleManager.getDefault();
-    const isDark = useProperty(styleManager, "dark") ?? styleManager.getDark();
+    const isDark = useProperty(styleManager, "dark");
     const styleScheme = GtkSource.StyleSchemeManager.getDefault().getScheme(isDark ? "Adwaita-dark" : "Adwaita");
 
     return (

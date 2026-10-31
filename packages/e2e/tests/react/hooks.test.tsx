@@ -154,6 +154,8 @@ const useInstalledCaption = (gauge: Gauge) => useProperty(gauge, "caption");
 const useInheritedLabel = (gauge: Gauge) => useProperty(gauge, "label");
 const useDashedKey = (humidity: Humidity) => useProperty(humidity, "dewPoint");
 const useUnderscoredKey = (humidity: Humidity) => useProperty(humidity, "heatIndex");
+const useOptionalCelsius = (reading: Reading | null) => useProperty(reading, "celsius");
+const useMaybeLabel = (label: Gtk.Label | undefined) => useProperty(label, "label");
 
 const useUnknownLabelProperty = (label: Gtk.Label) =>
     // @ts-expect-error "labl" is not a property of Gtk.Label
@@ -390,11 +392,16 @@ describe("useProperty (addressable names)", () => {
         expectTypeOf(useSignal<Gtk.Button, "clicked">)
             .parameter(0)
             .toEqualTypeOf<Gtk.Button | null | undefined>();
-        expectTypeOf(useCelsius).returns.toEqualTypeOf<number | undefined>();
-        expectTypeOf(useInstalledCaption).returns.toEqualTypeOf<string | undefined>();
-        expectTypeOf(useInheritedLabel).returns.toEqualTypeOf<string | undefined>();
-        expectTypeOf(useDashedKey).returns.toEqualTypeOf<number | undefined>();
-        expectTypeOf(useUnderscoredKey).returns.toEqualTypeOf<number | undefined>();
+        expectTypeOf(useCelsius).returns.toEqualTypeOf<number>();
+        expectTypeOf(useInstalledCaption).returns.toEqualTypeOf<string>();
+        expectTypeOf(useInheritedLabel).returns.toEqualTypeOf<string>();
+        expectTypeOf(useDashedKey).returns.toEqualTypeOf<number>();
+        expectTypeOf(useUnderscoredKey).returns.toEqualTypeOf<number>();
+    });
+
+    it("adds undefined to the value only when the object can be null", () => {
+        expectTypeOf(useOptionalCelsius).returns.toEqualTypeOf<number | undefined>();
+        expectTypeOf(useMaybeLabel).returns.toEqualTypeOf<string | undefined>();
     });
 
     it("names every installed property in camelCase, whichever spelling keyed it", () => {

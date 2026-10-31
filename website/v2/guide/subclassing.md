@@ -84,7 +84,7 @@ const tag = useProperty(scale, "tag");
 <TaggedScaleElement ref={setScale} tag="volume" />;
 ```
 
-The hook returns `undefined` while its target is absent. React state keeps the subscription aligned when the element mounts, is replaced, or unmounts. `useSignal` and `useBindSetting` take instances the same way; mutable ref objects are not subscription targets.
+The hook returns `undefined` while its target is absent, and its type includes `undefined` only when the target's type allows `null` or `undefined`; `useProperty(Adw.StyleManager.getDefault(), "dark")` is a `boolean`. React state keeps the subscription aligned when the element mounts, is replaced, or unmounts. `useSignal` and `useBindSetting` take instances the same way; mutable ref objects are not subscription targets.
 
 ## Declaring signals
 
