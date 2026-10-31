@@ -4,13 +4,18 @@ import { type Document, isMap, parse, parseDocument, stringify } from "yaml";
 import type { PackageManager } from "./package-managers.js";
 import { updateManifest } from "./manifest.js";
 
+type MissingSetting = {
+    file: string;
+    entries: string;
+};
+
 type Workspace = {
     packageManager: PackageManager;
-    file: string;
-    missingAllowances: string[];
+    missingSettings: MissingSetting[];
 };
 
 const BUILT_DEPENDENCIES = ["@swc/core", "esbuild"];
+const YARN_NODE_LINKER = "node-modules";
 const PNPM_WORKSPACE_FILE = "pnpm-workspace.yaml";
 const YARN_CONFIG_FILE = ".yarnrc.yml";
 const PACKAGE_JSON_FILE = "package.json";
@@ -50,7 +55,7 @@ const writeNpmAllowance = (root: string): void => {
 
 const writeYarnAllowance = (root: string): void => {
     updateYamlFile(join(root, YARN_CONFIG_FILE), (document) => {
-        document.set("nodeLinker", "node-modules");
+        document.set("nodeLinker", YARN_NODE_LINKER);
     });
     updateManifest(root, (manifest) => {
         manifest.dependenciesMeta = Object.fromEntries(BUILT_DEPENDENCIES.map((name) => [name, { built: true }]));
@@ -121,38 +126,6 @@ const includesProject = (patterns: string[], project: string): boolean =>
             matchesWorkspacePattern(project, pattern.slice(NEGATION_PREFIX.length)),
     );
 
-const pnpmWorkspaceAt = (file: string, project: string): Workspace | null => {
-    const settings: unknown = parse(readFileSync(file, "utf8"));
-
-    if (!includesProject(workspacePatterns(settings, "packages"), project)) {
-        return null;
-    }
-
-    const allowBuilds = isRecord(settings) && isRecord(settings.allowBuilds) ? settings.allowBuilds : {};
-
-    return {
-        packageManager: "pnpm",
-        file,
-        missingAllowances: BUILT_DEPENDENCIES.filter((name) => !Object.hasOwn(allowBuilds, name)),
-    };
-};
-
-const npmWorkspaceAt = (file: string, project: string): Workspace | null => {
-    const manifest: unknown = JSON.parse(readFileSync(file, "utf8"));
-
-    if (!includesProject(workspacePatterns(manifest, "workspaces"), project)) {
-        return null;
-    }
-
-    const allowScripts = isRecord(manifest) && isRecord(manifest.allowScripts) ? manifest.allowScripts : {};
-
-    return {
-        packageManager: "npm",
-        file,
-        missingAllowances: BUILT_DEPENDENCIES.filter((name) => !Object.hasOwn(allowScripts, name)),
-    };
-};
-
 const ancestorFiles = (root: string, name: string): string[] => {
     const files: string[] = [];
 
@@ -171,10 +144,94 @@ const ancestorFiles = (root: string, name: string): string[] => {
 
 const projectPath = (file: string, root: string): string => relative(dirname(file), root).split(sep).join(posix.sep);
 
+const recordField = (settings: unknown, field: string): Record<string, unknown> =>
+    isRecord(settings) && isRecord(settings[field]) ? settings[field] : {};
+
+const missingBuilds = (allowances: Record<string, unknown>): string[] =>
+    BUILT_DEPENDENCIES.filter((name) => !Object.hasOwn(allowances, name));
+
+const settingsToAdd = (settings: (MissingSetting | null)[]): MissingSetting[] =>
+    settings.filter((setting) => setting !== null);
+
+const pnpmWorkspaceAt = (file: string, project: string): Workspace | null => {
+    const settings: unknown = parse(readFileSync(file, "utf8"));
+
+    if (!includesProject(workspacePatterns(settings, "packages"), project)) {
+        return null;
+    }
+
+    const missing = missingBuilds(recordField(settings, "allowBuilds"));
+    const entries = stringify({ allowBuilds: Object.fromEntries(missing.map((name) => [name, true])) }).trimEnd();
+
+    return { packageManager: "pnpm", missingSettings: settingsToAdd([missing.length > 0 ? { file, entries } : null]) };
+};
+
+const npmWorkspaceAt = (file: string, project: string): Workspace | null => {
+    const manifest: unknown = JSON.parse(readFileSync(file, "utf8"));
+
+    if (!includesProject(workspacePatterns(manifest, "workspaces"), project)) {
+        return null;
+    }
+
+    const missing = missingBuilds(recordField(manifest, "allowScripts"));
+    const entries = `"allowScripts": ${JSON.stringify(Object.fromEntries(missing.map((name) => [name, true])), null, 4)}`;
+
+    return { packageManager: "npm", missingSettings: settingsToAdd([missing.length > 0 ? { file, entries } : null]) };
+};
+
 /**
- * The pnpm or npm workspace above `root` that includes it, with the native dependencies whose build scripts
- * its root configuration does not allow yet, or null when `root` is not part of an enclosing workspace. pnpm
- * reads `allowBuilds` and npm reads `allowScripts` only from the workspace root.
+ * The `nodeLinker` Yarn applies in `directory`: Yarn merges the `.yarnrc.yml` files of a project and its
+ * ancestors, and the closest one that sets a value wins.
+ */
+const yarnNodeLinker = (directory: string): unknown => {
+    for (const file of [join(directory, YARN_CONFIG_FILE), ...ancestorFiles(directory, YARN_CONFIG_FILE)]) {
+        const settings: unknown = existsSync(file) ? parse(readFileSync(file, "utf8")) : undefined;
+
+        if (isRecord(settings) && Object.hasOwn(settings, "nodeLinker")) {
+            return settings.nodeLinker;
+        }
+    }
+
+    return undefined;
+};
+
+const yarnWorkspaceAt = (file: string, project: string): Workspace | null => {
+    const manifest: unknown = JSON.parse(readFileSync(file, "utf8"));
+
+    if (!includesProject(workspacePatterns(manifest, "workspaces"), project)) {
+        return null;
+    }
+
+    const missing = missingBuilds(recordField(manifest, "dependenciesMeta"));
+    const dependenciesMeta = Object.fromEntries(missing.map((name) => [name, { built: true }]));
+    const configFile = join(dirname(file), YARN_CONFIG_FILE);
+
+    return {
+        packageManager: "yarn",
+        missingSettings: settingsToAdd([
+            yarnNodeLinker(dirname(file)) === YARN_NODE_LINKER
+                ? null
+                : { file: configFile, entries: stringify({ nodeLinker: YARN_NODE_LINKER }).trimEnd() },
+            missing.length > 0
+                ? { file, entries: `"dependenciesMeta": ${JSON.stringify(dependenciesMeta, null, 4)}` }
+                : null,
+        ]),
+    };
+};
+
+const MANIFEST_WORKSPACES: Record<
+    Exclude<PackageManager, "pnpm">,
+    (file: string, project: string) => Workspace | null
+> = {
+    npm: npmWorkspaceAt,
+    yarn: yarnWorkspaceAt,
+};
+
+/**
+ * The pnpm, npm or Yarn workspace above `root` that includes it, with the settings its root configuration
+ * still lacks for the app, or null when `root` is not part of an enclosing workspace. pnpm reads
+ * `allowBuilds`, npm `allowScripts`, and Yarn `nodeLinker` and `dependenciesMeta` only for the whole
+ * workspace, from its root.
  */
 const enclosingWorkspace = (root: string, packageManager: PackageManager): Workspace | null => {
     if (packageManager === "pnpm") {
@@ -183,35 +240,17 @@ const enclosingWorkspace = (root: string, packageManager: PackageManager): Works
         return nearest === undefined ? null : pnpmWorkspaceAt(nearest, projectPath(nearest, root));
     }
 
-    if (packageManager === "npm") {
-        for (const file of ancestorFiles(root, PACKAGE_JSON_FILE)) {
-            const workspace = npmWorkspaceAt(file, projectPath(file, root));
+    const workspaceAt = MANIFEST_WORKSPACES[packageManager];
 
-            if (workspace !== null) {
-                return workspace;
-            }
+    for (const file of ancestorFiles(root, PACKAGE_JSON_FILE)) {
+        const workspace = workspaceAt(file, projectPath(file, root));
+
+        if (workspace !== null) {
+            return workspace;
         }
     }
 
     return null;
 };
 
-/**
- * The build-script entries to add to a workspace's root configuration, in that file's format.
- */
-const formatMissingAllowances = ({ packageManager, missingAllowances }: Workspace): string => {
-    const entries = Object.fromEntries(missingAllowances.map((name) => [name, true]));
-
-    return packageManager === "pnpm"
-        ? stringify({ allowBuilds: entries }).trimEnd()
-        : `"allowScripts": ${JSON.stringify(entries, null, 4)}`;
-};
-
-export {
-    PACKAGE_MANAGER_CONFIG_FILES,
-    enclosingWorkspace,
-    formatMissingAllowances,
-    pinnedPackageManager,
-    type Workspace,
-    writeBuildAllowance,
-};
+export { PACKAGE_MANAGER_CONFIG_FILES, enclosingWorkspace, pinnedPackageManager, type Workspace, writeBuildAllowance };

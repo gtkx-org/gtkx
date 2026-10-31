@@ -163,6 +163,31 @@ describe("scaffold command", () => {
         expect(output).not.toContain('"esbuild": true');
     });
 
+    it("leaves the linker and build scripts of an app in a Yarn workspace to the workspace root", async () => {
+        using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-yarn-workspace-"));
+        const root = JSON.stringify({
+            name: "kitchen",
+            private: true,
+            workspaces: ["apps/*"],
+            dependenciesMeta: { esbuild: { built: true } },
+        });
+        const settings = "npmRegistryServer: https://registry.example.com\n";
+        writeFileSync(join(directory.path, "package.json"), root);
+        writeFileSync(join(directory.path, ".yarnrc.yml"), settings);
+        const target = join(directory.path, "apps/example");
+        const { status, output } = await create(target, ["--package-manager", "yarn"]);
+        expect(status).toBe(0);
+        expect(existsSync(join(target, ".yarnrc.yml"))).toBe(false);
+        expect(JSON.parse(read(target, "package.json"))).not.toHaveProperty("dependenciesMeta");
+        expect(read(directory.path, "package.json")).toBe(root);
+        expect(read(directory.path, ".yarnrc.yml")).toBe(settings);
+        expect(output).toContain(join(directory.path, ".yarnrc.yml"));
+        expect(output).toContain("nodeLinker: node-modules");
+        expect(output).toContain(join(directory.path, "package.json"));
+        expect(output).toContain('"@swc/core"');
+        expect(output).not.toContain('"esbuild"');
+    });
+
     it("gives an app that the enclosing pnpm workspace excludes its own workspace", async () => {
         using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-excluded-"));
         writeFileSync(join(directory.path, "pnpm-workspace.yaml"), "packages:\n  - apps/*\n  - '!apps/example'\n");

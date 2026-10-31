@@ -109,7 +109,7 @@ The object is still wrapped as its nearest retained ancestor, so the warning usu
 
 ## Monorepos
 
-GTKX apps work in pnpm, npm and Yarn workspaces with the package manager's default `node_modules` layout, alongside shared packages of components. In a pnpm or npm workspace, `create gtkx apps/my-app` adds the app to the workspace and prints any `allowBuilds` or `allowScripts` entries to add to its root `pnpm-workspace.yaml` or `package.json`; see [Scaffold Options](/v2/guide/scaffold-options#workspaces).
+GTKX apps work in pnpm and npm workspaces with the package manager's default `node_modules` layout, and in Yarn workspaces whose root `.yarnrc.yml` sets `nodeLinker: node-modules`, alongside shared packages of components. In a workspace, `create gtkx apps/my-app` adds the app to the workspace and prints any `allowBuilds`, `allowScripts`, `nodeLinker` or `dependenciesMeta` entries to add to its root configuration; see [Scaffold Options](/v2/guide/scaffold-options#workspaces).
 
 Codegen writes the bindings into the `node_modules` directory the GTKX packages are installed in. In a workspace this is usually the root: pnpm keeps every package under the root `node_modules/.pnpm`, and npm and Yarn hoist them there. The bindings link `@gtkx/runtime`, `@gtkx/cairo`, `@gtkx/react` and `react` from the app, so they load the same copies the app does.
 

@@ -27,6 +27,8 @@ Inside a pnpm workspace whose `packages` include the target directory, `pnpm cre
 
 Inside an npm workspace whose root `package.json` lists the target directory in `workspaces`, `npm create gtkx@beta -- apps/my-app` installs through the workspace in the same way. npm reads `allowScripts` only from the root `package.json`, so the scaffold writes none into the app's and prints the entries to add to the root when it does not mention `@swc/core` or `esbuild` yet.
 
+Inside a Yarn workspace whose root `package.json` lists the target directory in `workspaces`, the scaffold likewise writes no `.yarnrc.yml` or `dependenciesMeta` into the app, because Yarn applies `nodeLinker` and `dependenciesMeta` to the whole workspace from its root. When the root `.yarnrc.yml` does not set `nodeLinker: node-modules`, or the root `package.json` lacks `dependenciesMeta` for `@swc/core` or `esbuild`, the command prints the entries to add. Until the root sets `nodeLinker: node-modules` and `yarn install` runs again, Yarn installs the workspace with Plug'n'Play, which GTKX does not support.
+
 ## Installation failures
 
 If dependency installation fails, the generated project remains on disk. Resolve the package manager's error, then rerun its install command in the project directory. Recreating the project is unnecessary.

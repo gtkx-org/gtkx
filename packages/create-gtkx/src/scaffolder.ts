@@ -10,7 +10,6 @@ import packageManifest from "../package.json" with { type: "json" };
 import {
     PACKAGE_MANAGER_CONFIG_FILES,
     enclosingWorkspace,
-    formatMissingAllowances,
     pinnedPackageManager,
     type Workspace,
     writeBuildAllowance,
@@ -701,7 +700,7 @@ const runWithSpinner = async (step: SpinnerStep): Promise<void> => {
 };
 
 const hasMissingAllowances = (resolved: ResolvedOptions): boolean =>
-    resolved.workspace?.packageManager === "pnpm" && resolved.workspace.missingAllowances.length > 0;
+    resolved.workspace?.packageManager === "pnpm" && resolved.workspace.missingSettings.length > 0;
 
 const installAllDependencies = async (resolved: ResolvedOptions, devDependencies: string[]): Promise<void> => {
     const { root, packageManager } = resolved;
@@ -774,14 +773,14 @@ const missingHeadlessToolsNote = (): string => {
 };
 
 const printWorkspaceAllowances = ({ workspace }: ResolvedOptions): void => {
-    if (workspace === null || workspace.missingAllowances.length === 0) {
+    if (workspace === null || workspace.missingSettings.length === 0) {
         return;
     }
 
     p.log.warn(
-        `The ${workspace.packageManager} workspace does not allow the build scripts this app needs. ` +
-            `Add these entries to ${workspace.file}, then run ${INSTALL_COMMAND[workspace.packageManager]}:\n\n` +
-            formatMissingAllowances(workspace),
+        `The ${workspace.packageManager} workspace lacks settings this app needs. ` +
+            `Add these entries, then run ${INSTALL_COMMAND[workspace.packageManager]}:\n\n` +
+            workspace.missingSettings.map(({ file, entries }) => `${file}:\n${entries}`).join("\n\n"),
     );
 };
 
