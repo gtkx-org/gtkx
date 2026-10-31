@@ -35,7 +35,9 @@ describe("project configuration", () => {
         });
         expect(merged).toMatchObject({ applicationId: "org.gtkx.base", codegen: false });
         mkdirSync(join(directory.path, "config"));
-        writeFileSync(join(directory.path, "gtkx.config.ts"), config("org.gtkx.default"));
+        mkdirSync(join(directory.path, "shared"));
+        writeFileSync(join(directory.path, "gtkx.config.ts"), 'export default { extends: "./shared" };');
+        writeFileSync(join(directory.path, "shared/gtkx.config.ts"), config("org.gtkx.default"));
         writeFileSync(
             join(directory.path, "config/custom.ts"),
             `export default {

@@ -10,7 +10,7 @@ import {
     setConfigDependencies,
 } from "./config-dependencies.ts";
 import { isRecord, missingConfigFileError } from "./config-error.ts";
-import { type ConfigResolutionOptions, localConfigSourcePath } from "./config-source.ts";
+import { type ConfigResolutionOptions, localConfigSourcePaths } from "./config-source.ts";
 import { type Config, graduatedFutureKeys, resolveConfig, type ResolvedConfig, validateConfig } from "./config.ts";
 import { assertSupportedNodeVersion } from "./node-version.ts";
 
@@ -81,16 +81,14 @@ const productionApplicationId = (layers: Record<string, unknown>[], config: Conf
 };
 
 const rejectMissingLocalConfig = (source: string, options: ConfigResolutionOptions): undefined => {
-    const path = localConfigSourcePath(source, options);
+    const paths = localConfigSourcePaths(source, options);
 
-    if (path === undefined) {
-        return;
+    for (const path of paths) {
+        addConfigSource(path);
     }
 
-    addConfigSource(path);
-
-    if (!existsSync(path)) {
-        throw new Error(`Extended configuration does not exist at ${path}`);
+    if (paths.length > 0 && !paths.some((path) => existsSync(path))) {
+        throw new Error(`Extended configuration ${source} does not exist in ${options.cwd ?? process.cwd()}`);
     }
 };
 
