@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import ts from "typescript";
+import type { JsDocDeprecation } from "../writer/doc-tags.js";
 import { propsDependencies, type PropsDependencies } from "./props-dependencies.js";
 import { VIRTUAL_GI_ROOT } from "./props-modules.js";
 import { createPropsProgram, type PropsExport, type PropsProgramOptions } from "./props-program.js";
@@ -8,6 +9,7 @@ type HandwrittenProp = {
     name: string;
     type: string;
     doc: string;
+    deprecation?: JsDocDeprecation | undefined;
 };
 
 type PropsCatalog = {
@@ -66,6 +68,14 @@ const formatType = (context: ExportContext, type: ts.Type): string =>
 
 const formatDoc = (doc: string): string => doc.replaceAll(WHITESPACE_RUN, " ").trim();
 
+const deprecationOf = (checker: ts.TypeChecker, properties: ts.Symbol[]): JsDocDeprecation | undefined => {
+    const tag = properties
+        .flatMap((property) => property.getJsDocTags(checker))
+        .find((candidate) => candidate.name === "deprecated");
+
+    return tag === undefined ? undefined : { since: undefined, doc: formatDoc(ts.displayPartsToString(tag.text)) };
+};
+
 const indexDoc = (declaration: ts.IndexSignatureDeclaration | undefined): string => {
     if (declaration === undefined) {
         return "";
@@ -87,6 +97,7 @@ const declaredProps = (context: ExportContext): HandwrittenProp[] => {
             name: property.name,
             type: formatType(context, checker.getTypeOfSymbolAtLocation(property, declaration)),
             doc: formatDoc(ts.displayPartsToString(property.getDocumentationComment(checker))),
+            deprecation: deprecationOf(checker, [property]),
         }));
     const indices = checker
         .getIndexInfosOfType(type)
@@ -103,6 +114,7 @@ const declaredProps = (context: ExportContext): HandwrittenProp[] => {
 type UnionProp = {
     name: string;
     doc: string;
+    deprecation?: JsDocDeprecation | undefined;
     keyType?: ts.TypeNode | undefined;
 };
 
@@ -136,6 +148,7 @@ const unionProps = (context: ExportContext, variants: readonly ts.Type[]): Union
                     ),
                 ].join(" "),
             ),
+            deprecation: deprecationOf(checker, members),
         })),
         ...[...indices].map(([name, members]) => {
             const [first] = members;
@@ -222,7 +235,12 @@ const contextualProps = (
                     throw new Error("Cannot resolve a configured element prop context");
                 }
 
-                return { name: prop.name, type: formatType(context, type), doc: prop.doc };
+                return {
+                    name: prop.name,
+                    type: formatType(context, type),
+                    doc: prop.doc,
+                    deprecation: prop.deprecation,
+                };
             }),
         ];
     });

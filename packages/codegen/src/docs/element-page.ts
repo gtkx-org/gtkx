@@ -188,7 +188,11 @@ const hiddenPropertyAccessor = (setup: PropertyAccessorSetup, property: GirPrope
 };
 
 const handwrittenPropMeta = (prop: HandwrittenProp, owner: MemberOwner): string =>
-    [`\`${prop.type}\``, ...(owner.origin === undefined ? [] : [`from \`${owner.origin}\``])].join(" · ");
+    [
+        `\`${prop.type}\``,
+        ...(owner.origin === undefined ? [] : [`from \`${owner.origin}\``]),
+        ...(prop.deprecation === undefined ? [] : ["deprecated"]),
+    ].join(" · ");
 
 const acceptedChildTypesDoc = (context: ElementPageContext, owner: MemberOwner): string => {
     if (owner.glibName === undefined) {
@@ -215,7 +219,7 @@ const handwrittenPropEntry = (context: ElementPageContext, owner: MemberOwner, p
     const childTypesDoc = prop.name === "children" ? acceptedChildTypesDoc(context, owner) : "";
     const doc = [prop.doc, childTypesDoc].filter((part) => part.length > 0).join("\n\n");
 
-    return { name: prop.name, meta: handwrittenPropMeta(prop, owner), doc };
+    return { name: prop.name, meta: handwrittenPropMeta(prop, owner), doc, tags: { deprecated: prop.deprecation } };
 };
 
 const handwrittenPropEntries = (
