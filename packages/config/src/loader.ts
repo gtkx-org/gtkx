@@ -11,13 +11,22 @@ import {
 } from "./config-dependencies.ts";
 import { isRecord, missingConfigFileError } from "./config-error.ts";
 import { configCandidatePaths, type ConfigResolutionOptions, localConfigSourcePaths } from "./config-source.ts";
-import { type Config, graduatedFutureKeys, resolveConfig, type ResolvedConfig, validateConfig } from "./config.ts";
+import {
+    type ApplicationConfig,
+    type Config,
+    graduatedFutureKeys,
+    resolveConfig,
+    type ResolvedConfig,
+    validateConfig,
+} from "./config.ts";
 import { assertSupportedNodeVersion } from "./node-version.ts";
 
 /** Result of loading a project's `gtkx.config.ts` file. */
 type LoadedConfig = {
-    /** The parsed and validated configuration. */
-    config: Config;
+    /** The parsed and validated configuration, with the default application ID filled in when one stood in. */
+    config: ApplicationConfig;
+    /** Whether the configuration names its own `applicationId`, rather than a default standing in for it. */
+    isApplication: boolean;
     /**
      * Absolute path of the configuration file that was loaded, or of `gtkx.config.ts` in the project root
      * when a default application ID stood in for a missing file.
@@ -44,7 +53,7 @@ type LoadConfigOptions = {
     /**
      * Application ID for a project that is not an application, such as a component library running its
      * tests: it stands in for a missing `applicationId`, and for a missing configuration file unless
-     * `configFile` names one.
+     * `configFile` names a file other than `gtkx.config.ts` in the project root.
      */
     defaultApplicationId?: string | undefined;
 } & Partial<Record<"configFile", string | undefined>>;
@@ -84,7 +93,7 @@ const configForMode = (layers: Record<string, unknown>[], mode: string | undefin
     return merged;
 };
 
-const productionApplicationId = (layers: Record<string, unknown>[], config: Config): string => {
+const productionApplicationId = (layers: Record<string, unknown>[], config: ApplicationConfig): string => {
     const { applicationId } = configForMode(layers, PRODUCTION_MODE);
 
     return typeof applicationId === "string" ? applicationId : config.applicationId;
@@ -187,7 +196,9 @@ const loadConfig = async (cwd: string, options: LoadConfigOptions = {}): Promise
     const dependencies = [...(configFile === undefined ? [] : [configFile]), ...layerFiles, ...captured.dependencies];
     const foundConfigFile =
         configFile !== undefined && existsSync(resolve(searched, configFile)) ? configFile : undefined;
-    const isConfigFileOptional = requestedConfigFile === undefined && options.defaultApplicationId !== undefined;
+    const isConfigFileOptional =
+        options.defaultApplicationId !== undefined &&
+        (requestedConfigFile === undefined || requestedConfigFile === DEFAULT_CONFIG_FILE_NAME);
 
     return withConfigDependencies(dependencies, () => {
         if (foundConfigFile === undefined && !isConfigFileOptional) {
@@ -195,10 +206,8 @@ const loadConfig = async (cwd: string, options: LoadConfigOptions = {}): Promise
         }
 
         const layers = (result.layers ?? []).flatMap((layer) => (isRecord(layer.config) ? [layer.config] : []));
-        const config = withDefaultApplicationId(
-            configForMode(layers, options.mode ?? process.env.NODE_ENV),
-            options.defaultApplicationId,
-        );
+        const authored = configForMode(layers, options.mode ?? process.env.NODE_ENV);
+        const config = withDefaultApplicationId(authored, options.defaultApplicationId);
         const loadedConfigFile = foundConfigFile ?? resolve(searched, DEFAULT_CONFIG_FILE_NAME);
         validateConfig(config, loadedConfigFile);
         if (options.shouldWarnGraduatedFuture !== false) {
@@ -207,6 +216,7 @@ const loadConfig = async (cwd: string, options: LoadConfigOptions = {}): Promise
 
         const loaded = {
             config,
+            isApplication: authored.applicationId !== undefined,
             configFile: loadedConfigFile,
             root,
             translationDomain: productionApplicationId(layers, config),

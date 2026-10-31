@@ -21,7 +21,7 @@ export default defineConfig({
 
 List additional libraries by GIR name and version, for example `libraries: ["WebKit-6.0"]`. Codegen starts from `Adw-1` and follows its GIR dependencies, including `Gtk-4.0`. Omit these two entries from `libraries`; listing them explicitly is an error. The 1.x `"*"` wildcard is also removed.
 
-`defineConfig` provides editor completion. The CLI validates the configuration when it loads it. The application ID is required and uses a reverse-DNS name such as `com.example.Tasks`.
+`defineConfig` provides editor completion. The CLI validates the configuration when it loads it. An application's ID uses a reverse-DNS name such as `com.example.Tasks`; `gtkx dev`, `gtkx build` and `gtkx deploy` stop when it is missing. Only a package that is not an application, such as a [component library](#component-libraries), leaves it out.
 
 Configuration modules and their local imports use ESM. Use `.ts`, `.mts`, `.js`, or `.mjs` files with `import` and `export`; TypeScript configuration runs through Node's native type stripping and must use erasable syntax. JSON, JSONC, JSON5, YAML, and TOML configuration files are also supported.
 
@@ -150,13 +150,23 @@ Each app still imports only the libraries it declares and their dependencies, wh
 
 A shared package declares `@gtkx/react` as a peer dependency and imports `@gtkx/gi` and `@gtkx/jsx` subpaths like an app. List it in the dependencies of each app that uses it, so `gtkx dev` loads it through Vite. A shared package resolves the bindings from the workspace root, so it can import any library some app declares; each app that uses it has to declare the libraries the package imports.
 
-An app's [Storybook](/v2/guide/storybook#stories-from-a-shared-package) configuration can list a shared package's stories with a pattern such as `../../packages/ui/src/**/*.stories.tsx`. A shared package that should run its own explorer becomes a GTKX project, with its own `gtkx.config.ts`, including an `applicationId`, and GTKX development dependencies. Its own Vitest tests need no configuration file; see [Component libraries](#component-libraries).
+An app's [Storybook](/v2/guide/storybook#stories-from-a-shared-package) configuration can list a shared package's stories with a pattern such as `../../packages/ui/src/**/*.stories.tsx`. A shared package can also run its own tests and Storybook explorer without an `applicationId`, as a [component library](#component-libraries) does.
 
 ## Component libraries
 
-A component library is a package of GTKX components that apps install, from their workspace or from a registry. It is not an application, so it has no `gtkx.config.ts`.
+A component library is a package of GTKX components that apps install, from their workspace or from a registry. It is not an application, so it has no `applicationId`. It needs a `gtkx.config.ts` only to list the GIR libraries its components import beyond Adwaita and GTK:
 
-Its `package.json` lists `@gtkx/react` and `react` as peer dependencies, with any other GTKX package its components import at runtime, such as `@gtkx/css` or `@gtkx/cairo`, so that it uses the app's copies. It does not depend on `@gtkx/gi` or `@gtkx/jsx`: each app generates those for the libraries it declares, so an app that uses the package lists in `libraries` every GIR library the package imports beyond Adwaita and GTK. For building and testing, add the peer packages, `@gtkx/cli`, `@gtkx/testing`, `@types/node`, `@types/react`, `typescript` and `vitest` as development dependencies.
+```ts [gtkx.config.ts]
+import { defineConfig } from "@gtkx/config";
+
+export default defineConfig({
+    libraries: ["GtkSource-5"],
+});
+```
+
+`gtkx codegen`, `gtkx storybook` and the Vitest plugin work in such a package, with or without the file, while `gtkx dev`, `gtkx build` and `gtkx deploy` stop because they need an `applicationId`. Codegen writes no `AGENTS.md`, `CLAUDE.md` or `.gtkx/reference` there unless `agents.rules` or `agents.reference` is `true`.
+
+Its `package.json` lists `@gtkx/react` and `react` as peer dependencies, with any other GTKX package its components import at runtime, such as `@gtkx/css` or `@gtkx/cairo`, so that it uses the app's copies. It does not depend on `@gtkx/gi` or `@gtkx/jsx`: each app generates those for the libraries it declares, so an app that uses the package lists in `libraries` every GIR library the package imports beyond Adwaita and GTK. For building and testing, add the peer packages, `@gtkx/cli`, `@gtkx/config`, `@gtkx/testing`, `@types/node`, `@types/react`, `typescript` and `vitest` as development dependencies.
 
 ```json [package.json]
 {
@@ -171,8 +181,8 @@ Its `package.json` lists `@gtkx/react` and `react` as peer dependencies, with an
     },
     "files": ["dist"],
     "scripts": {
-        "build": "tsc -p tsconfig.build.json",
-        "typecheck": "tsc",
+        "build": "gtkx codegen && tsc -p tsconfig.build.json",
+        "typecheck": "gtkx codegen && tsc",
         "test": "vitest run"
     }
 }
@@ -207,13 +217,7 @@ export default defineConfig({
 });
 ```
 
-Without a `gtkx.config.ts`, or without an `applicationId` in it, the tests run as the application `org.gtkx.Test`. A package whose components import GIR libraries beyond Adwaita and GTK lists them in a `gtkx.config.ts` that leaves out `applicationId`. Export a plain object, because `defineConfig` types `applicationId` as required for applications:
-
-```ts [gtkx.config.ts]
-export default { libraries: ["GtkSource-5"] };
-```
-
-Running the tests generates the bindings, the agent reference and the rules file, as `gtkx codegen` does for an app, so outside a workspace run the tests once before `tsc`. In a workspace the package shares the bindings of the apps around it, under the rules described in [Monorepos](#monorepos).
+The tests run as the application `org.gtkx.Test`. To browse the components in the [Storybook explorer](/v2/guide/storybook), also add `@gtkx/storybook`, `@gtkx/runtime`, `@gtkx/css` and `@gtkx/cairo` as development dependencies and run `gtkx storybook`; the explorer registers as `org.gtkx.Library.Storybook`. In a workspace the package shares the bindings of the apps around it, under the rules described in [Monorepos](#monorepos).
 
 ## The JSX prop model
 
@@ -267,7 +271,7 @@ Use `gtkx docs --help` to choose an output directory or link root. These pages d
 
 ## What agents are given
 
-Codegen also writes `.gtkx/reference` for coding agents and maintains a marked GTKX section in `AGENTS.md`. Text outside that section is preserved. It creates a `CLAUDE.md` import only when that file does not already exist.
+In an application, codegen also writes `.gtkx/reference` for coding agents and maintains a marked GTKX section in `AGENTS.md`. Text outside that section is preserved. It creates a `CLAUDE.md` import only when that file does not already exist.
 
 Commit the rules file and ignore `.gtkx/`, as scaffolded projects do. Set `agents.rules` or `agents.reference` to `false` to disable the corresponding output. Disabling the rules removes the GTKX section from `AGENTS.md`, and deletes that file and the `CLAUDE.md` import when nothing else remains in them. Disabling the reference also removes `.gtkx/reference` and its mention from the rules.
 

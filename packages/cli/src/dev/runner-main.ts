@@ -1,5 +1,5 @@
 import { ensureStoreLinks } from "@gtkx/codegen/internal";
-import { createConfigLoader } from "@gtkx/config/internal";
+import { createConfigLoader, LIBRARY_APPLICATION_ID } from "@gtkx/config/internal";
 import { resolve } from "node:path";
 import { createProjectStaging } from "../internal/project-staging.js";
 import { storybookApplicationId } from "../storybook/entry.js";
@@ -23,6 +23,7 @@ const main = async (): Promise<void> => {
         mode: "development",
         configFile,
         shouldWarnGraduatedFuture: false,
+        defaultApplicationId: storybookConfig === undefined ? undefined : LIBRARY_APPLICATION_ID,
     });
     const { config, root, translationDomain } = await loadConfig.load(cwd);
     const staging = createProjectStaging();

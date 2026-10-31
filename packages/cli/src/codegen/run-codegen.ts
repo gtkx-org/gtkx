@@ -8,7 +8,7 @@ import {
     resolveCodegenInputs,
     sweepProjectStaging,
 } from "@gtkx/codegen/internal";
-import { type Config, loadConfig } from "@gtkx/config";
+import type { Config, LoadConfigOptions } from "@gtkx/config";
 import { createConfigReloader, isAgentReferenceEnabled, isAgentRulesEnabled } from "@gtkx/config/internal";
 import { info } from "@gtkx/utils";
 import { existsSync, rmSync } from "node:fs";
@@ -24,22 +24,16 @@ import { type ReferenceResult, writeReference } from "./reference.js";
 import { type CodegenContext, resolveCodegenContext } from "./store-resolver.js";
 
 type RunCodegenOptions = {
-    cwd?: string;
-    mode?: string | undefined;
-    configFile?: string | undefined;
+    cwd: string;
+    resolved: LoadedConfig;
     isForced?: boolean;
     lockTimeoutMs?: number | undefined;
     inputs?: CodegenInputs;
-    resolved?: LoadedConfig;
     shouldPreserveI18nMetadata?: boolean | undefined;
     onRegenerate?: (() => void) | undefined;
 };
 
-type LoadedConfig = {
-    config: Config;
-    configFile: string;
-    translationDomain: string;
-};
+type LoadedConfig = Pick<CodegenContext, "config" | "configFile" | "isApplication" | "translationDomain">;
 
 type RunCodegenResult = {
     isRegenerated: boolean;
@@ -82,14 +76,9 @@ const disabledCodegenResult = (configFile: string): RunCodegenResult => ({
     libraries: [],
 });
 
-const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenResult> => {
-    const cwd = options.cwd ?? process.cwd();
-    const { config, configFile, translationDomain } =
-        options.resolved ??
-        (await loadConfig(cwd, {
-            mode: options.mode,
-            configFile: options.configFile,
-        }));
+const runCodegen = async (options: RunCodegenOptions): Promise<RunCodegenResult> => {
+    const { cwd } = options;
+    const { config, configFile, isApplication, translationDomain } = options.resolved;
     await syncI18n(cwd, translationDomain, options.shouldPreserveI18nMetadata);
     emitSchemaEnv(cwd);
 
@@ -115,11 +104,12 @@ const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenRe
         girPath,
         libraries,
         isForced,
+        isEnabled: isAgentReferenceEnabled(config, isApplication),
         declarationDir: store.giStoreDir,
     });
 
-    if (isAgentRulesEnabled(config)) {
-        upsertAgentRules(cwd, isAgentReferenceEnabled(config));
+    if (isAgentRulesEnabled(config, isApplication)) {
+        upsertAgentRules(cwd, isAgentReferenceEnabled(config, isApplication));
     } else {
         removeAgentRules(cwd);
     }
@@ -152,16 +142,6 @@ const syncI18n = async (root: string, domain: string, shouldPreserveMetadataMess
     await emitI18nTypes(root);
 };
 
-const isCodegenDisabled = async (cwd: string, mode?: string, configFile?: string): Promise<boolean> => {
-    try {
-        const { config } = await loadConfig(cwd, { mode, configFile });
-
-        return config.codegen === false;
-    } catch {
-        return false;
-    }
-};
-
 const resolveInputsOrNull = (cwd: string, config: Config): CodegenInputs | null => {
     try {
         return resolveCodegenInputs(cwd, config);
@@ -187,7 +167,6 @@ const generate = async (context: CodegenContext, options: EnsureGeneratedOptions
     if (context.config.codegen === false) {
         const result = await runCodegen({
             cwd: context.root,
-            mode: options.mode,
             lockTimeoutMs: options.lockTimeoutMs,
             resolved: context,
             shouldPreserveI18nMetadata: options.shouldPreserveI18nMetadata,
@@ -200,7 +179,6 @@ const generate = async (context: CodegenContext, options: EnsureGeneratedOptions
 
     const result = await runCodegen({
         cwd: context.root,
-        mode: options.mode,
         lockTimeoutMs: options.lockTimeoutMs,
         resolved: context,
         shouldPreserveI18nMetadata: options.shouldPreserveI18nMetadata,
@@ -236,8 +214,7 @@ const findLockfiles = (cwd: string): string[] => {
 
 const resolveConfigWatch = async (
     cwd: string,
-    mode?: string,
-    configFile?: string,
+    options: Pick<LoadConfigOptions, "configFile" | "defaultApplicationId" | "mode">,
     initialDependencies: string[] = [],
 ): Promise<{
     paths: string[];
@@ -246,7 +223,7 @@ const resolveConfigWatch = async (
     resolveInputs: () => string[];
     regenerate: () => Promise<string[]>;
 }> => {
-    const { reload, resolvePaths } = await createConfigReloader(cwd, { mode, configFile }, initialDependencies);
+    const { reload, resolvePaths } = await createConfigReloader(cwd, options, initialDependencies);
     const resolveInputs = (): string[] => [
         ...readGiStoreGirFiles(resolveStore(cwd).gi.storeDir),
         ...findLockfiles(cwd),
@@ -259,11 +236,11 @@ const resolveConfigWatch = async (
         resolveInputs,
         regenerate: async () => {
             const loaded = await reload();
-            await runCodegen({ cwd, mode, resolved: loaded });
+            await runCodegen({ cwd, resolved: loaded });
 
             return resolvePaths();
         },
     };
 };
 
-export { runCodegen, isCodegenDisabled, ensureGenerated, ensureGeneratedIn, resolveConfigWatch, type RunCodegenResult };
+export { runCodegen, ensureGenerated, ensureGeneratedIn, resolveConfigWatch, type RunCodegenResult };

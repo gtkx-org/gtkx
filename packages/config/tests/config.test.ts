@@ -226,6 +226,24 @@ describe("project configuration", () => {
         expect(result.stderr.match(/ignores graduated future flags/g)).toHaveLength(2);
     });
 
+    it("loads a configuration without an application ID only for a package that is not an application", async () => {
+        using directory = project();
+        const library = defineConfig({ libraries: ["Gio-2.0"], codegen: false });
+        writeFileSync(join(directory.path, "gtkx.config.ts"), `export default ${JSON.stringify(library)};`);
+        await expect(loadConfig(directory.path)).rejects.toThrow("is required to run, build or deploy an application");
+        expect(await loadConfig(directory.path, { defaultApplicationId: "org.gtkx.Library" })).toMatchObject({
+            isApplication: false,
+            translationDomain: "org.gtkx.Library",
+            config: { applicationId: "org.gtkx.Library", libraries: ["Gio-2.0"] },
+        });
+        using application = project();
+        writeFileSync(join(application.path, "gtkx.config.ts"), config());
+        expect(await loadConfig(application.path, { defaultApplicationId: "org.gtkx.Library" })).toMatchObject({
+            isApplication: true,
+            config: { applicationId: "org.gtkx.test" },
+        });
+    });
+
     it("rejects missing, invalid and out-of-project configurations", async () => {
         using directory = project();
         await expect(loadConfig(directory.path)).rejects.toThrow();

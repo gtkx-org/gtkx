@@ -6,14 +6,22 @@ type CodegenContext = {
     config: Config;
     configFile: string;
     configDependencies: string[];
+    isApplication: boolean;
     translationDomain: string;
 };
 
 const resolveCodegenContext = async (cwd: string, options: LoadConfigOptions = {}): Promise<CodegenContext> => {
     const loaded = await loadConfig(cwd, options);
-    const { config, configFile, translationDomain } = loaded;
+    const { config, configFile, isApplication, translationDomain } = loaded;
 
-    return { root: cwd, config, configFile, configDependencies: configDependenciesFor(loaded), translationDomain };
+    return {
+        root: cwd,
+        config,
+        configFile,
+        configDependencies: configDependenciesFor(loaded),
+        isApplication,
+        translationDomain,
+    };
 };
 
 export { resolveCodegenContext, type CodegenContext };

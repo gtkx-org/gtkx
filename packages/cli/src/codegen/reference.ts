@@ -2,7 +2,6 @@ import type { Config } from "@gtkx/config";
 import { mergeOmittedProps } from "@gtkx/codegen";
 import { readBuiltinElementsForDocs, removeDocs, writeDocs } from "@gtkx/codegen/internal";
 import {
-    isAgentReferenceEnabled,
     resolveAcceptedChildTypes,
     resolveElementProps,
     resolveLazyElements,
@@ -16,6 +15,7 @@ type WriteReferenceOptions = {
     girPath: string[];
     libraries: string[];
     declarationDir: string;
+    isEnabled: boolean;
     isForced?: boolean;
 };
 
@@ -31,7 +31,7 @@ const SKIPPED: ReferenceResult = { isRegenerated: false, elements: 0, namespaces
 const writeReference = async (options: WriteReferenceOptions): Promise<ReferenceResult> => {
     const { root, config, girPath, libraries } = options;
 
-    if (!isAgentReferenceEnabled(config)) {
+    if (!options.isEnabled) {
         removeDocs(join(root, REFERENCE_PATH));
 
         return SKIPPED;

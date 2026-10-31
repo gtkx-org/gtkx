@@ -1,3 +1,4 @@
+import { LIBRARY_APPLICATION_ID } from "@gtkx/config/internal";
 import { warn } from "@gtkx/utils";
 import { reapStaleHeadlessDisplaysAtStartup } from "@gtkx/vitest/headless";
 import { defineCommand } from "citty";
@@ -51,10 +52,19 @@ const createStorybookCommand = (options: { signal?: AbortSignal; applicationArgs
                 );
             }
 
-            const context = await resolveCodegenContext(cwd, { mode: DEV_MODE, configFile: args.config });
+            const configOptions = {
+                mode: DEV_MODE,
+                configFile: args.config,
+                defaultApplicationId: LIBRARY_APPLICATION_ID,
+            };
+            const context = await resolveCodegenContext(cwd, configOptions);
             await ensureGeneratedIn(context, { shouldAnnounce: true, mode: DEV_MODE });
             const entryPath = createStorybookEntry(cwd);
-            const watch = await resolveConfigWatch(cwd, DEV_MODE, context.configFile, context.configDependencies);
+            const watch = await resolveConfigWatch(
+                cwd,
+                { ...configOptions, configFile: context.configFile },
+                context.configDependencies,
+            );
             const applicationArgs = options.applicationArgs ?? splitApplicationArgs(rawArgs).applicationArgs;
             const headless = args.headless ? await startHeadlessDevDisplay(args.size) : undefined;
 

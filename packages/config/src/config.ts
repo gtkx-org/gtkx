@@ -28,6 +28,8 @@ type ResolvedReactCompilerOptions = ReactCompilerOptions & {
  * GTKX project configuration authored in `gtkx.config.ts` and validated when loaded.
  */
 type Config = z.infer<typeof configSchema>;
+/** A {@link Config} whose `applicationId` is known, as loaded for an application. */
+type ApplicationConfig = Config & { applicationId: string };
 type ModuleExport = z.infer<typeof moduleExportSchema>;
 type ElementPropsExport = z.infer<typeof elementPropsSchema>;
 /** Overrides for one GLib type in `elements.config`, keyed by its registered type name. */
@@ -59,6 +61,7 @@ type ResolvedConfig = {
 
 const APPLICATION_ID_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]*(\.[A-Za-z_][A-Za-z0-9_-]*)+$/;
 const APPLICATION_ID_MAX_LENGTH = 255;
+const LIBRARY_APPLICATION_ID = "org.gtkx.Library";
 const IMPLICIT_LIBRARIES: Set<string> = new Set(["Adw-1", "Gtk-4.0"]);
 /** Compilation modes `babel-plugin-react-compiler` accepts. */
 const COMPILATION_MODES = ["infer", "syntax", "annotation", "all"] as const;
@@ -79,7 +82,7 @@ const applicationIdSchema = z
     .string({
         error: (issue) =>
             issue.input === undefined
-                ? 'is required, such as "org.example.MyApp"'
+                ? 'is required to run, build or deploy an application, such as "org.example.MyApp"'
                 : "must satisfy g_application_id_is_valid",
     })
     .refine((value) => isValidApplicationId(value), {
@@ -165,12 +168,13 @@ const agentsSchema = z.strictObject({
     /**
      * Whether codegen maintains the GTKX rules in `AGENTS.md` and creates a missing `CLAUDE.md` import.
      * `false` removes rules written earlier, deleting `AGENTS.md` and the `CLAUDE.md` import when nothing else
-     * remains. Defaults to `true`.
+     * remains. Defaults to `true` for an application and `false` for a package without an `applicationId`.
      */
     rules: z.boolean({ error: "must be a boolean" }).optional(),
     /**
      * Whether codegen writes the generated element reference to `.gtkx/reference` and points the rules at it.
-     * `false` removes a reference generated earlier. Defaults to `true`.
+     * `false` removes a reference generated earlier. Defaults to `true` for an application and `false` for a
+     * package without an `applicationId`.
      */
     reference: z.boolean({ error: "must be a boolean" }).optional(),
 });
@@ -222,8 +226,11 @@ const configSchema = z.strictObject({
     libraries: librariesSchema.optional(),
     /** Additional GIR search directories. Relative paths are resolved from the project root. */
     girPath: z.array(z.string(), { error: "must be an array of strings if provided" }).optional(),
-    /** Required GApplication identifier, such as `com.example.Tasks`. */
-    applicationId: applicationIdSchema,
+    /**
+     * GApplication identifier, such as `com.example.Tasks`. Required to run, build or deploy the project as an
+     * application; a package that is not an application, such as a component library, leaves it out.
+     */
+    applicationId: applicationIdSchema.optional(),
     /** Whether to enable the React Compiler, or options passed to it. Enabled by default. */
     reactCompiler: reactCompilerSchema.optional(),
     /**
@@ -255,7 +262,10 @@ const configSchema = z.strictObject({
  * autocompletion and type checking.
  */
 const defineConfig: DefineConfig<Config> = createDefineConfig<Config>();
-const validationSchema = configSchema.extend({ future: graduatedFutureSchema.optional() });
+const validationSchema = configSchema.extend({
+    applicationId: applicationIdSchema,
+    future: graduatedFutureSchema.optional(),
+});
 
 const isValidApplicationId = (applicationId: string): boolean =>
     applicationId.length <= APPLICATION_ID_MAX_LENGTH && APPLICATION_ID_PATTERN.test(applicationId);
@@ -274,7 +284,10 @@ const resolveReactCompilerOptions = (setting: Config["reactCompiler"]): Resolved
     };
 };
 
-const validateConfig: (config: unknown, configFile?: string) => asserts config is Config = (config, configFile) => {
+const validateConfig: (config: unknown, configFile?: string) => asserts config is ApplicationConfig = (
+    config,
+    configFile,
+) => {
     const result = validationSchema.safeParse(config);
 
     if (!result.success) {
@@ -333,15 +346,16 @@ const resolveAcceptedChildTypes = (elements: Config["elements"]): Record<string,
 const resolveOmittedProps = (elements: Config["elements"]): Record<string, string[]> =>
     elementEntryValues(elements, (entry) => entry.omittedProps);
 
-const isAgentRulesEnabled = (config: Config): boolean => config.agents?.rules !== false;
-const isAgentReferenceEnabled = (config: Config): boolean => config.agents?.reference !== false;
+const isAgentRulesEnabled = (config: Config, isApplication: boolean): boolean => config.agents?.rules ?? isApplication;
+const isAgentReferenceEnabled = (config: Config, isApplication: boolean): boolean =>
+    config.agents?.reference ?? isApplication;
 
 const resolveMcpSettings = (config: Config): McpSettings => ({
     tools: config.mcp?.tools ?? [],
     isReadOnly: config.mcp?.readOnly === true,
 });
 
-const resolveConfig = (config: Config, translationDomain: string, root?: string): ResolvedConfig => ({
+const resolveConfig = (config: ApplicationConfig, translationDomain: string, root?: string): ResolvedConfig => ({
     applicationId: config.applicationId,
     translationDomain,
     reactCompiler: resolveReactCompilerOptions(config.reactCompiler),
@@ -352,6 +366,7 @@ const resolveConfig = (config: Config, translationDomain: string, root?: string)
 
 export {
     APPLICATION_ID_MAX_LENGTH,
+    LIBRARY_APPLICATION_ID,
     defineConfig,
     isAgentReferenceEnabled,
     isAgentRulesEnabled,
@@ -368,6 +383,7 @@ export {
     resolveConfig,
     type McpSettings,
     type ResolvedReactCompilerOptions,
+    type ApplicationConfig,
     type Config,
     type ElementConfigOptions,
     type ElementPropsExport,

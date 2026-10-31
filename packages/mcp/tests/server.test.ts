@@ -164,12 +164,9 @@ describe("MCP server", () => {
         ).toMatchObject({ isError: true });
     });
 
-    it("serves upstream API reference tools and resources from project configuration", async () => {
+    it("serves upstream API reference tools and resources from a component library's configuration", async () => {
         await using session = await openServer();
-        writeFileSync(
-            join(session.root, "gtkx.config.mjs"),
-            'export default { applicationId: "org.gtkx.reference", libraries: ["Gio-2.0"] };',
-        );
+        writeFileSync(join(session.root, "gtkx.config.mjs"), 'export default { libraries: ["Gio-2.0"] };');
         const docs = await textResult(session.client, "gtkx_get_api_docs", { symbol: "Gio.File", kind: "interface" });
         expect(docs).toContain("Gio");
         expect(docs).toContain("File");

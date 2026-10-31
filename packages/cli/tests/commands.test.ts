@@ -1148,6 +1148,36 @@ describe("CLI commands", () => {
         } finally {
             await runner.close();
         }
+        for (const path of ["AGENTS.md", "CLAUDE.md", ".gtkx/reference"]) {
+            expect(existsSync(join(project.root, path))).toBe(false);
+        }
+    });
+
+    it.each([
+        { name: "without a configuration file", config: null },
+        { name: "whose configuration names no application ID", config: { libraries: ["Gio-2.0"] } },
+    ])("generates bindings and documentation for a component library $name", async ({ config }) => {
+        using project = createProject();
+        if (config === null) {
+            rmSync(join(project.root, "gtkx.config.ts"));
+        } else {
+            project.write("gtkx.config.ts", `export default ${JSON.stringify(config)};`);
+        }
+        expect(await invoke(["codegen", "--cwd", project.root])).toContain("codegen: bindings generated");
+        expect(existsSync(join(project.root, "node_modules/@gtkx/gi/gtk/index.d.ts"))).toBe(true);
+        for (const path of ["AGENTS.md", "CLAUDE.md", ".gtkx/reference"]) {
+            expect(existsSync(join(project.root, path))).toBe(false);
+        }
+        await invoke(["docs", "--cwd", project.root, "--out", "reference"]);
+        expect(existsSync(join(project.root, "reference/index.md"))).toBe(true);
+    });
+
+    it.each(["dev", "build", "deploy"])("requires an application ID to %s a project", async (name) => {
+        using project = createProject();
+        project.write("gtkx.config.ts", `export default ${JSON.stringify({ codegen: false })};`);
+        await expect(invoke([name, "--cwd", project.root])).rejects.toThrow(
+            "is required to run, build or deploy an application",
+        );
     });
 
     it("loads one copy of the bindings in tests after they are regenerated", async () => {
@@ -2217,26 +2247,37 @@ describe("CLI commands", () => {
         await expect(invoke(["storybook", "--cwd", app])).rejects.toThrow("inside the workspace root");
     });
 
-    it("registers the storybook explorer with MCP under its own application ID", async () => {
-        using project = createProject({ codegen: true });
-        const readyPath = join(project.root, "ready.txt");
-        project.write(".storybook/main.mts", 'export default { stories: ["stories/**/*.stories.tsx"] };');
-        project.write(
-            "stories/example.stories.tsx",
-            `import { writeFileSync } from "node:fs";
+    it.each([
+        {
+            name: "an application",
+            config: { applicationId: "org.gtkx.example" },
+            explorer: "org.gtkx.example.Storybook",
+        },
+        { name: "a component library", config: {}, explorer: "org.gtkx.Library.Storybook" },
+    ])(
+        "registers the storybook explorer of $name with MCP under its own application ID",
+        async ({ config, explorer }) => {
+            using project = createProject({ codegen: true });
+            project.write("gtkx.config.ts", `export default ${JSON.stringify({ ...config, codegen: true })};`);
+            const readyPath = join(project.root, "ready.txt");
+            project.write(".storybook/main.mts", 'export default { stories: ["stories/**/*.stories.tsx"] };');
+            project.write(
+                "stories/example.stories.tsx",
+                `import { writeFileSync } from "node:fs";
             writeFileSync(${JSON.stringify(readyPath)}, "ready");
             export default { title: "Example" }; export const Empty = { render: () => null };`,
-        );
-        await withMcpClient(project.root, async (client) => {
-            await withSession("storybook", project.root, readyPath, async () => {
-                const apps = await client.callTool({
-                    name: "gtkx_list_apps",
-                    arguments: { waitForApps: true, timeout: 30_000 },
+            );
+            await withMcpClient(project.root, async (client) => {
+                await withSession("storybook", project.root, readyPath, async () => {
+                    const apps = await client.callTool({
+                        name: "gtkx_list_apps",
+                        arguments: { waitForApps: true, timeout: 30_000 },
+                    });
+                    expect(JSON.stringify(apps)).toContain(explorer);
                 });
-                expect(JSON.stringify(apps)).toContain("org.gtkx.example.Storybook");
             });
-        });
-    });
+        },
+    );
 
     it("reports actionable deployment configuration errors", async () => {
         using project = createProject();

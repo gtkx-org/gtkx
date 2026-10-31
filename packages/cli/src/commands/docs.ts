@@ -2,6 +2,7 @@ import { mergeOmittedProps, resolveGirPath, resolveLibraries } from "@gtkx/codeg
 import { readBuiltinElementsForDocs, writeDocs } from "@gtkx/codegen/internal";
 import { loadConfig } from "@gtkx/config";
 import {
+    LIBRARY_APPLICATION_ID,
     resolveAcceptedChildTypes,
     resolveElementProps,
     resolveLazyElements,
@@ -42,7 +43,7 @@ const docs = defineCommand({
     },
     async run({ args }) {
         const cwd = resolveCwd(args);
-        const { config } = await loadConfig(cwd);
+        const { config } = await loadConfig(cwd, { defaultApplicationId: LIBRARY_APPLICATION_ID });
 
         if (config.codegen === false) {
             throw new Error(

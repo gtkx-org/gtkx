@@ -1,4 +1,4 @@
-import { type Config, loadConfig } from "@gtkx/config";
+import { type ApplicationConfig, loadConfig } from "@gtkx/config";
 import { info, warn } from "@gtkx/utils";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
@@ -73,7 +73,7 @@ type DeployOptions = {
 };
 
 type LoadedDeployConfig = {
-    config: Config;
+    config: ApplicationConfig;
     configFile: string;
     root: string;
     translationDomain: string;

@@ -1,4 +1,4 @@
-import type { Config } from "@gtkx/config";
+import type { ApplicationConfig } from "@gtkx/config";
 import type {
     DeployArchName,
     DeployConfig,
@@ -31,7 +31,7 @@ import { resolveVersions } from "./version.js";
 
 type SettingsRequest = {
     root: string;
-    config: Config;
+    config: ApplicationConfig;
     configFile: string;
     arch: DeployArchName;
     outDirOverride?: string | undefined;

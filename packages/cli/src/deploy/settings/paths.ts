@@ -1,4 +1,4 @@
-import type { Config } from "@gtkx/config";
+import type { ApplicationConfig, Config } from "@gtkx/config";
 import { isPathInside } from "@gtkx/utils";
 import { lstatSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -16,7 +16,7 @@ type PathsRequest = {
     root: string;
     deploy: DeployConfig;
     applicationIcon: Config["applicationIcon"];
-    applicationId: Config["applicationId"];
+    applicationId: ApplicationConfig["applicationId"];
     outDirOverride: string | undefined;
     arch: DeployArchName;
 };

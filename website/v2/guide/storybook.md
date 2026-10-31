@@ -39,7 +39,7 @@ export default defineConfig({
 
 Every matched file must lie inside the workspace root, the directory holding `pnpm-workspace.yaml` or the `package.json` with `workspaces`; the explorer stops with an error naming any file outside it. The explorer runs with the app's `gtkx.config.ts`, so the app has to declare the libraries the shared stories import. Stories without a `title` are named by their path from the workspace root, such as `packages/ui/src/badge`.
 
-To browse a shared package's stories on their own, make it a GTKX project instead: give it a `gtkx.config.ts` with an application ID, add `@gtkx/cli`, `@gtkx/config`, `@gtkx/runtime`, `@gtkx/css`, `@gtkx/cairo` and `@gtkx/storybook` as development dependencies, and run `gtkx storybook` in its directory.
+To browse a shared package's stories on their own, add `@gtkx/cli`, `@gtkx/config`, `@gtkx/runtime`, `@gtkx/css`, `@gtkx/cairo` and `@gtkx/storybook` as development dependencies and run `gtkx storybook` in its directory. Like a [component library](/v2/guide/configuration-and-codegen#component-libraries), it needs no `applicationId`; its explorer registers as `org.gtkx.Library.Storybook`.
 
 ## Define stories
 
@@ -113,7 +113,7 @@ it("invokes the button callback", async () => {
 });
 ```
 
-Pass shared preview configuration as the second argument to `composeStories`. Render a window story as any component that creates its own window, with `{ container: rootElement }`; a story whose window is an `AdwApplicationWindow` also needs an `<AdwApplication>` around it, as in the [Testing guide](/v2/guide/testing#rendering-a-component). Native queries, events, screenshots, and cleanup come from `@gtkx/testing`. A running explorer also exposes the [GTKX MCP server](/v2/guide/mcp) for live widget inspection and interaction. The explorer's application ID is the project's ID with a `.Storybook` suffix, so it can run alongside `gtkx dev`; pass that ID as `applicationId` to target the explorer.
+Pass shared preview configuration as the second argument to `composeStories`. Render a window story as any component that creates its own window, with `{ container: rootElement }`; a story whose window is an `AdwApplicationWindow` also needs an `<AdwApplication>` around it, as in the [Testing guide](/v2/guide/testing#rendering-a-component). Native queries, events, screenshots, and cleanup come from `@gtkx/testing`. A running explorer also exposes the [GTKX MCP server](/v2/guide/mcp) for live widget inspection and interaction. The explorer's application ID is the project's ID with a `.Storybook` suffix, or `org.gtkx.Library.Storybook` in a package without an `applicationId`, so it can run alongside `gtkx dev`; pass that ID as `applicationId` to target the explorer.
 
 ## Lifecycle and compatibility
 

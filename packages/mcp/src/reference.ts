@@ -12,6 +12,7 @@ import { errorMessage } from "@gtkx/utils";
 import {
     configCandidatePaths,
     configDependenciesFor,
+    LIBRARY_APPLICATION_ID,
     resolveAcceptedChildTypes,
     resolveElementProps,
     resolveLazyElements,
@@ -204,7 +205,7 @@ const resolveProject = (
 };
 
 const loadReference = async (requestedRoot: string): Promise<LoadedReference> => {
-    const loaded = await loadConfig(requestedRoot);
+    const loaded = await loadConfig(requestedRoot, { defaultApplicationId: LIBRARY_APPLICATION_ID });
     const { config, root } = loaded;
 
     if (config.codegen === false) {

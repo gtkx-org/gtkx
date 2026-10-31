@@ -1,7 +1,9 @@
+import { LIBRARY_APPLICATION_ID } from "@gtkx/config/internal";
 import { info } from "@gtkx/utils";
 import { defineCommand } from "citty";
 import { formatCodegenResult } from "../codegen/report.js";
-import { ensureGenerated, isCodegenDisabled, runCodegen } from "../codegen/run-codegen.js";
+import { ensureGeneratedIn, runCodegen } from "../codegen/run-codegen.js";
+import { resolveCodegenContext } from "../codegen/store-resolver.js";
 import { configArg, cwdArg, resolveCwd } from "../internal/entry-arg.js";
 
 const FORCED_WHILE_DISABLED_MESSAGE =
@@ -30,25 +32,29 @@ const codegen = defineCommand({
     async run({ args }) {
         const lockTimeoutMs = parseLockTimeout(args["lock-timeout"]);
         const cwd = resolveCwd(args);
-        const isDisabled = await isCodegenDisabled(cwd, undefined, args.config);
+        const context = await resolveCodegenContext(cwd, {
+            configFile: args.config,
+            defaultApplicationId: LIBRARY_APPLICATION_ID,
+        });
+        const isDisabled = context.config.codegen === false;
         checkForce(isDisabled, args.force);
 
         if (isDisabled) {
-            await runCodegen({ cwd, configFile: args.config, lockTimeoutMs });
+            await runCodegen({ cwd, resolved: context, lockTimeoutMs });
             info("codegen: disabled for this project; reusing an installed binding store");
 
             return;
         }
 
         if (!args.force) {
-            const isRan = await ensureGenerated(cwd, { shouldAnnounce: true, configFile: args.config, lockTimeoutMs });
+            const isRan = await ensureGeneratedIn(context, { shouldAnnounce: true, lockTimeoutMs });
             info(isRan ? "codegen: bindings generated" : "codegen: bindings up to date");
 
             return;
         }
 
         const startedAt = Date.now();
-        const result = await runCodegen({ cwd, configFile: args.config, isForced: true, lockTimeoutMs });
+        const result = await runCodegen({ cwd, resolved: context, isForced: true, lockTimeoutMs });
         const lines = formatCodegenResult(result, Date.now() - startedAt);
 
         for (const line of lines) {

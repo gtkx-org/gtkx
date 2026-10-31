@@ -1,4 +1,11 @@
-export { type Config, defineConfig, type ElementConfigOptions, mergeConfig, type ResolvedConfig } from "./config.ts";
+export {
+    type ApplicationConfig,
+    type Config,
+    defineConfig,
+    type ElementConfigOptions,
+    mergeConfig,
+    type ResolvedConfig,
+} from "./config.ts";
 export {
     type DeployDesktopActionOptions,
     type DeployExtraFileOptions,

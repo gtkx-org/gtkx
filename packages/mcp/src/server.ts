@@ -1,7 +1,12 @@
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { loadConfig } from "@gtkx/config";
-import { configDependenciesFor, type McpSettings, resolveMcpSettings } from "@gtkx/config/internal";
+import {
+    configDependenciesFor,
+    LIBRARY_APPLICATION_ID,
+    type McpSettings,
+    resolveMcpSettings,
+} from "@gtkx/config/internal";
 import { createLogger, installGracefulShutdown, type Logger } from "@gtkx/utils";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -622,7 +627,7 @@ const createMcpServer = (options: CreateMcpServerOptions): McpServerHandle => {
 
 const configuredSettings = async (cwd: string): Promise<McpSettings> => {
     try {
-        const { config } = await loadConfig(cwd);
+        const { config } = await loadConfig(cwd, { defaultApplicationId: LIBRARY_APPLICATION_ID });
 
         return resolveMcpSettings(config);
     } catch (error) {

@@ -7,6 +7,7 @@ export {
     isAgentReferenceEnabled,
     isAgentRulesEnabled,
     isValidApplicationId,
+    LIBRARY_APPLICATION_ID,
     resolveAcceptedChildTypes,
     resolveElementComponents,
     resolveElementProps,
