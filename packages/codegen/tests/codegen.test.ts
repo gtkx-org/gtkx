@@ -217,6 +217,8 @@ describe("generated bindings", () => {
             new Counter().emit("bumped", 2);
             declare const gerror: GLibError;
             const remote: string | null = DBusError.getRemoteError(gerror);
+            const isFailed: boolean = gerror.matches(DBusError, DBusError.FAILED);
+            const created: GLibError = new GLibError(DBusError, DBusError.FAILED, "failed");
             const flat: string | null = dbusErrorGetRemoteError(gerror);
             const domain: number = DBusError.quark();
             const failed: DBusError = DBusError.FAILED;
@@ -247,7 +249,7 @@ describe("generated bindings", () => {
             declare const either: Application | ServiceBase;
             either.emit("activate");
             either.on("startup", () => {}).disconnect(either.connect("shutdown", () => {}));
-            export { cancellable, connected, domain, failed, flat, latinName, path, remote, removed, removedFlat, script, tag };`,
+            export { cancellable, connected, created, domain, failed, flat, isFailed, latinName, path, remote, removed, removedFlat, script, tag };`,
             ),
         ).toEqual([]);
         expect(

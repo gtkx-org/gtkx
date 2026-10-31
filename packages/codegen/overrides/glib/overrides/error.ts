@@ -2,7 +2,7 @@ import type { ErrorDomain } from "@gtkx/runtime";
 import { Error as GeneratedError, type Quark } from "../glib.js";
 
 /** An error domain: a generated domain such as `Gio.IOErrorEnum`, or its quark. */
-type ErrorDomainInput = Quark | ErrorDomain<Record<string, number>>;
+type ErrorDomainInput = Quark | ErrorDomain<Record<never, number>>;
 
 type Error = GeneratedError;
 
