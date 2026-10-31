@@ -1,7 +1,7 @@
 import { createLogger, type InlineConfig, type Logger, type Plugin, type ResolvedConfig } from "vite";
 import { warn } from "@gtkx/utils";
 import { join } from "node:path";
-import { crawlFrameworkPkgs } from "vitefu";
+import { gtkxRendererLibraries } from "../vite-plugins/renderer-libraries.js";
 import { createWatchIgnore } from "./watch-ignore.js";
 
 type DevServerWatchEvent = "add" | "change" | "unlink";
@@ -56,26 +56,6 @@ const runnerUpdatesPlugin = (): Plugin => ({
     },
 });
 
-const dependsOnRenderer = (manifest: Record<string, Record<string, string> | undefined>): boolean =>
-    [manifest["dependencies"], manifest["peerDependencies"]].some(
-        (dependencies) => dependencies !== undefined && Object.hasOwn(dependencies, "@gtkx/react"),
-    );
-
-const rendererLibrariesPlugin = (): Plugin => ({
-    name: "gtkx:renderer-libraries",
-
-    async config(config) {
-        const crawled = await crawlFrameworkPkgs({
-            root: config.root ?? process.cwd(),
-            isBuild: false,
-            viteUserConfig: config,
-            isFrameworkPkgByJson: dependsOnRenderer,
-        });
-
-        return { ssr: { noExternal: crawled.ssr.noExternal } };
-    },
-});
-
 const createDevLogger = (): DevLogger => {
     const logger = createLogger();
     let isSilenced = false;
@@ -107,7 +87,7 @@ const createDevServerConfig = (
     root,
     appType: "custom",
     customLogger: logger,
-    plugins: [watchErrorPlugin(), rendererLibrariesPlugin(), ...plugins, runnerUpdatesPlugin()],
+    plugins: [watchErrorPlugin(), gtkxRendererLibraries(), ...plugins, runnerUpdatesPlugin()],
     server: {
         middlewareMode: true,
         ws: false,

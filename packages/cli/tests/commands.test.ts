@@ -738,7 +738,7 @@ describe("CLI commands", () => {
         });
     });
 
-    it("renders elements from a linked workspace package built against @gtkx/react", async () => {
+    it("renders elements from an installed package built against @gtkx/react in development and tests", async () => {
         using project = createProject({ codegen: true });
         const readyPath = join(project.root, "kit.txt");
         project.write(
@@ -746,7 +746,7 @@ describe("CLI commands", () => {
             JSON.stringify({ name: "cli-example", version: "1.0.0", type: "module", dependencies: { kit: "*" } }),
         );
         project.write(
-            "packages/kit/package.json",
+            "node_modules/kit/package.json",
             JSON.stringify({
                 name: "kit",
                 type: "module",
@@ -755,12 +755,11 @@ describe("CLI commands", () => {
             }),
         );
         project.write(
-            "packages/kit/index.js",
+            "node_modules/kit/index.js",
             `import { GtkLabel } from "@gtkx/jsx/gtk";
             import { jsx } from "react/jsx-runtime";
             export const Badge = (props) => jsx(GtkLabel, props);`,
         );
-        symlinkSync(join(project.root, "packages/kit"), join(project.root, "node_modules/kit"), "dir");
         project.write(
             "src/index.tsx",
             `import { AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
@@ -778,6 +777,33 @@ describe("CLI commands", () => {
         await withSession("dev", project.root, readyPath, async () => {
             await expect.poll(() => readFileSync(readyPath, "utf8")).toBe("kit");
         });
+        project.write(
+            "tests/badge.test.tsx",
+            `import { render, screen } from "@gtkx/testing";
+            import { Badge } from "kit";
+            import { expect, test } from "vitest";
+            test("renders the kit badge", async () => {
+                await render(<Badge label="kit" />);
+                expect(await screen.findByText("kit")).toBeTruthy();
+            });`,
+        );
+        project.write(
+            "vitest.config.mjs",
+            `import gtkx from "@gtkx/cli/vitest-plugin";
+            export default { plugins: [gtkx()], test: { include: ["tests/*.test.tsx"] } };`,
+        );
+        const runner = await createVitest({
+            root: project.root,
+            config: join(project.root, "vitest.config.mjs"),
+            watch: false,
+            reporters: [],
+        });
+        try {
+            const results = await runner.start();
+            expect(results.testModules.map((module) => module.state())).toEqual(["passed"]);
+        } finally {
+            await runner.close();
+        }
     });
 
     it("runs apps of an isolated pnpm workspace that bind different libraries", { timeout: 900_000 }, async () => {
