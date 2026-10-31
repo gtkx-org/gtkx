@@ -37,6 +37,7 @@ type RunCodegenOptions = {
 type LoadedConfig = {
     config: Config;
     configFile: string;
+    translationDomain: string;
 };
 
 type RunCodegenResult = {
@@ -81,13 +82,13 @@ const disabledCodegenResult = (configFile: string): RunCodegenResult => ({
 
 const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenResult> => {
     const cwd = options.cwd ?? process.cwd();
-    const { config, configFile } =
+    const { config, configFile, translationDomain } =
         options.resolved ??
         (await loadConfig(cwd, {
             mode: options.mode,
             configFile: options.configFile,
         }));
-    await syncI18n(cwd, config.applicationId, options.shouldPreserveI18nMetadata);
+    await syncI18n(cwd, translationDomain, options.shouldPreserveI18nMetadata);
     emitSchemaEnv(cwd);
 
     removeShadowingStores(cwd, config);
@@ -133,8 +134,8 @@ const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenRe
     };
 };
 
-const syncI18n = async (root: string, applicationId: string, shouldPreserveMetadataMessages = true): Promise<void> => {
-    const project = resolveCatalogProject(root, applicationId);
+const syncI18n = async (root: string, domain: string, shouldPreserveMetadataMessages = true): Promise<void> => {
+    const project = resolveCatalogProject(root, domain);
 
     if (project === null) {
         clearI18nTypes(root);
@@ -186,7 +187,7 @@ const generate = async (context: CodegenContext, options: EnsureGeneratedOptions
             cwd: context.root,
             mode: options.mode,
             lockTimeoutMs: options.lockTimeoutMs,
-            resolved: { config: context.config, configFile: context.configFile },
+            resolved: context,
             shouldPreserveI18nMetadata: options.shouldPreserveI18nMetadata,
         });
 
@@ -194,13 +195,12 @@ const generate = async (context: CodegenContext, options: EnsureGeneratedOptions
     }
 
     const inputs = resolveInputsOrNull(context.root, context.config);
-    const resolved = { config: context.config, configFile: context.configFile };
 
     const result = await runCodegen({
         cwd: context.root,
         mode: options.mode,
         lockTimeoutMs: options.lockTimeoutMs,
-        resolved,
+        resolved: context,
         shouldPreserveI18nMetadata: options.shouldPreserveI18nMetadata,
         onRegenerate: regenerationAnnouncement(options.shouldAnnounce, inputs),
         ...(inputs !== null && { inputs }),

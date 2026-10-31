@@ -1417,6 +1417,36 @@ describe("CLI commands", () => {
         }
     });
 
+    it("keeps the production translation domain under a development application ID", async () => {
+        using project = createProject({ codegen: true, $development: { applicationId: "org.gtkx.example.Devel" } });
+        const readyPath = join(project.root, "ready.txt");
+        project.write("po/LINGUAS", "fr\n");
+        project.write("po/fr.po", readFileSync(new URL("../../i18n/tests/fixtures/fr.po", import.meta.url), "utf8"));
+        vi.stubEnv("LANG", "fr_FR.UTF-8");
+        vi.stubEnv("LC_ALL", "fr_FR.UTF-8");
+        vi.stubEnv("LANGUAGE", "fr");
+        project.write(
+            "src/index.ts",
+            `import { Application } from "@gtkx/gi/gio";
+            import { t } from "@gtkx/i18n";
+            import { applicationId } from "virtual:gtkx-config";
+            import { writeFileSync } from "node:fs";
+            export const application = new Application({ applicationId });
+            application.setDefault();
+            application.register(null);
+            application.hold();
+            writeFileSync(${JSON.stringify(readyPath)}, applicationId + ":" + t("Hello, {{name}}!", { name: "Ada" }));`,
+        );
+        await withSession("dev", project.root, readyPath, () => Promise.resolve());
+        expect(readFileSync(readyPath, "utf8")).toBe("org.gtkx.example.Devel:Bonjour, Ada !");
+        expect(readdirSync(join(project.root, "po")).toSorted()).toEqual([
+            "LINGUAS",
+            "POTFILES.in",
+            "fr.po",
+            "org.gtkx.example.pot",
+        ]);
+    });
+
     it("keeps the dev session through malformed catalogs added while it runs", async () => {
         using project = createProject({ codegen: true });
         const readyPath = join(project.root, "ready.txt");

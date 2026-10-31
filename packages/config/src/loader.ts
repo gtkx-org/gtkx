@@ -1,5 +1,6 @@
 import { isPathInside, warn } from "@gtkx/utils";
 import { loadConfig as loadConfigFile } from "c12";
+import { defu } from "defu";
 import { existsSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import {
@@ -8,7 +9,7 @@ import {
     createConfigImporter,
     setConfigDependencies,
 } from "./config-dependencies.ts";
-import { missingConfigFileError } from "./config-error.ts";
+import { isRecord, missingConfigFileError } from "./config-error.ts";
 import { type ConfigResolutionOptions, localConfigSourcePath } from "./config-source.ts";
 import { type Config, graduatedFutureKeys, resolveConfig, type ResolvedConfig, validateConfig } from "./config.ts";
 import { assertSupportedNodeVersion } from "./node-version.ts";
@@ -21,6 +22,11 @@ type LoadedConfig = {
     configFile: string;
     /** Absolute path of the project root the configuration was resolved against. */
     root: string;
+    /**
+     * The gettext domain: the `applicationId` production builds use, so a `$development` application ID
+     * shares the production catalogs.
+     */
+    translationDomain: string;
 };
 
 /** How a configuration file is read, shared by {@link loadConfig} and `createConfigLoader`. */
@@ -43,6 +49,36 @@ type ConfigLoader = {
 };
 
 const graduatedFutureWarnings: Map<string, string> = new Map();
+const PRODUCTION_MODE = "production";
+const EXTEND_KEY = "extends";
+
+const recordOrEmpty = (value: unknown): Record<string, unknown> => (isRecord(value) ? value : {});
+
+const modeOverrides = (layer: Record<string, unknown>, mode: string): Record<string, unknown> => ({
+    ...recordOrEmpty(layer[`$${mode}`]),
+    ...recordOrEmpty(recordOrEmpty(layer.$env)[mode]),
+});
+
+const configForMode = (layers: Record<string, unknown>[], mode: string | undefined): Record<string, unknown> => {
+    const merged: Record<string, unknown> = defu(
+        {},
+        ...layers.map((layer) => (mode ? defu(modeOverrides(layer, mode), layer) : layer)),
+    );
+
+    for (const key of Object.keys(merged)) {
+        if (key === EXTEND_KEY || key.startsWith("$")) {
+            Reflect.deleteProperty(merged, key);
+        }
+    }
+
+    return merged;
+};
+
+const productionApplicationId = (layers: Record<string, unknown>[], config: Config): string => {
+    const { applicationId } = configForMode(layers, PRODUCTION_MODE);
+
+    return typeof applicationId === "string" ? applicationId : config.applicationId;
+};
 
 const rejectMissingLocalConfig = (source: string, options: ConfigResolutionOptions): undefined => {
     const path = localConfigSourcePath(source, options);
@@ -114,12 +150,11 @@ const loadConfig = async (cwd: string, options: LoadConfigOptions = {}): Promise
             rcFile: false,
             globalRc: false,
             packageJson: false,
-            omit$Keys: true,
+            envName: false,
             context: { mode: options.mode },
             jiti: createConfigImporter(),
             resolve: rejectMissingLocalConfig,
             ...(requestedConfigFile !== undefined && { configFile: requestedConfigFile }),
-            ...(options.mode !== undefined && { envName: options.mode }),
         }),
     );
     const result = captured.value;
@@ -136,7 +171,8 @@ const loadConfig = async (cwd: string, options: LoadConfigOptions = {}): Promise
             throw missingConfigFileError(searched, requestedConfigFile);
         }
 
-        const config = result.config;
+        const layers = (result.layers ?? []).flatMap((layer) => (isRecord(layer.config) ? [layer.config] : []));
+        const config = configForMode(layers, options.mode ?? process.env.NODE_ENV);
         validateConfig(config, configFile);
         if (options.shouldWarnGraduatedFuture !== false) {
             warnGraduatedFuture(config, root);
@@ -146,6 +182,7 @@ const loadConfig = async (cwd: string, options: LoadConfigOptions = {}): Promise
             config,
             configFile,
             root,
+            translationDomain: productionApplicationId(layers, config),
         };
         setConfigDependencies(loaded, dependencies);
 
@@ -162,9 +199,9 @@ const createConfigLoader = (options: LoadConfigOptions = {}): ConfigLoader => {
         loaded.getOrInsertComputed(resolve(cwd), (root) => loadConfig(root, options));
 
     const resolveAt = async (root: string): Promise<ResolvedConfig> => {
-        const { config, root: configRoot } = await load(root);
+        const { config, root: configRoot, translationDomain } = await load(root);
 
-        return resolveConfig(config, configRoot);
+        return resolveConfig(config, translationDomain, configRoot);
     };
 
     return {

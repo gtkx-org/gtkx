@@ -24,7 +24,7 @@ import { gtkxReactDomPrebundle } from "../vite-plugins/react-dom-prebundle.js";
 import { type CatalogWrites, createCatalogWrites } from "./catalog-writes.js";
 
 type DevRunnerDepsOptions = {
-    applicationId: string;
+    translationDomain: string;
     mcpApplicationId: string;
     loadConfig: ConfigLoader;
     mcpSocketPath?: string | undefined;
@@ -111,7 +111,7 @@ const createDevRunnerDeps = (
 ): DevRunnerDeps => ({
     createServer,
     waitForApplicationId,
-    applicationId: options.applicationId,
+    translationDomain: options.translationDomain,
     mcpApplicationId: options.mcpApplicationId,
     startMcpClient: (applicationId, loadAppModule, reportUncaughtError) => {
         const loadTesting = cacheTestingModule(async () => {

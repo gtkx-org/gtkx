@@ -48,6 +48,36 @@ describe("project configuration", () => {
         expect((await loadConfig(directory.path)).config.applicationId).toBe("org.gtkx.default");
     });
 
+    it("keeps the production application ID as the translation domain in every environment", () => {
+        using directory = project();
+        const script = `
+            import assert from "node:assert/strict";
+            import { mkdirSync, writeFileSync } from "node:fs";
+            import { join } from "node:path";
+            import { loadConfig } from ${JSON.stringify(new URL("../src/index.ts", import.meta.url).href)};
+            const root = ${JSON.stringify(directory.path)};
+            writeFileSync(join(root, "gtkx.config.ts"), 'export default { extends: "./base.json", applicationId: "org.gtkx.app", $development: { applicationId: "org.gtkx.app.Devel" } };');
+            writeFileSync(join(root, "base.json"), JSON.stringify({
+                codegen: false,
+                $development: { codegen: true },
+                $production: { applicationId: "org.gtkx.shared" },
+            }));
+            const summary = async (mode) => {
+                const { config, translationDomain } = await loadConfig(root, { mode });
+                return [config.applicationId, config.codegen, translationDomain];
+            };
+            assert.deepEqual(await summary("development"), ["org.gtkx.app.Devel", true, "org.gtkx.app"]);
+            assert.deepEqual(await summary("production"), ["org.gtkx.app", false, "org.gtkx.app"]);
+            assert.deepEqual(await summary("test"), ["org.gtkx.app", false, "org.gtkx.app"]);
+        `;
+        const result = spawnSync(process.execPath, ["--input-type=module", "-e", script], {
+            encoding: "utf8",
+            timeout: 30_000,
+        });
+        expect(result.stderr).toBe("");
+        expect(result.status).toBe(0);
+    });
+
     it("loads named ESM exports and configuration metadata", () => {
         using directory = project();
         writeFileSync(

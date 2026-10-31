@@ -18,6 +18,7 @@ const renderConfigModule = (config: ResolvedConfig, localeDir: string | null = n
     return [
         ...behaviorImports,
         `export const applicationId = ${JSON.stringify(config.applicationId)};`,
+        `export const translationDomain = ${JSON.stringify(config.translationDomain)};`,
         `export const localeDir = ${JSON.stringify(localeDir)};`,
         `export const resourceBasePath = ${JSON.stringify(resourceBasePath(config.applicationId))};`,
         `export const userEventSignals = ${JSON.stringify(config.userEventSignals)};`,

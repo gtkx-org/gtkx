@@ -85,7 +85,7 @@ const applyResolvedConfig = async (
     state.entryPath = resolve(config.root, state.entryPath);
     state.outDir = resolve(config.root, config.build.outDir);
     const application = await loadConfig.resolve(config.root);
-    state.project = resolveCatalogProject(config.root, application.applicationId);
+    state.project = resolveCatalogProject(config.root, application.translationDomain);
 
     if (state.project !== null) {
         const projectRequire = createRequire(resolve(config.root, "package.json"));

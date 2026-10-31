@@ -1,7 +1,7 @@
 import { t } from "@gtkx/runtime";
 import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { applicationId, localeDir } from "virtual:gtkx-config";
+import { localeDir, translationDomain } from "virtual:gtkx-config";
 
 const LIBC = "libc.so.6";
 const LC_ALL = 6;
@@ -25,9 +25,9 @@ function requireStringResult(result: unknown): string {
 function initializeLocale(): string {
     const directory = localeDir ?? bundledLocaleDir();
     setLocaleBinding(LC_ALL, "");
-    requireStringResult(bindTextDomainBinding(applicationId, directory));
-    requireStringResult(bindTextDomainCodesetBinding(applicationId, GETTEXT_CODESET));
-    requireStringResult(textDomainBinding(applicationId));
+    requireStringResult(bindTextDomainBinding(translationDomain, directory));
+    requireStringResult(bindTextDomainCodesetBinding(translationDomain, GETTEXT_CODESET));
+    requireStringResult(textDomainBinding(translationDomain));
 
     return new Intl.NumberFormat().resolvedOptions().locale;
 }

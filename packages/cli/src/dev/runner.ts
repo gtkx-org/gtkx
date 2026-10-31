@@ -31,7 +31,7 @@ type ApplicationState = "primary" | "remote" | "shutDown" | "unregistered";
 type DevRunnerDeps = {
     createServer(config: InlineConfig): Promise<ViteDevServer>;
     waitForApplicationId(timeoutMs: number, shouldKeepWaiting: () => boolean): Promise<string | null>;
-    applicationId: string;
+    translationDomain: string;
     mcpApplicationId: string;
     startMcpClient(
         applicationId: string,
@@ -525,7 +525,7 @@ const restartForCatalog = async (session: DevSession, changedPath: string): Prom
     session.deps.log(`Translation catalog changed: ${changedPath}`);
 
     try {
-        await checkDevCatalogs(session.server.config.root, session.deps.applicationId);
+        await checkDevCatalogs(session.server.config.root, session.deps.translationDomain);
     } catch (error_) {
         error("Translation catalogs failed; keeping the current application.", error_);
 

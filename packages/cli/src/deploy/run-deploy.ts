@@ -76,6 +76,7 @@ type LoadedDeployConfig = {
     config: Config;
     configFile: string;
     root: string;
+    translationDomain: string;
     deploy: DeployConfig;
 };
 
@@ -367,7 +368,7 @@ const resolveArchNames = (options: DeployOptions, deploy: DeployConfig): string[
 };
 
 const loadDeployConfig = async (options: DeployOptions): Promise<LoadedDeployConfig> => {
-    const { config, configFile, root } = await loadConfig(options.cwd, {
+    const { config, configFile, root, translationDomain } = await loadConfig(options.cwd, {
         mode: BUILD_MODE,
         configFile: options.configFile,
     });
@@ -376,7 +377,7 @@ const loadDeployConfig = async (options: DeployOptions): Promise<LoadedDeployCon
         throw missingDeployError(config.applicationId, readPackageManifest(root));
     }
 
-    return { config, configFile, root, deploy: config.deploy };
+    return { config, configFile, root, translationDomain, deploy: config.deploy };
 };
 
 const settingsFor = (plan: DeployPlan, options: DeployOptions, arch: DeployArchName): DeploySettings =>
@@ -395,7 +396,7 @@ const planDeploy = async (options: DeployOptions): Promise<DeployPlan> => {
         loaded,
         targets: targetsFor(resolveTargetNames(options, loaded.deploy)),
         arches: archesFor(resolveArchNames(options, loaded.deploy)),
-        project: resolveCatalogProject(loaded.root, loaded.config.applicationId),
+        project: resolveCatalogProject(loaded.root, loaded.translationDomain),
     };
 };
 

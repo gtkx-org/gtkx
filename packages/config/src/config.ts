@@ -42,6 +42,8 @@ type McpSettings = {
 type ResolvedConfig = {
     /** The GApplication identifier the app registers under. */
     applicationId: string;
+    /** The gettext domain, which is the `applicationId` production builds use. */
+    translationDomain: string;
     /** React Compiler options for the build, or `null` when the compiler is disabled. */
     reactCompiler: ResolvedReactCompilerOptions | null;
     /**
@@ -267,7 +269,7 @@ const resolveReactCompilerOptions = (setting: Config["reactCompiler"]): Resolved
     };
 };
 
-const validateConfig = (config: unknown, configFile?: string): void => {
+const validateConfig: (config: unknown, configFile?: string) => asserts config is Config = (config, configFile) => {
     const result = validationSchema.safeParse(config);
 
     if (!result.success) {
@@ -334,8 +336,9 @@ const resolveMcpSettings = (config: Config): McpSettings => ({
     isReadOnly: config.mcp?.readOnly === true,
 });
 
-const resolveConfig = (config: Config, root?: string): ResolvedConfig => ({
+const resolveConfig = (config: Config, translationDomain: string, root?: string): ResolvedConfig => ({
     applicationId: config.applicationId,
+    translationDomain,
     reactCompiler: resolveReactCompilerOptions(config.reactCompiler),
     userEventSignals: resolveUserEventSignals(config.userEventSignals),
     elements: resolveElementsModule(config.elements?.behaviors, root),

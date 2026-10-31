@@ -5,7 +5,7 @@ description: "Translate GTKX applications and package metadata with gettext cata
 
 # Internationalization
 
-`@gtkx/i18n` connects React translation APIs to GNU gettext. Your application's `applicationId` is its gettext domain, and `po/` holds its translation catalogs. GTKX uses those catalogs for both the application and its desktop metadata. GTKX manages `po/` only in projects that install `@gtkx/i18n`, so an existing gettext setup, such as a Meson project's, stays untouched until then.
+`@gtkx/i18n` connects React translation APIs to GNU gettext. Your application's production `applicationId` is its gettext domain, and `po/` holds its translation catalogs. GTKX uses those catalogs for both the application and its desktop metadata. GTKX manages `po/` only in projects that install `@gtkx/i18n`, so an existing gettext setup, such as a Meson project's, stays untouched until then.
 
 Install `@gtkx/i18n@beta` and GNU gettext 0.25 or later. On Fedora 44:
 
@@ -95,6 +95,19 @@ Generated declarations under `node_modules/.gtkx` extend the upstream translatio
 ## Develop and build
 
 `gtkx dev` prepares the catalogs before loading your application. Saving source files updates the template and translation types before Fast Refresh without modifying PO files. Run codegen or a build to merge source changes into those files. Saving a PO file or `LINGUAS` restarts the application because gettext caches catalogs for the lifetime of the process.
+
+A GNOME-style development profile gives the development build its own application ID, so it can run beside the installed app:
+
+```ts [gtkx.config.ts]
+import { defineConfig } from "@gtkx/config";
+
+export default defineConfig({
+    applicationId: "com.example.Tasks",
+    $development: { applicationId: "com.example.Tasks.Devel" },
+});
+```
+
+The gettext domain stays the production ID: `gtkx dev` registers `com.example.Tasks.Devel` but keeps using `po/com.example.Tasks.pot` and the same catalogs as tests, builds, and packages. A separate configuration selected with `--config` is a different project setup, so an application ID it changes also names its own template and domain.
 
 `gtkx build` compiles the catalogs into `dist/locale` beside the bundle. GTKX initializes localization before the application entry module runs and locates that directory automatically.
 

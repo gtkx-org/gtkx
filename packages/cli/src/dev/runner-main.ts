@@ -24,9 +24,9 @@ const main = async (): Promise<void> => {
         configFile,
         shouldWarnGraduatedFuture: false,
     });
-    const { config, root } = await loadConfig.load(cwd);
+    const { config, root, translationDomain } = await loadConfig.load(cwd);
     const staging = createProjectStaging();
-    const localeDir = await prepareDevLocaleDir(root, config.applicationId);
+    const localeDir = await prepareDevLocaleDir(root, translationDomain);
     prepareDevSchemaDir(root, staging.schemas);
     prepareDevIconDir(root, config.applicationId, config.applicationIcon);
     prepareDevFontDir(root, staging.fonts);
@@ -35,7 +35,7 @@ const main = async (): Promise<void> => {
     const { defaultDevRunnerDeps } = await import("./runner-deps.js");
     const runner = createDevRunner(
         defaultDevRunnerDeps(configFile, config.deploy?.outDir, {
-            applicationId: config.applicationId,
+            translationDomain,
             mcpApplicationId:
                 storybookConfig === undefined ? config.applicationId : storybookApplicationId(config.applicationId),
             loadConfig,
