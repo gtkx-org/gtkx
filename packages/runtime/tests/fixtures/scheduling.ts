@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { closeSync, openSync, readSync } from "node:fs";
+import { closeSync, openSync, readSync, writeSync } from "node:fs";
+import { Socket } from "node:net";
 import { isMainThread, parentPort, Worker } from "node:worker_threads";
 
 const mode = isMainThread ? process.argv[2] : "workers";
@@ -170,6 +171,28 @@ const runDescriptors = async (): Promise<void> => {
     await produce(output, reused.promise);
     closeSync(input);
     closeSync(output);
+    await nextTurn();
+    ({ input, output } = createPipe());
+    const closedSource = watch(0, input, 1, () => true);
+    await nextTurn();
+    closeSync(input);
+    const nodePipe = createPipe();
+    if (nodePipe.input !== input) {
+        assert.equal(duplicate(nodePipe.input, input), input);
+        closeSync(nodePipe.input);
+    }
+    const socket = new Socket({ fd: input, readable: true, writable: false });
+    for (let round = 0; round < 3; round += 1) {
+        const received = completion();
+        socket.once("data", () => received.resolve());
+        writeSync(nodePipe.output, "a");
+        await received.promise;
+    }
+    assert.equal(remove(closedSource), true);
+    socket.destroy();
+    closeSync(nodePipe.output);
+    closeSync(output);
+    events.push("closed");
     await nextTurn();
     const regularFile = openSync(import.meta.filename, "r");
     const unwatchable = completion();
