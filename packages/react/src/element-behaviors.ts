@@ -26,6 +26,7 @@ import {
     contentSetterSlot,
     controlledText,
     indexedSlot,
+    keyedList,
     list,
     methodSlot,
     rowSlot,
@@ -85,6 +86,10 @@ const preferencesDialogChildren = methodSlot<Adw.PreferencesDialog, Adw.Preferen
 );
 
 const alertDialogExtraChild = setterSlot<Adw.AlertDialog, Gtk.Widget>("children", Gtk.Widget, "setExtraChild");
+const applyResponseState = (dialog: Adw.AlertDialog, response: AlertDialogResponse): void => {
+    dialog.setResponseAppearance(response.id, response.appearance ?? Adw.ResponseAppearance.DEFAULT);
+    dialog.setResponseEnabled(response.id, response.isEnabled ?? true);
+};
 const sidebarSections = indexedSlot<Adw.Sidebar, Adw.SidebarSection>("children", Adw.SidebarSection);
 const sidebarItems = indexedSlot<Adw.SidebarSection, Adw.SidebarItem>("children", Adw.SidebarItem);
 const isWidget = childMatcher(Gtk.Widget);
@@ -794,17 +799,15 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     AdwAlertDialog: {
         behaviors: [
             alertDialogExtraChild,
-            list<Adw.AlertDialog, AlertDialogResponse>("responses", {
+            keyedList<Adw.AlertDialog, AlertDialogResponse>("responses", {
+                key: (response) => response.id,
                 add: (dialog, response) => {
                     dialog.addResponse(response.id, response.label);
-
-                    if (response.appearance !== undefined) {
-                        dialog.setResponseAppearance(response.id, response.appearance);
-                    }
-
-                    if (response.isEnabled !== undefined) {
-                        dialog.setResponseEnabled(response.id, response.isEnabled);
-                    }
+                    applyResponseState(dialog, response);
+                },
+                update: (dialog, response) => {
+                    dialog.setResponseLabel(response.id, response.label);
+                    applyResponseState(dialog, response);
                 },
                 remove: (dialog, response) => {
                     dialog.removeResponse(response.id);

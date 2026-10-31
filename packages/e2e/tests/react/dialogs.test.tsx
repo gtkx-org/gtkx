@@ -409,6 +409,35 @@ describe("render - AlertDialog responses", () => {
         expect(ref.current?.getResponseEnabled("test")).toBe(false);
     });
 
+    it("keeps the focused response button when another response changes", async () => {
+        const ref = createRef<Adw.AlertDialog>();
+
+        function App({ armed }: { armed: boolean }) {
+            return (
+                <InApp2>
+                    <AdwAlertDialog
+                        ref={ref}
+                        heading={HEADING}
+                        responses={[
+                            { id: "cancel", label: "Cancel" },
+                            { id: "archive", label: "Archive" },
+                            { id: "delete", label: armed ? "Delete" : "Wait", isEnabled: armed },
+                        ]}
+                    />
+                </InApp2>
+            );
+        }
+
+        const { rerender } = await render(<App armed={false} />);
+        const dialog = requireWidget(ref, "Alert dialog");
+        const archive = await within(dialog).findByRole(Gtk.AccessibleRole.BUTTON, { name: "Archive" });
+        archive.grabFocus();
+        await rerender(<App armed />);
+        expect(dialog.getRoot()?.getFocus()).toBe(archive);
+        expect(dialog.getResponseLabel("delete")).toBe("Delete");
+        expect(dialog.getResponseEnabled("delete")).toBe(true);
+    });
+
     it("removes responses when list shrinks", async () => {
         const ref = createRef<Adw.AlertDialog>();
 

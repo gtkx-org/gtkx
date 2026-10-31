@@ -25,6 +25,13 @@ type ListHooks<P extends GObject.Object, I> = {
     clear?: (parent: P) => void;
 };
 
+type KeyedListHooks<P extends GObject.Object, I> = {
+    key: (item: I) => string;
+    add: (parent: P, item: I) => void;
+    update: (parent: P, item: I) => void;
+    remove: (parent: P, item: I) => void;
+};
+
 type ChildSetter = GObject.Object & { setChild: (child: Gtk.Widget | null) => void };
 type ContentSetter<C extends Gtk.Widget> = GObject.Object & { setContent: (content: C | null) => void };
 type MatchingKey<P, F> = keyof P & string & { [K in keyof P]: P[K] extends F ? K : never }[keyof P];
@@ -185,6 +192,41 @@ const list = <P extends GObject.Object, I>(prop: string, hooks: ListHooks<P, I>)
     return behavior;
 };
 
+const sharedKeyPrefix = <I>(previous: I[], current: I[], key: (item: I) => string): number => {
+    const mismatch = current.findIndex((item, index) => {
+        const before = previous[index];
+
+        return before === undefined || key(before) !== key(item);
+    });
+
+    return mismatch === -1 ? current.length : mismatch;
+};
+
+const keyedList = <P extends GObject.Object, I>(prop: string, hooks: KeyedListHooks<P, I>): ElementBehavior<P> => ({
+    update: (object, prev, next) => {
+        const previous = (prev[prop] as I[] | null | undefined) ?? [];
+        const current = (next[prop] as I[] | null | undefined) ?? [];
+
+        if (!isDeepEqual(previous, current)) {
+            const kept = sharedKeyPrefix(previous, current, hooks.key);
+
+            for (const item of previous.slice(kept)) {
+                hooks.remove(object, item);
+            }
+
+            for (const [index, item] of current.entries()) {
+                if (index >= kept) {
+                    hooks.add(object, item);
+                } else if (!isDeepEqual(previous[index], item)) {
+                    hooks.update(object, item);
+                }
+            }
+        }
+
+        return [prop];
+    },
+});
+
 const controlledText = (prop: string): ElementBehavior =>
     value(prop, (object, next) => {
         if (!hasSameText(object, prop, next)) {
@@ -323,6 +365,7 @@ export {
     slot,
     value,
     list,
+    keyedList,
     controlledText,
     childSetterSlot,
     contentSetterSlot,
