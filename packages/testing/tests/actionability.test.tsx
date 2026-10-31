@@ -521,7 +521,12 @@ const DialogOverMain = ({ onBump }: { onBump: () => void }): ReactNode => {
                 <GtkEntry text="before" />
                 <GtkLabel label="Hover me" controllers={<GtkEventControllerMotion onEnter={onBump} />} />
                 {isOpen ? (
-                    <AdwDialog title="Preferences">
+                    <AdwDialog
+                        title="Preferences"
+                        onClosed={() => {
+                            setIsOpen(false);
+                        }}
+                    >
                         <GtkButton
                             label="Done"
                             onClicked={() => {
@@ -571,6 +576,27 @@ describe("userEvent actionability - pointer input", () => {
         await waitFor(() => {
             expect(clicks.count).toBe(1);
         });
+    });
+});
+
+describe("userEvent actionability - keyboard input", () => {
+    setupShortTimeout();
+
+    it("refuses keyboard and text input behind an open Adwaita dialog, while keys sent to its window reach the dialog", async () => {
+        await render(<DialogOverMain onBump={() => {}} />, { container: rootElement });
+        await screen.findByRole(Gtk.AccessibleRole.DIALOG, { name: "Preferences" });
+        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.Entry });
+        await expect(userEvent.type(entry, "typed")).rejects.toThrow();
+        await expect(userEvent.clear(entry)).rejects.toThrow();
+        await expect(userEvent.keyboard(entry, "k")).rejects.toThrow();
+        expect(entry.getText()).toBe("before");
+        await userEvent.keyboard(await screen.findByRole(Gtk.AccessibleRole.WINDOW, { name: "Main" }), "{Escape}");
+        await waitFor(() => {
+            expect(screen.queryByRole(Gtk.AccessibleRole.DIALOG, { name: "Preferences" })).toBeNull();
+        });
+        configure(initialConfig);
+        await userEvent.type(entry, "!");
+        expect(entry.getText()).toBe("before!");
     });
 });
 

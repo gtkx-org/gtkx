@@ -57,7 +57,7 @@ const findActionabilityFailure = (widget: Gtk.Widget): string | null => {
         return rootFailure;
     }
 
-    return widget.getMapped() ? null : NOT_MAPPED;
+    return widget.getMapped() ? findDialogFailure(widget) : NOT_MAPPED;
 };
 
 const attribute = (key: string, value: string | null): string => (value === null ? "" : ` ${key}="${value}"`);
@@ -82,15 +82,15 @@ const visibleDialogOf = (widget: Gtk.Widget): Adw.Dialog | null => {
 };
 
 const isBehindDialog = (widget: Gtk.Widget, dialog: Adw.Dialog | null): dialog is Adw.Dialog =>
-    dialog !== null && widget !== dialog && !widget.isAncestor(dialog);
+    dialog !== null && widget !== dialog && !widget.isAncestor(dialog) && !dialog.isAncestor(widget);
 
-const describePointerBlocker = (widget: Gtk.Widget, blocker: Gtk.Widget): string => {
+const findDialogFailure = (widget: Gtk.Widget): string | null => {
     const dialog = visibleDialogOf(widget);
 
-    if (isBehindDialog(widget, dialog)) {
-        return `it is behind the modal dialog ${describeWidget(dialog)}`;
-    }
+    return isBehindDialog(widget, dialog) ? `it is behind the modal dialog ${describeWidget(dialog)}` : null;
+};
 
+const describePointerBlocker = (widget: Gtk.Widget, blocker: Gtk.Widget): string => {
     if (blocker === widget) {
         return NOT_TARGETABLE;
     }
