@@ -37,6 +37,7 @@ import {
     type ElementBehavior,
     type ElementConfig,
     type PlaceInfo,
+    type Props,
     forTypes,
     registerElements,
 } from "./reconciler/registry.js";
@@ -130,6 +131,30 @@ const tabInsertionPosition = (view: Adw.TabView, info: PlaceInfo): number => {
         );
 
     return successor instanceof Gtk.Widget ? view.getPagePosition(view.getPage(successor)) : view.getNPages();
+};
+
+const selectedReplacedPages: WeakSet<Props> = new WeakSet();
+
+const attachTabPage = (view: Adw.TabView, child: Gtk.Widget, info: PlaceInfo): Adw.TabPage => {
+    const page =
+        info.props.parent instanceof Adw.TabPage
+            ? view.addPage(child, info.props.parent)
+            : view.insert(child, tabInsertionPosition(view, info));
+
+    if (selectedReplacedPages.delete(info.props)) {
+        view.setSelectedPage(page);
+    }
+
+    return page;
+};
+
+const closeTabPage = (view: Adw.TabView, page: Adw.TabPage, props: Props): void => {
+    if (view.getSelectedPage() === page) {
+        selectedReplacedPages.add(props);
+    }
+
+    view.setPagePinned(page, false);
+    view.closePage(page);
 };
 
 const reorderTabPages = (view: Adw.TabView, children: readonly GObject.Object[]): void => {
@@ -717,10 +742,7 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     AdwTabView: {
         behaviors: [
             slot<Adw.TabView, Gtk.Widget>("children", Gtk.Widget, {
-                attach: (view, child, info) =>
-                    info.props.parent instanceof Adw.TabPage
-                        ? view.addPage(child, info.props.parent)
-                        : view.insert(child, tabInsertionPosition(view, info)),
+                attach: attachTabPage,
                 reorder: (view, _child, info) => {
                     reorderTabPages(view, info.children);
 
@@ -730,8 +752,7 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
                     const owner = tabViewParent(child);
 
                     if (info.adopted instanceof Adw.TabPage && owner !== null) {
-                        owner.setPagePinned(info.adopted, false);
-                        owner.closePage(info.adopted);
+                        closeTabPage(owner, info.adopted, info.props);
                     }
                 },
                 resolve: (_view, child) => tabViewParent(child)?.getPage(child) ?? null,

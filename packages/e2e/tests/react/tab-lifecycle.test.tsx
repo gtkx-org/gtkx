@@ -156,6 +156,31 @@ describe("native tab lifecycle", () => {
         expect(view.current?.getNPages()).toBe(0);
     });
 
+    it("keeps a page selected while its content element is replaced", async () => {
+        const view = createRef<Adw.TabView>();
+        const App = ({ isEmpty }: { isEmpty: boolean }) => (
+            <AdwTabView ref={view}>
+                <AdwTabPage title="First">
+                    <GtkEntry text="First" />
+                </AdwTabPage>
+                <AdwTabPage title="Second">{isEmpty ? <GtkBox /> : <GtkEntry text="Second" />}</AdwTabPage>
+                <AdwTabPage title="Third">
+                    <GtkEntry text="Third" />
+                </AdwTabPage>
+            </AdwTabView>
+        );
+        const { rerender } = await render(<App isEmpty={false} />);
+        await act(() => {
+            const second = view.current?.getNthPage(1);
+            if (second) view.current?.setSelectedPage(second);
+        });
+        await rerender(<App isEmpty />);
+        expect(view.current?.getSelectedPage()?.getTitle()).toBe("Second");
+        expect(view.current?.getNthPage(1).getChild()).toBeInstanceOf(Gtk.Box);
+        await rerender(<App isEmpty={false} />);
+        expect(view.current?.getSelectedPage()?.getTitle()).toBe("Second");
+    });
+
     it("selects the parent of an independently rendered duplicate after closing it", async () => {
         const view = createRef<Adw.TabView>();
         const parent = createRef<Adw.TabPage>();
