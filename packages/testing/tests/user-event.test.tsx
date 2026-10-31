@@ -1,11 +1,15 @@
 import type { ComponentProps, ReactNode } from "react";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gdk from "@gtkx/gi/gdk";
+import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
     AdwActionRow,
+    AdwApplication,
+    AdwApplicationWindow,
+    AdwDialog,
     AdwEntryRow,
     AdwHeaderBar,
     AdwSidebar,
@@ -17,9 +21,11 @@ import {
     AdwTabView,
     AdwWindowTitle,
 } from "@gtkx/jsx/adw";
+import { GSimpleAction } from "@gtkx/jsx/gio";
 import {
     GtkBox,
     GtkButton,
+    GtkCallbackAction,
     GtkCheckButton,
     GtkDragSource,
     GtkDropDown,
@@ -51,6 +57,7 @@ import {
     GtkTextView,
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
+import { rootElement } from "@gtkx/react";
 import { type BoundQueries, queryAllControllers, render, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { createRef, useState } from "react";
 import { describe, expect, it } from "vitest";
@@ -1368,6 +1375,51 @@ describe("userEvent.keyboard: shortcuts", () => {
         expect(global.count).toBe(1);
         expect(local.count).toBe(0);
         expect(insensitive.count).toBe(0);
+    });
+
+    it("keeps keys inside an open dialog from its window's shortcuts and application accelerators", async () => {
+        const searches = returningCallCounter(true);
+        const statistics = callCounter();
+        const view = (isDialogOpen: boolean): ReactNode => (
+            <AdwApplication
+                applicationId="org.gtkx.dialogshortcuts"
+                flags={Gio.ApplicationFlags.NON_UNIQUE}
+                actionAccels={[{ detailedActionName: "win.statistics", accels: ["<Control>i"] }]}
+            >
+                <AdwApplicationWindow
+                    title="Main"
+                    actions={<GSimpleAction name="statistics" onActivate={statistics.callback} />}
+                    controllers={
+                        <GtkShortcutController
+                            scope={Gtk.ShortcutScope.GLOBAL}
+                            shortcuts={
+                                <GtkShortcut
+                                    trigger={<GtkShortcutTrigger accelerator="<Control>f" />}
+                                    action={<GtkCallbackAction callback={searches.callback} />}
+                                />
+                            }
+                        />
+                    }
+                >
+                    {isDialogOpen && (
+                        <AdwDialog title="Edit">
+                            <GtkEntry name="field" />
+                        </AdwDialog>
+                    )}
+                </AdwApplicationWindow>
+            </AdwApplication>
+        );
+
+        const { rerender } = await render(view(true), { container: rootElement });
+        await userEvent.keyboard(await screen.findByName("field"), "{Control>}f{/Control}{Control>}i{/Control}");
+        expect(searches.count).toBe(0);
+        expect(statistics.count).toBe(0);
+
+        await rerender(view(false));
+        const window = screen.getByRole(Gtk.AccessibleRole.WINDOW, { name: "Main" });
+        await userEvent.keyboard(window, "{Control>}f{/Control}{Control>}i{/Control}");
+        expect(searches.count).toBe(1);
+        expect(statistics.count).toBe(1);
     });
 
     it("runs a global-scope shortcut at the root, behind the key controllers above its host", async () => {

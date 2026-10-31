@@ -409,10 +409,21 @@ const didDispatchAccelsOnWindow = (window: Gtk.Window, keyval: number, modifiers
     return false;
 };
 
-const didDispatchApplicationAccels = (widget: Gtk.Widget, keyval: number, modifiers: number): boolean => {
-    const root = widget.getRoot();
+const isEventLimit = (widget: Gtk.Widget): boolean => widget instanceof Gtk.Native || widget.getLimitEvents();
 
-    return root instanceof Gtk.Window && didDispatchAccelsOnWindow(root, keyval, modifiers);
+const eventLimitOf = (widget: Gtk.Widget): Gtk.Widget | undefined => [widget, ...ancestors(widget)].find(isEventLimit);
+
+const receivesEventsFor = (owner: Gtk.Widget, limit: Gtk.PropagationLimit, target: Gtk.Widget): boolean =>
+    limit === Gtk.PropagationLimit.NONE || eventLimitOf(owner) === eventLimitOf(target);
+
+const didDispatchApplicationAccels = (target: Gtk.Widget, keyval: number, modifiers: number): boolean => {
+    const root = target.getRoot();
+
+    return (
+        root instanceof Gtk.Window &&
+        receivesEventsFor(root, Gtk.PropagationLimit.SAME_NATIVE, target) &&
+        didDispatchAccelsOnWindow(root, keyval, modifiers)
+    );
 };
 
 const isKeyStopController = (controller: Gtk.EventController, widget: Gtk.Widget): controller is KeyStopController => {
@@ -429,11 +440,15 @@ const isKeyStopController = (controller: Gtk.EventController, widget: Gtk.Widget
     );
 };
 
-const keyStopsInPhase = (widget: Gtk.Widget, phase: Gtk.PropagationPhase): KeyStop[] => {
+const keyStopsInPhase = (widget: Gtk.Widget, phase: Gtk.PropagationPhase, target: Gtk.Widget): KeyStop[] => {
     const stops: KeyStop[] = [];
 
     for (const controller of controllersOn(widget)) {
-        if (controller.getPropagationPhase() === phase && isKeyStopController(controller, widget)) {
+        if (
+            controller.getPropagationPhase() === phase &&
+            receivesEventsFor(widget, controller.getPropagationLimit(), target) &&
+            isKeyStopController(controller, widget)
+        ) {
             stops.push({ widget, controller });
         }
     }
@@ -466,9 +481,9 @@ const keyPropagationChain = (widget: Gtk.Widget): KeyStop[] => {
     const [eventWidget = widget] = chain;
 
     return [
-        ...chain.toReversed().flatMap((current) => keyStopsInPhase(current, Gtk.PropagationPhase.CAPTURE)),
-        ...keyStopsInPhase(eventWidget, Gtk.PropagationPhase.TARGET),
-        ...chain.flatMap((current) => keyStopsInPhase(current, Gtk.PropagationPhase.BUBBLE)),
+        ...chain.toReversed().flatMap((current) => keyStopsInPhase(current, Gtk.PropagationPhase.CAPTURE, eventWidget)),
+        ...keyStopsInPhase(eventWidget, Gtk.PropagationPhase.TARGET, eventWidget),
+        ...chain.flatMap((current) => keyStopsInPhase(current, Gtk.PropagationPhase.BUBBLE, eventWidget)),
     ];
 };
 
@@ -496,8 +511,9 @@ const isKeyTargetInvalidated = (widget: Gtk.Widget, target: KeyTarget): boolean 
 
 const didHandlePress = (widget: Gtk.Widget, keyval: number, modifiers: Gdk.ModifierType): boolean => {
     const target = keyTargetFor(widget);
+    const [eventWidget = widget] = propagationChain(widget);
 
-    if (didDispatchApplicationAccels(widget, keyval, modifiers)) {
+    if (didDispatchApplicationAccels(eventWidget, keyval, modifiers)) {
         return true;
     }
 
