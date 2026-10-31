@@ -1,6 +1,6 @@
 ---
 title: "Components"
-description: "Render lists, tables, dropdowns, tabs, and toast notifications from React state."
+description: "Render lists, tables, dropdowns, tabs, menu widgets, and toast notifications from React state."
 ---
 
 # Components
@@ -148,6 +148,30 @@ import { AdwTabBar } from "@gtkx/jsx/adw";
 ```
 
 Here `renameTab` updates the state the page's `title` prop comes from. Removing `extraDropTarget` disables the additional drop target. Types can be GType values or generated classes. Use explicit `null` when clearing nullable object props such as a tab's `icon`.
+
+## Widgets in menus
+
+A popover menu can show a widget in place of a menu item, as GNOME Text Editor does with its style selector. Give the item a `custom` ID and pass the widget under that ID in `customChildren` on the `GtkMenuButton`, `GtkPopoverMenu` or `GtkPopoverMenuBar` showing the menu, as GtkBuilder's `<child type="ID">` does:
+
+```tsx
+import { GMenu } from "@gtkx/jsx/gio";
+import { GtkMenuButton } from "@gtkx/jsx/gtk";
+
+<GtkMenuButton
+    iconName="open-menu-symbolic"
+    menuModel={
+        <GMenu
+            items={[
+                { section: [{ custom: "theme" }] },
+                { section: [{ label: "Preferences", action: "win.preferences", accel: "<Control>comma" }] },
+            ]}
+        />
+    }
+    customChildren={{ theme: <ThemeSelector /> }}
+/>
+```
+
+The widget stays in its item when the model or its items change. An ID with no matching item leaves its widget out of the menu. Menu items also take GTK's other [menu attributes](https://docs.gtk.org/gtk4/class.PopoverMenu.html#menu-models) in camelCase, such as `hiddenWhen` and `accel`.
 
 ## Toasts
 

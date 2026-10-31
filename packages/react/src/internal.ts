@@ -15,7 +15,7 @@ export {
 /** @internal */
 export { createDialogComponent } from "./components/dialog.js";
 export { createElementComponent } from "./components/element.js";
-export { createMenuComponent, createMenuItemComponent } from "./components/menu.js";
+export { createCustomChildrenComponent, createMenuComponent, createMenuItemComponent } from "./components/menu.js";
 /** @internal */
 export { createPortaledComponent } from "./components/portaled.js";
 export { createCallbackActionComponent, createShortcutTriggerComponent } from "./components/shortcut.js";
@@ -42,6 +42,8 @@ export type {
     ActionMapProps,
     MenuProps,
     MenuItemProps,
+    CustomChildrenProps,
+    GtkMenuButtonProps,
     AdwToggleGroupProps,
     GtkShortcutControllerProps,
     GtkCallbackActionElementProps,

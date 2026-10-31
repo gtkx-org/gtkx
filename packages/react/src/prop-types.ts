@@ -16,12 +16,37 @@ type ConstructOnlyPropNames<Props> = typeof constructOnlyProps extends keyof Pro
     ? keyof NonNullable<Props[typeof constructOnlyProps]>
     : never;
 
-/** One entry of a `GMenu`'s `items` prop; `submenu` and `section` nest further menus. */
-type MenuItem = {
+/** Text and GtkBuilder menu attributes of a menu item, written onto the item when it is inserted. */
+type MenuItemAttributes = {
     /** Text shown for the entry, or the heading of the submenu or section it introduces. */
     label?: string | null;
     /** Detailed action name the entry activates, ignored when `submenu` or `section` is given. */
     action?: string | null;
+    /**
+     * ID of a widget placed in the entry instead of a label: the `customChildren` key of the
+     * `GtkPopoverMenu`, `GtkPopoverMenuBar` or `GtkMenuButton` showing the menu.
+     */
+    custom?: string | null;
+    /** Hides the entry while its action is disabled or missing, or in a macOS menu bar. */
+    hiddenWhen?: "action-disabled" | "action-missing" | "macos-menubar" | null;
+    /** Accelerator shown beside the entry, in `Gtk.acceleratorParse` syntax such as `<Control>n`. */
+    accel?: string | null;
+    /** Name of the icon shown for the entry or the submenu it opens. */
+    icon?: string | null;
+    /** Name of the icon shown instead of the label in a section displayed as a row of buttons. */
+    verbIcon?: string | null;
+    /** Whether `label` is Pango markup. */
+    useMarkup?: boolean | null;
+    /** Name of a boolean action tracking whether the entry's submenu is open. */
+    submenuAction?: string | null;
+    /** Shows the section the entry introduces as a row of buttons. */
+    displayHint?: "horizontal-buttons" | "circular-buttons" | "inline-buttons" | null;
+    /** Text direction of a section the entry introduces with the `horizontal-buttons` hint. */
+    textDirection?: "rtl" | "ltr" | "none" | null;
+};
+
+/** One entry of a `GMenu`'s `items` prop; `submenu` and `section` nest further menus. */
+type MenuItem = MenuItemAttributes & {
     /** Entries of a separate menu the labelled entry opens. */
     submenu?: MenuItem[];
     /** Entries appended below the label as an inline section, used only when `submenu` is absent. */
@@ -264,10 +289,22 @@ type MenuProps = {
     items?: MenuItem[] | null | undefined;
 } & ChildrenProps;
 
-type MenuItemProps = Pick<MenuItem, "label" | "action"> & {
+type MenuItemProps = MenuItemAttributes & {
     submenu?: ReactNode;
     section?: ReactNode;
 };
+
+/** Props of an element whose generated menu shows widgets in its `custom` items. */
+type CustomChildrenProps = {
+    /**
+     * Widgets shown in the menu, keyed by the `custom` attribute of the item each one replaces, like
+     * `<child type="ID">` in GtkBuilder. They stay in place when the menu model or its items change.
+     */
+    customChildren?: Record<string, ReactNode> | null | undefined;
+};
+
+/** Props of a `Gtk.MenuButton` element. */
+type GtkMenuButtonProps = CustomChildrenProps & ChildrenProps;
 
 type AdwToggleGroupProps = ChildrenProps &
     (
@@ -519,6 +556,8 @@ export {
     type ActionMapProps,
     type MenuProps,
     type MenuItemProps,
+    type CustomChildrenProps,
+    type GtkMenuButtonProps,
     type AdwToggleGroupProps,
     type GtkShortcutControllerProps,
     type GtkCallbackActionElementProps,

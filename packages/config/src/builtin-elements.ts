@@ -38,6 +38,19 @@ const SINGLE_CHILD_TYPES: string[] = [
 
 const CONTENT_SETTER_TYPES: string[] = ["AdwBottomSheet", "AdwOverlaySplitView"];
 
+/** `GMenuItem` props written as the GtkBuilder menu attribute of the same name, keyed by prop. */
+const MENU_ITEM_ATTRIBUTES = {
+    custom: "custom",
+    hiddenWhen: "hidden-when",
+    accel: "accel",
+    icon: "icon",
+    verbIcon: "verb-icon",
+    useMarkup: "use-markup",
+    submenuAction: "submenu-action",
+    displayHint: "display-hint",
+    textDirection: "text-direction",
+} as const satisfies Record<string, string>;
+
 /**
  * Built-in GTK and Adwaita element metadata: base props, component wrappers, omitted properties,
  * and parent-created objects. Contains no behaviors and can be imported without loading GI bindings.
@@ -50,6 +63,19 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfigOptions> = {
     ...forTypes(["GtkHeaderBar", "GtkActionBar"], {
         props: internal("GtkHeaderBarProps"),
     }),
+    GtkMenuButton: {
+        props: internal("GtkMenuButtonProps"),
+        component: internal("createCustomChildrenComponent"),
+        omittedProps: ["child"],
+    },
+    GtkPopoverMenu: {
+        props: internal("CustomChildrenProps"),
+        component: internal("createCustomChildrenComponent"),
+    },
+    GtkPopoverMenuBar: {
+        props: internal("CustomChildrenProps"),
+        component: internal("createCustomChildrenComponent"),
+    },
     GtkWindow: {
         props: internal("ChildrenProps"),
         component: internal("createWindowComponent"),
@@ -149,7 +175,10 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfigOptions> = {
     },
     GMenuItem: {
         component: internal("createMenuItemComponent"),
-        props: { ...internal("MenuItemProps"), constructOnly: ["label", "action"] },
+        props: {
+            ...internal("MenuItemProps"),
+            constructOnly: ["label", "action", ...Object.keys(MENU_ITEM_ATTRIBUTES)],
+        },
     },
     GtkColumnView: {
         acceptedChildTypes: ["GtkColumnViewColumn"],
@@ -333,6 +362,6 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfigOptions> = {
     },
 };
 
-export { SINGLE_CHILD_TYPES, CONTENT_SETTER_TYPES, BUILTIN_ELEMENTS };
+export { SINGLE_CHILD_TYPES, CONTENT_SETTER_TYPES, MENU_ITEM_ATTRIBUTES, BUILTIN_ELEMENTS };
 
 export type { ElementConfigOptions, ElementPropsExport, ModuleExport } from "./config.ts";

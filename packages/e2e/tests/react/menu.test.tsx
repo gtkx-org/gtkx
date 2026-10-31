@@ -9,6 +9,7 @@ import {
     GtkApplication,
     GtkApplicationWindow,
     GtkBox,
+    GtkButton,
     GtkCallbackAction,
     GtkMenuButton,
     GtkPopoverMenu,
@@ -235,6 +236,31 @@ describe("render - Menu items", () => {
         expect(menu.getNItems()).toBe(0);
     });
 
+    it("moves keyed menu item elements", async () => {
+        const menuRef = createRef<Gio.Menu>();
+        const KeyedMenu = ({ labels }: { labels: string[] }) => (
+            <GtkPopoverMenu
+                menuModel={
+                    <GMenu ref={menuRef}>
+                        {labels.map((label) => (
+                            <GMenuItem key={label} label={label} action={`win.${label}`} />
+                        ))}
+                    </GMenu>
+                }
+            />
+        );
+        const { rerender } = await render(<KeyedMenu labels={["a", "b", "c"]} />);
+        await rerender(<KeyedMenu labels={["c", "a", "b"]} />);
+        const menu = menuRef.current;
+
+        if (menu === null) {
+            throw new Error("The menu was not mounted");
+        }
+
+        expect([itemLabel(menu, 0), itemLabel(menu, 1), itemLabel(menu, 2)]).toEqual(["c", "a", "b"]);
+        expect(itemAction(menu, 0)).toBe("win.c");
+    });
+
     it("rejects changing an inserted item snapshot without a new key", async () => {
         const { rerender } = await render(<ItemMenu label="Before" />);
 
@@ -361,6 +387,23 @@ describe("render - Menu change notification", () => {
         await rerender(<DeepMenuApp menuRef={ref} quitLabel="Quit" />);
         expect(notifications.count).toBe(0);
         expect(model.getNItems()).toBe(3);
+    });
+
+    it("replaces a changed entry without reinserting its siblings", async () => {
+        const ref = createRef<Gtk.PopoverMenu>();
+        const { rerender } = await render(<ItemListApp menuRef={ref} items={["Open", "Save", "Quit"]} />);
+        const model = requireModel(ref.current);
+        const changes: number[][] = [];
+        model.connect("items-changed", (position, removed, added) => {
+            changes.push([position, removed, added]);
+        });
+
+        await rerender(<ItemListApp menuRef={ref} items={["Open", "Save As", "Quit"]} />);
+        expect(changes).toEqual([
+            [1, 1, 0],
+            [1, 0, 1],
+        ]);
+        expect(itemLabel(model, 1)).toBe("Save As");
     });
 
     it("applies and notifies a change arriving after an unchanged rerender", async () => {
@@ -530,6 +573,149 @@ describe("render - PopoverMenu actions", () => {
         await rerender(<App typeString="s" />);
         expect(actionRef.current).toBe(action);
         await expect(rerender(<App typeString="i" />)).rejects.toThrow();
+    });
+});
+
+const itemString = (model: Gio.MenuModel, index: number, attribute: string): string | null => {
+    const [text] = model.getItemAttributeValue(index, attribute, null)?.dupString() ?? [null];
+
+    return typeof text === "string" ? text : null;
+};
+
+const requireWidget = <T extends Gtk.Widget>(ref: RefObject<T | null>): T => {
+    if (ref.current === null) {
+        throw new Error("Expected the widget to be mounted");
+    }
+
+    return ref.current;
+};
+
+const ThemeMenu = ({
+    menuRef,
+    selectorRef,
+    version,
+    hasThemeItem = true,
+}: {
+    menuRef: MenuRef;
+    selectorRef: RefObject<Gtk.Button | null>;
+    version: number;
+    hasThemeItem?: boolean;
+}) => (
+    <GtkPopoverMenu
+        ref={menuRef}
+        menuModel={
+            <GMenu
+                key={version}
+                items={[
+                    { section: hasThemeItem ? [{ custom: "theme" }] : [] },
+                    { label: "Zoom In", action: "win.zoom-in" },
+                ]}
+            />
+        }
+        customChildren={{ theme: <GtkButton ref={selectorRef} label="Theme" /> }}
+    />
+);
+
+describe("render - Menu custom children", () => {
+    it("writes GtkBuilder menu attributes onto items", async () => {
+        const model = await renderPopoverMenu([
+            { custom: "theme" },
+            {
+                label: "<b>Fullscreen</b>",
+                action: "win.fullscreen",
+                hiddenWhen: "action-disabled",
+                accel: "F11",
+                icon: "view-fullscreen-symbolic",
+                useMarkup: true,
+            },
+            { displayHint: "circular-buttons", section: [{ label: "Zoom In", verbIcon: "zoom-in-symbolic" }] },
+        ]);
+
+        expect(itemString(model, 0, "custom")).toBe("theme");
+        expect(itemString(model, 1, "hidden-when")).toBe("action-disabled");
+        expect(itemString(model, 1, "accel")).toBe("F11");
+        expect(itemString(model, 1, "icon")).toBe("view-fullscreen-symbolic");
+        expect(model.getItemAttributeValue(1, "use-markup", null)?.getBoolean()).toBe(true);
+        expect(itemString(model, 2, "display-hint")).toBe("circular-buttons");
+        expect(itemString(requireLink(sectionAt(model, 2)), 0, "verb-icon")).toBe("zoom-in-symbolic");
+    });
+
+    it("places a custom child in its item and keeps it across model changes", async () => {
+        const menuRef = createRef<Gtk.PopoverMenu>();
+        const selectorRef = createRef<Gtk.Button>();
+        const { rerender } = await render(<ThemeMenu menuRef={menuRef} selectorRef={selectorRef} version={0} />);
+        const menu = requireWidget(menuRef);
+        const selector = requireWidget(selectorRef);
+        expect(selector.isAncestor(menu)).toBe(true);
+
+        await rerender(<ThemeMenu menuRef={menuRef} selectorRef={selectorRef} version={1} />);
+        expect(requireWidget(selectorRef)).toBe(selector);
+        expect(selector.isAncestor(menu)).toBe(true);
+
+        await rerender(<ThemeMenu menuRef={menuRef} selectorRef={selectorRef} version={1} hasThemeItem={false} />);
+        expect(selector.getParent()).toBeNull();
+
+        await rerender(<ThemeMenu menuRef={menuRef} selectorRef={selectorRef} version={1} />);
+        expect(selector.isAncestor(menu)).toBe(true);
+    });
+
+    it("unparents a custom child that leaves customChildren", async () => {
+        const selectorRef = createRef<Gtk.Button>();
+        const Menu = ({ hasSelector }: { hasSelector: boolean }) => (
+            <GtkPopoverMenu
+                menuModel={<GMenu items={[{ custom: "theme" }]} />}
+                customChildren={hasSelector ? { theme: <GtkButton ref={selectorRef} label="Theme" /> } : {}}
+            />
+        );
+        const { rerender } = await render(<Menu hasSelector={true} />);
+        const selector = requireWidget(selectorRef);
+        expect(selector.getParent()).not.toBeNull();
+
+        await rerender(<Menu hasSelector={false} />);
+        expect(selector.getParent()).toBeNull();
+    });
+
+    it("moves a custom child into the popover a menu button builds for a new model", async () => {
+        const buttonRef = createRef<Gtk.MenuButton>();
+        const selectorRef = createRef<Gtk.Button>();
+        const Menu = ({ version }: { version: number }) => (
+            <GtkMenuButton
+                ref={buttonRef}
+                label="Menu"
+                menuModel={<GMenu key={version} items={[{ custom: "theme" }]} />}
+                customChildren={{ theme: <GtkButton ref={selectorRef} label="Theme" /> }}
+            />
+        );
+        const popover = (): Gtk.Popover => {
+            const current = requireWidget(buttonRef).getPopover();
+
+            if (current === null) {
+                throw new Error("Expected the menu button to build a popover");
+            }
+
+            return current;
+        };
+        const { rerender } = await render(<Menu version={0} />);
+        const first = popover();
+        expect(requireWidget(selectorRef).isAncestor(first)).toBe(true);
+
+        await rerender(<Menu version={1} />);
+        expect(popover()).not.toBe(first);
+        expect(requireWidget(selectorRef).isAncestor(popover())).toBe(true);
+    });
+
+    it("places a custom child in a menu bar submenu", async () => {
+        const barRef = createRef<Gtk.PopoverMenuBar>();
+        const selectorRef = createRef<Gtk.Button>();
+        await render(
+            <GtkPopoverMenuBar
+                ref={barRef}
+                menuModel={<GMenu items={[{ label: "View", submenu: [{ custom: "theme" }] }]} />}
+                customChildren={{ theme: <GtkButton ref={selectorRef} label="Theme" /> }}
+            />,
+        );
+
+        expect(requireWidget(selectorRef).isAncestor(requireWidget(barRef))).toBe(true);
     });
 });
 

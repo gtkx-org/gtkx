@@ -17,7 +17,14 @@ import type {
     ScaleMark,
     TabExtraDropTarget,
 } from "./prop-types.js";
-import { BUILTIN_ELEMENTS, CONTENT_SETTER_TYPES, SINGLE_CHILD_TYPES } from "@gtkx/config/elements";
+import {
+    BUILTIN_ELEMENTS,
+    CONTENT_SETTER_TYPES,
+    MENU_ITEM_ATTRIBUTES,
+    SINGLE_CHILD_TYPES,
+} from "@gtkx/config/elements";
+import type { SignalHandlerId } from "@gtkx/runtime";
+import { customChildId } from "./components/menu.js";
 import {
     applicationCreator,
     boxSlot,
@@ -255,6 +262,196 @@ const multiLayoutLayouts = slot<Adw.MultiLayoutView, Gtk.Widget>("layouts", Gtk.
     },
 });
 
+const menuAttributeValue = (value: string | boolean | null): GLib.Variant | null => {
+    if (value === null) {
+        return null;
+    }
+
+    return typeof value === "boolean" ? GLib.Variant.newBoolean(value) : GLib.Variant.newString(value);
+};
+
+const menuItemAttributes = Object.entries(MENU_ITEM_ATTRIBUTES).map(([prop, attribute]) =>
+    value<Gio.MenuItem, string | boolean | null>(prop, (item, next) => {
+        item.setAttributeValue(attribute, menuAttributeValue(next));
+    }),
+);
+
+type CustomChildHost = Gtk.PopoverMenu | Gtk.PopoverMenuBar | Gtk.MenuButton;
+type CustomChildMenu = Gtk.PopoverMenu | Gtk.PopoverMenuBar;
+
+type CustomChildren = {
+    ids: Map<Gtk.Widget, string>;
+    connections: [GObject.Object, SignalHandlerId][];
+    models: Set<Gio.MenuModel>;
+    isSyncing: boolean;
+};
+
+const MENU_LINKS = [Gio.MENU_LINK_SECTION, Gio.MENU_LINK_SUBMENU];
+const customChildren: WeakMap<CustomChildHost, CustomChildren> = new WeakMap();
+
+const customChildMenu = (host: CustomChildHost): CustomChildMenu | null => {
+    if (!(host instanceof Gtk.MenuButton)) {
+        return host;
+    }
+
+    const popover = host.getPopover();
+
+    return popover instanceof Gtk.PopoverMenu ? popover : null;
+};
+
+const linkedMenuModels = (model: Gio.MenuModel, index: number): Gio.MenuModel[] =>
+    MENU_LINKS.flatMap((link) => model.getItemLink(index, link) ?? []);
+
+const itemRange = (position: number, count: number): number[] =>
+    Array.from({ length: count }, (_, offset) => position + offset);
+
+const hasCustomItem = (model: Gio.MenuModel, position: number, count: number): boolean =>
+    itemRange(position, count).some(
+        (index) =>
+            model.getItemAttributeValue(index, MENU_ITEM_ATTRIBUTES.custom, null) !== null ||
+            linkedMenuModels(model, index).some((linked) => hasCustomItem(linked, 0, linked.getNItems())),
+    );
+
+const disconnectAll = (state: CustomChildren): void => {
+    for (const [object, handlerId] of state.connections.splice(0)) {
+        object.disconnect(handlerId);
+    }
+
+    state.models.clear();
+};
+
+const watchLinkedModels = (
+    host: CustomChildHost,
+    state: CustomChildren,
+    model: Gio.MenuModel,
+    position: number,
+    count: number,
+): void => {
+    for (const index of itemRange(position, count)) {
+        for (const linked of linkedMenuModels(model, index)) {
+            watchMenuModel(host, state, linked);
+        }
+    }
+};
+
+const watchMenuModel = (host: CustomChildHost, state: CustomChildren, model: Gio.MenuModel): void => {
+    if (state.models.has(model)) {
+        return;
+    }
+
+    state.models.add(model);
+    const handlerId = model.connect("items-changed", (position, _removed, added) => {
+        if (hasCustomItem(model, position, added)) {
+            syncCustomChildren(host, state);
+        } else {
+            watchLinkedModels(host, state, model, position, added);
+        }
+    });
+    state.connections.push([model, handlerId]);
+    watchLinkedModels(host, state, model, 0, model.getNItems());
+};
+
+/**
+ * TODO: GTK 4.22 never prunes its table of custom item slots: removing a `custom` item from a shown model frees
+ * the slot and its ID but leaves both in the table, and the next lookup reads freed memory. The `items-changed`
+ * handlers connected here run before GTK's own, so a change that adds custom items rebuilds the menu with a new
+ * table before GTK applies it. Remove once a GTK release prunes the table and GTKX requires it.
+ * https://gitlab.gnome.org/GNOME/gtk/-/blob/4.22.4/gtk/gtkmenusectionbox.c#L210
+ */
+const syncCustomChildren = (host: CustomChildHost, state: CustomChildren): void => {
+    if (state.isSyncing) {
+        return;
+    }
+
+    state.isSyncing = true;
+
+    try {
+        disconnectAll(state);
+
+        for (const child of state.ids.keys()) {
+            child.unparent();
+        }
+
+        rebuildCustomChildMenu(host, state);
+    } finally {
+        state.isSyncing = false;
+    }
+};
+
+const rebuildCustomChildMenu = (host: CustomChildHost, state: CustomChildren): void => {
+    const menu = customChildMenu(host);
+    const model = menu?.getMenuModel() ?? null;
+    const onReplaced = () => {
+        if (customChildMenu(host) !== menu || menu?.getMenuModel() !== model) {
+            syncCustomChildren(host, state);
+        }
+    };
+
+    state.connections.push([
+        host,
+        host instanceof Gtk.MenuButton
+            ? host.connect("notify::popover", onReplaced)
+            : host.connect("notify::menu-model", onReplaced),
+    ]);
+
+    if (menu === null) {
+        return;
+    }
+
+    if (menu !== host) {
+        state.connections.push([menu, menu.connect("notify::menu-model", onReplaced)]);
+    }
+
+    if (model === null) {
+        return;
+    }
+
+    applyWrite("menuModel", () => {
+        menu.setMenuModel(null);
+        watchMenuModel(host, state, model);
+        menu.setMenuModel(model);
+    });
+
+    for (const [child, id] of state.ids) {
+        menu.addChild(child, id);
+    }
+};
+
+const customChildSlots: ElementBehavior<CustomChildHost> = {
+    attach: (host, child, info) => {
+        const id = customChildId(info.slot);
+
+        if (id === null || !isWidget(child)) {
+            return;
+        }
+
+        const state = customChildren.getOrInsertComputed(host, () => ({
+            ids: new Map(),
+            connections: [],
+            models: new Set(),
+            isSyncing: false,
+        }));
+        state.ids.set(child, id);
+        syncCustomChildren(host, state);
+
+        return true;
+    },
+    detach: (host, child) => {
+        const state = customChildren.get(host);
+
+        if (state === undefined || !isWidget(child)) {
+            return;
+        }
+
+        state.ids.delete(child);
+        child.unparent();
+
+        if (state.ids.size === 0) {
+            disconnectAll(state);
+        }
+    },
+};
+
 const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     ...forTypes(
         SINGLE_CHILD_TYPES.filter((type) => type !== "GtkListBoxRow"),
@@ -278,7 +475,14 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
         behaviors: [
             setterSlot<Gtk.MenuButton, Gtk.Popover>("children", Gtk.Popover, "setPopover"),
             childSetterSlot<Gtk.MenuButton>(),
+            customChildSlots,
         ],
+    },
+    GtkPopoverMenu: {
+        behaviors: [customChildSlots],
+    },
+    GtkPopoverMenuBar: {
+        behaviors: [customChildSlots],
     },
     GtkCheckButton: {
         behaviors: [checkButtonUnderline, childSetterSlot<Gtk.CheckButton>()],
@@ -418,6 +622,15 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
                 attach: (menu, item, info) => {
                     menu.insertItem(info.index, item);
                 },
+                reorder: (menu, _item, info) => {
+                    menu.removeAll();
+
+                    for (const item of info.children) {
+                        if (item instanceof Gio.MenuItem) {
+                            menu.appendItem(item);
+                        }
+                    }
+                },
                 detach: (menu, _item, info) => {
                     menu.remove(info.index);
                 },
@@ -436,6 +649,7 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
                     item.setDetailedAction(action);
                 }
             }),
+            ...menuItemAttributes,
             setterSlot<Gio.MenuItem, Gio.MenuModel>("submenu", Gio.MenuModel, "setSubmenu"),
             setterSlot<Gio.MenuItem, Gio.MenuModel>("section", Gio.MenuModel, "setSection"),
         ],
