@@ -5,7 +5,8 @@
             "Bash(npx gtkx dev:*)",
             "Bash(npx gtkx build:*)",
             "Bash(npx tsc --noEmit)"<% if (shouldIncludeTesting) { %>,
-            "Bash(npx vitest run:*)"<% } %>
+            "Bash(npx vitest run:*)"<% } %><% for (const command of scriptCommands) { %>,
+            "Bash(<%= command %>:*)"<% } %>
         ],
         "deny": [],
         "ask": []

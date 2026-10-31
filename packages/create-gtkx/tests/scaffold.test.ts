@@ -67,6 +67,21 @@ describe("scaffold command", () => {
         expect(read(target, ".gitignore").split("\n")).toContain(".yarn/install-state.gz");
     });
 
+    it.each([
+        { packageManager: "pnpm", commands: ["pnpm dev", "pnpm test", "pnpm typecheck"] },
+        { packageManager: "npm", commands: ["npm run dev", "npm test", "npm run typecheck"] },
+        { packageManager: "yarn", commands: ["yarn dev", "yarn test", "yarn typecheck"] },
+    ])("lets coding agents run the $packageManager scripts of the project", async ({ packageManager, commands }) => {
+        using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-agents-"));
+        const target = join(directory.path, "example");
+        expect((await create(target, ["--package-manager", packageManager])).status).toBe(0);
+        const settings = JSON.parse(read(target, ".claude/settings.json")) as { permissions: { allow: string[] } };
+        expect(settings.permissions.allow).toEqual(
+            expect.arrayContaining(["Bash(npx gtkx dev:*)", ...commands.map((command) => `Bash(${command}:*)`)]),
+        );
+        expect(JSON.parse(read(target, ".mcp.json"))).toHaveProperty("mcpServers.gtkx.command", "npx");
+    });
+
     it("protects an occupied target and preserves unrelated files when overwriting", async () => {
         using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-existing-"));
         const target = join(directory.path, "example");

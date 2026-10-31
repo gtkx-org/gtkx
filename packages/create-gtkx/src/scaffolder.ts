@@ -99,6 +99,14 @@ const INSTALL_COMMAND: Record<PackageManager, string> = Object.fromEntries(
     PACKAGE_MANAGERS.map((manager) => [manager.value, manager.installCommand]),
 ) as Record<PackageManager, string>;
 
+const RUN_COMMAND: Record<PackageManager, string> = Object.fromEntries(
+    PACKAGE_MANAGERS.map((manager) => [manager.value, manager.runCommand]),
+) as Record<PackageManager, string>;
+
+const TEST_COMMAND: Record<PackageManager, string> = Object.fromEntries(
+    PACKAGE_MANAGERS.map((manager) => [manager.value, manager.testCommand]),
+) as Record<PackageManager, string>;
+
 const INHERITED_SCRIPT_POLICY_VARS = ["npm_config_allow_scripts", "npm_config_allow-scripts"];
 const LENIENT_PNPM_BUILDS_ENV = { pnpm_config_strict_dep_builds: "false" };
 const TESTING_TEMPLATES = new Set(["vitest.config.ts", "tests/app.test.tsx"]);
@@ -504,6 +512,17 @@ const destinationPath = (template: string, resolved: ResolvedOptions): string =>
         : scriptPath;
 };
 
+const scriptCommands = ({
+    packageManager,
+    isTypescript,
+    shouldIncludeTesting,
+}: Pick<ResolvedOptions, "packageManager" | "isTypescript" | "shouldIncludeTesting">): string[] => [
+    ...["dev", "build", "codegen", ...(isTypescript ? ["typecheck"] : [])].map(
+        (script) => `${RUN_COMMAND[packageManager]} ${script}`,
+    ),
+    ...(shouldIncludeTesting ? [TEST_COMMAND[packageManager]] : []),
+];
+
 const templateContext = (resolved: ResolvedOptions): TemplateContext => ({
     name: resolved.name,
     applicationId: resolved.applicationId,
@@ -514,6 +533,7 @@ const templateContext = (resolved: ResolvedOptions): TemplateContext => ({
     developerName: gitConfigValue("user.name") ?? resolved.displayName,
     developerEmail: gitConfigValue("user.email"),
     packageManager: resolved.packageManager,
+    scriptCommands: scriptCommands(resolved),
 });
 
 const assertSafeAncestor = (ancestor: string): void => {

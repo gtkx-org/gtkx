@@ -14,6 +14,7 @@ type TemplateContext = {
     developerName: string;
     developerEmail: string | null;
     packageManager: PackageManager;
+    scriptCommands: string[];
 };
 
 const TEMPLATES_DIR = join(import.meta.dirname, "templates");

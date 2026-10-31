@@ -6,6 +6,8 @@ const PACKAGE_MANAGERS = [
         label: "pnpm",
         devCommand: "pnpm dev",
         installCommand: "pnpm install",
+        runCommand: "pnpm",
+        testCommand: "pnpm test",
         isRecommended: true,
     },
     {
@@ -13,6 +15,8 @@ const PACKAGE_MANAGERS = [
         label: "npm",
         devCommand: "npm run dev",
         installCommand: "npm install",
+        runCommand: "npm run",
+        testCommand: "npm test",
         isRecommended: false,
     },
     {
@@ -20,6 +24,8 @@ const PACKAGE_MANAGERS = [
         label: "yarn",
         devCommand: "yarn dev",
         installCommand: "yarn install",
+        runCommand: "yarn",
+        testCommand: "yarn test",
         isRecommended: false,
     },
 ] as const;
