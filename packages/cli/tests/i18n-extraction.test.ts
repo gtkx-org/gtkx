@@ -200,6 +200,7 @@ function Local(t, Trans) {
         ["a dynamic context", `${T_IMPORT}\nt("key", { context: value });`],
         ["a source string method", `${T_IMPORT}\nt("key", { defaultValue() {} });`],
         ["one source string for both plural forms", `${T_IMPORT}\nt("{{count}} day", "{{count}} days", { count });`],
+        ["a count message without plural source strings", `${T_IMPORT}\nt("{{count}} installed", { count });`],
         [
             "a component alias",
             'import { Trans as Translation } from "@gtkx/i18n";\nconst element = <Translation i18nKey="key" />;',
@@ -212,6 +213,27 @@ function Local(t, Trans) {
         project.write("src/messages.tsx", source);
 
         await expect(extract(project.root)).rejects.toThrow();
+    });
+
+    it("keeps written-out plural forms that read the same in English for languages that need two", async () => {
+        using project = createProject();
+        project.write("po/LINGUAS", "it\n");
+        project.write(
+            "src/messages.ts",
+            `${T_IMPORT}\nt("{{count}} installed", { count, defaultValue_one: "{{count}} installed", defaultValue_other: "{{count}} installed" });`,
+        );
+
+        await extract(project.root);
+
+        expect(readMessages(project.root).map((message) => [message.msgid, message.msgid_plural])).toEqual([
+            ["{{count}} installed", "{{count}} installed"],
+        ]);
+        const italian = po.parse(readFileSync(join(project.root, "po/it.po")));
+        expect(italian.headers["Plural-Forms"]).toMatch(/nplurals=2/);
+        expect(italian.translations[""]?.["{{count}} installed"]).toMatchObject({
+            msgid_plural: "{{count}} installed",
+            msgstr: ["", ""],
+        });
     });
 
     it("keeps a locale's catalog before the application has any messages", async () => {

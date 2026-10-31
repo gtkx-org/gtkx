@@ -57,7 +57,9 @@ type TranslationReferences = {
     entryLocations: Map<string, SourcePoint[]>;
     locations: Map<string, SourcePoint>;
     masks: SourceMask[];
+    writtenPluralLocations: Set<string>;
 };
+type LocationTest = (location: SourceLocation) => boolean;
 type SourceMask = { end: number; start: number };
 type SourcePoint = { column: number; line: number };
 type TranslationCallKind = "alias" | "canonical";
@@ -326,7 +328,10 @@ const pairedVariants = (variants: PluralVariant[]): { one: PluralVariant; other:
     return { one, other };
 };
 
-const pluralMessage = ({ baseKey, namespace, variants }: PluralGroup): SourceMessage => {
+const pluralMessage = (
+    { baseKey, namespace, variants }: PluralGroup,
+    isWrittenOutPlural: LocationTest,
+): SourceMessage => {
     const { one, other } = pairedVariants(variants);
     const { context, msgid } = splitContext(baseKey);
     validateIdentity(context, msgid);
@@ -337,10 +342,10 @@ const pluralMessage = ({ baseKey, namespace, variants }: PluralGroup): SourceMes
         throw new Error("GNU gettext plural source strings cannot be empty");
     }
 
-    if (singular === plural) {
+    if (singular === plural && !variants.some((variant) => variant.locations.some(isWrittenOutPlural))) {
         throw new Error(
-            `Both plural forms of "${msgid}" are "${singular}". Pass distinct defaultValue_one and defaultValue_other ` +
-                "options; GTKX 2 removed the t(singular, plural, options) overload.",
+            `Both plural forms of "${msgid}" are "${singular}". Pass defaultValue_one and defaultValue_other options, ` +
+                "even when they read the same; GTKX 2 removed the t(singular, plural, options) overload.",
         );
     }
 
@@ -354,12 +359,12 @@ const pluralMessage = ({ baseKey, namespace, variants }: PluralGroup): SourceMes
     };
 };
 
-const pluralMessages = (root: string, entries: ExtractedKey[]): SourceMessage[] =>
+const pluralMessages = (root: string, entries: ExtractedKey[], isWrittenOutPlural: LocationTest): SourceMessage[] =>
     groupedPlurals(root, entries).map((group) =>
         atExtractedLocation(
             root,
             group.variants.flatMap((variant) => variant.locations),
-            () => pluralMessage(group),
+            () => pluralMessage(group, isWrittenOutPlural),
         ),
     );
 
@@ -369,7 +374,7 @@ const assertCardinal = (entry: ExtractedKey): void => {
     }
 };
 
-const sourceMessages = (root: string, entries: ExtractedKey[]): SourceMessage[] => {
+const sourceMessages = (root: string, entries: ExtractedKey[], isWrittenOutPlural: LocationTest): SourceMessage[] => {
     const points: ExtractedKey[] = [];
     const plurals: ExtractedKey[] = [];
 
@@ -392,7 +397,7 @@ const sourceMessages = (root: string, entries: ExtractedKey[]): SourceMessage[] 
 
     return [
         ...points.map((entry) => atExtractedLocation(root, entry.locations ?? [], () => pointMessage(entry))),
-        ...pluralMessages(root, plurals),
+        ...pluralMessages(root, plurals, isWrittenOutPlural),
     ];
 };
 
@@ -1003,6 +1008,15 @@ const registerEntryLocation = (
     references.entryLocations.set(key, locations);
 };
 
+const writesOutPluralForms = (call: types.CallExpression): boolean => {
+    const options = babelObjectExpression(call.arguments[1]);
+
+    return (
+        babelNamedProperty(options, "defaultValue_one") !== null &&
+        babelNamedProperty(options, "defaultValue_other") !== null
+    );
+};
+
 const registerCallReference = (
     callPath: NodePath<types.CallExpression>,
     references: TranslationReferences,
@@ -1012,6 +1026,10 @@ const registerCallReference = (
     const point = registerSourceLocation(firstArgument ?? callPath.node, references);
 
     registerEntryLocation(extractedEntryKey(callPath.node, keyPrefix), point, references);
+
+    if (point !== null && writesOutPluralForms(callPath.node)) {
+        references.writtenPluralLocations.add(sourceLocationKey(point.line, point.column));
+    }
 };
 
 const parserPlugins = (lang: ReturnType<typeof sourceLanguage>): ("decorators" | "jsx" | "typescript")[] => [
@@ -1176,6 +1194,7 @@ const translationReferences = (root: string, path: string, source: string): Tran
         entryLocations: new Map(),
         locations: new Map(),
         masks: [],
+        writtenPluralLocations: new Set(),
     };
     const lang = sourceLanguage(path);
 
@@ -1314,6 +1333,20 @@ const isRecognizedLocation = (
     const sourceReferences = references.get(extractedLocationFile(root, location.file));
 
     return sourceReferences?.locations.has(sourceLocationKey(location.line, location.column)) === true;
+};
+
+const isWrittenOutPluralLocation = (
+    root: string,
+    references: Map<string, TranslationReferences>,
+    location: SourceLocation,
+): boolean => {
+    if (location.line === undefined || location.column === undefined) {
+        return false;
+    }
+
+    const sourceReferences = references.get(extractedLocationFile(root, location.file));
+
+    return sourceReferences?.writtenPluralLocations.has(sourceLocationKey(location.line, location.column)) === true;
 };
 
 const recognizedKeyLocations = (
@@ -1658,7 +1691,9 @@ const findSourceMessages = async (root: string, sourceFiles: string[]): Promise<
         throw new Error(reports.join("\n") || "i18next extraction failed");
     }
 
-    return sourceMessages(root, extracted.values().toArray())
+    return sourceMessages(root, extracted.values().toArray(), (location) =>
+        isWrittenOutPluralLocation(root, references, location),
+    )
         .map((message) => inferLocations(message, sources))
         .toSorted(compareMessages);
 };

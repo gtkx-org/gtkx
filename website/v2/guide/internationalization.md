@@ -55,7 +55,7 @@ const label = t("{{count}} file", {
 });
 ```
 
-Gettext chooses the translated form using the catalog's plural rule. Counts must be non-negative safe integers. GTKX extraction requires both source forms and rejects i18next options that cannot be represented by this gettext entry, such as ordinal plurals and zero-specific defaults.
+Gettext chooses the translated form using the catalog's plural rule. Counts must be non-negative safe integers. GTKX extraction requires both source forms and rejects i18next options that cannot be represented by this gettext entry, such as ordinal plurals and zero-specific defaults. Write both options out even when the English forms read the same, as in `{{count}} installed`: the message still gets a plural entry, and languages such as Italian translate it with two forms.
 
 Use `context` when the same source text has different meanings:
 
