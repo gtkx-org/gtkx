@@ -1,4 +1,5 @@
 import { resolveExecutable } from "@gtkx/utils";
+import { spawnSync } from "node:child_process";
 import {
     existsSync,
     mkdirSync,
@@ -148,6 +149,19 @@ describe("headless Vitest integration", () => {
         expect(started).not.toEqual([]);
         for (const name of started)
             await expect.poll(() => existsSync(join(directory.path, `${name}.exited`))).toBe(true);
+    });
+
+    it("lets a worker with nothing left to run exit and tear down its display", () => {
+        const preload = new URL("../dist/worker-preload.js", import.meta.url).href;
+        const result = spawnSync(
+            process.execPath,
+            ["--import", preload, "--eval", "process.stdout.write(process.env.XDG_RUNTIME_DIR ?? '')"],
+            { encoding: "utf8", timeout: 20_000, killSignal: "SIGKILL" },
+        );
+        expect(result.signal).toBeNull();
+        expect(result.status).toBe(0);
+        expect(result.stdout).toMatch(/gtkx-xdg-/);
+        expect(existsSync(result.stdout)).toBe(false);
     });
 
     it("resolves its configuration without sway but fails to create the runner", async () => {
