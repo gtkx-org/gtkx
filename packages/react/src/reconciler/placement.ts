@@ -3,7 +3,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { createLogger, drain, indexBeforeOrEnd, type Logger } from "@gtkx/utils";
 import type { DetachInfo, ElementBehavior, PlaceInfo } from "./registry.js";
 import { applyAdoptedProps, discardAccessible, markDependentPropsDirty } from "./apply-props.js";
-import { holdsOneChild, slotAccepting } from "./behaviors.js";
+import { claimingSlot, holdsOneChild, slotAccepting } from "./behaviors.js";
 import { isKnownProp, propertiesAccepting, typeInfoFor } from "./metadata.js";
 import {
     DEFAULT_SLOT,
@@ -239,9 +239,15 @@ const unclaimedChildError = (parent: ElementNode, entry: PlacedChild): Error => 
 
 const runAttach = (parent: ElementNode, entry: PlacedChild, index: number, sibling: GObject.Object | null): void => {
     const ctx: AttachContext = { parent, entry, index, sibling };
+    const behaviors = typeInfoFor(parent.typeName).behaviors;
 
-    for (const behavior of typeInfoFor(parent.typeName).behaviors) {
-        if (didAttach(ctx, behavior)) {
+    for (const behavior of behaviors) {
+        const claiming =
+            slotAccepting(behavior, parent.object, entry.object) === entry.slot
+                ? claimingSlot(behaviors, entry.slot, parent.object, entry.object)
+                : undefined;
+
+        if (didAttach(ctx, claiming ?? behavior)) {
             return;
         }
     }

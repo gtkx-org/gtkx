@@ -65,7 +65,10 @@ type ElementPropsExport = NonNullable<ProjectElementConfig["props"]>;
 
 /** How one GLib type is rendered. */
 type ElementConfig<T extends GObject.Object = GObject.Object> = ProjectElementConfig & {
-    /** Behaviors bound to the type, consulted in registration order and inherited by its subtypes. */
+    /**
+     * Behaviors bound to the type, consulted in registration order and inherited by its subtypes. When several
+     * slots accept a child, the one declared for the child's most specific type places it.
+     */
     behaviors?: ElementBehavior<T>[];
 };
 

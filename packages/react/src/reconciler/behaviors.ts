@@ -1,7 +1,7 @@
 import type { Application } from "@gtkx/gi/gio";
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { getClassType, getInstanceType, TYPE_INVALID, typeIsA } from "@gtkx/runtime";
+import { getClassType, getInstanceType, TYPE_INVALID, typeIsA, typeParent } from "@gtkx/runtime";
 import { isDeepEqual } from "@gtkx/utils";
 import type { DetachInfo, ElementBehavior, PlaceInfo, Props } from "./registry.js";
 import { applyWrite } from "./signals.js";
@@ -65,9 +65,29 @@ const isChildInstance = <C extends GObject.Object>(child: GObject.Object, cls: C
     return type !== TYPE_INVALID && typeIsA(getInstanceType(child), type);
 };
 
-type SlotMatcher = { slotName: string; matches: (parent: GObject.Object, child: GObject.Object) => boolean };
+type SlotMatcher = {
+    slotName: string;
+    childClass: ChildClass<GObject.Object> | undefined;
+    matches: (parent: GObject.Object, child: GObject.Object) => boolean;
+};
 
 const slotMatchers: WeakMap<ElementBehavior, SlotMatcher> = new WeakMap();
+const childTypeDepths: WeakMap<SlotMatcher, number> = new WeakMap();
+
+const typeDepth = (type: bigint): number => {
+    let depth = 0;
+
+    for (let current = type; current !== TYPE_INVALID; current = typeParent(current)) {
+        depth++;
+    }
+
+    return depth;
+};
+
+const childTypeDepth = (matcher: SlotMatcher): number =>
+    childTypeDepths.getOrInsertComputed(matcher, () =>
+        matcher.childClass === undefined ? 0 : typeDepth(childClassType(matcher.childClass)),
+    );
 
 const slotAccepting = (
     behavior: ElementBehavior,
@@ -77,6 +97,31 @@ const slotAccepting = (
     const matcher = slotMatchers.get(behavior);
 
     return matcher?.matches(parent, child) === true ? matcher.slotName : undefined;
+};
+
+const claimingSlot = (
+    behaviors: readonly ElementBehavior[],
+    slotName: string,
+    parent: GObject.Object,
+    child: GObject.Object,
+): ElementBehavior | undefined => {
+    let claiming: ElementBehavior | undefined;
+    let claimingDepth = -1;
+
+    for (const behavior of behaviors) {
+        const matcher = slotMatchers.get(behavior);
+
+        if (
+            matcher?.slotName === slotName &&
+            matcher.matches(parent, child) &&
+            childTypeDepth(matcher) > claimingDepth
+        ) {
+            claiming = behavior;
+            claimingDepth = childTypeDepth(matcher);
+        }
+    }
+
+    return claiming;
 };
 
 const singleChildBehaviors: WeakSet<ElementBehavior> = new WeakSet();
@@ -120,7 +165,7 @@ const slot = <P extends GObject.Object, C extends GObject.Object>(
     const matches = (parent: GObject.Object, child: GObject.Object): child is C =>
         isChild(child) && accepts?.(parent as P) !== false;
     const behavior: ElementBehavior = { attach: slotAttach(slotName, matches, attach) };
-    slotMatchers.set(behavior, { slotName, matches });
+    slotMatchers.set(behavior, { slotName, childClass, matches });
 
     if (reorder !== undefined) {
         behavior.reorder = (object, child, info) => reorder(object as P, child as C, info) ?? true;
@@ -362,6 +407,7 @@ const applicationCreator = <P extends Application, C extends Props>(base: new (p
 export {
     applicationCreator,
     childMatcher,
+    claimingSlot,
     slot,
     value,
     list,

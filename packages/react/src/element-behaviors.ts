@@ -23,7 +23,7 @@ import {
     MENU_ITEM_ATTRIBUTES,
     SINGLE_CHILD_TYPES,
 } from "@gtkx/config/elements";
-import type { SignalHandlerId } from "@gtkx/runtime";
+import { onceSignal, type SignalHandlerId } from "@gtkx/runtime";
 import { customChildId } from "./components/menu.js";
 import {
     applicationCreator,
@@ -514,6 +514,65 @@ const customChildSlots: ElementBehavior<CustomChildHost> = {
         if (state.ids.size === 0) {
             disconnectAll(state);
         }
+    },
+};
+
+const openPopovers: WeakSet<Gtk.Popover> = new WeakSet();
+const waitingPopovers: WeakSet<Gtk.Popover> = new WeakSet();
+
+const showOnceOnScreen = (popover: Gtk.Popover): void => {
+    if (!openPopovers.has(popover) || waitingPopovers.has(popover)) {
+        return;
+    }
+
+    const parent = popover.getParent();
+    const clock = parent?.getMapped() === true ? parent.getFrameClock() : null;
+
+    if (parent === null) {
+        showAfter(popover, popover, "notify::parent");
+    } else if (clock === null) {
+        showAfter(popover, parent, "map");
+    } else if (clock.getFrameCounter() < 0n) {
+        showAfter(popover, clock, "after-paint");
+    } else {
+        applyWrite("visible", () => {
+            popover.setVisible(true);
+        });
+    }
+};
+
+const showAfterCommit = (popover: Gtk.Popover): void => {
+    queueMicrotask(() => {
+        showOnceOnScreen(popover);
+    });
+};
+
+function showAfter(popover: Gtk.Popover, instance: GObject.Object, signal: string): void {
+    waitingPopovers.add(popover);
+    onceSignal(instance, signal, () => {
+        waitingPopovers.delete(popover);
+        showAfterCommit(popover);
+    });
+}
+
+/**
+ * GTK can only show a popover whose parent's window is on screen: a popover shown without a parent crashes, and one
+ * shown before its window has painted a frame never gets placed by the compositor. A popover also closes when its
+ * content outgrows the size it was placed at, so it opens after the commit has applied its content.
+ */
+const popoverVisibility: ElementBehavior<Gtk.Popover> = {
+    update: (popover, prev, next) => {
+        if (next.visible === true && prev.visible !== true) {
+            openPopovers.add(popover);
+            showAfterCommit(popover);
+        } else if (next.visible !== true && prev.visible !== undefined) {
+            openPopovers.delete(popover);
+            applyWrite("visible", () => {
+                popover.setVisible(false);
+            });
+        }
+
+        return ["visible"];
     },
 };
 
@@ -1126,6 +1185,7 @@ const warnStaleOpenProp = <P extends Gtk.Widget>(
 const DISMISSAL_BEHAVIORS: Record<string, ElementConfig<never>> = {
     GtkPopover: {
         behaviors: [
+            popoverVisibility,
             warnStaleOpenProp<Gtk.Popover>(
                 "visible",
                 "closed",

@@ -49,12 +49,14 @@ const findContentKind = (type: bigint): ContentKind | null => {
 
 const contentKindFor = (type: bigint): ContentKind | null => contentKinds.getOrInsertComputed(type, findContentKind);
 
+const APPLIED_AFTER_CONSTRUCTION = new Set(["cssClasses", "visible"]);
+
 const constructInput = (info: TypeInfo, props: Props): Props =>
     pickBy(
         props,
         (value, name) =>
             value !== undefined &&
-            name !== "cssClasses" &&
+            !APPLIED_AFTER_CONSTRUCTION.has(name) &&
             (info.createProps.has(name) || info.constructOnly.has(name) || info.construct.has(name)),
     );
 

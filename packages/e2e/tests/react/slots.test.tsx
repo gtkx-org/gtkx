@@ -18,6 +18,7 @@ import {
     GtkHeaderBar,
     GtkLabel,
     GtkListBox,
+    GtkListBoxRow,
     GtkMenuButton,
     GtkOverlay,
     GtkPaned,
@@ -26,7 +27,7 @@ import {
 } from "@gtkx/jsx/gtk";
 import { createPortal, useApplication } from "@gtkx/react";
 import { act, render, screen, userEvent, waitFor, within } from "@gtkx/testing";
-import { createRef } from "react";
+import { createRef, useState } from "react";
 import { describe, expect, it } from "vitest";
 import { createApplicationRenderer } from "../helpers/application-render.js";
 
@@ -237,6 +238,28 @@ function OptionalPortal({ shouldShowPortal }: { shouldShowPortal: boolean }) {
     return <>{shouldShowPortal && createPortal(<GtkApplicationWindow title="Portal" />, app)}</>;
 }
 
+const CITIES = ["Paris", "Prague", "Rome"];
+function CitySearch() {
+    const [text, setText] = useState("");
+    const matches = CITIES.filter((city) => text !== "" && city.startsWith(text));
+
+    return (
+        <GtkEntry onChanged={(entry) => setText(entry.getText())}>
+            {matches.length > 0 && (
+                <GtkPopover visible autohide={false}>
+                    <GtkListBox>
+                        {matches.map((city) => (
+                            <GtkListBoxRow key={city}>
+                                <GtkLabel>{city}</GtkLabel>
+                            </GtkListBoxRow>
+                        ))}
+                    </GtkListBox>
+                </GtkPopover>
+            )}
+        </GtkEntry>
+    );
+}
+
 function TitledPortal({ title }: { title: string }) {
     const app = useApplication();
 
@@ -264,6 +287,48 @@ describe("render - Slot", () => {
         expect(popover.getParent()).toBe(entry);
         await unmount();
         expect(popover.getParent()).toBeNull();
+    });
+
+    it("attaches a popover to the button it is placed in", async () => {
+        const buttonRef = createRef<Gtk.Button>();
+        const popoverRef = createRef<Gtk.Popover>();
+        const app = (open: boolean) => (
+            <GtkButton ref={buttonRef} label="Details">
+                <GtkPopover ref={popoverRef} visible={open}>
+                    <GtkLabel>Button details</GtkLabel>
+                </GtkPopover>
+            </GtkButton>
+        );
+        const { rerender } = await render(app(false));
+        const button = mountedRef(buttonRef);
+
+        expect(mountedRef(popoverRef).getParent()).toBe(button);
+        await rerender(app(true));
+        expect(await screen.findByText("Button details")).toBeRooted();
+        expect(button.getLabel()).toBe("Details");
+    });
+
+    it("shows a popover rendered open once its window is on screen", async () => {
+        const popoverRef = createRef<Gtk.Popover>();
+        await render(
+            <GtkEntry>
+                <GtkPopover ref={popoverRef} visible>
+                    <GtkLabel>Suggestions</GtkLabel>
+                </GtkPopover>
+            </GtkEntry>,
+        );
+
+        expect(await screen.findByText("Suggestions")).toBeRooted();
+        await waitFor(() => {
+            expect(popoverRef.current?.getMapped()).toBe(true);
+        });
+    });
+
+    it("keeps a popover open when its content mounts with it", async () => {
+        await render(<CitySearch />);
+        await userEvent.type(await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX), "P");
+
+        expect(await screen.findByText("Prague")).toBeRooted();
     });
 
     it("sets slot child via ReactNode prop", async () => {
