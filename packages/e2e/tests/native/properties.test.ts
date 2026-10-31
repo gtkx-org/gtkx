@@ -281,6 +281,10 @@ test("property writes reject wrong types", () => {
         po.someObject = "str";
     }).toThrow();
     expect(() => {
+        // @ts-expect-error a function is not an object property value
+        po.someObject = () => null;
+    }).toThrow(/'some-object' to a function; the property holds values of type 'GObject'/);
+    expect(() => {
         // @ts-expect-error a plain object is not a Variant
         po.someVariant = {};
     }).toThrow();
@@ -318,6 +322,10 @@ test("construct-time property values reject wrong types", () => {
     expect(() => new GIMarshallingTests.PropertiesObject({ someBoxedStruct: {} })).toThrow();
     // @ts-expect-error a string is not an object property value
     expect(() => new GIMarshallingTests.PropertiesObject({ someObject: "o" })).toThrow();
+    // @ts-expect-error a function is not an object property value
+    expect(() => new GIMarshallingTests.PropertiesObject({ someObject: () => null })).toThrow(
+        /'some-object' to a function; the property holds values of type 'GObject'/,
+    );
     // @ts-expect-error a string is not an int property value
     expect(() => new Regress.TestObj({ int: "x" })).toThrow();
 });

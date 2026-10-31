@@ -14,6 +14,7 @@ import {
     coerceConstructPropertyValue,
     type ConstructProperty,
     constructPropertyFor,
+    convertPropertyValue,
     readableObjectPropertyFor,
     propertyValueType,
     writableObjectPropertyFor,
@@ -119,10 +120,12 @@ function constructPropertyForEntry(
 
     return {
         name: binding[0],
-        value: toValueForType(
-            binding[1],
-            coerceConstructPropertyValue(source.gtype, binding[0], value),
-            propertyValueType(source.gtype, binding[0]),
+        value: convertPropertyValue(source.wrapper, source.gtype, binding[0], value, () =>
+            toValueForType(
+                binding[1],
+                coerceConstructPropertyValue(source.gtype, binding[0], value),
+                propertyValueType(source.gtype, binding[0]),
+            ),
         ),
     };
 }
@@ -256,10 +259,9 @@ function setProperty(obj: object, propertyName: string, descriptorOrValue: unkno
         const property = writableObjectPropertyFor(obj, propertyName, descriptorOrValue, binding?.[1]);
         setObjectProperty(getHandle(obj), property.name, property.value);
     } else {
-        const value = toValueForType(
-            descriptorOrValue as Descriptor,
-            jsValue,
-            propertyValueType(getInstanceType(obj), propertyName),
+        const gtype = getInstanceType(obj);
+        const value = convertPropertyValue(obj, gtype, propertyName, jsValue, () =>
+            toValueForType(descriptorOrValue as Descriptor, jsValue, propertyValueType(gtype, propertyName)),
         );
         setObjectProperty(getHandle(obj), propertyName, value);
     }

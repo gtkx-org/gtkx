@@ -246,6 +246,10 @@ function describeValue(value: unknown): string {
         return JSON.stringify(value);
     }
 
+    if (typeof value === "function") {
+        return "a function";
+    }
+
     if (typeof value === "object" && value !== null) {
         return instanceClassName(value);
     }
@@ -380,6 +384,26 @@ function propertyCheckFor(gtype: bigint, name: string): PropertyCheck | null {
     const checks = propertyChecks.getOrInsertComputed(gtype, () => new Map<string, PropertyCheck | null>());
 
     return checks.getOrInsertComputed(name, () => lookupPropertyCheck(gtype, name));
+}
+
+/**
+ * Runs a descriptor conversion of a property value, reporting a value the property cannot hold by
+ * the object and property it was meant for rather than by the conversion that rejected it.
+ */
+function convertPropertyValue<T>(instance: object, gtype: bigint, name: string, value: unknown, convert: () => T): T {
+    try {
+        return convert();
+    } catch (error) {
+        const check = propertyCheckFor(gtype, name);
+
+        if (check === null || check.canHoldValue(value)) {
+            throw error;
+        }
+
+        throw new TypeError(propertyMessage(instance, check, refusalTail(check, value, holdsReason(check))), {
+            cause: error,
+        });
+    }
 }
 
 function propertyValueType(gtype: bigint, name: string): bigint {
@@ -941,6 +965,7 @@ export {
     isReadableProperty,
     coerceConstructPropertyValue,
     constructPropertyFor,
+    convertPropertyValue,
     GET_PROPERTY_VFUNC,
     makeGetProperty,
     makeSetProperty,
