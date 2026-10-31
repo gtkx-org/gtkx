@@ -45,6 +45,31 @@ describe("Unicode keyboard input", () => {
         expect(pressed).toEqual(expected);
         expect(released).toEqual(expected);
     });
+
+    it("presses and holds a character key named in braces", async () => {
+        const events: string[] = [];
+
+        await render(
+            <GtkBox
+                name="keys"
+                controllers={
+                    <GtkEventControllerKey
+                        onKeyPressed={(keyval) => {
+                            events.push(`+${String.fromCodePoint(Gdk.keyvalToUnicode(keyval))}`);
+
+                            return Gdk.EVENT_STOP;
+                        }}
+                        onKeyReleased={(keyval) => {
+                            events.push(`-${String.fromCodePoint(Gdk.keyvalToUnicode(keyval))}`);
+                        }}
+                    />
+                }
+            />,
+        );
+
+        await userEvent.keyboard(screen.getByName("keys"), "{=}{a>}b{/a}");
+        expect(events).toEqual(["+=", "-=", "+a", "+b", "-b", "-a"]);
+    });
 });
 
 describe("keyboard mnemonics", () => {

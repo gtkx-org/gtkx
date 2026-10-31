@@ -84,6 +84,12 @@ const tab = (widget: Gtk.Widget, options?: TabOptions): Promise<void> =>
         }
     });
 
+const characterKeyval = (keyName: string): number | undefined => {
+    const [character, ...rest] = Array.from(keyName);
+
+    return character === undefined || rest.length > 0 ? undefined : Gdk.unicodeToKeyval(character.codePointAt(0) ?? 0);
+};
+
 const parseKeyToken = (token: string): { keyval: number; isPress: boolean; isRelease: boolean } => {
     let keyName = token;
     let isPress = true;
@@ -97,7 +103,7 @@ const parseKeyToken = (token: string): { keyval: number; isPress: boolean; isRel
         isRelease = false;
     }
 
-    const keyval = KEY_MAP[keyName];
+    const keyval = KEY_MAP[keyName] ?? characterKeyval(keyName);
 
     if (keyval === undefined) {
         throw usageError(new Error(`Unknown key: {${keyName}}`));
