@@ -12,12 +12,13 @@ import {
     REQUEST_TIMEOUT_CODE,
     requestTimeoutError,
 } from "./protocol/errors.js";
-import { type AppInfo, RegisterParamsSchema } from "./protocol/schemas.js";
+import { type AppInfo, RECONNECT_DELAY_MS, RegisterParamsSchema } from "./protocol/schemas.js";
 
 type AppRegisteredEvent = CustomEvent<AppInfo>;
 type AppUnregisteredEvent = CustomEvent<string>;
 type PendingAppWait = { reject: (error: Error) => void };
 type ProjectMatcher = (projectRoot: string) => boolean;
+type AppMatcher = (info: AppInfo) => boolean;
 
 type RegisteredApp = {
     info: AppInfo;
@@ -56,6 +57,10 @@ class AppRouter extends EventTarget {
     private isDisposed = false;
 
     private isServerProject: ProjectMatcher;
+
+    private listeningSince: number | undefined;
+
+    private projectAppLeftAt: number | undefined;
 
     constructor(connections: AppConnections, isServerProject: ProjectMatcher) {
         super();
@@ -138,24 +143,98 @@ class AppRouter extends EventTarget {
             return;
         }
 
-        if (this.apps.get(applicationId)?.connection !== connection) {
+        const app = this.apps.get(applicationId);
+
+        if (app?.connection !== connection) {
             return;
         }
 
         this.apps.delete(applicationId);
+
+        if (this.isProjectApp(app.info)) {
+            this.projectAppLeftAt = Date.now();
+        }
+
         this.dispatchEvent(appUnregisteredEvent(applicationId));
     }
 
-    private async waitForRegistration(applicationId: string | undefined, timeout: number): Promise<AppInfo> {
+    private isFromServerProject(info: AppInfo): boolean {
+        return info.projectRoot !== undefined && this.isServerProject(info.projectRoot);
+    }
+
+    private isProjectApp(info: AppInfo): boolean {
+        return this.isFromServerProject(info) && !info.applicationId.endsWith(STORYBOOK_APPLICATION_ID_SUFFIX);
+    }
+
+    private projectAppWait(timeout: number): number {
+        const now = Date.now();
+        const waits = [0];
+
+        if (this.listeningSince !== undefined && now - this.listeningSince < RECONNECT_DELAY_MS) {
+            waits.push(this.listeningSince + 2 * RECONNECT_DELAY_MS - now);
+        }
+
+        if (this.projectAppLeftAt !== undefined && now - this.projectAppLeftAt < timeout) {
+            waits.push(timeout);
+        }
+
+        return Math.min(timeout, Math.max(...waits));
+    }
+
+    private async waitForDefaultApp(timeout: number): Promise<AppInfo> {
+        const startedAt = Date.now();
+        const projectApp = this.apps.values().find(({ info }) => this.isProjectApp(info));
+
+        if (projectApp !== undefined) {
+            return projectApp.info;
+        }
+
+        const projectWait = this.projectAppWait(timeout);
+
+        if (projectWait > 0) {
+            const info = await this.waitForRegistration((candidate) => this.isProjectApp(candidate), projectWait);
+
+            if (info !== undefined) {
+                return info;
+            }
+        }
+
+        const app = this.getDefaultApp();
+
+        if (app !== undefined) {
+            return app.info;
+        }
+
+        const remaining = Math.max(0, timeout - (Date.now() - startedAt));
+        const info = await this.waitForRegistration(() => true, remaining);
+
+        if (info === undefined) {
+            throw appWaitTimeoutError(timeout);
+        }
+
+        return info;
+    }
+
+    private async requireRegistration(matches: AppMatcher, timeout: number): Promise<AppInfo> {
+        const info = await this.waitForRegistration(matches, timeout);
+
+        if (info === undefined) {
+            throw appWaitTimeoutError(timeout);
+        }
+
+        return info;
+    }
+
+    private async waitForRegistration(matches: AppMatcher, timeout: number): Promise<AppInfo | undefined> {
         const controller = new AbortController();
-        const { promise, reject, resolve } = Promise.withResolvers<AppInfo>();
+        const { promise, reject, resolve } = Promise.withResolvers<AppInfo | undefined>();
         const rejectWait = (error: Error): void => {
             controller.abort();
             reject(error);
         };
         const pendingWait: PendingAppWait = { reject: rejectWait };
         const timeoutId = setTimeout(() => {
-            rejectWait(appWaitTimeoutError(timeout));
+            resolve(undefined);
         }, timeout);
 
         this.addEventListener(
@@ -163,7 +242,7 @@ class AppRouter extends EventTarget {
             (event) => {
                 const info = (event as AppRegisteredEvent).detail;
 
-                if (applicationId === undefined || info.applicationId === applicationId) {
+                if (matches(info)) {
                     resolve(info);
                 }
             },
@@ -187,25 +266,20 @@ class AppRouter extends EventTarget {
             .toArray();
     }
 
-    hasConnectedApps(): boolean {
-        return this.apps.size > 0;
-    }
-
     getDefaultApp(): RegisteredApp | undefined {
         const apps = [...this.apps.values()];
-        const fromServerProject = apps.filter(
-            ({ info }) => info.projectRoot !== undefined && this.isServerProject(info.projectRoot),
-        );
+        const fromServerProject = apps.filter(({ info }) => this.isFromServerProject(info));
 
-        return (
-            fromServerProject.find(({ info }) => !info.applicationId.endsWith(STORYBOOK_APPLICATION_ID_SUFFIX)) ??
-            fromServerProject[0] ??
-            apps[0]
-        );
+        return fromServerProject.find(({ info }) => this.isProjectApp(info)) ?? fromServerProject[0] ?? apps[0];
     }
 
     getProjectRoot(): string | undefined {
         return this.getDefaultApp()?.info.projectRoot;
+    }
+
+    /** Records that the app socket is accepting connections, which starts the apps' reconnect window. */
+    markListening(): void {
+        this.listeningSince = Date.now();
     }
 
     dispose(): void {
@@ -221,18 +295,40 @@ class AppRouter extends EventTarget {
         }
     }
 
+    /** Resolves with the first app registered, waiting up to `timeout` when none is. */
+    waitForAnyApp(timeout: number = DEFAULT_APP_TIMEOUT_MS): Promise<AppInfo> {
+        if (this.isDisposed) {
+            return Promise.reject(routerStoppedError());
+        }
+
+        const app = this.apps.values().next();
+
+        return app.done === true ? this.requireRegistration(() => true, timeout) : Promise.resolve(app.value.info);
+    }
+
+    /**
+     * Resolves with the app a request is routed to, waiting up to `timeout` for it to register. Without an
+     * application ID this is the project's app. While it is expected back the wait holds out for it instead
+     * of settling for its Storybook explorer or another project's app: for `timeout` after it disconnects,
+     * and, for a request in the first client reconnect interval after the socket starts listening, until
+     * two reconnect intervals after it started.
+     */
     waitForApp(applicationId?: string, timeout: number = DEFAULT_APP_TIMEOUT_MS): Promise<AppInfo> {
         if (this.isDisposed) {
             return Promise.reject(routerStoppedError());
         }
 
-        const app = applicationId === undefined ? this.getDefaultApp() : this.apps.get(applicationId);
+        if (applicationId === undefined) {
+            return this.waitForDefaultApp(timeout);
+        }
+
+        const app = this.apps.get(applicationId);
 
         if (app) {
             return Promise.resolve(app.info);
         }
 
-        return this.waitForRegistration(applicationId, timeout);
+        return this.requireRegistration((info) => info.applicationId === applicationId, timeout);
     }
 
     async sendToApp<T>(

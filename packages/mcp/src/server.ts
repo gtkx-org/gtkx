@@ -98,9 +98,13 @@ const INSTRUCTIONS =
 const APPLICATION_ID_DESCRIPTION =
     "Application ID to query. If not specified, uses the connected app from this server's project, or the first " +
     "connected app when none is from it. `gtkx storybook` registers its explorer under the project's ID with a " +
-    "`.Storybook` suffix; the project's app is preferred over it. The tool waits briefly for the requested app to register.";
+    "`.Storybook` suffix; the project's app is preferred over it, and while the project's app is reconnecting " +
+    "(when this server has just started, or after a `gtkx dev` restart) the tool waits for it instead of using " +
+    "the explorer. The tool waits briefly for the requested app to register.";
 
-const APP_TIMEOUT_DESCRIPTION = "Milliseconds to wait for the requested app to register (default: 10000).";
+const APP_TIMEOUT_DESCRIPTION =
+    "Milliseconds to wait for the requested app to register, or for the project's app to reconnect before " +
+    "falling back to another app (default: 10000).";
 
 const WIDGET_ID_DESCRIPTION =
     "Widget ID obtained from `gtkx_get_widget_tree`, `gtkx_query_widgets`, or `gtkx_get_widget_props`. " +
@@ -275,8 +279,8 @@ const listAppsTool = (appRouter: AppRouter): Tool =>
             "Returns the current snapshot immediately unless waitForApps is true.",
         inputSchema: listAppsShape,
         handler: async ({ waitForApps, timeout }) => {
-            if (waitForApps && !appRouter.hasConnectedApps()) {
-                await appRouter.waitForApp(undefined, timeout);
+            if (waitForApps) {
+                await appRouter.waitForAnyApp(timeout);
             }
 
             const apps = appRouter.getApps();
@@ -530,6 +534,8 @@ function startServer(state: ServerLifecycle): Promise<void> {
             if (wasStopRequested(state)) {
                 return;
             }
+
+            state.appRouter.markListening();
 
             log.info(`socket server listening on ${state.socketPath}`);
             if (state.transport === undefined) {

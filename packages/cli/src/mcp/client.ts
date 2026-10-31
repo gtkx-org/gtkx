@@ -4,6 +4,7 @@ import {
     isConnectionClosedError,
     type JSONRPCRequest,
     ProtocolConnection,
+    RECONNECT_DELAY_MS,
     resolveMcpSocketPath,
     type Result,
 } from "@gtkx/mcp/internal";
@@ -31,7 +32,6 @@ type ConnectSettler = {
     fail: (error: Error) => void;
 };
 
-const RECONNECT_DELAY_MS = 2000;
 const REGISTER_TIMEOUT_MS = 30_000;
 const DISCONNECT_ERROR_CODES: Set<string> = new Set(["ENOENT", "ECONNREFUSED", "EPIPE", "ECONNRESET"]);
 

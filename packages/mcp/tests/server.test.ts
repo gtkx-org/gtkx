@@ -6,6 +6,7 @@ import { existsSync, mkdtempDisposableSync, writeFileSync } from "node:fs";
 import { createConnection } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
 import { ProtocolConnection } from "../src/internal.js";
 import { createMcpServer, type CreateMcpServerOptions } from "../src/server.js";
@@ -97,7 +98,7 @@ describe("MCP server", () => {
         }
     });
 
-    it("routes requests without an application ID to the app from the server's project before its Storybook explorer", async () => {
+    it("routes requests without an application ID to the app from the server's project, waiting for it while it reconnects", async () => {
         await using session = await openServer();
         const other = mkdtempDisposableSync(join(tmpdir(), "gtkx-mcp-other-"));
         const apps = [
@@ -117,18 +118,33 @@ describe("MCP server", () => {
                 return connection;
             }),
         );
+        const registerProjectApp = async () => {
+            await delay(200);
+            await connections[2]?.send("app.register", { ...apps[2], pid: process.pid });
+        };
         try {
-            for (const [index, app] of apps.entries()) {
-                await connections[index]?.send("app.register", { ...app, pid: process.pid });
-            }
-            expect(await textResult(session.client, "gtkx_get_widget_tree")).toBe("org.gtkx.project");
+            await connections[0]?.send("app.register", { ...apps[0], pid: process.pid });
+            await connections[1]?.send("app.register", { ...apps[1], pid: process.pid });
+            const [atStartup] = await Promise.all([
+                textResult(session.client, "gtkx_get_widget_tree"),
+                registerProjectApp(),
+            ]);
+            expect(atStartup).toBe("org.gtkx.project");
             expect(await textResult(session.client, "gtkx_get_widget_tree", { applicationId: "org.gtkx.other" })).toBe(
                 "org.gtkx.other",
             );
             await connections[2]?.send("app.unregister");
-            expect(await textResult(session.client, "gtkx_get_widget_tree")).toBe("org.gtkx.project.Storybook");
+            const [afterRestart] = await Promise.all([
+                textResult(session.client, "gtkx_get_widget_tree"),
+                registerProjectApp(),
+            ]);
+            expect(afterRestart).toBe("org.gtkx.project");
+            await connections[2]?.send("app.unregister");
+            expect(await textResult(session.client, "gtkx_get_widget_tree", { appTimeout: 0 })).toBe(
+                "org.gtkx.project.Storybook",
+            );
             await connections[1]?.send("app.unregister");
-            expect(await textResult(session.client, "gtkx_get_widget_tree")).toBe("org.gtkx.other");
+            expect(await textResult(session.client, "gtkx_get_widget_tree", { appTimeout: 0 })).toBe("org.gtkx.other");
         } finally {
             await Promise.all(connections.map((connection) => connection.close()));
             other[Symbol.dispose]();

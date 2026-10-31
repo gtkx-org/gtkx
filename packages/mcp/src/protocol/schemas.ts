@@ -46,6 +46,8 @@ const widgetIdParams: z.ZodObject<{ widgetId: z.ZodString }> = z.object({
 });
 
 const DEFAULT_SUBTREE_DEPTH = 8;
+/** How long an app's MCP client waits after losing or failing to reach the server before connecting again. */
+const RECONNECT_DELAY_MS = 2000;
 const MAX_SUBTREE_WIDGETS = 30;
 
 const widgetPropsParams: z.ZodObject<{
@@ -127,6 +129,7 @@ const ServerRequestParamsSchemas: {
 
 export {
     DEFAULT_SUBTREE_DEPTH,
+    RECONNECT_DELAY_MS,
     MAX_SUBTREE_WIDGETS,
     RegisterParamsSchema,
     widgetIdParams,
