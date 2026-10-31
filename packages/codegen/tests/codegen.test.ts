@@ -483,6 +483,26 @@ describe("generated bindings", () => {
         expect(block("top")).not.toContain("deprecated");
     });
 
+    it("marks configured construct-only props as construct-only", async () => {
+        using directory = createProject();
+        const outDir = join(directory.path, "reference");
+        writeDocs({
+            ...(await readBuiltinElementsForDocs()),
+            libraries: ["Adw-1"],
+            girPath: resolveGirPath(undefined, directory.path),
+            resolveFrom: directory.path,
+            outDir,
+        });
+        const block = (namespace: string, page: string, name: string) =>
+            readFileSync(join(outDir, namespace, `${page}.md`), "utf8")
+                .split(`### \`${name}\``)[1]
+                ?.split("### ")[0];
+        expect(block("gio", "menu-item", "label")).toContain("construct-only");
+        expect(block("gio", "menu-item", "action")).toContain("construct-only");
+        expect(block("gio", "menu-item", "section")).not.toContain("construct-only");
+        expect(block("gtk", "shortcut-trigger", "accelerator")).toContain("construct-only");
+    });
+
     it("renders GIR enumeration member links with the emitted member names", async () => {
         using directory = createProject();
         const outDir = join(directory.path, "reference");

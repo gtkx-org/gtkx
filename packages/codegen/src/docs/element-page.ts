@@ -187,9 +187,10 @@ const hiddenPropertyAccessor = (setup: PropertyAccessorSetup, property: GirPrope
     return metadata !== undefined && field === undefined ? metadata : undefined;
 };
 
-const handwrittenPropMeta = (prop: HandwrittenProp, owner: MemberOwner): string =>
+const handwrittenPropMeta = (prop: HandwrittenProp, owner: MemberOwner, constructOnly: readonly string[]): string =>
     [
         `\`${prop.type}\``,
+        ...(constructOnly.includes(prop.name) ? ["construct-only"] : []),
         ...(owner.origin === undefined ? [] : [`from \`${owner.origin}\``]),
         ...(prop.deprecation === undefined ? [] : ["deprecated"]),
     ].join(" · ");
@@ -215,11 +216,21 @@ const acceptedChildTypesDoc = (context: ElementPageContext, owner: MemberOwner):
     );
 };
 
-const handwrittenPropEntry = (context: ElementPageContext, owner: MemberOwner, prop: HandwrittenProp): MetaDocEntry => {
+const handwrittenPropEntry = (
+    context: ElementPageContext,
+    owner: MemberOwner,
+    prop: HandwrittenProp,
+    constructOnly: readonly string[],
+): MetaDocEntry => {
     const childTypesDoc = prop.name === "children" ? acceptedChildTypesDoc(context, owner) : "";
     const doc = [prop.doc, childTypesDoc].filter((part) => part.length > 0).join("\n\n");
 
-    return { name: prop.name, meta: handwrittenPropMeta(prop, owner), doc, tags: { deprecated: prop.deprecation } };
+    return {
+        name: prop.name,
+        meta: handwrittenPropMeta(prop, owner, constructOnly),
+        doc,
+        tags: { deprecated: prop.deprecation },
+    };
 };
 
 const handwrittenPropEntries = (
@@ -243,7 +254,7 @@ const handwrittenPropEntries = (
         }
 
         seen.add(prop.name);
-        entries.push(handwrittenPropEntry(context, owner, prop));
+        entries.push(handwrittenPropEntry(context, owner, prop, declared.constructOnly ?? []));
     }
 
     return entries;
