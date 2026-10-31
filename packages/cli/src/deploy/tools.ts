@@ -54,6 +54,12 @@ const FLATPAK_NODE_GENERATOR_PNPM: DeployTool = {
     isPresent: () => hasGeneratorPnpmSupport(),
 };
 
+const MSGCAT: DeployTool = {
+    command: "msgcat",
+    purpose: "formats the catalog template",
+    isOptional: false,
+};
+
 const MSGFMT: DeployTool = {
     command: "msgfmt",
     purpose: "compiles the gettext catalogs and localized metadata",
@@ -164,6 +170,7 @@ export {
     FILE_TOOL,
     FLATPAK,
     FLATPAK_BUILDER,
+    MSGCAT,
     MSGFMT,
     MSGGREP,
     MSGINIT,

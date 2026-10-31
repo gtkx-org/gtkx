@@ -106,6 +106,52 @@ msgstr ""
         expect(statSync(path).mtimeMs).toBe(timestamp.getTime());
     });
 
+    it("writes the same catalog template from codegen and deploy", async () => {
+        using project = createProject({
+            applicationIcon: "icon.svg",
+            deploy: {
+                name: "Example",
+                summary: "Exercises the catalog template",
+                categories: ["Utility"],
+                keywords: ["example", "catalog"],
+                description: ["An example application whose metadata shares the template with its source messages."],
+                developer: { id: "dev.gtkx", name: "GTKX" },
+                license: "MIT",
+                node: { source: "host" },
+            },
+        });
+        project.write("LICENSE", "MIT License\n");
+        project.write(
+            "icon.svg",
+            '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64"/></svg>',
+        );
+        project.write("po/LINGUAS", "");
+        project.write(
+            "src/messages.ts",
+            `${T_IMPORT}\nt("Example");\nt("A source message long enough that GNU gettext wraps it across several lines of the template");`,
+        );
+        const path = join(project.root, "po/org.gtkx.example.pot");
+        const deploy = () =>
+            runCommand(createCommand(), {
+                rawArgs: ["deploy", "--cwd", project.root, "--print-manifests", "--target", "deb"],
+            });
+
+        await deploy();
+        const template = readFileSync(path, "utf8").replace(
+            /^"POT-Creation-Date: .*\\n"$/m,
+            '"POT-Creation-Date: 2000-01-01 00:00+0000\\n"',
+        );
+        project.write("po/org.gtkx.example.pot", template);
+        const timestamp = new Date("2000-01-01T00:00:00Z");
+        utimesSync(path, timestamp, timestamp);
+
+        await extract(project.root);
+        await deploy();
+
+        expect(readFileSync(path, "utf8")).toBe(template);
+        expect(statSync(path).mtimeMs).toBe(timestamp.getTime());
+    });
+
     it("preserves source strings, contexts, plurals, references, and native format flags", async () => {
         using project = createProject();
         project.write("po/LINGUAS", "");

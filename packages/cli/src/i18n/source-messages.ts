@@ -1889,6 +1889,14 @@ const joinMetadataFragment = (project: CatalogProject, output: string, fragment:
     });
 };
 
+const formatCatalogTemplate = (input: string, output: string): void => {
+    runCliTool({
+        tool: "msgcat",
+        args: ["--force-po", "--to-code=UTF-8", `--output-file=${output}`, input],
+        target: input,
+    });
+};
+
 const extractCatalogTemplate = ({
     project,
     messages,
@@ -1907,7 +1915,9 @@ const extractCatalogTemplate = ({
     }
 
     restoreCatalogReferences(source, sources);
-    replaceCatalogTemplate(source, output);
+    const template = join(workDir.path, "template.pot");
+    formatCatalogTemplate(source, template);
+    replaceCatalogTemplate(template, output);
 };
 
 const extractSourceCatalogTo = async (project: CatalogProject, paths: string[], output: string): Promise<void> => {

@@ -50,6 +50,7 @@ import {
     DESKTOP_FILE_VALIDATE,
     FLATPAK_NODE_GENERATOR,
     FLATPAK_NODE_GENERATOR_PNPM,
+    MSGCAT,
     MSGFMT,
     MSGGREP,
     MSGINIT,
@@ -279,10 +280,10 @@ const crossBuildToolsFor = (arches: DeployArchName[]): DeployTool[] =>
 
 const mutableCatalogTools = (project: CatalogProject): DeployTool[] => {
     if (project.catalogs.length === 0) {
-        return [MSGGREP, XGETTEXT];
+        return [MSGCAT, MSGGREP, XGETTEXT];
     }
 
-    return [MSGFMT, MSGGREP, ...(requiresCatalogInitialization(project) ? [MSGINIT] : []), MSGMERGE, XGETTEXT];
+    return [MSGCAT, MSGFMT, MSGGREP, ...(requiresCatalogInitialization(project) ? [MSGINIT] : []), MSGMERGE, XGETTEXT];
 };
 
 const catalogTools = (project: CatalogProject | null, shouldSkipBuild: boolean): DeployTool[] => {
