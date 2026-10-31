@@ -1245,6 +1245,12 @@ describe("CLI commands", () => {
             '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="blue"/></svg>',
         );
         await invoke(["deploy", "--cwd", project.root, "--print-manifests", "--target", "flatpak"]);
+        expect(readdirSync(join(project.root, "po")).toSorted()).toEqual([
+            "LINGUAS",
+            "POTFILES.in",
+            "fr.po",
+            "org.gtkx.example.pot",
+        ]);
         const manifest = parse(
             readFileSync(join(project.root, "build", process.arch, "targets/flatpak/org.gtkx.example.yml"), "utf8"),
         ) as { modules: { sources: Record<string, unknown>[]; "build-commands": string[] }[] };

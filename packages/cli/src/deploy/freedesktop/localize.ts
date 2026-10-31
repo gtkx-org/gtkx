@@ -17,15 +17,14 @@ type MergeRequest = {
 
 type MetadataTemplate = {
     contents: string;
-    path: string;
     relativePath: string;
 };
 
 const metadataTemplates = (project: CatalogProject, metadata: StagedMetadata): MetadataTemplate[] => {
     const template = (kind: MetadataTemplateKind, contents: string): MetadataTemplate => {
-        const { path, relativePath } = metadataTemplateFile(project, kind);
+        const { relativePath } = metadataTemplateFile(project, kind);
 
-        return { contents, path, relativePath };
+        return { contents, relativePath };
     };
 
     return [
@@ -94,18 +93,13 @@ const extractMetadataMessages = (metadata: StagedMetadata, project: CatalogProje
     }
 
     const templates = metadataTemplates(project, metadata);
-    const firstTemplate = templates[0];
-
-    if (firstTemplate === undefined) {
-        throw new Error("Cannot extract metadata messages without a generated template");
-    }
-
-    const metadataDir = dirname(firstTemplate.path);
-    mkdirSync(metadataDir, { recursive: true });
+    const workDir = mkdtempSync(join(tmpdir(), "gtkx-deploy-metadata-"));
 
     try {
         for (const template of templates) {
-            writeFileSync(template.path, template.contents);
+            const path = join(workDir, template.relativePath);
+            mkdirSync(dirname(path), { recursive: true });
+            writeFileSync(path, template.contents);
         }
 
         runCliTool({
@@ -119,12 +113,10 @@ const extractMetadataMessages = (metadata: StagedMetadata, project: CatalogProje
                 ...templates.map((template) => template.relativePath),
             ],
             target: potPath,
-            options: { cwd: project.root },
+            options: { cwd: workDir },
         });
     } finally {
-        for (const template of templates) {
-            rmSync(template.path, { force: true });
-        }
+        rmSync(workDir, { recursive: true, force: true });
     }
 };
 
