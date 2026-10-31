@@ -82,10 +82,10 @@ const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
     }),
     "widget.pressKeys": validated(ServerRequestParamsSchemas["widget.pressKeys"], async (ctx, params) => {
         const testing = await ctx.loadTesting();
-        const { registry } = ctx;
-        const widget =
-            params.widgetId === undefined ? focusedWidget(registry) : requireWidget(registry, params.widgetId);
-        await interact(ctx, testing, () => testing.userEvent.keyboard(widget, params.keys));
+        const widget = params.widgetId === undefined ? null : requireWidget(ctx.registry, params.widgetId);
+        await interact(ctx, testing, () =>
+            widget === null ? testing.userEvent.keyboard(params.keys) : testing.userEvent.keyboard(widget, params.keys),
+        );
 
         return { success: true };
     }),
@@ -202,17 +202,6 @@ const interact = async (ctx: HandlerContext, testing: TestingModule, run: () => 
 
         throw new Error(errors.map((error) => errorMessage(error)).join("\n"), { cause });
     }
-};
-
-const focusedWidget = (registry: WidgetRegistry): Gtk.Widget => {
-    const toplevels = registry.toplevels();
-    const window = toplevels.find((toplevel) => toplevel.isActive()) ?? toplevels[0];
-
-    if (!window) {
-        throw new Error("No windows are open to receive the keys");
-    }
-
-    return window.getFocus() ?? window;
 };
 
 const extractSignalArg = (arg: unknown): unknown => {

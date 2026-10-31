@@ -228,6 +228,22 @@ describe("keyboard focus movement", () => {
         expect(screen.getByName("third")).toHaveFocus();
     });
 
+    it("sends keys without a target to the focused widget of the active window", async () => {
+        const activated: string[] = [];
+
+        await render(
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                <GtkEntry name="first" onActivate={() => activated.push("first")} />
+                <GtkEntry name="second" onActivate={() => activated.push("second")} />
+            </GtkBox>,
+        );
+
+        await userEvent.click(screen.getByName("first"));
+        await userEvent.keyboard("{Tab}{Enter}");
+        expect(screen.getByName("second")).toHaveFocus();
+        expect(activated).toEqual(["second"]);
+    });
+
     it("sends later keys of one sequence to the widget focus moved to outside the target", async () => {
         const activated: string[] = [];
 

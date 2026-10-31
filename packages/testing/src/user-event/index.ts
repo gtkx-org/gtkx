@@ -1,10 +1,11 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { delay } from "../timers.js";
+import { usageError } from "../usage-error.js";
 import { requireWidget } from "../widget-target.js";
 import { scroll, slide } from "./adjustment.js";
 import { click, dblClick, tripleClick } from "./click.js";
 import { drag, dragAndDrop, drop, hover, longPress, rotate, swipe, unhover, zoom } from "./gesture.js";
-import { keyboard, tab } from "./keyboard.js";
+import { focusedKeyWidget, keyboard, tab } from "./keyboard.js";
 import { pointer, type PointerInput } from "./pointer.js";
 import { deselectOptions, selectOptions } from "./selection.js";
 import { createInitialState, type UserEventState } from "./state.js";
@@ -122,10 +123,32 @@ type UserEvent = {
         widget: Gtk.Accessible,
         ...args: Parameters<typeof scroll> extends [Gtk.Widget, ...infer Args] ? Args : never
     ) => Promise<void>;
-    /** Sends a key sequence through GTK's propagation chain. */
-    keyboard: (widget: Gtk.Accessible, input: string) => Promise<void>;
+    /**
+     * Sends a key sequence through GTK's propagation chain, to the given widget or, without one, to the focused widget
+     * of the active window.
+     */
+    keyboard: {
+        (input: string): Promise<void>;
+        (widget: Gtk.Accessible, input: string): Promise<void>;
+    };
     /** Applies a pointer token while preserving held-button state. */
     pointer: (widget: Gtk.Accessible, input: PointerInput) => Promise<void>;
+};
+
+type KeyboardArgs = [input: string] | [widget: Gtk.Accessible, input: string];
+
+const resolveKeyboardArgs = (args: KeyboardArgs): [Gtk.Widget, string] => {
+    const [first, input] = args;
+
+    if (typeof first === "string") {
+        return [focusedKeyWidget(), first];
+    }
+
+    if (input === undefined) {
+        throw usageError(new TypeError("Expected a key sequence after the widget"));
+    }
+
+    return [requireWidget(first), input];
 };
 
 const onWidget =
@@ -188,7 +211,7 @@ function createInstance(state: UserEventState, options: UserEventOptions): UserE
         dragAndDrop: after(onWidgetPair(dragAndDrop)),
         slide: after(onWidget(slide)),
         scroll: after(onWidget(scroll)),
-        keyboard: after(onWidget((widget: Gtk.Widget, input: string): Promise<void> => keyboard(state, widget, input))),
+        keyboard: after((...args: KeyboardArgs): Promise<void> => keyboard(state, ...resolveKeyboardArgs(args))),
         pointer: after(
             onWidget((widget: Gtk.Widget, input: PointerInput): Promise<void> => pointer(state, widget, input)),
         ),

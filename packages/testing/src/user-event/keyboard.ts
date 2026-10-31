@@ -8,6 +8,7 @@ import { fireEvent } from "../fire-event.js";
 import { ancestors, descendants } from "../traversal.js";
 import { wrapEvent } from "./event-wrapper.js";
 import { usageError } from "../usage-error.js";
+import { activeToplevel, mappedToplevels } from "../window-state.js";
 
 /** Options for `userEvent.tab`. */
 type TabOptions = {
@@ -595,4 +596,23 @@ const applyKeyActions = async (widget: Gtk.Widget, state: UserEventState, action
 const keyboard = (state: UserEventState, widget: Gtk.Widget, input: string): Promise<void> =>
     wrapEvent(widget, () => applyKeyActions(widget, state, parseKeyboardInput(input)));
 
-export { applyKeyActions, characterActions, keyboard, parseTypedInput, tab, type TabOptions, type TypedStep };
+const focusedKeyWidget = (): Gtk.Widget => {
+    const window = activeToplevel() ?? mappedToplevels()[0];
+
+    if (window === undefined) {
+        throw usageError(new Error("No window is open to receive the keys"));
+    }
+
+    return window.getFocus() ?? window;
+};
+
+export {
+    applyKeyActions,
+    characterActions,
+    focusedKeyWidget,
+    keyboard,
+    parseTypedInput,
+    tab,
+    type TabOptions,
+    type TypedStep,
+};
