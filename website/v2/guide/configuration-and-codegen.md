@@ -50,6 +50,30 @@ Development watches the selected config and the local dependencies it loads, inc
 
 Builds use the selected configuration throughout generation and bundling. `gtkx deploy --skip-build --config ...` rejects a bundle created with another config file or different production settings.
 
+### Environment files
+
+`gtkx dev`, `gtkx build` and Vitest read [Vite's environment files](https://vite.dev/guide/env-and-mode#env-files) from the project directory: `.env`, `.env.local`, `.env.[mode]` and `.env.[mode].local`, where the mode is `development` for `gtkx dev`, `production` for `gtkx build` and `test` for Vitest. Variables whose names start with `VITE_` appear on `import.meta.env`; the others stay out of the app.
+
+```ini [.env]
+VITE_REPORT_URL=https://reports.example.com/submit
+```
+
+```ts
+const endpoint = import.meta.env.VITE_REPORT_URL;
+```
+
+The scaffold's `src/gtkx-env.d.ts` types `import.meta.env`, including `MODE`, `DEV` and `PROD`. Declare your own variables there:
+
+```ts [src/gtkx-env.d.ts]
+interface ImportMetaEnv {
+    readonly VITE_REPORT_URL: string;
+}
+```
+
+Only the project directory is read. A `.env` at the root of a workspace does not apply to the apps in it, and no setting moves the directory; keep each app's files next to its `gtkx.config.ts`. Editing them restarts the app under `gtkx dev`.
+
+`gtkx build` writes each value into `dist/bundle.mjs` as text, so it ships in every package `gtkx deploy` makes and cannot be changed on an installed app. Never put secrets in these files: anyone with the package can read them. Read settings that differ per machine or per run from `process.env` when the app runs.
+
 ## What codegen emits
 
 Run generation after installing dependencies or changing the configured libraries:
