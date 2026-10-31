@@ -166,7 +166,7 @@ export default defineConfig({
 
 `gtkx codegen`, `gtkx storybook` and the Vitest plugin work in such a package, with or without the file, while `gtkx dev`, `gtkx build` and `gtkx deploy` stop because they need an `applicationId`. Codegen writes no `AGENTS.md`, `CLAUDE.md` or `.gtkx/reference` there unless `agents.rules` or `agents.reference` is `true`.
 
-Its `package.json` lists `@gtkx/react` and `react` as peer dependencies, with any other GTKX package its components import at runtime, such as `@gtkx/css` or `@gtkx/cairo`, so that it uses the app's copies. It does not depend on `@gtkx/gi` or `@gtkx/jsx`: each app generates those for the libraries it declares, so an app that uses the package lists in `libraries` every GIR library the package imports beyond Adwaita and GTK. For building and testing, add the peer packages, `@gtkx/cli`, `@gtkx/config`, `@gtkx/testing`, `@types/node`, `@types/react`, `typescript` and `vitest` as development dependencies.
+Its `package.json` lists `@gtkx/react` and `react` as peer dependencies, with any other GTKX package its components import at runtime, such as `@gtkx/css` or `@gtkx/cairo`, so that it uses the app's copies. It does not depend on `@gtkx/gi` or `@gtkx/jsx`: each app generates those for the libraries it declares, so an app that uses the package lists in `libraries` every GIR library the package imports beyond Adwaita and GTK. For building and testing, add the peer packages, `@gtkx/cli`, `@gtkx/config`, `@gtkx/runtime`, `@gtkx/testing`, `@types/node`, `@types/react`, `typescript` and `vitest` as development dependencies. Codegen links the generated bindings to the package's own `@gtkx/runtime`, so without it `gtkx codegen` and the tests stop with "Cannot resolve @gtkx/runtime" wherever the package manager does not hoist it, as pnpm does not.
 
 ```json [package.json]
 {
@@ -188,7 +188,7 @@ Its `package.json` lists `@gtkx/react` and `react` as peer dependencies, with an
 }
 ```
 
-Build it with `tsc` into JavaScript and declarations. Start from a scaffolded app's `tsconfig.json`, which resolves `@gtkx/gi` and `@gtkx/jsx` to the generated bindings, and add a build configuration that emits only the sources:
+Build it with `tsc` into JavaScript and declarations. Start from a scaffolded app's `tsconfig.json`, which resolves `@gtkx/gi` and `@gtkx/jsx` to the generated bindings, and copy its `src/gtkx-env.d.ts`, which types `import.meta.env` and asset imports such as `?icon`. Then add a build configuration that emits only the sources:
 
 ```json [tsconfig.build.json]
 {
@@ -217,7 +217,7 @@ export default defineConfig({
 });
 ```
 
-The tests run as the application `org.gtkx.Test`. To browse the components in the [Storybook explorer](/v2/guide/storybook), also add `@gtkx/storybook`, `@gtkx/runtime`, `@gtkx/css` and `@gtkx/cairo` as development dependencies and run `gtkx storybook`; the explorer registers as `org.gtkx.Library.Storybook`. In a workspace the package shares the bindings of the apps around it, under the rules described in [Monorepos](#monorepos).
+The tests run as the application `org.gtkx.Test`. To browse the components in the [Storybook explorer](/v2/guide/storybook), also add `@gtkx/storybook`, `@gtkx/css` and `@gtkx/cairo` as development dependencies and run `gtkx storybook`; the explorer registers as `org.gtkx.Library.Storybook`. In a workspace the package shares the bindings of the apps around it, under the rules described in [Monorepos](#monorepos).
 
 ## The JSX prop model
 
