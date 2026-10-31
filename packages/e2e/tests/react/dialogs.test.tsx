@@ -6,7 +6,7 @@ import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
-import { AdwAlertDialog, AdwDialog } from "@gtkx/jsx/adw";
+import { AdwAboutDialog, AdwAlertDialog, AdwDialog } from "@gtkx/jsx/adw";
 import {
     GtkAboutDialog,
     GtkApplication,
@@ -22,7 +22,7 @@ import { rootElement } from "@gtkx/react";
 import { act, render, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { renderChildren } from "@gtkx/testing/internal";
 import { createRef, useState } from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { expectDialogModalProp, expectDialogTitleTracksProp } from "../helpers/dialog-button-render.js";
 import { createAppIdFactory } from "../helpers/unique-name.js";
 
@@ -188,6 +188,30 @@ const renderDialogSlot = async (dialog: ReactElement): Promise<Gtk.ColorDialog |
     return ref.current?.getDialog() ?? null;
 };
 
+const observeStderr = () => {
+    const write = vi.spyOn(process.stderr, "write");
+    onTestFinished(() => {
+        write.mockRestore();
+    });
+
+    return write;
+};
+
+const ReopenableDialog = ({ dialogRef }: { dialogRef: RefObject<Adw.Dialog | null> }) => {
+    const [isOpen, setIsOpen] = useState(true);
+
+    return (
+        <InApp>
+            <GtkButton label="Open" onClicked={() => setIsOpen(true)} />
+            {isOpen && (
+                <AdwDialog ref={dialogRef} title="Reopenable" onClosed={() => setIsOpen(false)}>
+                    <GtkLabel>Body</GtkLabel>
+                </AdwDialog>
+            )}
+        </InApp>
+    );
+};
+
 const makeRgba = (red: number, green: number, blue: number, alpha: number): Gdk.RGBA =>
     Object.assign(new Gdk.RGBA(), { red, green, blue, alpha });
 
@@ -300,6 +324,84 @@ describe("Dialog - render prop and lifecycle", () => {
         const { rerender } = await render(<App isOpen={true} />);
         await rerender(<App isOpen={false} />);
         expect(closeCount).toBe(0);
+    });
+});
+
+describe("Dialog - close requests", () => {
+    it("stays open when Escape asks it to close and nothing handles onClosed, and warns", async () => {
+        const dialogRef = createRef<Adw.Dialog>();
+        const stderr = observeStderr();
+        await render(
+            <InApp>
+                <AdwDialog ref={dialogRef} title="Notice">
+                    <GtkLabel>Nothing to report.</GtkLabel>
+                </AdwDialog>
+            </InApp>,
+        );
+        const dialog = requireWidget(dialogRef, "Dialog");
+        await userEvent.keyboard(dialog, "{Escape}");
+        expect(dialog).toBeRooted();
+        await act(() => {
+            expect(dialog.close()).toBe(false);
+        });
+        expect(dialog).toBeRooted();
+        expect(stderr).toHaveBeenCalled();
+    });
+
+    it("keeps an alert dialog open after a response when nothing handles its responses", async () => {
+        const dialog = await renderAlertDialog();
+        await userEvent.click(within(dialog).getByRole(Gtk.AccessibleRole.BUTTON, { name: "OK" }));
+        expect(dialog).toBeRooted();
+    });
+
+    it("closes on Escape when onClosed stops rendering it, and opens again when rendered again", async () => {
+        const dialogRef = createRef<Adw.Dialog>();
+        await render(<ReopenableDialog dialogRef={dialogRef} />);
+        const first = requireWidget(dialogRef, "Dialog");
+        await userEvent.keyboard(first, "{Escape}");
+        await waitFor(() => {
+            expect(dialogRef.current).toBeNull();
+        });
+        expect(first).not.toBeRooted();
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Open" }));
+        expect(requireWidget(dialogRef, "Reopened dialog")).toBeRooted();
+    });
+
+    it("lets onCloseAttempt answer a dialog that cannot close", async () => {
+        const dialogRef = createRef<Adw.Dialog>();
+        let attempts = 0;
+        await render(
+            <InApp>
+                <AdwDialog
+                    ref={dialogRef}
+                    title="Unsaved"
+                    canClose={false}
+                    onCloseAttempt={() => {
+                        attempts += 1;
+                    }}
+                />
+            </InApp>,
+        );
+        const dialog = requireWidget(dialogRef, "Dialog");
+        await act(() => dialog.close());
+        expect(attempts).toBe(1);
+        expect(dialog).toBeRooted();
+    });
+
+    it("warns when onClosed runs but the app keeps rendering the dialog", async () => {
+        const dialogRef = createRef<Adw.AboutDialog>();
+        const stderr = observeStderr();
+        await render(
+            <InApp>
+                <AdwAboutDialog ref={dialogRef} applicationName="Notes" onClosed={() => undefined} />
+            </InApp>,
+        );
+        const dialog = requireWidget(dialogRef, "About dialog");
+        await act(() => dialog.close());
+        expect(dialog).not.toBeRooted();
+        await waitFor(() => {
+            expect(stderr).toHaveBeenCalled();
+        });
     });
 });
 

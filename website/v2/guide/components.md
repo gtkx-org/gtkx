@@ -124,6 +124,34 @@ The tutorial's [sidebar](/v2/tutorial/lists-and-the-sidebar#keeping-gtk4-and-the
 
 Ordinary `AdwTabView` children work for tabs that share their parent's React lifetime. For tabs the user opens, closes, reorders and drags between windows, use the [tab view navigator](/v2/guide/navigation#tab-view-navigator) from `@gtkx/navigation`, which keeps the open tabs in navigation state and follows native transfers.
 
+A JSX tab stays open while React renders it. To let the user close tabs with their close buttons, Ctrl+W or the overview, handle `onClosePage`: remove the page from the state that renders it and confirm the close. Without a handler, the close does nothing and GTKX warns in development; see [Closing](/v2/guide/modals-and-portals#closing).
+
+```tsx
+import { AdwTabPage, AdwTabView } from "@gtkx/jsx/adw";
+import { GtkLabel } from "@gtkx/jsx/gtk";
+import { useState } from "react";
+
+const Documents = () => {
+    const [titles, setTitles] = useState(["Notes", "Ideas"]);
+
+    return (
+        <AdwTabView
+            onClosePage={(page, view) => {
+                setTitles((current) => current.filter((title) => title !== page.getTitle()));
+                view.closePageFinish(page, true);
+                return true;
+            }}
+        >
+            {titles.map((title) => (
+                <AdwTabPage key={title} title={title}>
+                    <GtkLabel>{title}</GtkLabel>
+                </AdwTabPage>
+            ))}
+        </AdwTabView>
+    );
+};
+```
+
 ### Native tab configuration
 
 `AdwTabPage` accepts `pinned` in ordinary JSX. Updating it pins or unpins the page through its current native view. Reordering keyed JSX pages preserves the requested relative order within each pin group. Pinning a page follows libadwaita’s insertion order.

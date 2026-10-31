@@ -134,4 +134,4 @@ const disconnectAllHandlers = (target: SignalTarget): void => {
     target.handlers.clear();
 };
 
-export { applyMutation, applyWrite, connectHandler, disconnectHandler, disconnectAllHandlers };
+export { applyMutation, applyWrite, connectHandler, disconnectHandler, disconnectAllHandlers, isApplyingWrite };

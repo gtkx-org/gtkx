@@ -38,6 +38,9 @@ const SINGLE_CHILD_TYPES: string[] = [
 
 const CONTENT_SETTER_TYPES: string[] = ["AdwBottomSheet", "AdwOverlaySplitView"];
 
+const SINGLE_CHILD_CONFIG: ElementConfigOptions = { props: internal("ChildrenProps"), omittedProps: ["child"] };
+const CONTENT_SETTER_CONFIG: ElementConfigOptions = { props: internal("ChildrenProps"), omittedProps: ["content"] };
+
 /** `GMenuItem` props written as the GtkBuilder menu attribute of the same name, keyed by prop. */
 const MENU_ITEM_ATTRIBUTES = {
     custom: "custom",
@@ -56,10 +59,11 @@ const MENU_ITEM_ATTRIBUTES = {
  * and parent-created objects. Contains no behaviors and can be imported without loading GI bindings.
  */
 const BUILTIN_ELEMENTS: Record<string, ElementConfigOptions> = {
-    ...forTypes(SINGLE_CHILD_TYPES, {
-        props: internal("ChildrenProps"),
-        omittedProps: ["child"],
-    }),
+    ...forTypes(SINGLE_CHILD_TYPES, SINGLE_CHILD_CONFIG),
+    GtkSearchBar: {
+        ...SINGLE_CHILD_CONFIG,
+        component: internal("createSearchBarComponent"),
+    },
     ...forTypes(["GtkHeaderBar", "GtkActionBar"], {
         props: internal("GtkHeaderBarProps"),
     }),
@@ -231,10 +235,14 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfigOptions> = {
     GtkDragSource: {
         props: internal("GtkDragSourceProps"),
     },
-    ...forTypes(CONTENT_SETTER_TYPES, {
-        props: internal("ChildrenProps"),
-        omittedProps: ["content"],
-    }),
+    AdwBottomSheet: {
+        ...CONTENT_SETTER_CONFIG,
+        component: internal("createBottomSheetComponent"),
+    },
+    AdwOverlaySplitView: {
+        ...CONTENT_SETTER_CONFIG,
+        component: internal("createOverlaySplitViewComponent"),
+    },
     AdwClampScrollable: {
         props: internal("ChildrenProps"),
         omittedProps: ["child"],
@@ -251,6 +259,7 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfigOptions> = {
     },
     AdwTabOverview: {
         props: internal("AdwTabDropProps"),
+        component: internal("createTabOverviewComponent"),
         omittedProps: ["child"],
     },
     AdwAboutDialog: {
@@ -306,6 +315,7 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfigOptions> = {
     AdwNavigationSplitView: {
         acceptedChildTypes: ["AdwNavigationPage"],
         props: internal("ChildrenProps"),
+        component: internal("createNavigationSplitViewComponent"),
         omittedProps: ["content"],
     },
     AdwWrapBox: {

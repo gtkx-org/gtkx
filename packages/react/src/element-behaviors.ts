@@ -1,7 +1,7 @@
-import type * as GObject from "@gtkx/gi/gobject";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
+import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import type {
     ActionAccel,
@@ -49,7 +49,8 @@ import {
     forTypes,
     registerElements,
 } from "./reconciler/registry.js";
-import { applyWrite } from "./reconciler/signals.js";
+import { applyWrite, isApplyingWrite } from "./reconciler/signals.js";
+import { describeElement, isDevelopment, typeNameOf, warnDismissal, watchDismissal } from "./utils/dismissal.js";
 
 type AdwChildSetter =
     | Adw.Bin
@@ -147,6 +148,66 @@ const tabInsertionPosition = (view: Adw.TabView, info: PlaceInfo): number => {
 
 const selectedReplacedPages: WeakSet<Props> = new WeakSet();
 
+const renderedTabPages: WeakSet<Adw.TabPage> = new WeakSet();
+const refusingTabViews: WeakSet<Adw.TabView> = new WeakSet();
+
+const warnRefusedTabClose = (view: Adw.TabView, page: Adw.TabPage): void => {
+    if (!isDevelopment()) {
+        return;
+    }
+
+    warnDismissal(
+        "AdwTabView:close-page",
+        `<AdwTabPage title="${page.getTitle()}"> was asked to close, but its ${describeElement(view, {})} has no ` +
+            "onClosePage handler, so the tab stays. Remove the page from your state in onClosePage and call " +
+            "closePageFinish(page, true), or return false to let libadwaita close it.",
+    );
+};
+
+const hasOtherClosePageHandler = (view: Adw.TabView, ownHandler: SignalHandlerId): boolean => {
+    GObject.signalHandlerBlock(view, ownHandler);
+
+    try {
+        const match = GObject.SignalMatchType.ID | GObject.SignalMatchType.UNBLOCKED;
+
+        return (
+            GObject.signalHandlerFind(
+                view,
+                match,
+                GObject.signalLookup("close-page", Adw.TabView),
+                0,
+                null,
+                null,
+                null,
+            ) !== 0n
+        );
+    } finally {
+        GObject.signalHandlerUnblock(view, ownHandler);
+    }
+};
+
+const refuseUnansweredTabCloses = (view: Adw.TabView): void => {
+    if (refusingTabViews.has(view)) {
+        return;
+    }
+
+    refusingTabViews.add(view);
+    const ownHandler = view.connect("close-page", (page) => {
+        if (isApplyingWrite() || !renderedTabPages.has(page) || page.getPinned()) {
+            return false;
+        }
+
+        if (hasOtherClosePageHandler(view, ownHandler)) {
+            return false;
+        }
+
+        view.closePageFinish(page, false);
+        warnRefusedTabClose(view, page);
+
+        return true;
+    });
+};
+
 const attachTabPage = (view: Adw.TabView, child: Gtk.Widget, info: PlaceInfo): Adw.TabPage => {
     const page =
         info.props.parent instanceof Adw.TabPage
@@ -157,6 +218,9 @@ const attachTabPage = (view: Adw.TabView, child: Gtk.Widget, info: PlaceInfo): A
         view.setSelectedPage(page);
     }
 
+    refuseUnansweredTabCloses(view);
+    renderedTabPages.add(page);
+
     return page;
 };
 
@@ -165,6 +229,7 @@ const closeTabPage = (view: Adw.TabView, page: Adw.TabPage, props: Props): void 
         selectedReplacedPages.add(props);
     }
 
+    renderedTabPages.delete(page);
     view.setPagePinned(page, false);
     view.closePage(page);
 };
@@ -1031,6 +1096,56 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     },
 };
 
+const warnStaleOpenProp = <P extends Gtk.Widget>(
+    prop: string,
+    signal: string,
+    isOpen: (object: P) => boolean,
+    advice: string,
+): ElementBehavior<P> => {
+    const rendered: WeakMap<P, Props> = new WeakMap();
+    const check = (object: P): string | null =>
+        rendered.get(object)?.[prop] === true && !isOpen(object) && object.getParent() !== null
+            ? `${describeElement(object, {})} was dismissed by the user while the app still passes ${prop}={true}. ${advice}`
+            : null;
+
+    return {
+        update: (object, _prev, next) => {
+            if (isDevelopment()) {
+                if (!rendered.has(object)) {
+                    watchDismissal(object, signal, `${typeNameOf(object)}:${prop}`, () => check(object));
+                }
+
+                rendered.set(object, next);
+            }
+
+            return undefined;
+        },
+    };
+};
+
+const DISMISSAL_BEHAVIORS: Record<string, ElementConfig<never>> = {
+    GtkPopover: {
+        behaviors: [
+            warnStaleOpenProp<Gtk.Popover>(
+                "visible",
+                "closed",
+                (popover) => popover.getVisible(),
+                "Set it to false from onClosed.",
+            ),
+        ],
+    },
+    GtkMenuButton: {
+        behaviors: [
+            warnStaleOpenProp<Gtk.MenuButton>(
+                "active",
+                "notify::active",
+                (button) => button.getActive(),
+                "Set it to false from onNotifyActive.",
+            ),
+        ],
+    },
+};
+
 function layoutChild(parent: Gtk.Widget, child: Gtk.Widget): GObject.Object | null {
     return parent.getLayoutManager()?.getLayoutChild(child) ?? null;
 }
@@ -1056,3 +1171,4 @@ function getSlotId(name: string): string | null {
 
 registerElements(BUILTIN_ELEMENTS);
 registerElements(BUILTIN_BEHAVIORS);
+registerElements(DISMISSAL_BEHAVIORS);

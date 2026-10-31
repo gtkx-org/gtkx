@@ -6,8 +6,13 @@ export { createApplicationWindowComponent } from "./components/application-windo
 export { createApplicationComponent } from "./components/application.js";
 export { createConstraintLayoutComponent } from "./components/constraint-layout.js";
 export {
+    createBottomSheetComponent,
     createListBoxComponent,
+    createNavigationSplitViewComponent,
+    createOverlaySplitViewComponent,
+    createSearchBarComponent,
     createStackComponent,
+    createTabOverviewComponent,
     createViewStackComponent,
     createMultiLayoutViewComponent,
     createToggleGroupComponent,

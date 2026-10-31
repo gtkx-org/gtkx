@@ -3,13 +3,13 @@ import type { ReactNode, RefObject } from "react";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { AdwAlertDialog, AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
+import { AdwAlertDialog, AdwApplication, AdwApplicationWindow, AdwWindow } from "@gtkx/jsx/adw";
 import { GSimpleAction } from "@gtkx/jsx/gio";
 import { GtkApplication, GtkApplicationWindow, GtkBox, GtkLabel, GtkWindow } from "@gtkx/jsx/gtk";
 import { rootElement, useApplication, useParentWindow } from "@gtkx/react";
 import { act, render as baseRender, render, screen, waitFor } from "@gtkx/testing";
 import { Activity, createRef, Suspense, use, useEffect, useRef, useState } from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { createApplicationRenderer } from "../helpers/application-render.js";
 import { createAppIdFactory } from "../helpers/unique-name.js";
 
@@ -633,5 +633,81 @@ describe("visibility", () => {
         });
 
         expect(capturedWidget(held)).toBeVisible();
+    });
+});
+
+const observeStderr = () => {
+    const write = vi.spyOn(process.stderr, "write");
+    onTestFinished(() => {
+        write.mockRestore();
+    });
+
+    return write;
+};
+
+const SecondaryWindow = ({
+    secondaryRef,
+    isAnswered,
+}: {
+    secondaryRef: RefObject<Adw.Window | null>;
+    isAnswered: boolean;
+}) => {
+    const [isOpen, setIsOpen] = useState(true);
+
+    return (
+        <AdwWindow title="Main">
+            <GtkLabel>Main</GtkLabel>
+            {isOpen && (
+                <AdwWindow
+                    ref={secondaryRef}
+                    title="Statistics"
+                    onCloseRequest={
+                        isAnswered
+                            ? () => {
+                                  setIsOpen(false);
+                                  return false;
+                              }
+                            : undefined
+                    }
+                >
+                    <GtkLabel>Statistics</GtkLabel>
+                </AdwWindow>
+            )}
+        </AdwWindow>
+    );
+};
+
+const closeSecondary = async (secondaryRef: RefObject<Adw.Window | null>): Promise<Adw.Window> => {
+    const secondary = secondaryRef.current;
+
+    if (secondary === null) {
+        throw new Error("Expected the secondary window");
+    }
+
+    await act(() => {
+        secondary.close();
+    });
+    await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
+
+    return secondary;
+};
+
+describe("closing a window that is not the last one", () => {
+    it("closes it without a warning when onCloseRequest stops rendering it", async () => {
+        const secondaryRef = createRef<Adw.Window>();
+        const stderr = observeStderr();
+        await render(<SecondaryWindow secondaryRef={secondaryRef} isAnswered />, { container: rootElement });
+        await closeSecondary(secondaryRef);
+        expect(secondaryRef.current).toBeNull();
+        expect(stderr).not.toHaveBeenCalled();
+    });
+
+    it("closes it and warns when the app still renders it", async () => {
+        const secondaryRef = createRef<Adw.Window>();
+        const stderr = observeStderr();
+        await render(<SecondaryWindow secondaryRef={secondaryRef} isAnswered={false} />, { container: rootElement });
+        const secondary = await closeSecondary(secondaryRef);
+        expect(secondary.getVisible()).toBe(false);
+        expect(stderr).toHaveBeenCalled();
     });
 });

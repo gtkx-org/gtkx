@@ -42,24 +42,32 @@ An independent `createRoot(container)` owns its rendered children separately fro
 
 ## Windows
 
-Window elements present themselves on mount and destroy the native window on unmount. Render a secondary window conditionally:
+Window elements present themselves on mount and destroy the native window on unmount. Render a secondary window conditionally, and handle `onCloseRequest` by clearing the state that rendered it:
 
 ```tsx
 import { AdwApplicationWindow, AdwHeaderBar, AdwToolbarView } from "@gtkx/jsx/adw";
 
-const MirrorWindow = ({ open }: { open: boolean }) =>
+const MirrorWindow = ({ open, onClose }: { open: boolean; onClose: () => void }) =>
     open ? (
-        <AdwApplicationWindow title="Mirror" defaultWidth={400} defaultHeight={300}>
+        <AdwApplicationWindow
+            title="Mirror"
+            defaultWidth={400}
+            defaultHeight={300}
+            onCloseRequest={() => {
+                onClose();
+                return true;
+            }}
+        >
             <AdwToolbarView top={<AdwHeaderBar />} />
         </AdwApplicationWindow>
     ) : null;
 ```
 
+Returning `true` keeps the window until React unmounts it.
+
 `AdwApplicationWindow` registers with its nearest application element, normally `AdwApplication`; it requires that ancestor. To associate it with another window, pass `transientFor` explicitly.
 
 Plain `AdwWindow` and `GtkWindow` elements default `transientFor` to their nearest window ancestor. An explicit value selects another parent; `null` keeps the window independent.
-
-Handle `onCloseRequest` by clearing the state that rendered the secondary window.
 
 ## Dialogs
 
@@ -78,9 +86,9 @@ const Notice = ({ onClose }: { onClose: () => void }) => (
 
 Specialized dialogs keep the same lifecycle. Place their content in the supported JSX slots; for example, `AdwPreferencesDialog` takes `AdwPreferencesPage` children.
 
-Set `canClose={false}` when the dialog must stay open, and handle `onCloseAttempt` to respond to a close request. Unmounting still closes the dialog unconditionally.
+A dialog that nothing answers stays open: without `onClosed` or `onCloseAttempt`, its close button and Escape do nothing, and GTKX warns in development. Set `canClose={false}` when the dialog must stay open even though the app handles it, and handle `onCloseAttempt` to respond to a close request. Unmounting still closes the dialog unconditionally.
 
-`AdwAlertDialog` takes plain-text `heading` and `body` values and a declarative `responses` array. Its `onResponse` prop receives the selected response ID:
+`AdwAlertDialog` takes plain-text `heading` and `body` values and a declarative `responses` array. Its `onResponse` prop receives the selected response ID, and also answers the close request:
 
 ```tsx
 import * as Adw from "@gtkx/gi/adw";
@@ -115,6 +123,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { AdwAboutDialog } from "@gtkx/jsx/adw";
 
 <AdwAboutDialog
+    onClosed={() => setAboutOpen(false)}
     applicationName="Notes"
     links={[{ title: "User Guide", url: "https://example.org/guide" }]}
     creditSections={[{ name: "Design", people: ["Ada Lovelace"] }]}
@@ -125,6 +134,25 @@ import { AdwAboutDialog } from "@gtkx/jsx/adw";
 ```
 
 Libadwaita cannot remove these entries. Each array becomes fixed when its first nonempty value is applied; equivalent arrays on later renders are accepted. To change or remove a populated list, give the dialog a new React `key`. Legal-section copyright and custom license text accept Pango markup, so escape externally supplied plain text with `GLib.markupEscapeText`.
+
+## Closing
+
+What React renders is open. When the user closes something with a close button, Escape, a gesture or the window manager, GTKX treats it as a request that the app answers by changing what it renders. Until the app answers, GTKX keeps the native state matching React, using the strongest tool the toolkit offers:
+
+| Element                                                | Answered by                                                                         | When nothing answers                                                |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Adwaita dialogs                                        | `onClosed` or `onCloseAttempt`; `onResponse` on `AdwAlertDialog`                    | The dialog stays open.                                              |
+| `AdwTabPage` in a JSX `AdwTabView`                     | A `close-page` handler on the view: `onClosePage` or one connected with `useSignal` | The tab stays.                                                      |
+| `AdwBottomSheet` given `open`                          | `onNotifyOpen` or `onCloseAttempt`                                                  | The sheet stays open.                                               |
+| Open-state props                                       | Rendering the new value, usually from the matching `onNotify…` handler              | GTKX restores the value the app still passes before the next frame. |
+| Windows                                                | `onCloseRequest`                                                                    | The window closes, so the user can always close it.                 |
+| `visible` on `GtkPopover`, `active` on `GtkMenuButton` | `onClosed`, `onNotifyActive`                                                        | The popover closes.                                                 |
+
+The open-state props are `showSidebar` on `AdwOverlaySplitView`, `showContent` on `AdwNavigationSplitView`, `open` on `AdwBottomSheet` and `AdwTabOverview`, and `searchModeEnabled` on `GtkSearchBar`. Like a selection prop, each one is controlled when given; omitting it leaves it to the widget.
+
+In development, GTKX warns once per element type when nothing answers, naming the handler to add. It also warns when a window other than the last one, a dialog or a popover closed while the app still renders it open, as when an `onClosed` handler only logs.
+
+Returning `false` from `onClosePage` lets libadwaita close the tab without the app answering.
 
 ## Finding the parent window
 
