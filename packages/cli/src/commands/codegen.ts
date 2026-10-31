@@ -41,8 +41,8 @@ const codegen = defineCommand({
         }
 
         if (!args.force) {
-            const isRan = await ensureGenerated(cwd, { configFile: args.config, lockTimeoutMs });
-            info(isRan ? "codegen: regenerated stale bindings" : "codegen: bindings up to date");
+            const isRan = await ensureGenerated(cwd, { shouldAnnounce: true, configFile: args.config, lockTimeoutMs });
+            info(isRan ? "codegen: bindings generated" : "codegen: bindings up to date");
 
             return;
         }

@@ -1070,8 +1070,9 @@ describe("CLI commands", () => {
 
     it("generates upstream bindings and documentation through their command arguments", async () => {
         using project = createProject({ codegen: true, libraries: ["Gio-2.0"] });
-        expect(await invoke(["codegen", "--cwd", project.root])).toContain("codegen");
+        expect(await invoke(["codegen", "--cwd", project.root])).toContain("generated bindings missing");
         expect(existsSync(join(project.root, "node_modules/@gtkx/gi/gio/index.d.ts"))).toBe(true);
+        expect(await invoke(["codegen", "--cwd", project.root])).toContain("codegen: bindings up to date");
         await invoke(["docs", "--cwd", project.root, "--out", "reference"]);
         const files = readdirSync(join(project.root, "reference"), { recursive: true });
         expect(files.some((file) => file.toString().endsWith(".md"))).toBe(true);
