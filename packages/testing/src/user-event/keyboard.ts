@@ -432,6 +432,18 @@ const didDispatchApplicationAccels = (target: Gtk.Widget, keyval: number, modifi
     );
 };
 
+/**
+ * GTK has no public getter for a text view's own key controller (`gtk_text_view_get_key_controller` is private) and
+ * lists controllers newest first, so the last key controller is the one the text view added when it was created.
+ * Controllers that subclasses such as GtkSourceView add read the current event, which emulated keys lack.
+ */
+const isTextViewKeyController = (controller: Gtk.EventController, widget: Gtk.Widget): boolean =>
+    widget instanceof Gtk.TextView &&
+    controllersOn(widget)
+        .filter((current) => current instanceof Gtk.EventControllerKey)
+        .toArray()
+        .at(-1) === controller;
+
 const isKeyStopController = (controller: Gtk.EventController, widget: Gtk.Widget): controller is KeyStopController => {
     if (controller instanceof Gtk.ShortcutController) {
         return controller.getScope() === Gtk.ShortcutScope.LOCAL;
@@ -439,7 +451,7 @@ const isKeyStopController = (controller: Gtk.EventController, widget: Gtk.Widget
 
     return (
         controller instanceof Gtk.EventControllerKey &&
-        (widget instanceof Gtk.TextView ||
+        (isTextViewKeyController(controller, widget) ||
             widget instanceof Gtk.Popover ||
             widget instanceof Gtk.Button ||
             hasSignalListener(controller, KEY_CONTROLLER_SIGNALS))

@@ -1,5 +1,7 @@
 import * as Gdk from "@gtkx/gi/gdk";
+import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
+import * as GtkSource from "@gtkx/gi/gtksource";
 import { AdwDialog } from "@gtkx/jsx/adw";
 import {
     GtkBox,
@@ -14,6 +16,7 @@ import {
     GtkShortcutController,
     GtkTextView,
 } from "@gtkx/jsx/gtk";
+import { GtkSourceView } from "@gtkx/jsx/gtksource";
 import { render, screen, userEvent } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 
@@ -275,6 +278,26 @@ describe("keyboard focus movement", () => {
         const buffer = notes.getBuffer();
         expect(buffer.getText(buffer.getStartIter(), buffer.getEndIter(), true)).toBe("\t\n");
         expect(notes).toHaveFocus();
+    });
+
+    it("presses keys in a source view like a text view, without key controllers that need a real event", async () => {
+        const criticals: string[] = [];
+        const handlerId = GLib.logSetHandler("Gtk", GLib.LogLevelFlags.LEVEL_CRITICAL, (_domain, _level, message) => {
+            criticals.push(message);
+        });
+
+        try {
+            await render(<GtkSourceView name="code" />);
+            const code = screen.getByName("code", { as: GtkSource.View });
+            await userEvent.click(code);
+            await userEvent.keyboard(code, "{Tab}{Control>}{/Control}{Enter}");
+            const buffer = code.getBuffer();
+            expect(buffer.getText(buffer.getStartIter(), buffer.getEndIter(), true)).toBe("\t\n");
+        } finally {
+            GLib.logRemoveHandler("Gtk", handlerId);
+        }
+
+        expect(criticals).toEqual([]);
     });
 });
 

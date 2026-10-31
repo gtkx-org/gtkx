@@ -133,7 +133,7 @@ await user.click(saveButton);
 
 `type` inserts text into an editable widget and presses the keys named in braces, as in Testing Library's `user-event`, so `type(entry, "Ada{Enter}")` types "Ada" and then activates the entry. Type a literal `{` as <span v-pre>`{{`</span>.
 
-`keyboard` sends keys to the focused widget inside the given widget, or to the widget itself, through GTK's key bindings and key controllers. A key no widget handles reaches the window's bindings, so `{Tab}`, `{Shift>}{Tab}{/Shift}` and arrow keys move focus as they do on a keyboard.
+`keyboard` sends keys to the focused widget inside the given widget, or to the widget itself, through GTK's key bindings and key controllers. A key no widget handles reaches the window's bindings, so `{Tab}`, `{Shift>}{Tab}{/Shift}` and arrow keys move focus as they do on a keyboard. In a `GtkSourceView`, keys behave as in a plain `GtkTextView`: GtkSourceView's own key handling, such as auto-indent and bracket completion, needs a real key event and does not run. Key controllers the app adds still receive the keys.
 
 `selectOptions` and `deselectOptions` take positions rather than option values or labels, because GTK drop-downs, lists and grids have no option values: `selectOptions(dropDown, 2)` selects the third item, and an array selects several positions in a multiple-selection list.
 
