@@ -10,7 +10,7 @@ import {
     setConfigDependencies,
 } from "./config-dependencies.ts";
 import { isRecord, missingConfigFileError } from "./config-error.ts";
-import { type ConfigResolutionOptions, localConfigSourcePaths } from "./config-source.ts";
+import { configCandidatePaths, type ConfigResolutionOptions, localConfigSourcePaths } from "./config-source.ts";
 import { type Config, graduatedFutureKeys, resolveConfig, type ResolvedConfig, validateConfig } from "./config.ts";
 import { assertSupportedNodeVersion } from "./node-version.ts";
 
@@ -118,6 +118,11 @@ const selectedConfigFile = (root: string, configured: string | undefined): strin
     return relative(root, path);
 };
 
+const explicitConfigFile = (root: string, selected: string | undefined): string | undefined =>
+    selected !== undefined && configCandidatePaths(root).find((path) => existsSync(path)) === resolve(root, selected)
+        ? undefined
+        : selected;
+
 const warnGraduatedFuture = (config: unknown, root: string): void => {
     const keys = graduatedFutureKeys(config);
     const signature = keys.join(",");
@@ -140,6 +145,7 @@ const loadConfig = async (cwd: string, options: LoadConfigOptions = {}): Promise
     assertSupportedNodeVersion();
     const searched = resolve(cwd);
     const requestedConfigFile = selectedConfigFile(searched, options.configFile);
+    const c12ConfigFile = explicitConfigFile(searched, requestedConfigFile);
 
     const captured = await captureConfigDependencies(() =>
         loadConfigFile<Config>({
@@ -152,7 +158,7 @@ const loadConfig = async (cwd: string, options: LoadConfigOptions = {}): Promise
             context: { mode: options.mode },
             jiti: createConfigImporter(),
             resolve: rejectMissingLocalConfig,
-            ...(requestedConfigFile !== undefined && { configFile: requestedConfigFile }),
+            ...(c12ConfigFile !== undefined && { configFile: c12ConfigFile }),
         }),
     );
     const result = captured.value;

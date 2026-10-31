@@ -37,7 +37,7 @@ describe("project configuration", () => {
         mkdirSync(join(directory.path, "config"));
         mkdirSync(join(directory.path, "shared"));
         writeFileSync(join(directory.path, "gtkx.config.ts"), 'export default { extends: "./shared" };');
-        writeFileSync(join(directory.path, "shared/gtkx.config.ts"), config("org.gtkx.default"));
+        writeFileSync(join(directory.path, "shared/gtkx.config.json"), '{"applicationId":"org.gtkx.default","codegen":false}');
         writeFileSync(
             join(directory.path, "config/custom.ts"),
             `export default {
@@ -48,6 +48,9 @@ describe("project configuration", () => {
         const selected = await loadConfig(directory.path, { configFile: "config/custom.ts", mode: "development" });
         expect(selected.config.applicationId).toBe("org.gtkx.development");
         expect((await loadConfig(directory.path)).config.applicationId).toBe("org.gtkx.default");
+        expect((await loadConfig(directory.path, { configFile: "gtkx.config.ts" })).config.applicationId).toBe(
+            "org.gtkx.default",
+        );
     });
 
     it("keeps the production application ID as the translation domain in every environment", () => {
