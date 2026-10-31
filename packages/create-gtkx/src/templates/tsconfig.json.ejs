@@ -16,8 +16,8 @@
         }
     },
 <% if (shouldIncludeTesting) { -%>
-    "include": ["src/**/*", "tests/**/*"]
+    "include": ["src/**/*", "tests/**/*", "gtkx.config.ts", "vitest.config.ts"]
 <% } else { -%>
-    "include": ["src/**/*"]
+    "include": ["src/**/*", "gtkx.config.ts"]
 <% } -%>
 }

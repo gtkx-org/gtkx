@@ -164,6 +164,16 @@ describe("scaffold command", () => {
         expect(output).not.toContain('"esbuild": true');
     });
 
+    it("typechecks the configuration files of a TypeScript project", async () => {
+        using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-tsconfig-"));
+        const target = join(directory.path, "example");
+        expect((await create(target, ["--typescript", "--vitest"])).status).toBe(0);
+        expect(JSON.parse(read(target, "tsconfig.json"))).toHaveProperty(
+            "include",
+            expect.arrayContaining(["gtkx.config.ts", "vitest.config.ts"]),
+        );
+    });
+
     it("leaves the linker and build scripts of an app in a Yarn workspace to the workspace root", async () => {
         using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-yarn-workspace-"));
         const root = JSON.stringify({
