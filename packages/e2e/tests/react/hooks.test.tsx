@@ -330,6 +330,19 @@ describe("useProperty (registered classes)", () => {
             expect(result.current).toEqual({ caption: "outside", label: "Hello" });
         });
     });
+
+    it("reads installed properties passed to the constructor", async () => {
+        const gauge = new Gauge({ caption: "inside", label: "Hello" });
+        const reading = new Reading({ celsius: 21, dewPoint: 14 });
+
+        const { result } = await renderHook(() => ({
+            caption: useProperty(gauge, "caption"),
+            celsius: useProperty(reading, "celsius"),
+            dewPoint: useProperty(reading, "dewPoint"),
+        }));
+
+        expect(result.current).toEqual({ caption: "inside", celsius: 21, dewPoint: 14 });
+    });
 });
 
 describe("useProperty (registration)", () => {
