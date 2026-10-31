@@ -1,6 +1,7 @@
 type IniGroup = {
     name: string;
     entries: [string, string | string[]][];
+    comments?: Partial<Record<string, string>>;
 };
 
 const FORBIDDEN_VALUE_CHARACTERS = /[\n\r]/;
@@ -27,9 +28,15 @@ const renderValue = (key: string, value: string | string[]): string =>
 
 const renderEntry = ([key, value]: [string, string | string[]]): string => `${key}=${renderValue(key, value)}`;
 
+const renderCommentedEntry = (group: IniGroup, entry: [string, string | string[]]): string[] => {
+    const comment = group.comments?.[entry[0]];
+
+    return comment === undefined ? [renderEntry(entry)] : [`# ${comment}`, renderEntry(entry)];
+};
+
 const renderGroup = (group: IniGroup): string[] => [
     `[${group.name}]`,
-    ...group.entries.map((entry) => renderEntry(entry)),
+    ...group.entries.flatMap((entry) => renderCommentedEntry(group, entry)),
 ];
 
 const renderIni = (groups: IniGroup[]): string =>

@@ -4,6 +4,8 @@ import { type IniGroup, renderIni } from "./ini.js";
 type Entries = [string, string | string[]][];
 
 const DESKTOP_ENTRY_GROUP = "Desktop Entry";
+const KEYWORDS_TRANSLATOR_COMMENT =
+    "Translators: Search terms to find this application. Do NOT translate or localize the semicolons! The list MUST also end with a semicolon!";
 const EXEC_QUOTED_CHARACTERS = /["`$\\]/g;
 const EXEC_RESERVED_CHARACTERS = /[\s"'\\><~|&;$*?#()`]/;
 
@@ -91,6 +93,7 @@ const renderDesktopEntry = (settings: DeploySettings): string => {
             [...baseEntries(settings), ...actionEntries(settings), ...activationEntries(settings)],
             Object.entries(settings.desktopEntry),
         ),
+        comments: { Keywords: KEYWORDS_TRANSLATOR_COMMENT },
     };
 
     return renderIni([main, ...settings.desktopActions.map((action) => actionGroup(settings, action))]);

@@ -1272,6 +1272,7 @@ describe("CLI commands", () => {
                 name: "CLI Example",
                 summary: "Exercises the source Flatpak manifest",
                 categories: ["Utility"],
+                keywords: ["example", "manifest"],
                 description: ["An example application used to exercise a Flathub source manifest."],
                 developer: { id: "dev.gtkx", name: "GTKX", email: "hello@gtkx.dev" },
                 license: "MIT",
@@ -1299,6 +1300,9 @@ describe("CLI commands", () => {
             "fr.po",
             "org.gtkx.example.pot",
         ]);
+        expect(readFileSync(join(project.root, "po/org.gtkx.example.pot"), "utf8")).toMatch(
+            /^#\. Translators: .* Do NOT translate or localize the semicolons! .*\n#: .*\nmsgid "example;manifest;"$/m,
+        );
         const manifest = parse(
             readFileSync(join(project.root, "build", process.arch, "targets/flatpak/org.gtkx.example.yml"), "utf8"),
         ) as { modules: { sources: Record<string, unknown>[]; "build-commands": string[] }[] };
