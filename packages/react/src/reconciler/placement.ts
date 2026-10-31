@@ -260,7 +260,7 @@ const runAttach = (parent: ElementNode, entry: PlacedChild, index: number, sibli
 };
 
 const attachEntry = (parent: ElementNode, entry: PlacedChild, index: number, sibling: GObject.Object | null): void => {
-    applyPlacement(() => {
+    applyPlacement(parent, () => {
         runAttach(parent, entry, index, sibling);
     });
 };
@@ -293,7 +293,7 @@ const detachEntry = (
 ): void => {
     const info = detachInfo(entry, index, remaining);
 
-    applyPlacement(() => {
+    applyPlacement(parent, () => {
         runDetach(parent, entry, info);
     });
 
@@ -337,7 +337,7 @@ const moveEntry = (parent: ElementNode, entry: PlacedChild, entries: PlacedChild
         return;
     }
 
-    const claim = applyPlacement(() =>
+    const claim = applyPlacement(parent, () =>
         reorder(parent.object, entry.object, placeInfo(parent, entry, index, siblingAt(entries, index))),
     );
     adoptedFrom(parent, entry, behavior, claim);

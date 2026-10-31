@@ -3,7 +3,7 @@ import { getSignalBaseName, offSignal, onSignal, type SignalHandler } from "@gtk
 import { getObjectProperty } from "@gtkx/runtime/internal";
 import { toCamelIdentifier } from "@gtkx/utils";
 import type { Dispatch, HandlerRecord, SignalTarget } from "./node.js";
-import { type TypeInfo, typeInfoFor } from "./metadata.js";
+import { isReadableProperty, type TypeInfo, typeInfoFor } from "./metadata.js";
 
 type NotifyBinding = { property: string | null };
 
@@ -14,6 +14,7 @@ const NOTIFY_DETAIL_PREFIX = "notify::";
 const CHILD_PLACEMENT = Symbol("child placement");
 const pendingWrites: PendingWrite[] = [];
 const queuedNotifies: Map<HandlerRecord, Map<string, () => unknown>> = new Map();
+const valuesBeforePlacement: Map<HandlerRecord, unknown> = new Map();
 const canonicalNames: Map<string, string> = new Map();
 let isFlushScheduled = false;
 
@@ -32,7 +33,6 @@ const runWrite = <T>(pending: PendingWrite, write: () => T): T => {
 
 const applyWrite = <T>(property: string, write: () => T): T => runWrite(property, write);
 const applyMutation = <T>(write: () => T): T => runWrite(null, write);
-const applyPlacement = <T>(write: () => T): T => runWrite(CHILD_PLACEMENT, write);
 
 const notifyBindingFor = (signal: string): NotifyBinding | null => {
     if (signal === NOTIFY_SIGNAL) {
@@ -75,14 +75,46 @@ const dropQueuedNotify = (record: HandlerRecord, property: string): void => {
     queuedNotifies.get(record)?.delete(property);
 };
 
+const isUnchangedSincePlacement = (record: HandlerRecord, property: string): boolean =>
+    valuesBeforePlacement.has(record) &&
+    Object.is(valuesBeforePlacement.get(record), getObjectProperty(record.object, property));
+
 const flushQueuedNotifies = (): void => {
     isFlushScheduled = false;
-    const deliveries = [...queuedNotifies.values()].flatMap((byProperty) => [...byProperty.values()]);
+    const deliveries = [...queuedNotifies].flatMap(([record, byProperty]) =>
+        [...byProperty]
+            .filter(([property]) => !isUnchangedSincePlacement(record, property))
+            .map(([, deliver]) => deliver),
+    );
     queuedNotifies.clear();
+    valuesBeforePlacement.clear();
 
     for (const deliver of deliveries) {
         deliver();
     }
+};
+
+const recordValuesBeforePlacement = (target: SignalTarget): void => {
+    const info = typeInfoFor(target.typeName);
+
+    for (const record of target.handlers.values()) {
+        const property = notifyBindingFor(record.signal)?.property ?? null;
+
+        if (property !== null && !valuesBeforePlacement.has(record) && isReadableProperty(info, property)) {
+            valuesBeforePlacement.set(record, getObjectProperty(record.object, property));
+        }
+    }
+};
+
+/**
+ * Attaches, detaches or reorders a child of `target`. Signals the change causes stay blocked, but property
+ * notifications are queued and delivered after the commit, unless the commit writes the property itself or the
+ * value of a property `target` notifies ends up unchanged.
+ */
+const applyPlacement = <T>(target: SignalTarget, write: () => T): T => {
+    recordValuesBeforePlacement(target);
+
+    return runWrite(CHILD_PLACEMENT, write);
 };
 
 /**
@@ -90,7 +122,13 @@ const flushQueuedNotifies = (): void => {
  * that no later write in the commit superseded.
  */
 const scheduleQueuedNotifies = (): void => {
-    if (isFlushScheduled || queuedNotifies.size === 0) {
+    if (isFlushScheduled) {
+        return;
+    }
+
+    if (queuedNotifies.size === 0) {
+        valuesBeforePlacement.clear();
+
         return;
     }
 

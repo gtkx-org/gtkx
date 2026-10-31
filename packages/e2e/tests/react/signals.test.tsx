@@ -735,6 +735,13 @@ describe("user event signals", () => {
         });
     });
 
+    it("does not report a property a child attach notifies without changing it", async () => {
+        const handleValue = recordCalls();
+        await render(<SpinProbe value={0} onNotifyValue={handleValue} />);
+        await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+        expect(handleValue.calls).toEqual([]);
+    });
+
     it("tells a tab view's selection handler about the first page it mounts with", async () => {
         const handleSelected = recordCalls<[Adw.TabPage | null, Adw.TabView]>();
         await render(<TabsProbe titles={["one"]} onNotifySelectedPage={handleSelected} />);
