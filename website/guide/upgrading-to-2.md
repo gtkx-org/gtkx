@@ -24,7 +24,7 @@ Work through all seven flags:
 - `v2ValueReturns` unwraps returned `GObject.Value` instances and types their contents as `unknown`; narrow the value where it is used.
 - `v2FinishResults` removes a leading success boolean from multi-value promisified finish results when failure already rejects.
 - `v2InoutReturns` stops repeating an inout record or boxed value in the return tuple. The object passed in is still mutated.
-- `v2ResourceImports` replaces `#data/` imports with relative `?resource`, `?icon`, `?font`, or `?url` imports. Settings schemas use query-free relative imports. Run `gtkx build` to find stale specifiers.
+- `v2ResourceImports` replaces `#data/` imports with relative `?resource`, `?icon`, `?font`, or `?url` imports. Settings schemas use query-free relative imports. Remove the `#data/*` mapping from `package.json`, then run `gtkx build` to find stale specifiers; while the mapping remains, the build still resolves them.
 - `v2DefaultLibraries` binds Adwaita and GTK by default. Remove `Adw-1` and `Gtk-4.0` from `libraries`, then run the application and check its appearance.
 - `v2TreeShaking` retains only generated classes reached by the production bundle. Import a class as a value when `GObject.typeFromName` must find it, and replace side-effect-only generated-module imports.
 
