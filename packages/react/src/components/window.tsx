@@ -20,9 +20,16 @@ const presentWindow = (window: Gtk.Window): void => {
     });
 };
 
+/**
+ * Destroys the window once the commit that unmounts it has removed its content, so that content leaves a realized
+ * window: libadwaita renders the thumbnail of a closing tab page with the window's renderer, which a destroyed
+ * window no longer has.
+ */
 const destroyWindow = (window: Gtk.Window): void => {
-    applyMutation(() => {
-        window.destroy();
+    queueMicrotask(() => {
+        applyMutation(() => {
+            window.destroy();
+        });
     });
 };
 

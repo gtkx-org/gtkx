@@ -1,11 +1,16 @@
 import * as Adw from "@gtkx/gi/adw";
+import * as Gio from "@gtkx/gi/gio";
+import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
-import { AdwTabOverview, AdwTabPage, AdwTabView } from "@gtkx/jsx/adw";
-import { GtkBox, GtkEntry } from "@gtkx/jsx/gtk";
-import { createPortal, createRoot, useSignal } from "@gtkx/react";
+import { AdwTabBar, AdwTabOverview, AdwTabPage, AdwTabView, AdwToolbarView } from "@gtkx/jsx/adw";
+import { GtkApplication, GtkApplicationWindow, GtkBox, GtkEntry } from "@gtkx/jsx/gtk";
+import { createPortal, createRoot, rootElement, useSignal } from "@gtkx/react";
 import { act, render, screen, userEvent } from "@gtkx/testing";
 import { createRef, useState } from "react";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
+import { createAppIdFactory } from "../helpers/unique-name.js";
+
+const uniqueAppId = createAppIdFactory("org.gtkx.tablifecycletest");
 
 const pageTitles = (view: Adw.TabView | null): string[] =>
     Array.from({ length: view?.getNPages() ?? 0 }, (_, index) => view?.getNthPage(index).getTitle() ?? "");
@@ -81,6 +86,40 @@ describe("native tab lifecycle", () => {
         expect(returned.page).toBe(view.current?.getNthPage(1));
         const host = view.current?.getNthPage(1).getChild();
         expect(host instanceof Adw.Bin ? host.getChild() : null).toHaveObjectProperty("text", "New tab");
+    });
+
+    it("closes the window of a tab overview without rendering its pages afterwards", async () => {
+        const criticals: string[] = [];
+        const handlerId = GLib.logSetHandler("Gsk", GLib.LogLevelFlags.LEVEL_CRITICAL, (_domain, _level, message) => {
+            criticals.push(message);
+        });
+        onTestFinished(() => {
+            GLib.logRemoveHandler("Gsk", handlerId);
+        });
+        const applicationId = uniqueAppId();
+        const Documents = () => {
+            const [view, setView] = useState<Adw.TabView | null>(null);
+
+            return (
+                <GtkApplication applicationId={applicationId} flags={Gio.ApplicationFlags.NON_UNIQUE}>
+                    <GtkApplicationWindow title="Documents">
+                        <AdwTabOverview view={view}>
+                            <AdwToolbarView top={<AdwTabBar view={view} />}>
+                                <AdwTabView ref={setView}>
+                                    <TitledPages titles={["Notes", "Ideas"]} />
+                                </AdwTabView>
+                            </AdwToolbarView>
+                        </AdwTabOverview>
+                    </GtkApplicationWindow>
+                </GtkApplication>
+            );
+        };
+        const { unmount } = await render(<Documents />, { container: rootElement });
+        await screen.findByRole(Gtk.AccessibleRole.TAB, { name: "Notes" });
+
+        await unmount();
+
+        expect(criticals).toEqual([]);
     });
 
     it("removes a page from its actual view after a native transfer", async () => {
