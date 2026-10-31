@@ -6,6 +6,7 @@ import { queryAllControllers } from "./controller.js";
 import { wrapPointerEvent } from "./event-wrapper.js";
 import { hasIndexedChildren, selectContainerChild, SELECTED_PROBE, unselectOtherChildren } from "./indexed-children.js";
 import { isClickTransparent, type NativeClick, nativeClickFor } from "./native-click.js";
+import type { UserEventState } from "./state.js";
 
 type PressPoint = { x: number; y: number };
 type ClickPhase = "pressed" | "released";
@@ -213,14 +214,14 @@ const applyContainerOutcome = (target: ClickTarget, nPress: number): void => {
     }
 };
 
-const applyClickOutcome = (target: ClickTarget, nPress: number): void => {
+const applyClickOutcome = (target: ClickTarget, nPress: number, modifiers: Gdk.ModifierType): void => {
     if (target.native === null) {
         applyContainerOutcome(target, nPress);
 
         return;
     }
 
-    target.native(target.widget, nPress);
+    target.native(target.widget, nPress, modifiers);
 };
 
 const applyContainerClick: NativeClick = (widget, nPress) => {
@@ -240,18 +241,18 @@ const directClickFor = (widget: Gtk.Widget): DirectClick => {
     return { sites: targetSites(widget, target), outcome: native ?? (container === null ? null : applyContainerClick) };
 };
 
-const applyClickOutcomes = (targets: ClickTarget[], nPress: number): void => {
+const applyClickOutcomes = (targets: ClickTarget[], nPress: number, modifiers: Gdk.ModifierType): void => {
     for (const target of targets) {
-        applyClickOutcome(target, nPress);
+        applyClickOutcome(target, nPress, modifiers);
     }
 };
 
-const deliverClick = (widget: Gtk.Widget, nPress: number): Promise<void> =>
+const deliverClick = (state: UserEventState, widget: Gtk.Widget, nPress: number): Promise<void> =>
     wrapPointerEvent(widget, () => {
         const targets = collectClickTargets(widget);
         const sites = targets.flatMap((target) => targetSites(widget, target));
         emitClickSequence(sites, nPress);
-        applyClickOutcomes(targets, nPress);
+        applyClickOutcomes(targets, nPress, state.modifierState);
     });
 
 const tryActivate = async (widget: Gtk.Widget): Promise<boolean> => {
@@ -269,18 +270,18 @@ const tryActivate = async (widget: Gtk.Widget): Promise<boolean> => {
 };
 
 /** Activates or presses and releases a widget. */
-const click = async (widget: Gtk.Widget): Promise<void> => {
+const click = async (state: UserEventState, widget: Gtk.Widget): Promise<void> => {
     if (!isSelfClickTarget(widget) && (await tryActivate(widget))) {
         return;
     }
 
-    await deliverClick(widget, 1);
+    await deliverClick(state, widget, 1);
 };
 
 /** Delivers a double-click gesture. */
-const dblClick = (widget: Gtk.Widget): Promise<void> => deliverClick(widget, 2);
+const dblClick = (state: UserEventState, widget: Gtk.Widget): Promise<void> => deliverClick(state, widget, 2);
 /** Delivers a triple-click gesture. */
-const tripleClick = (widget: Gtk.Widget): Promise<void> => deliverClick(widget, 3);
+const tripleClick = (state: UserEventState, widget: Gtk.Widget): Promise<void> => deliverClick(state, widget, 3);
 
 export { directClickFor, emitSitePhase, click, dblClick, tripleClick };
 export type { DirectClick };

@@ -37,10 +37,14 @@ import {
     GtkLabel,
     GtkListBox,
     GtkListBoxRow,
+    GtkListView,
+    GtkMultiSelection,
     GtkShortcut,
     GtkShortcutController,
     GtkShortcutTrigger,
+    GtkSignalListItemFactory,
     GtkSpinButton,
+    GtkStringList,
     GtkSwitch,
     GtkTextBuffer,
     GtkTextTag,
@@ -89,6 +93,21 @@ const editableText = (entry: Gtk.Widget): string => {
     }
 
     return entry.getText();
+};
+
+const setupStringRow = (item: GObject.Object): void => {
+    if (item instanceof Gtk.ListItem) {
+        item.setChild(new Gtk.Label());
+    }
+};
+
+const bindStringRow = (item: GObject.Object): void => {
+    const label = item instanceof Gtk.ListItem ? item.getChild() : null;
+    const value = item instanceof Gtk.ListItem ? item.getItem() : null;
+
+    if (label instanceof Gtk.Label && value instanceof Gtk.StringObject) {
+        label.setLabel(value.getString());
+    }
 };
 
 const pointerTargetAt = (widget: Gtk.Widget): Gtk.Widget => {
@@ -556,6 +575,41 @@ describe("userEvent.click", () => {
         await userEvent.click(pointerTargetAt(thumbnail));
         expect(view.getSelectedPage()?.getTitle()).toBe("Second");
         expect(overview.current?.getOpen()).toBe(false);
+    });
+
+    it("extends a list view selection with held Control and Shift like a pointer click", async () => {
+        const model = createRef<Gtk.MultiSelection>();
+        const selected = (): number[] => [0, 1, 2, 3].filter((position) => model.current?.isSelected(position));
+        await render(
+            <GtkListView
+                model={
+                    <GtkMultiSelection
+                        ref={model}
+                        model={<GtkStringList strings={["Alpha", "Beta", "Gamma", "Delta"]} />}
+                    />
+                }
+                factory={<GtkSignalListItemFactory onSetup={setupStringRow} onBind={bindStringRow} />}
+            />,
+        );
+        const user = userEvent.setup();
+        await user.click(await screen.findByText("Alpha"));
+        await user.keyboard(screen.getByText("Gamma"), "{Control>}");
+        await user.click(screen.getByText("Gamma"));
+        expect(selected()).toEqual([0, 2]);
+        const [alphaRow] = screen.getAllByRole(Gtk.AccessibleRole.LIST_ITEM);
+
+        if (alphaRow === undefined) {
+            throw new Error("expected a row for Alpha");
+        }
+
+        await user.pointer(alphaRow, "click");
+        expect(selected()).toEqual([2]);
+        await user.keyboard(screen.getByText("Delta"), "{/Control}{Shift>}");
+        await user.click(screen.getByText("Delta"));
+        expect(selected()).toEqual([0, 1, 2, 3]);
+        await user.keyboard(screen.getByText("Delta"), "{/Shift}");
+        await user.click(screen.getByText("Beta"));
+        expect(selected()).toEqual([1]);
     });
 });
 

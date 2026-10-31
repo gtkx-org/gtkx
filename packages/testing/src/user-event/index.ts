@@ -21,20 +21,11 @@ type UserEvent = {
     /** Creates an instance with shared keyboard and pointer state. */
     setup: (options?: UserEventOptions) => UserEvent;
     /** Activates or presses and releases a widget. */
-    click: (
-        widget: Gtk.Accessible,
-        ...args: Parameters<typeof click> extends [Gtk.Widget, ...infer Args] ? Args : never
-    ) => Promise<void>;
+    click: (widget: Gtk.Accessible) => Promise<void>;
     /** Delivers a double-click gesture. */
-    dblClick: (
-        widget: Gtk.Accessible,
-        ...args: Parameters<typeof dblClick> extends [Gtk.Widget, ...infer Args] ? Args : never
-    ) => Promise<void>;
+    dblClick: (widget: Gtk.Accessible) => Promise<void>;
     /** Delivers a triple-click gesture. */
-    tripleClick: (
-        widget: Gtk.Accessible,
-        ...args: Parameters<typeof tripleClick> extends [Gtk.Widget, ...infer Args] ? Args : never
-    ) => Promise<void>;
+    tripleClick: (widget: Gtk.Accessible) => Promise<void>;
     /** Moves focus forward or backward within the root. */
     tab: (
         widget: Gtk.Accessible,
@@ -171,9 +162,9 @@ function createInstance(state: UserEventState, options: UserEventOptions): UserE
 
     return {
         setup: (overrides?: UserEventOptions): UserEvent => createInstance(state, { ...options, ...overrides }),
-        click: after(onWidget(click)),
-        dblClick: after(onWidget(dblClick)),
-        tripleClick: after(onWidget(tripleClick)),
+        click: after(onWidget((widget: Gtk.Widget): Promise<void> => click(state, widget))),
+        dblClick: after(onWidget((widget: Gtk.Widget): Promise<void> => dblClick(state, widget))),
+        tripleClick: after(onWidget((widget: Gtk.Widget): Promise<void> => tripleClick(state, widget))),
         tab: after(onWidget(tab)),
         type: after(
             onWidget((widget: Gtk.Widget, text: string, options?: TypeOptions): Promise<void> =>

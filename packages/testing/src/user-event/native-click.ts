@@ -1,3 +1,4 @@
+import type * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { getWidgetTypeName } from "../widget-getters.js";
 import { applyHeaderClick } from "./column-header-click.js";
@@ -6,7 +7,7 @@ import { applyRowClick } from "./list-row-click.js";
 import { applyTabClick, isNotebookTab } from "./notebook-tab-click.js";
 import { applyTabViewClick, isTabViewTab } from "./tab-view-click.js";
 
-type NativeClick = (widget: Gtk.Widget, nPress: number) => void;
+type NativeClick = (widget: Gtk.Widget, nPress: number, modifiers: Gdk.ModifierType) => void;
 
 const COLUMN_ROW_TYPE_NAME = "GtkColumnViewRowWidget";
 const ROW_TYPE_NAMES: Set<string> = new Set([COLUMN_ROW_TYPE_NAME, "GtkListItemWidget"]);
