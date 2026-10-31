@@ -52,6 +52,7 @@ describe("scaffold command", () => {
             scripts: { build: "gtkx build", dev: "gtkx dev", codegen: "gtkx codegen" },
         });
         expect(JSON.parse(read(target, "package.json"))).toHaveProperty(["dependencies", "@gtkx/react"]);
+        expect(JSON.parse(read(target, "package.json"))).toHaveProperty(["devDependencies", "@types/react"]);
         expect(existsSync(join(target, "tsconfig.json"))).toBe(hasTypes);
         expect(existsSync(join(target, "vitest.config.ts"))).toBe(hasTests);
         expect(read(target, hasTypes ? "gtkx.config.ts" : "gtkx.config.js")).toContain("org.gtkx.example");
