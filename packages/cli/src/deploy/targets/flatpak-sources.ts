@@ -96,9 +96,9 @@ const resolveSourceUrl = (settings: DeploySettings): string => {
 
     if (!FETCHABLE_URL.test(url)) {
         throw new Error(
-            `Cannot build a Flathub-ready manifest from "${url}": Flathub's builders clone over HTTPS and have no ` +
-                "credentials, so an SSH remote never resolves there. Set `deploy.flatpak.source.url` to the " +
-                "repository's https:// URL.",
+            `Cannot build a Flathub-ready manifest from "${url}": Flathub's builders clone over HTTPS without ` +
+                "credentials or access to your machine, so SSH remotes and local paths never resolve there. Set " +
+                "`deploy.flatpak.source.url` to the repository's https:// URL.",
         );
     }
 
