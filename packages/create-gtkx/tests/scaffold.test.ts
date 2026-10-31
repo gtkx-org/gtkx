@@ -144,6 +144,25 @@ describe("scaffold command", () => {
         expect(read(target, "package.json")).not.toContain("catalog:");
     });
 
+    it("leaves the build scripts of an app in an npm workspace to the workspace root", async () => {
+        using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-npm-workspace-"));
+        const root = JSON.stringify({
+            name: "kitchen",
+            private: true,
+            workspaces: ["apps/*"],
+            allowScripts: { esbuild: true },
+        });
+        writeFileSync(join(directory.path, "package.json"), root);
+        const target = join(directory.path, "apps/example");
+        const { status, output } = await create(target, ["--package-manager", "npm"]);
+        expect(status).toBe(0);
+        expect(JSON.parse(read(target, "package.json"))).not.toHaveProperty("allowScripts");
+        expect(read(directory.path, "package.json")).toBe(root);
+        expect(output).toContain(join(directory.path, "package.json"));
+        expect(output).toContain('"@swc/core": true');
+        expect(output).not.toContain('"esbuild": true');
+    });
+
     it("gives an app that the enclosing pnpm workspace excludes its own workspace", async () => {
         using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-excluded-"));
         writeFileSync(join(directory.path, "pnpm-workspace.yaml"), "packages:\n  - apps/*\n  - '!apps/example'\n");

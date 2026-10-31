@@ -9,10 +9,10 @@ import { x } from "tinyexec";
 import packageManifest from "../package.json" with { type: "json" };
 import {
     PACKAGE_MANAGER_CONFIG_FILES,
-    enclosingPnpmWorkspace,
+    enclosingWorkspace,
     formatMissingAllowances,
     pinnedPackageManager,
-    type PnpmWorkspace,
+    type Workspace,
     writeBuildAllowance,
 } from "./build-allowance.js";
 import { OperationCanceledError, ScaffoldAbortedError } from "./errors.js";
@@ -45,7 +45,7 @@ type ResolvedOptions = {
     displayName: string;
     applicationId: string;
     packageManager: PackageManager;
-    pnpmWorkspace: PnpmWorkspace | null;
+    workspace: Workspace | null;
     isTypescript: boolean;
     shouldIncludeTesting: boolean;
     shouldInitializeGit: boolean;
@@ -477,7 +477,7 @@ const resolveOptions = async (options: CreateOptions): Promise<ResolvedOptions> 
         displayName,
         applicationId,
         packageManager,
-        pnpmWorkspace: packageManager === "pnpm" ? enclosingPnpmWorkspace(root) : null,
+        workspace: enclosingWorkspace(root, packageManager),
         isTypescript,
         shouldIncludeTesting,
         shouldInitializeGit: shouldInitialize,
@@ -574,7 +574,7 @@ const plannedScaffoldFiles = async (root: string, resolved: ResolvedOptions): Pr
 };
 
 const configDestinations = (root: string, resolved: ResolvedOptions): string[] =>
-    resolved.pnpmWorkspace === null
+    resolved.workspace === null
         ? PACKAGE_MANAGER_CONFIG_FILES[resolved.packageManager].map((file) => join(root, file))
         : [];
 
@@ -701,7 +701,7 @@ const runWithSpinner = async (step: SpinnerStep): Promise<void> => {
 };
 
 const hasMissingAllowances = (resolved: ResolvedOptions): boolean =>
-    (resolved.pnpmWorkspace?.missingAllowances.length ?? 0) > 0;
+    resolved.workspace?.packageManager === "pnpm" && resolved.workspace.missingAllowances.length > 0;
 
 const installAllDependencies = async (resolved: ResolvedOptions, devDependencies: string[]): Promise<void> => {
     const { root, packageManager } = resolved;
@@ -773,14 +773,15 @@ const missingHeadlessToolsNote = (): string => {
         : ["", "", "To run tests, install these tools:", ...missingToolLines(missing)].join("\n");
 };
 
-const printWorkspaceAllowances = ({ pnpmWorkspace }: ResolvedOptions): void => {
-    if (pnpmWorkspace === null || pnpmWorkspace.missingAllowances.length === 0) {
+const printWorkspaceAllowances = ({ workspace }: ResolvedOptions): void => {
+    if (workspace === null || workspace.missingAllowances.length === 0) {
         return;
     }
 
     p.log.warn(
-        "The pnpm workspace does not allow the build scripts this app needs. " +
-            `Add these entries to ${pnpmWorkspace.file}, then run pnpm install:\n\n${formatMissingAllowances(pnpmWorkspace)}`,
+        `The ${workspace.packageManager} workspace does not allow the build scripts this app needs. ` +
+            `Add these entries to ${workspace.file}, then run ${INSTALL_COMMAND[workspace.packageManager]}:\n\n` +
+            formatMissingAllowances(workspace),
     );
 };
 
@@ -800,7 +801,7 @@ const createProjectStructure = async (root: string, resolved: ResolvedOptions, p
             mkdirSync(root, { recursive: true });
             scaffoldProject(root, plan);
 
-            if (resolved.pnpmWorkspace === null) {
+            if (resolved.workspace === null) {
                 writeBuildAllowance(root, resolved.packageManager);
             }
         },

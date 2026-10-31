@@ -4,7 +4,8 @@ import { type Document, isMap, parse, parseDocument, stringify } from "yaml";
 import type { PackageManager } from "./package-managers.js";
 import { updateManifest } from "./manifest.js";
 
-type PnpmWorkspace = {
+type Workspace = {
+    packageManager: PackageManager;
     file: string;
     missingAllowances: string[];
 };
@@ -103,24 +104,10 @@ const pinnedPackageManager = (root: string, packageManager: PackageManager): str
     }
 };
 
-const nearestPnpmWorkspaceFile = (root: string): string | null => {
-    for (let directory = dirname(root); ; directory = dirname(directory)) {
-        const file = join(directory, PNPM_WORKSPACE_FILE);
+const workspacePatterns = (settings: unknown, field: string): string[] => {
+    const patterns = isRecord(settings) ? settings[field] : undefined;
 
-        if (existsSync(file)) {
-            return file;
-        }
-
-        if (dirname(directory) === directory) {
-            return null;
-        }
-    }
-};
-
-const workspacePatterns = (settings: unknown): string[] => {
-    const packages = isRecord(settings) ? settings.packages : undefined;
-
-    return Array.isArray(packages) ? packages.filter((pattern) => typeof pattern === "string") : [];
+    return Array.isArray(patterns) ? patterns.filter((pattern) => typeof pattern === "string") : [];
 };
 
 const matchesWorkspacePattern = (project: string, pattern: string): boolean =>
@@ -134,40 +121,97 @@ const includesProject = (patterns: string[], project: string): boolean =>
             matchesWorkspacePattern(project, pattern.slice(NEGATION_PREFIX.length)),
     );
 
-/**
- * The pnpm workspace above `root` whose `packages` include it, with the native dependencies whose build
- * scripts its `allowBuilds` does not mention yet, or null when `root` is not part of an enclosing workspace.
- */
-const enclosingPnpmWorkspace = (root: string): PnpmWorkspace | null => {
-    const file = nearestPnpmWorkspaceFile(root);
-
-    if (file === null) {
-        return null;
-    }
-
+const pnpmWorkspaceAt = (file: string, project: string): Workspace | null => {
     const settings: unknown = parse(readFileSync(file, "utf8"));
-    const project = relative(dirname(file), root).split(sep).join(posix.sep);
 
-    if (!includesProject(workspacePatterns(settings), project)) {
+    if (!includesProject(workspacePatterns(settings, "packages"), project)) {
         return null;
     }
 
     const allowBuilds = isRecord(settings) && isRecord(settings.allowBuilds) ? settings.allowBuilds : {};
 
-    return { file, missingAllowances: BUILT_DEPENDENCIES.filter((name) => !Object.hasOwn(allowBuilds, name)) };
+    return {
+        packageManager: "pnpm",
+        file,
+        missingAllowances: BUILT_DEPENDENCIES.filter((name) => !Object.hasOwn(allowBuilds, name)),
+    };
+};
+
+const npmWorkspaceAt = (file: string, project: string): Workspace | null => {
+    const manifest: unknown = JSON.parse(readFileSync(file, "utf8"));
+
+    if (!includesProject(workspacePatterns(manifest, "workspaces"), project)) {
+        return null;
+    }
+
+    const allowScripts = isRecord(manifest) && isRecord(manifest.allowScripts) ? manifest.allowScripts : {};
+
+    return {
+        packageManager: "npm",
+        file,
+        missingAllowances: BUILT_DEPENDENCIES.filter((name) => !Object.hasOwn(allowScripts, name)),
+    };
+};
+
+const ancestorFiles = (root: string, name: string): string[] => {
+    const files: string[] = [];
+
+    for (let directory = dirname(root); ; directory = dirname(directory)) {
+        const file = join(directory, name);
+
+        if (existsSync(file)) {
+            files.push(file);
+        }
+
+        if (dirname(directory) === directory) {
+            return files;
+        }
+    }
+};
+
+const projectPath = (file: string, root: string): string => relative(dirname(file), root).split(sep).join(posix.sep);
+
+/**
+ * The pnpm or npm workspace above `root` that includes it, with the native dependencies whose build scripts
+ * its root configuration does not allow yet, or null when `root` is not part of an enclosing workspace. pnpm
+ * reads `allowBuilds` and npm reads `allowScripts` only from the workspace root.
+ */
+const enclosingWorkspace = (root: string, packageManager: PackageManager): Workspace | null => {
+    if (packageManager === "pnpm") {
+        const [nearest] = ancestorFiles(root, PNPM_WORKSPACE_FILE);
+
+        return nearest === undefined ? null : pnpmWorkspaceAt(nearest, projectPath(nearest, root));
+    }
+
+    if (packageManager === "npm") {
+        for (const file of ancestorFiles(root, PACKAGE_JSON_FILE)) {
+            const workspace = npmWorkspaceAt(file, projectPath(file, root));
+
+            if (workspace !== null) {
+                return workspace;
+            }
+        }
+    }
+
+    return null;
 };
 
 /**
- * The `allowBuilds` entries to add to a workspace's `pnpm-workspace.yaml`, as YAML.
+ * The build-script entries to add to a workspace's root configuration, in that file's format.
  */
-const formatMissingAllowances = (workspace: PnpmWorkspace): string =>
-    stringify({ allowBuilds: Object.fromEntries(workspace.missingAllowances.map((name) => [name, true])) }).trimEnd();
+const formatMissingAllowances = ({ packageManager, missingAllowances }: Workspace): string => {
+    const entries = Object.fromEntries(missingAllowances.map((name) => [name, true]));
+
+    return packageManager === "pnpm"
+        ? stringify({ allowBuilds: entries }).trimEnd()
+        : `"allowScripts": ${JSON.stringify(entries, null, 4)}`;
+};
 
 export {
     PACKAGE_MANAGER_CONFIG_FILES,
-    enclosingPnpmWorkspace,
+    enclosingWorkspace,
     formatMissingAllowances,
     pinnedPackageManager,
-    type PnpmWorkspace,
+    type Workspace,
     writeBuildAllowance,
 };
