@@ -1,5 +1,5 @@
 import { resolveExecutable } from "@gtkx/utils";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import {
     existsSync,
     mkdirSync,
@@ -191,6 +191,23 @@ describe("headless Vitest integration", () => {
             display: process.env.WAYLAND_DISPLAY,
             bus: process.env.DBUS_SESSION_BUS_ADDRESS,
         }).toEqual(before);
+    });
+
+    it("stops processes that inherited its runtime and removes it on teardown", async () => {
+        const stop = await startHeadlessDisplay(resolveHeadlessOptions({}));
+        const runtime = process.env.XDG_RUNTIME_DIR;
+        const loader = spawn(process.execPath, ["--eval", "setInterval(() => {}, 1000)"], { stdio: "ignore" });
+        try {
+            await new Promise((resolve, reject) => {
+                loader.once("spawn", resolve);
+                loader.once("error", reject);
+            });
+            stop();
+            await expect.poll(() => loader.exitCode !== null || loader.signalCode !== null).toBe(true);
+            await expect.poll(() => runtime === undefined || existsSync(runtime), { timeout: 5_000 }).toBe(false);
+        } finally {
+            loader.kill("SIGKILL");
+        }
     });
 
     it.each(["normal", "delayed"])(

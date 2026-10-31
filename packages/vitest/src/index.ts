@@ -33,7 +33,8 @@ const headlessPreloadSpecifier = (options: Partial<HeadlessOptions>): string => 
  * setup files, and sets the environment needed for headless GTK4 rendering.
  *
  * Each worker's compositor, session bus, and private runtime directory are torn
- * down when the worker exits normally. Creating the plugin reaps orphaned
+ * down when the worker exits normally, along with processes still running in that
+ * runtime, such as GTK's sandboxed image loaders. Creating the plugin reaps orphaned
  * display helpers and stale `gtkx-xdg-*` runtime directories left behind
  * by earlier runs, which `gtkx cleanup` also does on demand.
  *
