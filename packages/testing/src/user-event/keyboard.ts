@@ -603,7 +603,9 @@ const focusedKeyWidget = (): Gtk.Widget => {
         throw usageError(new Error("No window is open to receive the keys"));
     }
 
-    return window.getFocus() ?? window;
+    const focus = window.getFocus();
+
+    return focus?.getMapped() ? focus : window;
 };
 
 export {

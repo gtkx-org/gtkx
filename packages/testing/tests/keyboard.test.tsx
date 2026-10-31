@@ -6,6 +6,7 @@ import { AdwDialog } from "@gtkx/jsx/adw";
 import {
     GtkBox,
     GtkButton,
+    GtkCallbackAction,
     GtkCheckButton,
     GtkEntry,
     GtkEventControllerKey,
@@ -14,10 +15,13 @@ import {
     GtkPopover,
     GtkShortcut,
     GtkShortcutController,
+    GtkStack,
+    GtkStackPage,
     GtkTextView,
 } from "@gtkx/jsx/gtk";
 import { GtkSourceView } from "@gtkx/jsx/gtksource";
 import { render, screen, userEvent } from "@gtkx/testing";
+import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 
 describe("Unicode keyboard input", () => {
@@ -242,6 +246,51 @@ describe("keyboard focus movement", () => {
         await userEvent.keyboard("{Tab}{Enter}");
         expect(screen.getByName("second")).toHaveFocus();
         expect(activated).toEqual(["second"]);
+    });
+
+    it("sends keys without a target to the window when its focus widget is not mapped", async () => {
+        let created = 0;
+        const closedRef = createRef<Gtk.Button>();
+
+        await render(
+            <GtkBox
+                controllers={
+                    <GtkShortcutController
+                        scope={Gtk.ShortcutScope.MANAGED}
+                        shortcuts={
+                            <GtkShortcut
+                                trigger={Gtk.ShortcutTrigger.parseString("<Control>n")}
+                                action={
+                                    <GtkCallbackAction
+                                        callback={() => {
+                                            created++;
+
+                                            return true;
+                                        }}
+                                    />
+                                }
+                            />
+                        }
+                    />
+                }
+            >
+                <GtkStack>
+                    <GtkStackPage name="shown">
+                        <GtkButton label="Shown" />
+                    </GtkStackPage>
+                    <GtkStackPage name="closed">
+                        <GtkButton ref={closedRef} label="Closed" />
+                    </GtkStackPage>
+                </GtkStack>
+            </GtkBox>,
+        );
+
+        const closed = closedRef.current;
+        const window = closed?.getRoot();
+        expect(window).toBeInstanceOf(Gtk.Window);
+        if (window instanceof Gtk.Window) window.setFocus(closed ?? null);
+        await userEvent.keyboard("{Control>}n{/Control}");
+        expect(created).toBe(1);
     });
 
     it("sends later keys of one sequence to the widget focus moved to outside the target", async () => {
