@@ -142,6 +142,10 @@ const generateClass = (context: ModuleContext, klass: GirClass): void => {
     });
 
     appendMemberDeclarations({ context, klass, className, implemented });
+
+    if (klass.glibTypeName !== undefined && klass.glibGetType !== undefined && !isFundamentalClass(context, klass)) {
+        context.generatedClasses.push({ className, glibTypeName: klass.glibTypeName });
+    }
 };
 
 const classModifier = (context: ModuleContext, klass: GirClass): string =>

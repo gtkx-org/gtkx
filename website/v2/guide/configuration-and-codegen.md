@@ -99,6 +99,14 @@ const easingName = Gtk.ClosureExpression.new(GObject.TYPE_STRING, (item: unknown
 }, null);
 ```
 
+When a production build receives such an object through a closure and has dropped its class, it prints a warning once for that class, naming the class to reference and the module to import it from:
+
+```text
+[gtkx:runtime] warn AdwEnumListItem objects reach JavaScript as GObject because the production build dropped Adw.EnumListItem, ...
+```
+
+The object is still wrapped as its nearest retained ancestor, so the warning usually comes right before the error it explains. Objects returned from typed functions, methods and properties keep at least their declared class and never trigger it, nor do private library classes that have no generated class. Development and tests load every class and never print it.
+
 ## Monorepos
 
 GTKX apps work in pnpm, npm and Yarn workspaces with the package manager's default `node_modules` layout, alongside shared packages of components. In a pnpm workspace, `pnpm create gtkx apps/my-app` adds the app to the workspace and prints any `allowBuilds` entries to add to its root `pnpm-workspace.yaml`; see [Scaffold Options](/v2/guide/scaffold-options#workspaces).

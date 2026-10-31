@@ -25,6 +25,7 @@ type SignalMethodReceiver<T, K extends SignalMethodMember> = NonNullable<
 >[K];
 
 export { preserveArrayNull } from "./descriptors.js";
+export { registerGeneratedClasses } from "./dropped-classes.js";
 /** @internal */
 export { registerElementMetadata } from "./element-metadata.js";
 export {
