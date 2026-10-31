@@ -337,7 +337,10 @@ const rpmSigningSchema = z.strictObject({
 });
 
 const flatpakSigningSchema = z.strictObject({
-    /** GPG key ID used to sign the Flatpak bundle. */
+    /**
+     * GPG key ID that signs the Flatpak repository commit. The bundle embeds its public key, so
+     * `flatpak install --bundle` verifies the signature.
+     */
     gpgKeyId: text("must be a GPG key id"),
     /** GPG home directory containing the signing key. */
     gpgHomeDir: text("must be a path to a GPG home directory").optional(),

@@ -17,6 +17,8 @@ const PREFIX = "/app";
 const TARGET_DIR = "flatpak";
 const FLATHUB_REPO = "https://dl.flathub.org/repo/flathub.flatpakrepo";
 const BUILDER_REF = "org.flatpak.Builder";
+const GPG_COMMAND = "gpg";
+const SIGNING_KEY_FILENAME = "signing-key.gpg";
 
 const flatpakTarget: DeployTarget = {
     name: "flatpak",
@@ -58,6 +60,19 @@ const renderManifests = async (payload: DeployPayload): Promise<DeployManifest[]
     ];
 };
 
+const signingArgsFor = (settings: DeploySettings): string[] => {
+    const signing = settings.deploy.signing?.flatpak;
+
+    if (signing === undefined) {
+        return [];
+    }
+
+    return [
+        `--gpg-sign=${signing.gpgKeyId}`,
+        ...(signing.gpgHomeDir === undefined ? [] : [`--gpg-homedir=${signing.gpgHomeDir}`]),
+    ];
+};
+
 const builderArgsFor = (settings: DeploySettings, dir: string): string[] => [
     "--force-clean",
     "--user",
@@ -66,6 +81,7 @@ const builderArgsFor = (settings: DeploySettings, dir: string): string[] => [
     ...(settings.deploy.flatpak?.shouldUseRofilesFuse === false ? ["--disable-rofiles-fuse"] : []),
     `--state-dir=${join(dir, "state")}`,
     `--repo=${join(dir, "repo")}`,
+    ...signingArgsFor(settings),
     join(dir, "build"),
     manifestPathFor(settings),
 ];
@@ -92,8 +108,37 @@ const buildFlatpak = (settings: DeploySettings): void => {
     }
 };
 
-const bundleArgsFor = (settings: DeploySettings, target: string): string[] => {
+const exportSigningKey = (settings: DeploySettings): string | null => {
     const signing = settings.deploy.signing?.flatpak;
+
+    if (signing === undefined) {
+        return null;
+    }
+
+    const path = join(flatpakDir(settings), SIGNING_KEY_FILENAME);
+    runCliTool({
+        tool: GPG_COMMAND,
+        args: [
+            ...(signing.gpgHomeDir === undefined ? [] : ["--homedir", signing.gpgHomeDir]),
+            "--batch",
+            "--yes",
+            "--output",
+            path,
+            "--export",
+            signing.gpgKeyId,
+        ],
+        target: "the flatpak bundle's signing key",
+    });
+
+    if (!existsSync(path)) {
+        throw new Error(`gpg exported no public key for ${signing.gpgKeyId}, so the flatpak bundle cannot be verified`);
+    }
+
+    return path;
+};
+
+const bundleArgsFor = (settings: DeploySettings, target: string): string[] => {
+    const signingKey = exportSigningKey(settings);
     const runtimeRepo = settings.deploy.flatpak?.runtimeRepo ?? FLATHUB_REPO;
 
     return [
@@ -104,8 +149,7 @@ const bundleArgsFor = (settings: DeploySettings, target: string): string[] => {
         branchFor(settings),
         `--arch=${settings.arch.flatpak}`,
         `--runtime-repo=${runtimeRepo}`,
-        ...(signing === undefined ? [] : [`--gpg-sign=${signing.gpgKeyId}`]),
-        ...(signing?.gpgHomeDir === undefined ? [] : [`--gpg-homedir=${signing.gpgHomeDir}`]),
+        ...(signingKey === null ? [] : [`--gpg-keys=${signingKey}`]),
     ];
 };
 
