@@ -86,6 +86,40 @@ describe("native story explorer", () => {
         expect(screen.getByName("storybook-story-components-counter--default")).toBeVisible();
     });
 
+    it("keeps story groups that share a title path together in first-occurrence order", async () => {
+        const titles = [
+            "Recipes/Card",
+            "Pantry/Spices/Cumin",
+            "Recipes/Grid",
+            "Pantry/Tins/Olives",
+            "Pantry/Spices/Pepper",
+            "Recipes",
+        ];
+        const catalog = new StoryCatalog();
+        await catalog.load(
+            titles.map((title) => ({
+                id: `${title}.stories.tsx`,
+                title,
+                load: () =>
+                    Promise.resolve({
+                        default: { ...counterStories.default, title },
+                        Default: counterStories.Default,
+                    }),
+            })),
+        );
+        await showExplorer(catalog);
+
+        const rows = screen.getAllByName(/^storybook-story-/).map((row) => row.getName());
+        expect(rows).toEqual([
+            "storybook-story-recipes--default",
+            "storybook-story-recipes-card--default",
+            "storybook-story-recipes-grid--default",
+            "storybook-story-pantry-spices-cumin--default",
+            "storybook-story-pantry-spices-pepper--default",
+            "storybook-story-pantry-tins-olives--default",
+        ]);
+    });
+
     it("starts empty and updates after stories are loaded and removed", async () => {
         const catalog = new StoryCatalog();
         await showExplorer(catalog);

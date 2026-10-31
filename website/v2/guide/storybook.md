@@ -88,6 +88,8 @@ Controls preserve absent arguments until you edit them. Choice controls display 
 
 The explorer lists stories whose [tags](https://storybook.js.org/docs/writing-stories/tags) include `dev`, which every story has by default. Add `tags: ["!dev"]` to a story or its metadata to leave it out of the navigator; `composeStories` still returns it.
 
+The navigator shows one group per story `title`. Titles that share a path, such as `Recipes/Card` and `Recipes/Grid`, stay next to each other, and the first story file under each path decides where the path appears, as in Storybook's sidebar.
+
 ## Reuse stories in native tests
 
 With the [GTKX Vitest setup](/v2/guide/testing), import and compose the same module:
