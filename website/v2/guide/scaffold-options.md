@@ -13,6 +13,8 @@ npm create gtkx@beta -- my-app --yes --application-id com.example.MyApp --displa
 
 Without `--display-name`, noninteractive scaffolding derives a name from the project directory, so `my-app` becomes `My App`. `--skip-install` writes the project without installing dependencies; run your package manager's install command in that directory afterward.
 
+When Yarn 2 or newer runs the scaffold, as `corepack yarn@4 create gtkx` does, and Yarn is the chosen package manager, the new `package.json` pins that release in its `packageManager` field, as `yarn init -2` does, so Corepack runs the same Yarn for the install and every later command instead of its default. An app inside a Yarn workspace gets no pin; the workspace root owns it.
+
 The new project depends on the major versions this GTKX release supports rather than the newest ones: React, `@types/react` and Vitest within the ranges GTKX declares as peers, the Vite range `@gtkx/cli` depends on, TypeScript 6, and the `@types/node` major of the oldest Node.js GTKX supports. When a later GTKX release supports a new major, run `gtkx upgrade` first, then move those packages with your package manager.
 
 ## Existing directories

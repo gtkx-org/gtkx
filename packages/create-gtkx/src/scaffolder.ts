@@ -10,7 +10,7 @@ import packageManifest from "../package.json" with { type: "json" };
 import {
     PACKAGE_MANAGER_CONFIG_FILES,
     enclosingWorkspace,
-    pinnedPackageManager,
+    packageManagerPin,
     type Workspace,
     writeBuildAllowance,
 } from "./build-allowance.js";
@@ -612,7 +612,7 @@ const planScaffoldProject = async (root: string, resolved: ResolvedOptions): Pro
         files,
         replaceDestinations,
         changes: replaceDestinations.map((destination) => relative(root, destination)),
-        packageManagerPin: pinnedPackageManager(root, resolved.packageManager),
+        packageManagerPin: packageManagerPin(root, resolved.packageManager, resolved.workspace !== null),
     };
 };
 

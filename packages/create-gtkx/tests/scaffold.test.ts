@@ -4,13 +4,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { minVersion, satisfies, subset, validRange } from "semver";
 import { stdout, stderr } from "test-console";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { parse } from "yaml";
 import { scaffoldCommand } from "../src/index.js";
 
 const initialExitCode = process.exitCode;
 afterEach(() => {
     process.exitCode = initialExitCode;
+    vi.unstubAllEnvs();
 });
 
 const create = async (target: string, args: string[] = []) => {
@@ -82,6 +83,17 @@ describe("scaffold command", () => {
         expect(JSON.parse(read(target, ".mcp.json"))).toHaveProperty("mcpServers.gtkx.command", "npx");
     });
 
+    it.each([
+        { userAgent: "yarn/4.18.1 npm/? node/v26.7.0 linux x64", pin: "yarn@4.18.1" },
+        { userAgent: "yarn/1.22.22 npm/? node/v26.7.0 linux x64", pin: undefined },
+    ])("pins the Yarn release that runs it as $userAgent", async ({ userAgent, pin }) => {
+        vi.stubEnv("npm_config_user_agent", userAgent);
+        using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-yarn-pin-"));
+        const target = join(directory.path, "example");
+        expect((await create(target, ["--package-manager", "yarn"])).status).toBe(0);
+        expect((JSON.parse(read(target, "package.json")) as { packageManager?: string }).packageManager).toBe(pin);
+    });
+
     it("protects an occupied target and preserves unrelated files when overwriting", async () => {
         using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-existing-"));
         const target = join(directory.path, "example");
@@ -115,6 +127,7 @@ describe("scaffold command", () => {
     ])(
         "keeps the settings of an existing $file and the packageManager pin when overwriting",
         async ({ packageManager, file, config, settings }) => {
+            vi.stubEnv("npm_config_user_agent", "yarn/4.20.0 npm/? node/v26.7.0 linux x64");
             using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-config-"));
             const target = join(directory.path, "example");
             mkdirSync(target);
@@ -190,6 +203,7 @@ describe("scaffold command", () => {
     });
 
     it("leaves the linker and build scripts of an app in a Yarn workspace to the workspace root", async () => {
+        vi.stubEnv("npm_config_user_agent", "yarn/4.18.1 npm/? node/v26.7.0 linux x64");
         using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-yarn-workspace-"));
         const root = JSON.stringify({
             name: "kitchen",
@@ -205,6 +219,7 @@ describe("scaffold command", () => {
         expect(status).toBe(0);
         expect(existsSync(join(target, ".yarnrc.yml"))).toBe(false);
         expect(JSON.parse(read(target, "package.json"))).not.toHaveProperty("dependenciesMeta");
+        expect(JSON.parse(read(target, "package.json"))).not.toHaveProperty("packageManager");
         expect(read(directory.path, "package.json")).toBe(root);
         expect(read(directory.path, ".yarnrc.yml")).toBe(settings);
         expect(output).toContain(join(directory.path, ".yarnrc.yml"));

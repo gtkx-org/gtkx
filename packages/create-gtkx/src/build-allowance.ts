@@ -20,6 +20,8 @@ const PNPM_WORKSPACE_FILE = "pnpm-workspace.yaml";
 const YARN_CONFIG_FILE = ".yarnrc.yml";
 const PACKAGE_JSON_FILE = "package.json";
 const NEGATION_PREFIX = "!";
+const YARN_USER_AGENT_PATTERN = /^yarn\/((\d+)\.\d+\.\d+\S*)/;
+const FIRST_PINNED_YARN_MAJOR = 2;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === "object" && value !== null && !Array.isArray(value);
@@ -108,6 +110,26 @@ const pinnedPackageManager = (root: string, packageManager: PackageManager): str
         return null;
     }
 };
+
+/**
+ * The `packageManager` pin for the Yarn 2 or newer release that `npm_config_user_agent` names, as
+ * `yarn init -2` writes it, or null when another package manager or Yarn 1 runs the scaffold.
+ */
+const runningYarnPin = (): string | null => {
+    const matched = YARN_USER_AGENT_PATTERN.exec(process.env.npm_config_user_agent ?? "");
+    const version = matched?.[1];
+
+    return version !== undefined && Number(matched?.[2]) >= FIRST_PINNED_YARN_MAJOR ? `yarn@${version}` : null;
+};
+
+/**
+ * The `packageManager` field for the new `package.json`: the existing project's pin when it names
+ * `packageManager`, otherwise, outside an enclosing workspace whose root owns the pin, the Yarn 2 or newer
+ * release running the scaffold.
+ */
+const packageManagerPin = (root: string, packageManager: PackageManager, isInWorkspace: boolean): string | null =>
+    pinnedPackageManager(root, packageManager) ??
+    (packageManager === "yarn" && !isInWorkspace ? runningYarnPin() : null);
 
 const workspacePatterns = (settings: unknown, field: string): string[] => {
     const patterns = isRecord(settings) ? settings[field] : undefined;
@@ -253,4 +275,4 @@ const enclosingWorkspace = (root: string, packageManager: PackageManager): Works
     return null;
 };
 
-export { PACKAGE_MANAGER_CONFIG_FILES, enclosingWorkspace, pinnedPackageManager, type Workspace, writeBuildAllowance };
+export { PACKAGE_MANAGER_CONFIG_FILES, enclosingWorkspace, packageManagerPin, type Workspace, writeBuildAllowance };
