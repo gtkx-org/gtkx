@@ -797,6 +797,11 @@ describe("generated bindings", () => {
         expect(inherited.outcome === "page" ? inherited.markdown : "").toContain(
             "`Gio.MemoryInputStream` inherits it from `Gio.InputStream`.",
         );
+        expect(reference.lookup("GObject.ObjectClass")).toMatchObject({ outcome: "page", symbol: { kind: "record" } });
+        expect(reference.search({ query: "listProperties" })).toEqual(
+            expect.arrayContaining([expect.objectContaining({ name: "ObjectClass.listProperties", kind: "method" })]),
+        );
+        expect(reference.lookup("Gio.ApplicationClass")).toMatchObject({ outcome: "notFound" });
     });
 
     it("exposes only signal pointer slots whose ownership can be honored", async () => {

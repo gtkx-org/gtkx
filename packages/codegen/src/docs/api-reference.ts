@@ -306,8 +306,10 @@ const classEntries = (namespace: GirNamespace): GiSymbolEntry[] => {
     return entries;
 };
 
+const hasClassStructMethods = (record: GirRecord): boolean => record.methods.some((method) => method.introspectable);
+
 const recordEntry = (namespace: GirNamespace, record: GirRecord): GiSymbolEntry | undefined => {
-    if (record.isVtable || !isEmittableEntity(record)) {
+    if ((record.isVtable && !hasClassStructMethods(record)) || !isEmittableEntity(record)) {
         return undefined;
     }
 
