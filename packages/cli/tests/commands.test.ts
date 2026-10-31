@@ -1955,6 +1955,40 @@ describe("CLI commands", () => {
         expect(await invoke(["build", "--cwd", project.root])).toContain("generated bindings out of date");
     });
 
+    it("restarts with the reinstalled dependency when the lockfile changes", async () => {
+        using project = createProject({ codegen: true });
+        const readyPath = join(project.root, "ready.txt");
+        const install = (version: string) => {
+            project.write(
+                "node_modules/clock-format/package.json",
+                JSON.stringify({ name: "clock-format", version, type: "module", exports: "./index.js" }),
+            );
+            project.write("node_modules/clock-format/index.js", `export const version = ${JSON.stringify(version)};`);
+            project.write(
+                "package-lock.json",
+                JSON.stringify({ lockfileVersion: 3, packages: { "node_modules/clock-format": { version } } }),
+            );
+        };
+        install("1.0.0");
+        project.write(
+            "src/index.ts",
+            `import { Application } from "@gtkx/gi/gio";
+            import { version } from "clock-format";
+            import { writeFileSync } from "node:fs";
+            export const application = new Application({ applicationId: "org.gtkx.example" });
+            application.setDefault();
+            application.register(null);
+            application.hold();
+            writeFileSync(${JSON.stringify(readyPath)}, version);`,
+        );
+
+        await withSession("dev", project.root, readyPath, async () => {
+            expect(readFileSync(readyPath, "utf8")).toBe("1.0.0");
+            install("2.0.0");
+            await expect.poll(() => readFileSync(readyPath, "utf8"), { timeout: 30_000 }).toBe("2.0.0");
+        });
+    });
+
     it("starts a real storybook session and stops its application", async () => {
         using project = createProject({ codegen: true });
         const readyPath = join(project.root, "ready.txt");

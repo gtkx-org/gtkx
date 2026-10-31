@@ -12,7 +12,8 @@ import { type Config, loadConfig } from "@gtkx/config";
 import { createConfigReloader, isAgentReferenceEnabled, isAgentRulesEnabled } from "@gtkx/config/internal";
 import { info } from "@gtkx/utils";
 import { existsSync, rmSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { packageManagers } from "nypm";
 import { resolveCatalogProject, synchronizeCatalogs } from "../i18n/catalogs.js";
 import { extractSourceCatalog } from "../i18n/source-messages.js";
 import { clearI18nTypes, emitI18nTypes } from "../i18n/types.js";
@@ -215,6 +216,16 @@ const ensureGeneratedIn = async (context: CodegenContext, options: EnsureGenerat
 const ensureGenerated = async (cwd: string, options: EnsureGeneratedOptions = {}): Promise<boolean> =>
     generate(await resolveCodegenContext(cwd, options.mode, options.configFile), options);
 
+const LOCKFILE_NAMES = packageManagers.flatMap(({ lockFile }) => lockFile ?? []);
+
+const findLockfiles = (cwd: string): string[] => {
+    const directory = resolve(cwd);
+    const found = LOCKFILE_NAMES.map((name) => join(directory, name)).filter((path) => existsSync(path));
+    const parent = dirname(directory);
+
+    return found.length > 0 || parent === directory ? found : findLockfiles(parent);
+};
+
 const resolveConfigWatch = async (
     cwd: string,
     mode?: string,
@@ -228,7 +239,10 @@ const resolveConfigWatch = async (
     regenerate: () => Promise<string[]>;
 }> => {
     const { reload, resolvePaths } = await createConfigReloader(cwd, { mode, configFile }, initialDependencies);
-    const resolveInputs = (): string[] => readGiStoreGirFiles(resolveStore(cwd).gi.storeDir);
+    const resolveInputs = (): string[] => [
+        ...readGiStoreGirFiles(resolveStore(cwd).gi.storeDir),
+        ...findLockfiles(cwd),
+    ];
 
     return {
         paths: resolvePaths(),
