@@ -40,7 +40,8 @@ GTKX preserves the directory's other sizes and variants.
 You can also point `applicationIcon` at a single SVG, PNG, or XPM file. When the option is omitted, GTKX looks
 for exactly one `<applicationId>.svg`, `.png`, or `.xpm` in the project root. Deployment requires an icon.
 
-Theme directories are copied in full. Keep development icons in a separate directory and select it with a
+Theme directories are copied in full. Keep icons imported with [`?icon`](/v2/guide/assets#import-project-data) elsewhere,
+since the app bundles them itself. Keep development icons in a separate directory and select it with a
 [`$development` override](/v2/guide/configuration-and-codegen#every-option).
 
 ## Choose a target
