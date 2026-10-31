@@ -1559,9 +1559,16 @@ describe("CLI commands", () => {
             "src/index.tsx",
             entry(`writeFileSync(${JSON.stringify(failedPath)}, "failed"); throw new Error("Activation failed");`),
         );
-        await withSession("dev", project.root, failedPath, async () => {
-            project.write("src/index.tsx", entry(`writeFileSync(${JSON.stringify(readyPath)}, "ready");`));
-            await expect.poll(() => existsSync(readyPath), { timeout: 30_000 }).toBe(true);
+        await withMcpClient(project.root, async (client) => {
+            await withSession("dev", project.root, failedPath, async () => {
+                await expect
+                    .poll(async () => (await callTool(client, "gtkx_get_widget_tree", { appTimeout: 1000 })).text, {
+                        timeout: 30_000,
+                    })
+                    .toContain("Activation failed");
+                project.write("src/index.tsx", entry(`writeFileSync(${JSON.stringify(readyPath)}, "ready");`));
+                await expect.poll(() => existsSync(readyPath), { timeout: 30_000 }).toBe(true);
+            });
         });
     });
 

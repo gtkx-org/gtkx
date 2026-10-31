@@ -795,17 +795,20 @@ const onApplicationShutdown =
 
 const refusedExitCode = (): number => (process.exitCode === undefined ? 1 : Number(process.exitCode));
 
-const connectApplication = async (session: DevSession): Promise<void> => {
+const startMcpClient = async (session: DevSession): Promise<void> => {
     const { deps, server } = session;
-    const { mcpApplicationId } = deps;
-    deps.log(`Connected application ID: ${mcpApplicationId}`);
     await deps.startMcpClient(
-        mcpApplicationId,
+        deps.mcpApplicationId,
         (id) => loadModuleExclusively(server, id),
         (cause) => {
             session.failure.report(cause);
         },
     );
+};
+
+const connectApplication = async (session: DevSession): Promise<void> => {
+    session.deps.log(`Connected application ID: ${session.deps.mcpApplicationId}`);
+    await startMcpClient(session);
 };
 
 const stopForStoppedApplication = async (session: DevSession, registrationState: ApplicationState): Promise<void> => {
@@ -850,6 +853,10 @@ const attachApplication = async (session: DevSession): Promise<void> => {
     const liveApplicationId = await deps.waitForApplicationId(APPLICATION_MOUNT_TIMEOUT_MS, () => !failure.isDown());
 
     if (failure.isDown()) {
+        if (!session.controller.isShuttingDown()) {
+            await startMcpClient(session);
+        }
+
         return;
     }
 
