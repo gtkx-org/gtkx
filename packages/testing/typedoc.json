@@ -13,10 +13,8 @@
         "TOPLEVELS",
         "WidgetIdResolver",
         "clear",
-        "click",
         "copy",
         "cut",
-        "dblClick",
         "deselectOptions",
         "drag",
         "dragAndDrop",
@@ -30,7 +28,6 @@
         "slide",
         "swipe",
         "tab",
-        "tripleClick",
         "unhover",
         "zoom"
     ]
