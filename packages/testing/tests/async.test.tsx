@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
 import * as Adw from "@gtkx/gi/adw";
+import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwActionRow } from "@gtkx/jsx/adw";
-import { GtkBox, GtkButton, GtkLabel, GtkListBox } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkButton, GtkEntry, GtkLabel, GtkListBox } from "@gtkx/jsx/gtk";
 import { act, findByText, render, screen, userEvent, waitFor, waitForElementToBeRemoved, within } from "@gtkx/testing";
 import { clearTimeout as cancel, setTimeout as schedule } from "node:timers";
 import { setTimeout as delay } from "node:timers/promises";
@@ -200,6 +201,23 @@ describe("waitFor", () => {
 
         expect(result).toBe(42);
         expect(attempts).toBeGreaterThan(1);
+    });
+
+    it("lets idle callbacks run while a focused entry blinks its caret", async () => {
+        await render(<GtkEntry accessibleLabel="Name" />);
+        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { name: "Name" });
+        entry.grabFocus();
+        let isIdleRun = false;
+
+        GLib.idleAdd(GLib.PRIORITY_DEFAULT_IDLE, () => {
+            isIdleRun = true;
+
+            return false;
+        });
+
+        await waitFor(() => {
+            expect(isIdleRun).toBe(true);
+        });
     });
 
     it("rejects when custom polling attempts never succeed", async () => {

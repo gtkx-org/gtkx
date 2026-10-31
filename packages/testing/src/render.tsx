@@ -181,11 +181,12 @@ const renderErrorHandlers = <Q extends QueryMap>(errors: RenderErrorState, optio
     },
 });
 
-const applyEnableAnimations = (areAnimationsEnabled: boolean): void => {
+const applyDisplaySettings = (areAnimationsEnabled: boolean): void => {
     const settings = Gtk.Settings.getDefault();
 
     if (settings) {
         settings.gtkEnableAnimations = areAnimationsEnabled;
+        settings.gtkCursorBlink = false;
     }
 };
 
@@ -196,7 +197,8 @@ const applyEnableAnimations = (areAnimationsEnabled: boolean): void => {
  * Without a container, creates and presents a harness window, which the tree sees as its parent
  * window. Windows the tree opens over it, such as an Adwaita dialog rendered on its own, are shown
  * again after it, so the topmost one is active as in a running application. Initially focused
- * editables keep their text unselected, with the caret at the end.
+ * editables keep their text unselected, with the caret at the end. Carets do not blink, so a focused
+ * editable does not keep the display redrawing and GLib idle callbacks still run.
  *
  * Waits for layout and activation before resolving, so focus and other platform state can be
  * read immediately. A new harness waits for its topmost window's activation; a caller-owned or rendered
@@ -219,7 +221,7 @@ const render = async <Q extends QueryMap = Record<never, never>>(
     element: ReactNode,
     options?: RenderOptions<Q>,
 ): Promise<RenderResult<Q>> => {
-    applyEnableAnimations(options?.areAnimationsEnabled === true);
+    applyDisplaySettings(options?.areAnimationsEnabled === true);
     const baseElement: Container = options?.baseElement ?? TOPLEVELS;
     const Wrapper = options?.wrapper;
     const resolved = resolveContainer(options?.container);
