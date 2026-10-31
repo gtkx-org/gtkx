@@ -45,6 +45,8 @@ If `sway` or `dbus-daemon` is missing from `PATH`, the run stops before any test
 
 With the GTKX Vitest plugin, importing `@gtkx/testing` registers widget matchers and automatic cleanup. No additional setup file is needed.
 
+A package that is not an application, such as a [component library](/v2/guide/configuration-and-codegen#component-libraries), runs its tests the same way without a `gtkx.config.ts`.
+
 The private session bus contains GTKX's minimal notifications service. Other desktop services, such as portals and keyrings, are absent; provide any D-Bus services the component under test needs on that bus.
 
 Tests share the user's files: `GLib.getUserDataDir()` and the other XDG directories point where the app's do. To keep test data apart, set the XDG variables in a [setup file](https://vitest.dev/config/setupfiles). GLib reads each XDG variable once, and GTK reads the data, configuration and cache directories as soon as a test file imports `@gtkx/react` or `@gtkx/testing`, so setting `process.env.XDG_DATA_HOME` in `beforeEach` or in a test has no effect.

@@ -15,7 +15,7 @@ type ResolvedProject = PreparedProject & { context: CodegenContext };
 
 const resolveProject = async (args: ProjectArgs, mode: string): Promise<ResolvedProject> => {
     const cwd = resolveCwd(args);
-    const context = await resolveCodegenContext(cwd, mode, args.config);
+    const context = await resolveCodegenContext(cwd, { mode, configFile: args.config });
 
     return {
         cwd,

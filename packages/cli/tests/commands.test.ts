@@ -1105,6 +1105,51 @@ describe("CLI commands", () => {
         await expect(invoke(["docs", "--cwd", project.root, "--out", "../outside"])).rejects.toThrow("below");
     });
 
+    it.each([
+        { name: "without a configuration file", config: null },
+        { name: "whose configuration names no application ID", config: { codegen: false } },
+    ])("tests a component library $name", async ({ config }) => {
+        using project = createProject();
+        if (config === null) {
+            rmSync(join(project.root, "gtkx.config.ts"));
+        } else {
+            project.write("gtkx.config.ts", `export default ${JSON.stringify(config)};`);
+            linkWorkspaceBindings(project.root);
+        }
+        project.write(
+            "src/badge.tsx",
+            `import { GtkLabel } from "@gtkx/jsx/gtk";
+            export const Badge = ({ label }: { label: string }) => <GtkLabel label={label} cssClasses={["badge"]} />;`,
+        );
+        project.write(
+            "tests/badge.test.tsx",
+            `import { render, screen } from "@gtkx/testing";
+            import { expect, test } from "vitest";
+            import { Badge } from "../src/badge.tsx";
+            test("renders the badge", async () => {
+                await render(<Badge label="New" />);
+                expect(await screen.findByText("New")).toBeTruthy();
+            });`,
+        );
+        project.write(
+            "vitest.config.mjs",
+            `import gtkx from "@gtkx/cli/vitest-plugin";
+            export default { plugins: [gtkx()], test: { include: ["tests/*.test.tsx"] } };`,
+        );
+        const runner = await createVitest({
+            root: project.root,
+            config: join(project.root, "vitest.config.mjs"),
+            watch: false,
+            reporters: [],
+        });
+        try {
+            const results = await runner.start();
+            expect(results.testModules.map((module) => module.state())).toEqual(["passed"]);
+        } finally {
+            await runner.close();
+        }
+    });
+
     it("loads one copy of the bindings in tests after they are regenerated", async () => {
         using project = createProject({ codegen: true, libraries: ["Gio-2.0"] });
         project.write(

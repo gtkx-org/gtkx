@@ -1,3 +1,4 @@
+import type { LoadConfigOptions } from "@gtkx/config";
 import type { Plugin, UserConfig } from "vite";
 import { resolveStore } from "@gtkx/codegen";
 import { viteProjectRoot } from "@gtkx/config/internal";
@@ -9,11 +10,11 @@ const TEST_MODE = "test";
 const storeGeneration = (linkDirs: string[]): string =>
     linkDirs.map((linkDir) => (existsSync(linkDir) ? realpathSync(linkDir) : "")).join("\n");
 
-const gtkxEnsureStore = (configFile?: string): Plugin => ({
+const gtkxEnsureStore = (options: Pick<LoadConfigOptions, "configFile" | "defaultApplicationId">): Plugin => ({
     name: "gtkx:ensure-store",
 
     async config(config: UserConfig) {
-        await ensureGenerated(viteProjectRoot(config), { shouldAnnounce: true, mode: TEST_MODE, configFile });
+        await ensureGenerated(viteProjectRoot(config), { ...options, shouldAnnounce: true, mode: TEST_MODE });
     },
 
     configureVitest({ project, defineCacheKeyGenerator }) {

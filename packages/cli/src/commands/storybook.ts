@@ -51,7 +51,7 @@ const createStorybookCommand = (options: { signal?: AbortSignal; applicationArgs
                 );
             }
 
-            const context = await resolveCodegenContext(cwd, DEV_MODE, args.config);
+            const context = await resolveCodegenContext(cwd, { mode: DEV_MODE, configFile: args.config });
             await ensureGeneratedIn(context, { shouldAnnounce: true, mode: DEV_MODE });
             const entryPath = createStorybookEntry(cwd);
             const watch = await resolveConfigWatch(cwd, DEV_MODE, context.configFile, context.configDependencies);

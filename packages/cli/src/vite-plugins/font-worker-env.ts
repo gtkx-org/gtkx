@@ -1,13 +1,12 @@
 import type { UserConfig } from "vite";
 import type { Plugin } from "vitest/config";
-import { createConfigLoader, viteProjectRoot } from "@gtkx/config/internal";
+import type { ConfigLoader } from "@gtkx/config";
+import { viteProjectRoot } from "@gtkx/config/internal";
 import { stageProjectFonts } from "../internal/font-staging.js";
 import type { RetainedStagingDir } from "../internal/staging-dir.js";
 import { prependXdgDataDir } from "../internal/xdg-data-dirs.js";
 
-function gtkxFontWorkerEnv(staging: RetainedStagingDir, configFile?: string): Plugin {
-    const loadConfig = createConfigLoader({ configFile });
-
+function gtkxFontWorkerEnv(staging: RetainedStagingDir, loadConfig: ConfigLoader): Plugin {
     return {
         name: "gtkx:font-worker-env",
         enforce: "pre",

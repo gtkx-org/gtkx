@@ -57,6 +57,7 @@ type EnsureGeneratedOptions = {
     lockTimeoutMs?: number | undefined;
     mode?: string;
     configFile?: string | undefined;
+    defaultApplicationId?: string | undefined;
     shouldPreserveI18nMetadata?: boolean | undefined;
 };
 
@@ -214,7 +215,14 @@ const ensureGeneratedIn = async (context: CodegenContext, options: EnsureGenerat
     generate(context, options);
 
 const ensureGenerated = async (cwd: string, options: EnsureGeneratedOptions = {}): Promise<boolean> =>
-    generate(await resolveCodegenContext(cwd, options.mode, options.configFile), options);
+    generate(
+        await resolveCodegenContext(cwd, {
+            mode: options.mode,
+            configFile: options.configFile,
+            defaultApplicationId: options.defaultApplicationId,
+        }),
+        options,
+    );
 
 const LOCKFILE_NAMES = packageManagers.flatMap(({ lockFile }) => lockFile ?? []);
 

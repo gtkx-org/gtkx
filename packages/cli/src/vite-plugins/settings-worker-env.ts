@@ -1,12 +1,11 @@
 import type { UserConfig } from "vite";
 import type { Plugin } from "vitest/config";
-import { createConfigLoader, viteProjectRoot } from "@gtkx/config/internal";
+import type { ConfigLoader } from "@gtkx/config";
+import { viteProjectRoot } from "@gtkx/config/internal";
 import type { RetainedStagingDir } from "../internal/staging-dir.js";
 import { prependSchemaDir, stageAndCompileProjectSchemas } from "../settings/schema.js";
 
-function gtkxSettingsWorkerEnv(staging: RetainedStagingDir, configFile?: string): Plugin {
-    const loadConfig = createConfigLoader({ configFile });
-
+function gtkxSettingsWorkerEnv(staging: RetainedStagingDir, loadConfig: ConfigLoader): Plugin {
     return {
         name: "gtkx:settings-worker-env",
         enforce: "pre",

@@ -126,7 +126,70 @@ Each app still imports only the libraries it declares and their dependencies, wh
 
 A shared package declares `@gtkx/react` as a peer dependency and imports `@gtkx/gi` and `@gtkx/jsx` subpaths like an app. List it in the dependencies of each app that uses it, so `gtkx dev` loads it through Vite. A shared package resolves the bindings from the workspace root, so it can import any library some app declares; each app that uses it has to declare the libraries the package imports.
 
-An app's [Storybook](/v2/guide/storybook#stories-from-a-shared-package) configuration can list a shared package's stories with a pattern such as `../../packages/ui/src/**/*.stories.tsx`. A shared package that should run its own explorer or Vitest tests becomes a GTKX project, with its own `gtkx.config.ts`, including an `applicationId`, and GTKX development dependencies.
+An app's [Storybook](/v2/guide/storybook#stories-from-a-shared-package) configuration can list a shared package's stories with a pattern such as `../../packages/ui/src/**/*.stories.tsx`. A shared package that should run its own explorer becomes a GTKX project, with its own `gtkx.config.ts`, including an `applicationId`, and GTKX development dependencies. Its own Vitest tests need no configuration file; see [Component libraries](#component-libraries).
+
+## Component libraries
+
+A component library is a package of GTKX components that apps install, from their workspace or from a registry. It is not an application, so it has no `gtkx.config.ts`.
+
+Its `package.json` lists `@gtkx/react` and `react` as peer dependencies, with any other GTKX package its components import at runtime, such as `@gtkx/css` or `@gtkx/cairo`, so that it uses the app's copies. It does not depend on `@gtkx/gi` or `@gtkx/jsx`: each app generates those for the libraries it declares, so an app that uses the package lists in `libraries` every GIR library the package imports beyond Adwaita and GTK. For building and testing, add the peer packages, `@gtkx/cli`, `@gtkx/testing`, `@types/node`, `@types/react`, `typescript` and `vitest` as development dependencies.
+
+```json [package.json]
+{
+    "name": "@example/ui",
+    "version": "0.1.0",
+    "type": "module",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.js"
+        }
+    },
+    "files": ["dist"],
+    "scripts": {
+        "build": "tsc -p tsconfig.build.json",
+        "typecheck": "tsc",
+        "test": "vitest run"
+    }
+}
+```
+
+Build it with `tsc` into JavaScript and declarations. Start from a scaffolded app's `tsconfig.json`, which resolves `@gtkx/gi` and `@gtkx/jsx` to the generated bindings, and add a build configuration that emits only the sources:
+
+```json [tsconfig.build.json]
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "noEmit": false,
+        "declaration": true,
+        "outDir": "dist",
+        "rootDir": "src"
+    },
+    "include": ["src/**/*"],
+    "exclude": ["src/**/*.stories.tsx"]
+}
+```
+
+The output keeps its `@gtkx/gi` and `@gtkx/jsx` imports, in the JavaScript and in the declarations, so the app's own bindings resolve them when it builds and typechecks. `gtkx dev`, `gtkx build` and the Vitest plugin load an installed package that depends on `@gtkx/react` through Vite, so the app needs no extra configuration, and `gtkx build` bundles the package and lists it in `BUNDLED-NOTICES`. Publish the package with your package manager after building it, for example `npm publish`.
+
+Test the components with `@gtkx/testing` and the Vitest plugin, as in an app:
+
+```ts [vitest.config.ts]
+import gtkx from "@gtkx/cli/vitest-plugin";
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+    plugins: [gtkx()],
+});
+```
+
+Without a `gtkx.config.ts`, or without an `applicationId` in it, the tests run as the application `org.gtkx.Test`. A package whose components import GIR libraries beyond Adwaita and GTK lists them in a `gtkx.config.ts` that leaves out `applicationId`. Export a plain object, because `defineConfig` types `applicationId` as required for applications:
+
+```ts [gtkx.config.ts]
+export default { libraries: ["GtkSource-5"] };
+```
+
+Running the tests generates the bindings, the agent reference and the rules file, as `gtkx codegen` does for an app, so outside a workspace run the tests once before `tsc`. In a workspace the package shares the bindings of the apps around it, under the rules described in [Monorepos](#monorepos).
 
 ## The JSX prop model
 

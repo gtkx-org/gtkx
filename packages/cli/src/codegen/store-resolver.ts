@@ -1,4 +1,4 @@
-import { type Config, loadConfig } from "@gtkx/config";
+import { type Config, loadConfig, type LoadConfigOptions } from "@gtkx/config";
 import { configDependenciesFor } from "@gtkx/config/internal";
 
 type CodegenContext = {
@@ -9,8 +9,8 @@ type CodegenContext = {
     translationDomain: string;
 };
 
-const resolveCodegenContext = async (cwd: string, mode?: string, selectedConfig?: string): Promise<CodegenContext> => {
-    const loaded = await loadConfig(cwd, { mode, configFile: selectedConfig });
+const resolveCodegenContext = async (cwd: string, options: LoadConfigOptions = {}): Promise<CodegenContext> => {
+    const loaded = await loadConfig(cwd, options);
     const { config, configFile, translationDomain } = loaded;
 
     return { root: cwd, config, configFile, configDependencies: configDependenciesFor(loaded), translationDomain };
