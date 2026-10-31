@@ -51,10 +51,12 @@ import {
     signalIdFor,
 } from "./signal.js";
 import {
+    isTypedEnum,
     TYPE_INTERFACE,
     TYPE_INVALID,
     TYPE_NONE,
     type TypedClass,
+    type TypedEnum,
     typeFundamental,
     typeInterfacePrerequisites,
     typeInterfaces,
@@ -329,8 +331,8 @@ type RegisteredClass<
     RegisteredInstance<InstanceType<TClass>, TProperties, TSignals, TInterfaces>
 >;
 
-/** A numeric GType or a generated or registered wrapper class. */
-type SignalGType = bigint | AnyClass<TypedClass>;
+/** A numeric GType, a generated or registered wrapper class, or a generated enum or flags type. */
+type SignalGType = bigint | AnyClass<TypedClass> | TypedEnum;
 
 /** A signal installed by {@link registerClass}. */
 type SignalSpec = {
@@ -922,6 +924,10 @@ function installSignalOverrides(newType: bigint, methods: MethodTable): void {
 function resolveSignalGType(klass: AnyClass, signalName: string, role: string, entry: SignalGType): bigint {
     if (typeof entry === "bigint") {
         return entry;
+    }
+
+    if (isTypedEnum(entry)) {
+        return entry.__type__;
     }
 
     const gtype = getClassType(entry);

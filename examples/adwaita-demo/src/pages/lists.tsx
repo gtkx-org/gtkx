@@ -18,7 +18,7 @@ import {
     AdwToolbarView,
 } from "@gtkx/jsx/adw";
 import { GtkAdjustment, GtkBox, GtkButton, GtkCheckButton, GtkStringList } from "@gtkx/jsx/gtk";
-import { getClassType, resolveType } from "@gtkx/runtime";
+import { getClassType } from "@gtkx/runtime";
 import { useState } from "react";
 import { useDemo } from "../context.js";
 
@@ -106,9 +106,7 @@ export const ListsPage = () => {
                                 title="Enumeration Combo Row"
                                 subtitle="This combo row was created from an enumeration"
                                 enableSearch
-                                model={
-                                    <AdwEnumListModel enumType={resolveType("libgtk-4.so.1", "gtk_license_get_type")} />
-                                }
+                                model={<AdwEnumListModel enumType={Gtk.License.__type__} />}
                                 expression={expression}
                             />
                         </AdwPreferencesGroup>

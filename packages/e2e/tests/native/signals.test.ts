@@ -511,19 +511,22 @@ test("signals declared on a typed base register beside the options' signals", ()
         }
     }
 
-    const Ticking = registerClass(Ticker, { typeName: `GtkxSignalsTicker${suffix}`, signals: { reset: {} } });
+    const Ticking = registerClass(Ticker, {
+        typeName: `GtkxSignalsTicker${suffix}`,
+        signals: { reset: { paramTypes: [Regress.TestEnum] } },
+    });
     const instance = new Ticking({});
     const seen: unknown[] = [];
     instance.connect("ticked", (count) => {
         seen.push(count);
     });
-    instance.connect("reset", () => {
-        seen.push("reset");
+    instance.connect("reset", (mode) => {
+        seen.push(mode);
     });
 
     instance.tick(3);
-    instance.emit("reset");
-    expect(seen).toEqual([3, "reset"]);
+    instance.emit("reset", Regress.TestEnum.VALUE2);
+    expect(seen).toEqual([3, Regress.TestEnum.VALUE2]);
     expect(GObject.signalLookup("ticked", Regress.TestObj)).toBe(0);
 
     class Clashing extends withSignals(Regress.TestObj, { ticked: {} }) {}

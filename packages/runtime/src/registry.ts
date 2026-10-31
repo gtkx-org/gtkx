@@ -15,6 +15,7 @@ import { copyLayerMembers, createMixinLayer, installMixins, type Mixin, type Mix
 import {
     TYPE_INVALID,
     TYPE_OBJECT,
+    isTypedEnum,
     type TypedClass,
     typeFundamental,
     typeInterfaces,
@@ -180,6 +181,10 @@ function getInstanceType(instance: object): bigint {
 }
 
 function coerceGType(value: unknown): unknown {
+    if (isTypedEnum(value)) {
+        return value.__type__;
+    }
+
     if (typeof value !== "function") {
         return value;
     }

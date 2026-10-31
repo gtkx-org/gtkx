@@ -289,7 +289,7 @@ describe("CLI commands", () => {
                             <GtkListBox>
                                 <AdwComboRow
                                     title="Easing"
-                                    model={<AdwEnumListModel enumType={GObject.typeFromName("AdwEasing")} />}
+                                    model={<AdwEnumListModel enumType={Adw.Easing.__type__} />}
                                     expression={name}
                                     onMap={() => setTimeout(() => process.exit(0), 100)}
                                 />

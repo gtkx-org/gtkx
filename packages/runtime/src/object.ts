@@ -11,6 +11,7 @@ import type { ReadableProperties, WritableProperties } from "./property-types.js
 import { preserveArrayNull } from "./descriptors.js";
 import { fromNative } from "./native-value.js";
 import {
+    assertConstructValueValidates,
     coerceConstructPropertyValue,
     type ConstructProperty,
     constructPropertyFor,
@@ -118,16 +119,16 @@ function constructPropertyForEntry(
         return constructPropertyFor(source.gtype, name, value, source.wrapper);
     }
 
-    return {
-        name: binding[0],
-        value: convertPropertyValue(source.wrapper, source.gtype, binding[0], value, () =>
-            toValueForType(
-                binding[1],
-                coerceConstructPropertyValue(source.gtype, binding[0], value),
-                propertyValueType(source.gtype, binding[0]),
-            ),
+    const gValue = convertPropertyValue(source.wrapper, source.gtype, binding[0], value, () =>
+        toValueForType(
+            binding[1],
+            coerceConstructPropertyValue(source.gtype, binding[0], value),
+            propertyValueType(source.gtype, binding[0]),
         ),
-    };
+    );
+    assertConstructValueValidates(source.wrapper, source.gtype, binding[0], value, gValue);
+
+    return { name: binding[0], value: gValue };
 }
 
 /**

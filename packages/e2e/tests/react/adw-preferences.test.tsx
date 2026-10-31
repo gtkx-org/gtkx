@@ -1,9 +1,11 @@
 import type { ReactElement, RefObject } from "react";
 import * as Adw from "@gtkx/gi/adw";
+import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
     AdwActionRow,
     AdwComboRow,
+    AdwEnumListModel,
     AdwPreferencesGroup,
     AdwPreferencesPage,
     AdwSpinRow,
@@ -302,6 +304,28 @@ describe("userEvent selection - AdwComboRow", () => {
 
         await userEvent.selectOptions(ref.current as Adw.ComboRow, 2);
         expect(ref.current).toHaveObjectProperty("selected", 2);
+    });
+
+    it("lists an enumeration from its GType and refuses a GType the model cannot hold", async () => {
+        const ref = createRef<Adw.EnumListModel>();
+        const nick = Gtk.PropertyExpression.new(Adw.EnumListItem, null, "nick");
+        const comboRow = (enumType: GObject.Type) => (
+            <AdwPreferencesGroup>
+                <AdwComboRow
+                    title="Order"
+                    expression={nick}
+                    model={<AdwEnumListModel ref={ref} enumType={enumType} />}
+                />
+            </AdwPreferencesGroup>
+        );
+
+        const { unmount } = await render(comboRow(Gtk.SortType.__type__));
+        expect(ref.current?.getNItems()).toBe(2);
+        await unmount();
+
+        await expect(render(comboRow(GObject.typeFromName("GtkxUnregisteredEnum")))).rejects.toThrow(
+            /cannot set property 'enum-type'/,
+        );
     });
 });
 

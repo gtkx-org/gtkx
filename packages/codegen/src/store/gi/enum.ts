@@ -7,8 +7,14 @@ import { indent, pure } from "../../writer/emit.js";
 import { callableDoc } from "./callable-doc.js";
 import { getDoc } from "./doc-spec.js";
 import { type EnumStaticFunction, enumStaticFunctions } from "./function.js";
+import { renderSourceGtype } from "./gtype-binding.js";
 
 type KeyedMember = EnumMember & { key: string };
+
+type EnumCompanion = {
+    statics: EnumStaticFunction[];
+    gtype: string | undefined;
+};
 
 const memberDoc = (member: KeyedMember): string => getDoc(member);
 
@@ -27,16 +33,19 @@ const generateEnum = (context: ModuleContext, enumeration: GirEnum): void => {
     );
 
     const errorDomain = enumeration.errorDomain;
-    const statics = enumStaticFunctions(context, enumeration.name);
+    const companion: EnumCompanion = {
+        statics: enumStaticFunctions(context, enumeration.name),
+        gtype: renderSourceGtype(context, enumeration),
+    };
 
     if (errorDomain !== undefined) {
-        appendErrorDomain(context, enumeration, members, { errorDomain, statics });
+        appendErrorDomain(context, enumeration, members, errorDomain, companion);
 
         return;
     }
 
-    if (statics.length > 0) {
-        appendEnumWithStatics(context, enumeration, members, statics);
+    if (companion.statics.length > 0 || companion.gtype !== undefined) {
+        appendEnumWithCompanion(context, enumeration, members, companion);
 
         return;
     }
@@ -67,13 +76,31 @@ const staticsValue = (context: ModuleContext, target: string, statics: EnumStati
     return pure(`defineStatics(${target}, { ${entries.join(", ")} })`);
 };
 
+const companionType = (context: ModuleContext, base: string, { statics, gtype }: EnumCompanion): string => {
+    const type = staticsType(context, base, statics);
+
+    return gtype === undefined ? type : `${type} & ${context.addRuntimeTypeImport("TypedEnum")}`;
+};
+
+const companionValue = (context: ModuleContext, target: string, { statics, gtype }: EnumCompanion): string => {
+    const value = staticsValue(context, target, statics);
+
+    if (gtype === undefined) {
+        return value;
+    }
+
+    context.addRuntimeInternalImport("defineEnumType");
+
+    return pure(`defineEnumType(${value}, () => ${gtype})`);
+};
+
 const appendErrorDomain = (
     context: ModuleContext,
     enumeration: GirEnum,
     members: KeyedMember[],
-    domain: { errorDomain: string; statics: EnumStaticFunction[] },
+    errorDomain: string,
+    companion: EnumCompanion,
 ): void => {
-    const { errorDomain, statics } = domain;
     const memberEntries = members.map((member) => `${member.key}: ${member.value}`);
     const typeFields = members.map((member) => `${memberDoc(member)}${member.key}: number;`);
     context.addRuntimeImport("createErrorDomain");
@@ -90,11 +117,11 @@ const appendErrorDomain = (
     });
 
     const created = pure(`createErrorDomain(${quarkExpression}, { ${memberEntries.join(", ")} })`);
-    const type = staticsType(context, `ErrorDomain<${shape}>`, statics);
+    const type = companionType(context, `ErrorDomain<${shape}>`, companion);
 
     context.declare({
         name,
-        code: `${doc}export const ${name}: ${type} = ${staticsValue(context, created, statics)};`,
+        code: `${doc}export const ${name}: ${type} = ${companionValue(context, created, companion)};`,
     });
 };
 
@@ -126,11 +153,11 @@ const appendEnumDeclaration = (context: ModuleContext, enumeration: GirEnum, mem
     });
 };
 
-const appendEnumWithStatics = (
+const appendEnumWithCompanion = (
     context: ModuleContext,
     enumeration: GirEnum,
     members: KeyedMember[],
-    statics: EnumStaticFunction[],
+    companion: EnumCompanion,
 ): void => {
     const doc = enumDoc(enumeration);
     const name = sanitizeTypeIdentifier(enumeration.name);
@@ -146,7 +173,7 @@ const appendEnumWithStatics = (
 
     context.declare({
         name,
-        code: `${doc}export const ${name}: ${staticsType(context, `typeof ${localName}`, statics)} = ${staticsValue(context, localName, statics)};`,
+        code: `${doc}export const ${name}: ${companionType(context, `typeof ${localName}`, companion)} = ${companionValue(context, localName, companion)};`,
     });
 
     context.declare({

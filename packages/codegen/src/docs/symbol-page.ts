@@ -652,12 +652,17 @@ const enumPage = (entry: GiSymbolBase & { kind: "enum"; enumeration: GirEnum }, 
             : `Members are error codes for the \`${enumeration.errorDomain}\` GError domain, ` +
               `accessed as \`${qualified}.<member>\`.`;
 
+    const gtype =
+        enumeration.glibGetType === undefined
+            ? ""
+            : ` \`${qualified}.__type__\` is its GType, and \`${qualified}\` itself can be passed wherever a GType is taken.`;
+
     const table = ["| Member | Value | Description |", "| --- | --- | --- |", ...rows].join("\n");
 
     return joinSections([
         ...pageHeader(entry, kindLabel),
         "## Members",
-        usage,
+        `${usage}${gtype}`,
         table,
         ...enumFunctionSections(entry, qualified, statics),
     ]);

@@ -6,13 +6,13 @@ import * as GObject from "@gtkx/gi/gobject";
 
 import * as Regress from "@gtkx/gi/regress";
 
-import { type AnyClass, type TypedClass } from "@gtkx/runtime";
+import { type AnyClass, type TypedClass, type TypedEnum } from "@gtkx/runtime";
 
 import { assert, expect, test } from "vitest";
 
 import { drainGC } from "./helpers/memory.js";
 
-type ValueType = AnyClass<TypedClass> | GObject.Type;
+type ValueType = AnyClass<TypedClass> | TypedEnum | GObject.Type;
 
 const buildValue = (type: ValueType, fill: (value: GObject.Value) => void): GObject.Value => {
     const value = new GObject.Value();
@@ -23,9 +23,6 @@ const buildValue = (type: ValueType, fill: (value: GObject.Value) => void): GObj
 };
 
 const named = (name: string): GObject.Type => GObject.typeFromName(name);
-
-const propertyType = (name: string): GObject.Type =>
-    GObject.ObjectClass.peek(GIMarshallingTests.PropertiesObject).findProperty(name).valueType;
 
 const fixtureFloat = 314 / 100;
 
@@ -105,12 +102,12 @@ const objectValue = (o: GObject.Object): GObject.Value =>
     });
 
 const enumValue = (v: number): GObject.Value =>
-    buildValue(propertyType("some-enum"), (value) => {
+    buildValue(GIMarshallingTests.GEnum, (value) => {
         value.setEnum(v);
     });
 
 const flagsValue = (v: number): GObject.Value =>
-    buildValue(propertyType("some-flags"), (value) => {
+    buildValue(GIMarshallingTests.Flags, (value) => {
         value.setFlags(v);
     });
 

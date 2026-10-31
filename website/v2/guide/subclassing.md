@@ -105,7 +105,7 @@ class CounterBase extends withSignals(GObject.Object, {
 const Counter = registerClass(CounterBase, { typeName: "ExampleCounter" });
 ```
 
-`registerClass` installs these signals on the new type. Its `signals` option declares signals too, typed on the returned class rather than inside the class body; a name declared in both places is an error. Each entry names its parameter GTypes and, when needed, its return GType. Custom JSX components should include their signal handler props in their prop type.
+`registerClass` installs these signals on the new type. Its `signals` option declares signals too, typed on the returned class rather than inside the class body; a name declared in both places is an error. Each entry names its parameter GTypes and, when needed, its return GType, as GType values, generated classes, or generated enumerations and flags. Custom JSX components should include their signal handler props in their prop type.
 
 Handlers receive the signal arguments; JSX handlers also receive the emitting object last. See the [JSX prop model](/v2/guide/configuration-and-codegen#the-jsx-prop-model) for handler props and the [`registerClass` reference](/v2/reference/@gtkx/runtime/functions/registerClass) for signal options.
 

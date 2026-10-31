@@ -20,6 +20,19 @@ const isWidget = GObject.typeIsA(Gtk.Label, Gtk.Widget);
 
 Generated classes and interfaces, and subclasses registered with `registerClass`, can be passed this way. A plain JavaScript subclass has no registration of its own. GTypes returned by bindings or passed to signal handlers remain `bigint` values.
 
+Generated enumerations, flags and error domains whose type is registered with GObject can be passed the same way, and carry their GType as `__type__`, like classes. Reading it registers the type, so use it rather than `GObject.typeFromName`, which finds a type only once something has registered it. JSX props that take a GType accept the `__type__` value:
+
+```tsx
+import * as GObject from "@gtkx/gi/gobject";
+import * as Gtk from "@gtkx/gi/gtk";
+import { AdwEnumListModel } from "@gtkx/jsx/adw";
+
+const isEnum = GObject.typeIsA(Gtk.SortType, GObject.TYPE_ENUM);
+const orders = <AdwEnumListModel enumType={Gtk.SortType.__type__} />;
+```
+
+A GType that GObject rejects for a construct property, such as the `0n` `typeFromName` returns for a type nobody registered, throws a `RangeError` instead of constructing the object without it.
+
 ## Passing a GValue
 
 When a binding reads a `GObject.Value`, GTKX usually accepts the JavaScript payload directly. For example, a `GtkDragSource` can use this `onPrepare` handler:

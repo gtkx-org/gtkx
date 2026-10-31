@@ -7,7 +7,7 @@ import { requireWidget } from "./widget-target.js";
 
 const ROLE_NAMES_BY_VALUE = enumNamesByValue(Gtk.AccessibleRole);
 
-function enumNamesByValue(enumObject: Record<string, string | number>): Map<number, string> {
+function enumNamesByValue(enumObject: Readonly<Record<string, unknown>>): Map<number, string> {
     return new Map<number, string>(
         Object.entries(enumObject)
             .filter((entry): entry is [string, number] => typeof entry[1] === "number")

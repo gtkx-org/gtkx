@@ -11,7 +11,7 @@ import {
     AdwToolbarView,
 } from "@gtkx/jsx/adw";
 import { GtkAdjustment } from "@gtkx/jsx/gtk";
-import { getClassType, resolveType } from "@gtkx/runtime";
+import { getClassType } from "@gtkx/runtime";
 import { useState } from "react";
 
 const UNITS = [Adw.LengthUnit.PX, Adw.LengthUnit.PT, Adw.LengthUnit.SP];
@@ -63,11 +63,7 @@ export const ClampPage = () => {
                             title="Unit"
                             selected={unit}
                             expression={expression}
-                            model={
-                                <AdwEnumListModel
-                                    enumType={resolveType("libadwaita-1.so.0", "adw_length_unit_get_type")}
-                                />
-                            }
+                            model={<AdwEnumListModel enumType={Adw.LengthUnit.__type__} />}
                             onNotifySelected={(value) => {
                                 const next = UNITS[value];
                                 if (next !== undefined) setUnit(next);

@@ -144,6 +144,7 @@ describe("generated bindings", () => {
                 directory.path,
                 `import {
                 Application,
+                ApplicationFlags,
                 Cancellable,
                 DBusError,
                 dbusErrorGetRemoteError,
@@ -154,7 +155,7 @@ describe("generated bindings", () => {
                 type SocketAddress,
             } from "@gtkx/gi/gio";
             import { Error as GLibError, Source, sourceRemove, UnicodeScript } from "@gtkx/gi/glib";
-            import { Object as GObject, TYPE_INT, TYPE_OBJECT } from "@gtkx/gi/gobject";
+            import { Object as GObject, TYPE_ENUM, TYPE_FLAGS, TYPE_INT, TYPE_OBJECT, typeIsA } from "@gtkx/gi/gobject";
             import { registerClass, withSignals } from "@gtkx/runtime";
             const file: File = File.newForPath("/tmp/example");
             const path: string | null = file.getPath();
@@ -226,6 +227,11 @@ describe("generated bindings", () => {
             const latin: UnicodeScript.LATIN = UnicodeScript.LATIN;
             const tag: number = UnicodeScript.toIso15924(latin);
             const latinName: string | undefined = UnicodeScript[latin];
+            const flagsType: bigint = ApplicationFlags.__type__;
+            const isFlags: boolean = typeIsA(ApplicationFlags, TYPE_FLAGS);
+            const isEnum: boolean = typeIsA(DBusError, TYPE_ENUM) && typeIsA(UnicodeScript, TYPE_ENUM);
+            // @ts-expect-error an object instance is not a GType
+            typeIsA(cancellable, TYPE_OBJECT);
             const removed: boolean = Source.remove(1);
             const removedFlat: boolean = sourceRemove(1);
             class TickerBase extends withSignals(Application, { ticked: { paramTypes: [TYPE_INT] } }) {
@@ -241,15 +247,15 @@ describe("generated bindings", () => {
             }
             export const Ticker = registerClass(TickerBase, {
                 typeName: "ConsumerTicker",
-                signals: { reset: {} },
+                signals: { reset: { paramTypes: [ApplicationFlags] } },
             });
             const ticker = new Ticker();
             ticker.on("ticked", () => {});
-            ticker.emit("reset");
+            ticker.emit("reset", ApplicationFlags.DEFAULT_FLAGS);
             declare const either: Application | ServiceBase;
             either.emit("activate");
             either.on("startup", () => {}).disconnect(either.connect("shutdown", () => {}));
-            export { cancellable, connected, created, domain, failed, flat, isFailed, latinName, path, remote, removed, removedFlat, script, tag };`,
+            export { cancellable, connected, created, domain, failed, flagsType, flat, isEnum, isFailed, isFlags, latinName, path, remote, removed, removedFlat, script, tag };`,
             ),
         ).toEqual([]);
         expect(

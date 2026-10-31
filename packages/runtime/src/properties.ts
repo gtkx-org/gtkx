@@ -406,6 +406,24 @@ function convertPropertyValue<T>(instance: object, gtype: bigint, name: string, 
     }
 }
 
+/**
+ * Rejects a converted construct value the property's ParamSpec would replace, so construction never
+ * runs without a property the type relies on.
+ */
+function assertConstructValueValidates(
+    wrapper: object,
+    gtype: bigint,
+    name: string,
+    value: unknown,
+    gValue: ExternalObject<Handle>,
+): void {
+    const check = propertyCheckFor(gtype, name);
+
+    if (check !== null) {
+        assertValueValidates(wrapper, check, value, gValue);
+    }
+}
+
 function propertyValueType(gtype: bigint, name: string): bigint {
     const check = propertyCheckFor(gtype, name);
     if (check === null) throw new TypeError(`No GObject property named '${name}'`);
@@ -963,6 +981,7 @@ export {
     coerceObjectProperty,
     getDeclaredPropertyName,
     isReadableProperty,
+    assertConstructValueValidates,
     coerceConstructPropertyValue,
     constructPropertyFor,
     convertPropertyValue,

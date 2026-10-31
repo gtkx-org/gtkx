@@ -1,5 +1,7 @@
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
 
+import * as GObject from "@gtkx/gi/gobject";
+
 import * as Regress from "@gtkx/gi/regress";
 
 import { expect, test } from "vitest";
@@ -50,6 +52,16 @@ test("regress enum members carry negative, character and unsigned values", () =>
     expect(Regress.TestReferenceEnum.THREE).toBe(4);
     expect(Regress.TestReferenceEnum.FOUR).toBe(216);
     expect(Regress.TestReferenceEnum.FIVE).toBe(-217);
+});
+
+test("registered enums, flags and error domains carry their GType and stand in for it", () => {
+    expect(GObject.typeName(GIMarshallingTests.GEnum.__type__)).toBe("GIMarshallingTestsGEnum");
+    expect(GObject.typeName(GIMarshallingTests.Flags.__type__)).toBe("GIMarshallingTestsFlags");
+    expect(GObject.typeName(Regress.TestError.__type__)).toBe("RegressTestError");
+    expect(GObject.typeIsA(GIMarshallingTests.GEnum, GObject.typeFromName("GEnum"))).toBe(true);
+    expect(GObject.typeIsA(GIMarshallingTests.Flags, GObject.typeFromName("GFlags"))).toBe(true);
+    expect(Object.keys(GIMarshallingTests.GEnum)).toEqual(["0", "1", "42", "VALUE1", "VALUE2", "VALUE3"]);
+    expect("__type__" in GIMarshallingTests.Enum).toBe(false);
 });
 
 test("plain enums round trip through return, in, out and inout", () => {
