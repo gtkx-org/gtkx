@@ -117,7 +117,22 @@ Reserve these names for default handlers when they match a signal. Use ordinary 
 
 ## Class-level setup
 
-Use `classInit` for native operations that must run during type registration, and `cssName` to set a widget subclass's CSS name. `classInit` receives the generated class-struct wrapper, such as `Gtk.WidgetClass`, after GTKX installs the declared properties, signals and virtual functions.
+Use `classInit` for native operations that must run during type registration, and `cssName` to set a widget subclass's CSS name. `classInit` receives the generated class-struct wrapper, such as `Gtk.WidgetClass`, after GTKX installs the declared properties, signals and virtual functions. Its parameter is typed as `object`; annotate it with the class struct of the class you extend:
+
+```ts
+import * as Gtk from "@gtkx/gi/gtk";
+import { registerClass } from "@gtkx/runtime";
+
+class WaveformBase extends Gtk.Widget {}
+
+const Waveform = registerClass(WaveformBase, {
+    typeName: "ExampleWaveform",
+    cssName: "waveform",
+    classInit(klass: Gtk.WidgetClass) {
+        klass.setAccessibleRole(Gtk.AccessibleRole.IMG);
+    },
+});
+```
 
 This is type setup, not a component mount effect. If it throws, registration fails to return, but the native type remains registered and cannot be retried under the same name.
 
