@@ -70,7 +70,9 @@ Your client exposes each tool's parameters and description. Screenshots can also
 
 The reference tools document the project's `@gtkx/gi/*` and `@gtkx/jsx/*` modules. They use the same GIR files as code generation and work without a running app.
 
-Use `gtkx_search_api` to find a symbol, then `gtkx_get_api_docs` to read its page. Qualified names such as `Adw.Toast` and JSX names such as `AdwToast` are accepted. These are the same bindings covered by the [generated element reference](/v2/guide/configuration-and-codegen).
+Use `gtkx_search_api` to find a symbol or member, then `gtkx_get_api_docs` to read it. Search matches the names of classes, interfaces, records, enums, functions and constants, and of the constructors, static methods, properties, signals, methods and record fields of classes, interfaces and records, so `replaceContentsAsync` finds `Gio.File.replaceContentsAsync`. Results are ranked, exact names first, and limited to 20 unless you pass `limit`. Include the owner to list its members, such as `Gio.File.replace`.
+
+`gtkx_get_api_docs` accepts qualified names such as `Adw.Toast`, JSX names such as `AdwToast`, and member names such as `Gio.File.replaceContentsAsync` or `Gtk.Window.close-request`. A member name returns only that member's section, which is much shorter than a class page. A member a class inherits, such as `Gtk.Button.setVisible`, resolves to the ancestor that documents it. Pass `kind` when a signal and a method share a name. These are the same bindings covered by the [generated element reference](/v2/guide/configuration-and-codegen).
 
 The server uses the project containing its working directory, falling back to a connected app's project. Pass `projectRoot` to select another project. Clients that browse MCP resources can access the reference there too. Projects with `codegen: false` have no generated bindings to document.
 

@@ -1,6 +1,8 @@
 export {
+    API_MEMBER_KINDS,
     API_SYMBOL_KINDS,
     type ApiLookupResult,
+    type ApiMemberKind,
     type ApiNamespaceSummary,
     type ApiReference,
     type ApiReferenceOptions,

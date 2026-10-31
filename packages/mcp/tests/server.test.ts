@@ -157,6 +157,15 @@ describe("MCP server", () => {
         const docs = await textResult(session.client, "gtkx_get_api_docs", { symbol: "Gio.File", kind: "interface" });
         expect(docs).toContain("Gio");
         expect(docs).toContain("File");
+        expect(await textResult(session.client, "gtkx_search_api", { query: "replaceContentsAsync" })).toContain(
+            '"name": "File.replaceContentsAsync",\n    "kind": "method"',
+        );
+        expect(
+            await textResult(session.client, "gtkx_get_api_docs", {
+                symbol: "Gio.File.replaceContentsAsync",
+                kind: "method",
+            }),
+        ).toContain("# Gio.File.replaceContentsAsync");
         expect((await session.client.listResourceTemplates()).resourceTemplates.length).toBeGreaterThan(0);
     });
 

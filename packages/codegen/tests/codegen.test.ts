@@ -756,6 +756,24 @@ describe("generated bindings", () => {
         expect(reference.symbols({ namespace: "Gio", kinds: ["class"] })).toEqual(
             expect.arrayContaining([expect.objectContaining({ name: "Application" })]),
         );
+        expect(reference.search({ query: "replaceContentsAsync" })[0]).toMatchObject({
+            namespace: "Gio",
+            name: "File.replaceContentsAsync",
+            kind: "method",
+        });
+        expect(reference.search({ query: "Gio.Application.act", kinds: ["signal"] })).toEqual([
+            expect.objectContaining({ name: "Application.activate", kind: "signal" }),
+        ]);
+        const member = reference.lookup("Gio.File.replaceContentsAsync");
+        const memberPage = member.outcome === "page" ? member.markdown : "";
+        expect(memberPage).toContain("### `replaceContentsAsync`");
+        expect(memberPage).not.toContain("### `loadContentsAsync`");
+        expect(reference.lookup("Gio.Application.activate")).toMatchObject({ outcome: "ambiguous" });
+        const inherited = reference.lookup("Gio.MemoryInputStream.close", "method");
+        expect(inherited).toMatchObject({ outcome: "page", symbol: { name: "InputStream.close" } });
+        expect(inherited.outcome === "page" ? inherited.markdown : "").toContain(
+            "`Gio.MemoryInputStream` inherits it from `Gio.InputStream`.",
+        );
     });
 
     it("exposes only signal pointer slots whose ownership can be honored", async () => {
