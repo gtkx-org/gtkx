@@ -126,7 +126,7 @@ Each app still imports only the libraries it declares and their dependencies, wh
 
 A shared package declares `@gtkx/react` as a peer dependency and imports `@gtkx/gi` and `@gtkx/jsx` subpaths like an app. List it in the dependencies of each app that uses it, so `gtkx dev` loads it through Vite. A shared package resolves the bindings from the workspace root, so it can import any library some app declares; each app that uses it has to declare the libraries the package imports.
 
-An app's [Storybook](/v2/guide/storybook#stories-from-a-shared-package) configuration can list a shared package's stories with a pattern such as `../../packages/ui/src/**/*.stories.tsx`. A shared package that should run its own explorer becomes a GTKX project, with its own `gtkx.config.ts` and GTKX development dependencies.
+An app's [Storybook](/v2/guide/storybook#stories-from-a-shared-package) configuration can list a shared package's stories with a pattern such as `../../packages/ui/src/**/*.stories.tsx`. A shared package that should run its own explorer or Vitest tests becomes a GTKX project, with its own `gtkx.config.ts`, including an `applicationId`, and GTKX development dependencies.
 
 ## The JSX prop model
 

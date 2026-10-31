@@ -76,7 +76,12 @@ const librariesSchema = z
     .min(1, { error: "must be a non-empty string array or omitted" });
 
 const applicationIdSchema = z
-    .string({ error: "must satisfy g_application_id_is_valid" })
+    .string({
+        error: (issue) =>
+            issue.input === undefined
+                ? 'is required, such as "org.example.MyApp"'
+                : "must satisfy g_application_id_is_valid",
+    })
     .refine((value) => isValidApplicationId(value), {
         error: 'must satisfy g_application_id_is_valid, such as "org.example.MyApp"',
     });
