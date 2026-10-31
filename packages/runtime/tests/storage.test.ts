@@ -39,7 +39,8 @@ test("wrappers retain their assigned handle across field operations", () => {
 
     expect(getHandle(wrapper)).toBe(storage);
     expect(read(storage, t.int32, 0)).toBe(17);
-    expect(() => getHandle({})).toThrow();
+    expect(() => getHandle({})).toThrow(TypeError);
+    expect(() => getHandle(() => storage)).toThrow(TypeError);
 });
 
 test("function output shaping shares the compiled reference storage contract", () => {

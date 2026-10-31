@@ -701,12 +701,20 @@ function describeValueKind(value: unknown): string {
     return instanceClassName(value);
 }
 
-/** Returns the native handle bound to a wrapper instance, throwing if none is set. */
+/**
+ * Returns the native handle bound to a wrapper instance.
+ *
+ * @throws {TypeError} When no handle is bound to the value, such as a function passed where a widget is expected.
+ */
 function getHandle(instance: object): ExternalObject<Handle> {
     const handle = handleMap.get(instance);
 
     if (handle === undefined) {
-        throw new Error(`No native handle associated with ${instanceClassName(instance)}`);
+        throw new TypeError(
+            typeof instance === "object"
+                ? `No native handle associated with ${instanceClassName(instance)}`
+                : `Expected a native instance, got ${describeValueKind(instance)}`,
+        );
     }
 
     return handle;
