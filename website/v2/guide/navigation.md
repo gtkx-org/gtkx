@@ -369,7 +369,7 @@ Tabs are addressed by route key. The navigation object adds `openTab`, `closeTab
 
 `navigate` selects the last open tab of a screen and updates its params, or opens one when none is open. Give the screen a `getId` to identify tabs by their params: `navigate` and `openTab` then select the tab with the same id and open a new tab for a new id.
 
-Native interaction flows back into the state: selecting a tab emits a cancellable `tabPress`, dragging reorders the route, and the close button dispatches `closeTab`, which `usePreventRemove` can refuse. Closing the last tab is left unhandled, so a parent navigator or the container's `onUnhandledAction` decides whether the window closes. The [tab view configuration reference](/v2/reference/@gtkx/navigation/) lists the tab bar, overview, menu and drop target settings.
+Native interaction flows back into the state: selecting a tab emits a cancellable `tabPress`, dragging reorders the route, and the close button dispatches `closeTab`, which `usePreventRemove` can refuse. Closing the last tab is left unhandled, so a parent navigator or the container's `onUnhandledAction` decides whether the window closes. A tab view inside a section of the app has no window to close; set `replaceLastTab` there, and closing the last tab replaces it with a new tab of the initial route. The overview's `open` follows the same rule as other [open-state props](/v2/guide/modals-and-portals#closing): when given, update it from `onOpenChange`, or leave it out to let the overview open and close on its own. The [tab view configuration reference](/v2/reference/@gtkx/navigation/) lists the tab bar, overview, menu and drop target settings.
 
 ### Tab context menu
 

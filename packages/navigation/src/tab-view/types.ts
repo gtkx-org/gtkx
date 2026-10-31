@@ -139,7 +139,11 @@ type TabViewTarget = {
 
 /** Settings of the `AdwTabOverview` rendered around the view. */
 type TabViewOverviewConfig = {
-    /** Whether the overview is open. */
+    /**
+     * Whether the overview is open. When given, the overview follows it: the user opening or closing the overview
+     * calls `onOpenChange`, and a value the app does not update is restored. Leave it out to let the overview open
+     * and close on its own.
+     */
     open?: boolean;
     /** Called when the overview opens or closes natively. */
     onOpenChange?: (open: boolean) => void;
@@ -194,6 +198,12 @@ type TabViewNavigationConfig = {
 type TabViewRouterOptions = {
     /** Screen of the tab opened when the view starts empty; defaults to the first screen. */
     initialRouteName?: string;
+    /**
+     * Whether closing the last tab replaces it with a new tab of the initial route, instead of leaving that close
+     * unhandled for a parent navigator or the container's `onUnhandledAction`. Use it for a tab view inside a section
+     * of the app rather than a window of its own; defaults to `false`.
+     */
+    replaceLastTab?: boolean;
 };
 
 /** Navigation object of a tab view screen. */

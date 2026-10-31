@@ -75,6 +75,33 @@ describe("tab view navigator", () => {
         expect(pageTitles(view)).toEqual(["First"]);
     });
 
+    it("replaces the last tab with a new tab of the initial route when replaceLastTab is set", async () => {
+        const unhandled: NavigationAction[] = [];
+        await render(
+            <DocumentsApp
+                navigator={{ replaceLastTab: true }}
+                onUnhandledAction={(action) => unhandled.push(action)}
+            />,
+        );
+        await screen.findByText("First content");
+        const view = viewOf("First content");
+        await clickButton("Open sibling of First");
+        await screen.findByText("First sibling content");
+
+        await act(() => {
+            view.closePage(view.getNthPage(0));
+        });
+        expect(pageTitles(view)).toEqual(["First sibling"]);
+
+        await act(() => {
+            view.closePage(view.getNthPage(0));
+        });
+        await screen.findByText("First content");
+        expect(pageTitles(view)).toEqual(["First"]);
+        expect(view.getSelectedPage()?.getTitle()).toBe("First");
+        expect(unhandled).toEqual([]);
+    });
+
     it("creates a tab from the overview's new tab button", async () => {
         await render(
             <DocumentsApp

@@ -211,7 +211,6 @@ const TabViewHost = (props: TabViewHostProps): ReactNode => {
     const { extraDropTarget, onExtraDragDrop, onCreateWindow, onSetupMenu, shortcuts, defaultIcon } = props;
     const [store] = useState(createPageStore);
     const [placeholder, setPlaceholder] = useState<Adw.Bin | null>(null);
-    const [overviewWidget, setOverviewWidget] = useState<Adw.TabOverview | null>(null);
     const [renderedMenu, setRenderedMenu] = useState<Gio.MenuModel | null>(null);
     const selectedPage = useProperty(view, "selectedPage");
     const focused = getFocusedRoute(state);
@@ -253,10 +252,6 @@ const TabViewHost = (props: TabViewHostProps): ReactNode => {
             view.transferPage(record.page, target, index);
         },
     }));
-
-    useLayoutEffect(() => {
-        overviewWidget?.setOpen(overview?.open ?? false);
-    }, [overviewWidget, overview?.open]);
 
     useLayoutEffect(() => {
         if (placeholder === null) {
@@ -445,8 +440,8 @@ const TabViewHost = (props: TabViewHostProps): ReactNode => {
                 content
             ) : (
                 <AdwTabOverview
-                    ref={setOverviewWidget}
                     view={view}
+                    open={overview.open}
                     enableNewTab={overview.enableNewTab === true && overview.onCreateTab !== undefined}
                     enableSearch={overview.enableSearch ?? true}
                     extraDropTarget={extraDropTarget ?? null}
