@@ -291,6 +291,31 @@ const renderByValueRecordDescriptor = (context: ModuleContext, parameter: GirPar
     return `{ ...${descriptor}, size: ${String(size)}, abiFields: [${fields.join(", ")}] }`;
 };
 
+const isTerminatedArray = (type: GirType | undefined): boolean =>
+    type?.kind === "carray" &&
+    type.isZeroTerminated &&
+    type.lengthParameterIndex === undefined &&
+    type.fixedSize === undefined;
+
+/**
+ * Keeps `null` from a zero-terminated array that GIR marks nullable, as GJS does, so a caller can
+ * tell a missing array, such as the end of `Gio.DataInputStream.readLine`, from an empty one.
+ * Other arrays still read a null pointer as empty.
+ */
+const preserveNullableArray = (
+    context: ModuleContext,
+    source: { type?: TypeId | undefined; nullable: boolean },
+    descriptor: string,
+): string => {
+    if (!source.nullable || !isTerminatedArray(underlyingType(context.library, source.type))) {
+        return descriptor;
+    }
+
+    context.addRuntimeInternalImport("preserveArrayNull");
+
+    return `preserveArrayNull(${descriptor})`;
+};
+
 const renderParamDescriptor = (
     context: ModuleContext,
     parameter: GirParameter,
@@ -319,7 +344,13 @@ const renderParamDescriptor = (
     }
 
     if (isOutParameter(parameter)) {
-        return tRef(renderDescriptor(context, ref, parameter.transferOwnership, behindRef));
+        return tRef(
+            preserveNullableArray(
+                context,
+                parameter,
+                renderDescriptor(context, ref, parameter.transferOwnership, behindRef),
+            ),
+        );
     }
 
     return renderByValueRecordDescriptor(
@@ -920,6 +951,7 @@ const aliasExpression = (
 
 export {
     isUnownableStruct,
+    preserveNullableArray,
     transferOwnership,
     isInlineCallbackRef,
     isSkippedPrimaryReturn,

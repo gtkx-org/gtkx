@@ -600,6 +600,29 @@ describe("generated bindings", () => {
         expect(page("GLib.TimeZone")).not.toContain("`new GLib.TimeZone(...)`");
     });
 
+    it("returns null from nullable zero-terminated arrays like GJS", async () => {
+        using directory = createProject();
+        const { gi } = resolveStore(directory.path);
+        await runCodegen({ libraries: ["Gio-2.0"], girPath: resolveGirPath(undefined, directory.path), gi });
+        const consumer = `import { DataInputStream, MemoryInputStream } from "@gtkx/gi/gio";
+            import { Bytes } from "@gtkx/gi/glib";
+            const reader = DataInputStream.new(MemoryInputStream.newFromBytes(Bytes.new(new TextEncoder().encode("a\\n\\nb"))));
+            const lines: (string | null)[] = [];
+            for (let index = 0; index < 4; index += 1) {
+                const [line]: [Uint8Array | null, number] = reader.readLine(null);
+                lines.push(line === null ? null : new TextDecoder().decode(line));
+            }
+            console.log(JSON.stringify({ lines, empty: Bytes.new(new Uint8Array()).getData() }));`;
+        expect(diagnostics(directory.path, consumer)).toEqual([]);
+        const output = execFileSync(process.execPath, ["consumer.ts"], {
+            cwd: directory.path,
+            encoding: "utf8",
+            stdio: "pipe",
+            timeout: 20_000,
+        });
+        expect(JSON.parse(output)).toEqual({ lines: ["a", "", "b", null], empty: {} });
+    });
+
     it("reads embedded records that hold pointers as read-only views like GJS", async () => {
         using directory = createProject();
         const libraries = ["PangoCairo-1.0"];
