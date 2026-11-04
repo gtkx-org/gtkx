@@ -232,6 +232,10 @@ const closeTabPage = (view: Adw.TabView, page: Adw.TabPage, props: Props): void 
     renderedTabPages.delete(page);
     view.setPagePinned(page, false);
     view.closePage(page);
+
+    if (tabViewParent(page.getChild()) === view) {
+        view.closePageFinish(page, true);
+    }
 };
 
 const reorderTabPages = (view: Adw.TabView, children: readonly GObject.Object[]): void => {

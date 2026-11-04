@@ -439,6 +439,28 @@ describe("closing JSX tabs", () => {
         expect(pageTitles(view.current)).toEqual(["First"]);
     });
 
+    it("closes a page that onClosePage removes from state without finishing the close", async () => {
+        const view = createRef<Adw.TabView>();
+        const App = () => {
+            const [titles, setTitles] = useState(["First", "Second"]);
+
+            return (
+                <AdwTabView
+                    ref={view}
+                    onClosePage={(page) => {
+                        setTitles((current) => current.filter((title) => title !== page.getTitle()));
+                        return true;
+                    }}
+                >
+                    <TitledPages titles={titles} />
+                </AdwTabView>
+            );
+        };
+        await render(<App />);
+        await requestClose(view.current, "Second");
+        expect(pageTitles(view.current)).toEqual(["First"]);
+    });
+
     it("lets a close-page handler connected with useSignal answer the request", async () => {
         const view = createRef<Adw.TabView>();
         const App = () => {
