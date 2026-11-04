@@ -2,6 +2,7 @@ import { runCommand } from "citty";
 import { existsSync, mkdirSync, mkdtempDisposableSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { stripVTControlCharacters } from "node:util";
 import { minVersion, satisfies, subset, validRange } from "semver";
 import { stdout, stderr } from "test-console";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -31,7 +32,7 @@ const create = async (target: string, args: string[] = []) => {
             });
         });
     });
-    return { status: process.exitCode, output: output.join("") };
+    return { status: process.exitCode, output: stripVTControlCharacters(output.join("")) };
 };
 const read = (root: string, path: string) => readFileSync(join(root, path), "utf8");
 const npmReleaseAgeExcludes = (root: string) =>
