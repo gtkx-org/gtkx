@@ -150,6 +150,25 @@ import { GtkLabel } from "@gtkx/jsx/gtk";
 
 Removing `textDirection`, passing `null`, or using `Gtk.TextDirection.NONE` restores GTK's default direction.
 
+## Translate settings schemas
+
+Codegen, development, and builds also extract the `<summary>` and `<description>` of every [GSettings schema](/v2/guide/assets#import-project-data) your application imports, as a Meson project does by listing the schema in `po/POTFILES.in`. xgettext reads them with the ITS rules GLib installs with its development files (`glib2-devel` on Fedora), so a `<!-- Translators: -->` comment before an element reaches translators as well. Existing translations of those messages stay in the PO files.
+
+GLib translates the schema text shown by tools such as `gsettings describe` and dconf Editor from the domain named by the schema list's `gettext-domain` attribute. Set it to your production `applicationId`, the application's gettext domain:
+
+```xml [data/com.example.Tasks.gschema.xml]
+<schemalist gettext-domain="com.example.Tasks">
+    <schema id="com.example.Tasks" path="/com/example/Tasks/">
+        <key name="show-completed" type="b">
+            <default>true</default>
+            <summary>Show completed tasks</summary>
+        </key>
+    </schema>
+</schemalist>
+```
+
+Without `gettext-domain`, those tools show the source text. Installed packages put the catalogs where GLib looks for that domain, so the summaries translate once the application is installed.
+
 ## Translate package metadata
 
 A normal `gtkx deploy` refreshes the catalog with application and metadata messages, then compiles and packages the translations. The same PO files supply desktop-entry names, AppStream text, and MIME descriptions.

@@ -127,8 +127,14 @@ msgstr ""
         );
         project.write("po/LINGUAS", "");
         project.write(
+            "org.gtkx.example.gschema.xml",
+            `<schemalist gettext-domain="org.gtkx.example"><schema id="org.gtkx.example" path="/org/gtkx/example/">
+                <key name="count" type="u"><default>1</default><summary>Example count</summary></key>
+            </schema></schemalist>`,
+        );
+        project.write(
             "src/messages.ts",
-            `${T_IMPORT}\nt("Example");\nt("A source message long enough that GNU gettext wraps it across several lines of the template");`,
+            `${T_IMPORT}\nimport "../org.gtkx.example.gschema.xml";\nt("Example");\nt("A source message long enough that GNU gettext wraps it across several lines of the template");`,
         );
         const path = join(project.root, "po/org.gtkx.example.pot");
         const deploy = () =>
@@ -137,6 +143,7 @@ msgstr ""
             });
 
         await deploy();
+        expect(readFileSync(path, "utf8")).toMatch(/^#: org\.gtkx\.example\.gschema\.xml:2\nmsgid "Example count"$/m);
         const template = readFileSync(path, "utf8").replace(
             /^"POT-Creation-Date: .*\\n"$/m,
             '"POT-Creation-Date: 2000-01-01 00:00+0000\\n"',
@@ -288,6 +295,65 @@ t("Yesterday");`,
         expect(readFileSync(join(project.root, "po/POTFILES.in"), "utf8")).toBe("src/button.tsx\nsrc/index.ts\n");
         expect(readFileSync(join(project.root, "node_modules/.gtkx/i18n-resources.d.ts"), "utf8")).toContain(
             "Story fixture document",
+        );
+    });
+
+    it("extracts the summaries and descriptions of imported GSettings schemas", async () => {
+        using project = createProject();
+        project.write("po/LINGUAS", "fr\n");
+        project.write(
+            "po/fr.po",
+            `msgid ""
+msgstr ""
+"Language: fr\\n"
+"MIME-Version: 1.0\\n"
+"Content-Type: text/plain; charset=UTF-8\\n"
+"Content-Transfer-Encoding: 8bit\\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\\n"
+
+msgid "Lap length"
+msgstr "Durée d’un tour"
+`,
+        );
+        project.write(
+            "data/org.gtkx.example.gschema.xml",
+            `<?xml version="1.0" encoding="UTF-8"?>
+<schemalist gettext-domain="org.gtkx.example">
+  <schema id="org.gtkx.example" path="/org/gtkx/example/">
+    <key name="lap-length" type="u">
+      <default>25</default>
+      <!-- Translators: a lap is one work session -->
+      <summary>Lap length</summary>
+      <description>The length of a work lap in minutes.</description>
+    </key>
+  </schema>
+</schemalist>
+`,
+        );
+        project.write(
+            "src/index.ts",
+            `${T_IMPORT}\nimport settings from "../data/org.gtkx.example.gschema.xml";\nexport default [settings, t("Start")];`,
+        );
+
+        await extract(project.root);
+
+        expect(
+            readMessages(project.root).map((message) => [
+                message.msgid,
+                message.comments?.reference,
+                message.comments?.extracted,
+            ]),
+        ).toEqual([
+            ["Start", "src/index.ts:3", undefined],
+            ["Lap length", "data/org.gtkx.example.gschema.xml:7", "Translators: a lap is one work session"],
+            ["The length of a work lap in minutes.", "data/org.gtkx.example.gschema.xml:8", undefined],
+        ]);
+        expect(po.parse(readFileSync(join(project.root, "po/fr.po"))).translations[""]?.["Lap length"]?.msgstr).toEqual(
+            ["Durée d’un tour"],
+        );
+        expect(readFileSync(join(project.root, "po/fr.po"), "utf8")).not.toContain("#~");
+        expect(readFileSync(join(project.root, "po/POTFILES.in"), "utf8")).toBe(
+            "data/org.gtkx.example.gschema.xml\nsrc/index.ts\n",
         );
     });
 

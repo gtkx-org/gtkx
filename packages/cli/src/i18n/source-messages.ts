@@ -8,6 +8,7 @@ import { isAbsolute, join, relative, resolve } from "node:path";
 import type { CatalogProject } from "./catalogs.js";
 import { runCliTool } from "../internal/run-cli-tool.js";
 import { sourceLanguage } from "../internal/source-imports.js";
+import { projectSchemaFiles } from "../settings/schema.js";
 import { prepareStorybookFiles } from "../storybook/config.js";
 import { replaceCatalogTemplate } from "./catalog-template.js";
 import { metadataTemplateFiles } from "./metadata-templates.js";
@@ -41,7 +42,13 @@ type CatalogTemplateExtraction = {
     messages: SourceMessage[];
     output?: string | undefined;
     project: CatalogProject;
+    schemaFiles: string[];
     shouldPreserveMetadataMessages: boolean;
+};
+
+type SourceCatalog = {
+    messages: SourceMessage[];
+    schemaFiles: string[];
 };
 
 type PluralVariant = {
@@ -2059,6 +2066,27 @@ const joinMetadataFragment = (project: CatalogProject, output: string, fragment:
     });
 };
 
+const joinSchemaMessages = (project: CatalogProject, schemaFiles: string[], output: string): void => {
+    if (schemaFiles.length === 0) {
+        return;
+    }
+
+    runCliTool({
+        tool: "xgettext",
+        args: [
+            "--join-existing",
+            `--add-comments=${TRANSLATOR_COMMENT_TAG}`,
+            `--package-name=${project.domain}`,
+            "--force-po",
+            "--from-code=UTF-8",
+            `--output=${output}`,
+            ...schemaFiles,
+        ],
+        target: output,
+        options: { cwd: project.root },
+    });
+};
+
 const formatCatalogTemplate = (input: string, output: string): void => {
     runCliTool({
         tool: "msgcat",
@@ -2070,6 +2098,7 @@ const formatCatalogTemplate = (input: string, output: string): void => {
 const extractCatalogTemplate = ({
     project,
     messages,
+    schemaFiles,
     shouldPreserveMetadataMessages,
     output = project.template,
 }: CatalogTemplateExtraction): void => {
@@ -2077,6 +2106,7 @@ const extractCatalogTemplate = ({
     const source = join(workDir.path, "source.pot");
     const sources = catalogSources(project, messages);
     extractSourceMessages(project, sources, source);
+    joinSchemaMessages(project, schemaFiles, source);
 
     if (shouldPreserveMetadataMessages && existsSync(output)) {
         const fragment = join(workDir.path, "metadata.pot");
@@ -2109,21 +2139,24 @@ const withoutStoryLocations = (
         return locations.length === 0 && message.locations.length > 0 ? [] : [{ ...message, locations }];
     });
 
-const prepareSourceCatalog = async (project: CatalogProject, paths: string[]): Promise<SourceMessage[]> => {
+const catalogSchemaFiles = (root: string): string[] =>
+    projectSchemaFiles(root)
+        .files.map((path) => projectPath(root, path))
+        .filter((path): path is string => path !== null);
+
+const prepareSourceCatalog = async (project: CatalogProject, paths: string[]): Promise<SourceCatalog> => {
     const sourceFiles = normalizedSourceFiles(project.root, paths);
     const storyFiles = await projectStoryFiles(project.root);
     const messages = await findSourceMessages(project.root, sourceFiles);
-    writePotfiles(
-        project,
-        sourceFiles.filter((path) => !storyFiles.has(path)),
-    );
+    const schemaFiles = catalogSchemaFiles(project.root);
+    writePotfiles(project, [...sourceFiles.filter((path) => !storyFiles.has(path)), ...schemaFiles]);
 
-    return withoutStoryLocations(project.root, messages, storyFiles);
+    return { messages: withoutStoryLocations(project.root, messages, storyFiles), schemaFiles };
 };
 
 const extractSourceCatalogTo = async (project: CatalogProject, paths: string[], output: string): Promise<void> => {
-    const messages = await prepareSourceCatalog(project, paths);
-    extractCatalogTemplate({ project, messages, shouldPreserveMetadataMessages: false, output });
+    const catalog = await prepareSourceCatalog(project, paths);
+    extractCatalogTemplate({ project, ...catalog, shouldPreserveMetadataMessages: false, output });
 };
 
 const extractSourceCatalog = async (
@@ -2131,8 +2164,8 @@ const extractSourceCatalog = async (
     paths: string[],
     shouldPreserveMetadataMessages = true,
 ): Promise<void> => {
-    const messages = await prepareSourceCatalog(project, paths);
-    extractCatalogTemplate({ project, messages, shouldPreserveMetadataMessages });
+    const catalog = await prepareSourceCatalog(project, paths);
+    extractCatalogTemplate({ project, ...catalog, shouldPreserveMetadataMessages });
 };
 
 export { extractSourceCatalog, extractSourceCatalogTo, SourceExtractionError };
