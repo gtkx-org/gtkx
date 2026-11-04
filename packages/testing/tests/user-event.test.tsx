@@ -499,6 +499,42 @@ describe("userEvent.click", () => {
         expect(y).toBeGreaterThan(bounds.getY());
     });
 
+    it("reports the primary button and held modifiers to an authored click gesture's handlers", async () => {
+        const events: [string, number, boolean][] = [];
+        const record = (phase: string, gesture: Gtk.GestureClick) => {
+            const isControlHeld = (gesture.getCurrentEventState() & Gdk.ModifierType.CONTROL_MASK) !== 0;
+            events.push([phase, gesture.getCurrentButton(), isControlHeld]);
+        };
+
+        await render(
+            <GtkBox
+                accessibleLabel="Tile"
+                controllers={
+                    <GtkGestureClick
+                        button={0}
+                        onPressed={(_nPress, _x, _y, self) => record("pressed", self)}
+                        onReleased={(_nPress, _x, _y, self) => record("released", self)}
+                    />
+                }
+            />,
+        );
+
+        const tile = await screen.findByLabelText("Tile");
+        await userEvent.click(tile);
+        const user = userEvent.setup();
+        await user.keyboard(tile, "{Control>}");
+        await user.pointer(tile, "click");
+
+        expect(events).toEqual([
+            ["pressed", Gdk.BUTTON_PRIMARY, false],
+            ["released", Gdk.BUTTON_PRIMARY, false],
+            ["pressed", Gdk.BUTTON_PRIMARY, true],
+            ["released", Gdk.BUTTON_PRIMARY, true],
+        ]);
+        const [gesture] = queryAllControllers(tile, Gtk.GestureClick);
+        expect(gesture?.getCurrentButton()).toBe(0);
+    });
+
     it("activates sidebar rows through click and pointer without driving internal gestures", async () => {
         let activations = 0;
         const onActivated = () => {

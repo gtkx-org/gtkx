@@ -13,6 +13,10 @@ type ClickPhase = "pressed" | "released";
 type ClickSite = { gestures: Gtk.GestureClick[]; point: PressPoint };
 type ClickScope = { isClicked: boolean; isInternalAllowed: boolean };
 type DirectClick = { sites: ClickSite[]; outcome: NativeClick | null };
+type CurrentEventPatch = {
+    getCurrentButton?: Gtk.GestureClick["getCurrentButton"] | undefined;
+    getCurrentEventState?: Gtk.GestureClick["getCurrentEventState"] | undefined;
+};
 
 type ClickTarget = {
     widget: Gtk.Widget;
@@ -50,22 +54,56 @@ const getClickPoint = (clicked: Gtk.Widget, carrier: Gtk.Widget): PressPoint => 
     return { x: bounds.getX() + bounds.getWidth() / 2, y: bounds.getY() + bounds.getHeight() / 2 };
 };
 
-const emitGesture = (point: PressPoint, controllers: Gtk.GestureClick[], nPress: number, signal: ClickPhase): void => {
+const emitWithCurrentEvent = (controller: Gtk.GestureClick, modifiers: Gdk.ModifierType, emit: () => void): void => {
+    const instance: CurrentEventPatch = controller;
+    const hasOwnButton = Object.hasOwn(instance, "getCurrentButton");
+    const hasOwnState = Object.hasOwn(instance, "getCurrentEventState");
+    const previousButton = instance.getCurrentButton;
+    const previousState = instance.getCurrentEventState;
+    instance.getCurrentButton = () => Gdk.BUTTON_PRIMARY;
+    instance.getCurrentEventState = () => modifiers;
+
+    try {
+        emit();
+    } finally {
+        if (hasOwnButton) {
+            instance.getCurrentButton = previousButton;
+        } else {
+            delete instance.getCurrentButton;
+        }
+
+        if (hasOwnState) {
+            instance.getCurrentEventState = previousState;
+        } else {
+            delete instance.getCurrentEventState;
+        }
+    }
+};
+
+const emitGesture = (
+    point: PressPoint,
+    controllers: Gtk.GestureClick[],
+    nPress: number,
+    signal: ClickPhase,
+    modifiers: Gdk.ModifierType,
+): void => {
     for (const controller of controllers) {
-        controller.emit(signal, nPress, point.x, point.y);
+        emitWithCurrentEvent(controller, modifiers, () => {
+            controller.emit(signal, nPress, point.x, point.y);
+        });
     }
 };
 
-const emitSitePhase = (sites: ClickSite[], nPress: number, phase: ClickPhase): void => {
+const emitSitePhase = (sites: ClickSite[], nPress: number, phase: ClickPhase, modifiers: Gdk.ModifierType): void => {
     for (const site of sites) {
-        emitGesture(site.point, site.gestures, nPress, phase);
+        emitGesture(site.point, site.gestures, nPress, phase, modifiers);
     }
 };
 
-const emitClickSequence = (sites: ClickSite[], nPress: number): void => {
+const emitClickSequence = (sites: ClickSite[], nPress: number, modifiers: Gdk.ModifierType): void => {
     for (let i = 1; i <= nPress; i++) {
-        emitSitePhase(sites, i, "pressed");
-        emitSitePhase(sites, i, "released");
+        emitSitePhase(sites, i, "pressed", modifiers);
+        emitSitePhase(sites, i, "released", modifiers);
     }
 };
 
@@ -251,7 +289,7 @@ const deliverClick = (state: UserEventState, widget: Gtk.Widget, nPress: number)
     wrapPointerEvent(widget, () => {
         const targets = collectClickTargets(widget);
         const sites = targets.flatMap((target) => targetSites(widget, target));
-        emitClickSequence(sites, nPress);
+        emitClickSequence(sites, nPress, state.modifierState);
         applyClickOutcomes(targets, nPress, state.modifierState);
     });
 

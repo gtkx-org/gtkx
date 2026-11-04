@@ -37,12 +37,12 @@ const pointerTargetFor = (widget: Gtk.Widget): PointerTarget => {
     return { widget: target, click: directClickFor(target) };
 };
 
-const pressPointer = ({ click }: PointerTarget): void => {
-    emitSitePhase(click.sites, 1, "pressed");
+const pressPointer = ({ click }: PointerTarget, state: UserEventState): void => {
+    emitSitePhase(click.sites, 1, "pressed", state.modifierState);
 };
 
 const releasePointer = ({ widget, click }: PointerTarget, state: UserEventState): void => {
-    emitSitePhase(click.sites, 1, "released");
+    emitSitePhase(click.sites, 1, "released", state.modifierState);
     click.outcome?.(widget, 1, state.modifierState);
 };
 
@@ -53,7 +53,7 @@ const applyPointerInput = (widget: Gtk.Widget, state: UserEventState, input: Poi
     const target = pointerTargetFor(widget);
 
     if (CLICK_INPUTS.has(input)) {
-        pressPointer(target);
+        pressPointer(target, state);
         releasePointer(target, state);
         state.isMouseLeftDown = false;
 
@@ -61,7 +61,7 @@ const applyPointerInput = (widget: Gtk.Widget, state: UserEventState, input: Poi
     }
 
     if (PRESS_INPUTS.has(input) && !state.isMouseLeftDown && isPointerPressable(target)) {
-        pressPointer(target);
+        pressPointer(target, state);
         state.isMouseLeftDown = true;
 
         return;
