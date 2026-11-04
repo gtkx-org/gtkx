@@ -24,6 +24,7 @@ import {
 } from "./package-managers.js";
 import { isValidProjectName } from "./project-name.js";
 import { listTemplates, renderFile, type TemplateContext } from "./templates.js";
+import { addWorkspaceMcpServer } from "./workspace-mcp.js";
 
 type CreateOptions = {
     name?: string | undefined;
@@ -811,6 +812,27 @@ const printWorkspaceAllowances = ({ root, packageManager, workspace }: ResolvedO
     );
 };
 
+const addRootMcpServer = ({ workspace, name }: ResolvedOptions): void => {
+    if (workspace === null) {
+        return;
+    }
+
+    const result = addWorkspaceMcpServer(workspace, name);
+
+    if (result.kind === "added") {
+        p.log.info(
+            `Added the MCP server "${result.key}" to ${result.path}, so an AI client opened at the workspace ` +
+                "root reaches this app.",
+        );
+    } else if (result.kind === "unreadable") {
+        p.log.warn(
+            `Could not add this app's MCP server to ${result.path}: ${result.reason}. For an AI client opened ` +
+                `at the workspace root, add this entry under "mcpServers":\n\n` +
+                JSON.stringify({ [result.key]: result.server }, null, 4),
+        );
+    }
+};
+
 const printNextSteps = (resolved: ResolvedOptions): void => {
     const devCmd = DEV_COMMAND[resolved.packageManager];
     const installStep = resolved.shouldInstallDependencies ? "" : `${INSTALL_COMMAND[resolved.packageManager]}\n`;
@@ -845,6 +867,7 @@ const scaffold = async (options: CreateOptions = {}): Promise<void> => {
     await createProjectStructure(root, resolved, plan);
     writeDependencies(root, devDeps);
     reportCompletedChanges(plan.changes);
+    addRootMcpServer(resolved);
 
     if (resolved.shouldInstallDependencies) {
         await installAllDependencies(resolved, devDeps);

@@ -12,6 +12,8 @@ type MissingSetting = {
 
 type Workspace = {
     packageManager: PackageManager;
+    root: string;
+    member: string;
     missingSettings: MissingSetting[];
 };
 
@@ -23,6 +25,7 @@ const PACKAGE_JSON_FILE = "package.json";
 const NEGATION_PREFIX = "!";
 const YARN_USER_AGENT_PATTERN = /^yarn\/((\d+)\.\d+\.\d+\S*)/;
 const FIRST_PINNED_YARN_MAJOR = 2;
+const YARN_PIN_PATTERN = /^yarn@(\d+)\./;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === "object" && value !== null && !Array.isArray(value);
@@ -191,7 +194,12 @@ const pnpmWorkspaceAt = (file: string, project: string): Workspace | null => {
             ? { file, section: "allowBuilds", entries: stringify(required).trimEnd().replace(/^/gm, "  ") }
             : { file, section: null, entries: stringify({ allowBuilds: required }).trimEnd() };
 
-    return { packageManager: "pnpm", missingSettings: settingsToAdd([missing.length > 0 ? setting : null]) };
+    return {
+        packageManager: "pnpm",
+        root: dirname(file),
+        member: project,
+        missingSettings: settingsToAdd([missing.length > 0 ? setting : null]),
+    };
 };
 
 const npmWorkspaceAt = (file: string, project: string): Workspace | null => {
@@ -206,6 +214,8 @@ const npmWorkspaceAt = (file: string, project: string): Workspace | null => {
 
     return {
         packageManager: "npm",
+        root: dirname(file),
+        member: project,
         missingSettings: settingsToAdd([missing.length > 0 ? { file, section: null, entries } : null]),
     };
 };
@@ -239,6 +249,8 @@ const yarnWorkspaceAt = (file: string, project: string): Workspace | null => {
 
     return {
         packageManager: "yarn",
+        root: dirname(file),
+        member: project,
         missingSettings: settingsToAdd([
             yarnNodeLinker(dirname(file)) === YARN_NODE_LINKER
                 ? null
@@ -284,4 +296,44 @@ const enclosingWorkspace = (root: string, packageManager: PackageManager): Works
     return null;
 };
 
-export { PACKAGE_MANAGER_CONFIG_FILES, enclosingWorkspace, packageManagerPin, type Workspace, writeBuildAllowance };
+const readSettings = (path: string, read: (source: string) => unknown): unknown => {
+    try {
+        return read(readFileSync(path, "utf8"));
+    } catch {
+        return undefined;
+    }
+};
+
+/**
+ * Whether `yarn` in the workspace at `root` is Yarn 1: the major its `packageManager` pin names, otherwise
+ * Yarn 2 or newer when its `.yarnrc.yml` sets `yarnPath`, otherwise the Yarn running the scaffold, and Yarn 1,
+ * which an unpinned `yarn` runs through Corepack, when none of these says.
+ */
+const isClassicYarn = (root: string): boolean => {
+    const manifest = readSettings(join(root, PACKAGE_JSON_FILE), JSON.parse);
+    const pin = isRecord(manifest) && typeof manifest.packageManager === "string" ? manifest.packageManager : "";
+    const pinnedMajor = YARN_PIN_PATTERN.exec(pin)?.[1];
+
+    if (pinnedMajor !== undefined) {
+        return Number(pinnedMajor) < FIRST_PINNED_YARN_MAJOR;
+    }
+
+    const settings = readSettings(join(root, YARN_CONFIG_FILE), parse);
+
+    if (isRecord(settings) && typeof settings.yarnPath === "string") {
+        return false;
+    }
+
+    const runningMajor = YARN_USER_AGENT_PATTERN.exec(process.env.npm_config_user_agent ?? "")?.[2];
+
+    return runningMajor === undefined || Number(runningMajor) < FIRST_PINNED_YARN_MAJOR;
+};
+
+export {
+    PACKAGE_MANAGER_CONFIG_FILES,
+    enclosingWorkspace,
+    isClassicYarn,
+    packageManagerPin,
+    type Workspace,
+    writeBuildAllowance,
+};

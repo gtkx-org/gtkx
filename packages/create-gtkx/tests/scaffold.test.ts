@@ -191,6 +191,9 @@ describe("scaffold command", () => {
                 expect(output).not.toContain(entry);
             }
             expect(read(target, "package.json")).not.toContain("catalog:");
+            expect(JSON.parse(read(directory.path, ".mcp.json"))).toEqual({
+                mcpServers: { gtkx: { command: "pnpm", args: ["--dir", "apps/example", "exec", "gtkx", "mcp"] } },
+            });
         },
     );
 
@@ -211,6 +214,11 @@ describe("scaffold command", () => {
         expect(output).toContain(join(directory.path, "package.json"));
         expect(output).toContain('"@swc/core": true');
         expect(output).not.toContain('"esbuild": true');
+        expect(JSON.parse(read(directory.path, ".mcp.json"))).toEqual({
+            mcpServers: {
+                gtkx: { command: "npm", args: ["exec", "--no", "--workspace", "apps/example", "--", "gtkx", "mcp"] },
+            },
+        });
     });
 
     it("typechecks the configuration files of a TypeScript project", async () => {
@@ -223,31 +231,81 @@ describe("scaffold command", () => {
         );
     });
 
-    it("leaves the linker and build scripts of an app in a Yarn workspace to the workspace root", async () => {
-        vi.stubEnv("npm_config_user_agent", "yarn/4.18.1 npm/? node/v26.7.0 linux x64");
-        using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-yarn-workspace-"));
-        const root = JSON.stringify({
-            name: "kitchen",
-            private: true,
-            workspaces: ["apps/*"],
-            dependenciesMeta: { esbuild: { built: true } },
-        });
-        const settings = "npmRegistryServer: https://registry.example.com\n";
-        writeFileSync(join(directory.path, "package.json"), root);
-        writeFileSync(join(directory.path, ".yarnrc.yml"), settings);
-        const target = join(directory.path, "apps/example");
-        const { status, output } = await create(target, ["--package-manager", "yarn"]);
+    it.each([
+        {
+            userAgent: "yarn/4.18.1 npm/? node/v26.7.0 linux x64",
+            pin: {},
+            server: { command: "yarn", args: ["workspace", "example", "exec", "gtkx", "mcp"] },
+        },
+        {
+            userAgent: "npm/11.20.0 node/v26.7.0 linux x64",
+            pin: { packageManager: "yarn@4.18.1" },
+            server: { command: "yarn", args: ["workspace", "example", "exec", "gtkx", "mcp"] },
+        },
+        {
+            userAgent: "yarn/1.22.22 npm/? node/v26.7.0 linux x64",
+            pin: {},
+            server: { command: "yarn", args: ["--silent", "--cwd", "apps/example", "gtkx", "mcp"] },
+        },
+    ])(
+        "leaves the linker and build scripts of an app in a Yarn workspace to the workspace root ($userAgent)",
+        async ({ userAgent, pin, server }) => {
+            vi.stubEnv("npm_config_user_agent", userAgent);
+            using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-yarn-workspace-"));
+            const root = JSON.stringify({
+                name: "kitchen",
+                private: true,
+                workspaces: ["apps/*"],
+                dependenciesMeta: { esbuild: { built: true } },
+                ...pin,
+            });
+            const settings = "npmRegistryServer: https://registry.example.com\n";
+            writeFileSync(join(directory.path, "package.json"), root);
+            writeFileSync(join(directory.path, ".yarnrc.yml"), settings);
+            const target = join(directory.path, "apps/example");
+            const { status, output } = await create(target, ["--package-manager", "yarn"]);
+            expect(status).toBe(0);
+            expect(existsSync(join(target, ".yarnrc.yml"))).toBe(false);
+            expect(JSON.parse(read(target, "package.json"))).not.toHaveProperty("dependenciesMeta");
+            expect(JSON.parse(read(target, "package.json"))).not.toHaveProperty("packageManager");
+            expect(read(directory.path, "package.json")).toBe(root);
+            expect(read(directory.path, ".yarnrc.yml")).toBe(settings);
+            expect(output).toContain(join(directory.path, ".yarnrc.yml"));
+            expect(output).toContain("nodeLinker: node-modules");
+            expect(output).toContain(join(directory.path, "package.json"));
+            expect(output).toContain('"@swc/core"');
+            expect(output).not.toContain('"esbuild"');
+            expect(JSON.parse(read(directory.path, ".mcp.json"))).toEqual({ mcpServers: { gtkx: server } });
+        },
+    );
+
+    it("adds each workspace app's MCP server to the root .mcp.json next to the servers already there", async () => {
+        using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-mcp-workspace-"));
+        writeFileSync(join(directory.path, "pnpm-workspace.yaml"), "packages:\n  - apps/*\n");
+        writeFileSync(
+            join(directory.path, ".mcp.json"),
+            JSON.stringify({ mcpServers: { docs: { command: "docs-server" } } }),
+        );
+        const notes = { command: "pnpm", args: ["--dir", "apps/notes", "exec", "gtkx", "mcp"] };
+        const clock = { command: "pnpm", args: ["--dir", "apps/clock", "exec", "gtkx", "mcp"] };
+
+        expect((await create(join(directory.path, "apps/notes"), ["--package-manager", "pnpm"])).status).toBe(0);
+        const { status, output } = await create(join(directory.path, "apps/clock"), ["--package-manager", "pnpm"]);
         expect(status).toBe(0);
-        expect(existsSync(join(target, ".yarnrc.yml"))).toBe(false);
-        expect(JSON.parse(read(target, "package.json"))).not.toHaveProperty("dependenciesMeta");
-        expect(JSON.parse(read(target, "package.json"))).not.toHaveProperty("packageManager");
-        expect(read(directory.path, "package.json")).toBe(root);
-        expect(read(directory.path, ".yarnrc.yml")).toBe(settings);
-        expect(output).toContain(join(directory.path, ".yarnrc.yml"));
-        expect(output).toContain("nodeLinker: node-modules");
-        expect(output).toContain(join(directory.path, "package.json"));
-        expect(output).toContain('"@swc/core"');
-        expect(output).not.toContain('"esbuild"');
+        expect(output).toContain(`"gtkx-clock" to ${join(directory.path, ".mcp.json")}`);
+        expect(
+            (await create(join(directory.path, "apps/notes"), ["--package-manager", "pnpm", "--overwrite"])).status,
+        ).toBe(0);
+        expect(JSON.parse(read(directory.path, ".mcp.json"))).toEqual({
+            mcpServers: { docs: { command: "docs-server" }, gtkx: notes, "gtkx-clock": clock },
+        });
+
+        writeFileSync(join(directory.path, ".mcp.json"), "{ mcpServers: ");
+        const unreadable = await create(join(directory.path, "apps/timer"), ["--package-manager", "pnpm"]);
+        expect(unreadable.status).toBe(0);
+        expect(read(directory.path, ".mcp.json")).toBe("{ mcpServers: ");
+        expect(unreadable.output).toContain('"--dir",\n');
+        expect(unreadable.output).toContain('"apps/timer"');
     });
 
     it("gives an app that the enclosing pnpm workspace excludes its own workspace", async () => {
