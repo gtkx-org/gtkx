@@ -307,6 +307,38 @@ export const Mail = () => (
 
 In a split view, `navigate` selects a content route: it updates that route and removes pages above it. Choosing another folder therefore replaces the selection instead of adding another folder page. Use `push` to keep multiple copies of a content page.
 
+A content route that is not open yet is pushed above the current one, as in a stack. In a sidebar of distinct section screens, as in a settings app, `navigate("Proxy")` from Wi-Fi therefore leaves a Back button to Wi-Fi, and `popTo` replaces only the top page, which keeps the previous section beneath a section's sub-page. Reset the content instead, keeping the sidebar's own route so the sidebar is not remounted:
+
+```tsx
+import { GtkLabel, GtkListBox, GtkListBoxRow } from "@gtkx/jsx/gtk";
+import type { SplitViewScreenProps } from "@gtkx/navigation";
+
+type SettingsParams = { Sections: undefined; Wifi: undefined; Proxy: undefined };
+
+const sections = [
+    { name: "Wifi", label: "Wi-Fi" },
+    { name: "Proxy", label: "Proxy" },
+] as const;
+
+const Sections = ({ navigation, route }: SplitViewScreenProps<SettingsParams, "Sections">) => (
+    <GtkListBox
+        cssClasses={["navigation-sidebar"]}
+        onRowActivated={(row) => {
+            const section = sections[row.getIndex()];
+            if (section) navigation.reset({ index: 1, routes: [route, { name: section.name }] });
+        }}
+    >
+        {sections.map((section) => (
+            <GtkListBoxRow key={section.name}>
+                <GtkLabel label={section.label} xalign={0} />
+            </GtkListBoxRow>
+        ))}
+    </GtkListBox>
+);
+```
+
+The reset switches sections without a page transition.
+
 The sidebar stays pinned beneath the content routes. Going back from the first content page clears the selection and restores `contentPlaceholder`, which sits below an untitled header bar so the window keeps its controls. An `initialRouteName` naming a content screen opens that screen instead of starting with the placeholder.
 
 Content pages use the stack's headers, back controls and transition events. The first selection fills an empty pane and emits no page transition. The sidebar has its own header without a back button.
