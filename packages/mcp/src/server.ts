@@ -281,12 +281,11 @@ const listAppsTool = (appRouter: AppRouter): Tool =>
         kind: "readOnly",
         description:
             "List connected GTKX applications and their open windows. " +
-            "Returns the current snapshot immediately unless waitForApps is true.",
+            "Returns the current snapshot unless waitForApps is true; only the first seconds of a new server " +
+            "session wait for the project's running app to reconnect.",
         inputSchema: listAppsShape,
         handler: async ({ waitForApps, timeout }) => {
-            if (waitForApps) {
-                await appRouter.waitForAnyApp(timeout);
-            }
+            await (waitForApps ? appRouter.waitForAnyApp(timeout) : appRouter.waitForStartupReconnect());
 
             const apps = appRouter.getApps();
             const appsWithWindows = await Promise.all(apps.map((app) => appWithWindows(appRouter, app)));

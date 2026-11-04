@@ -166,13 +166,19 @@ class AppRouter extends EventTarget {
         return this.isFromServerProject(info) && !info.applicationId.endsWith(STORYBOOK_APPLICATION_ID_SUFFIX);
     }
 
+    private startupReconnectWait(): number {
+        const now = Date.now();
+
+        if (this.listeningSince === undefined || now - this.listeningSince >= RECONNECT_DELAY_MS) {
+            return 0;
+        }
+
+        return this.listeningSince + 2 * RECONNECT_DELAY_MS - now;
+    }
+
     private projectAppWait(timeout: number): number {
         const now = Date.now();
-        const waits = [0];
-
-        if (this.listeningSince !== undefined && now - this.listeningSince < RECONNECT_DELAY_MS) {
-            waits.push(this.listeningSince + 2 * RECONNECT_DELAY_MS - now);
-        }
+        const waits = [this.startupReconnectWait()];
 
         if (this.projectAppLeftAt !== undefined && now - this.projectAppLeftAt < timeout) {
             waits.push(timeout);
@@ -293,6 +299,21 @@ class AppRouter extends EventTarget {
         for (const pendingWait of this.pendingAppWaits) {
             pendingWait.reject(error);
         }
+    }
+
+    /**
+     * Resolves once the apps that were running when the socket started listening have had their first client
+     * reconnect interval to register. In that interval it waits, until two reconnect intervals after the socket
+     * started, for the project's app; otherwise, or once that app is registered, it resolves at once.
+     */
+    async waitForStartupReconnect(): Promise<void> {
+        const wait = this.startupReconnectWait();
+
+        if (this.isDisposed || wait === 0 || this.apps.values().some(({ info }) => this.isProjectApp(info))) {
+            return;
+        }
+
+        await this.waitForRegistration((info) => this.isProjectApp(info), wait);
     }
 
     /** Resolves with the first app registered, waiting up to `timeout` when none is. */

@@ -98,6 +98,32 @@ describe("MCP server", () => {
         }
     });
 
+    it("lists the project's app when it reconnects during the first call of a new session", async () => {
+        await using session = await openServer();
+        const socket = createConnection(session.socketPath);
+        await once(socket, "connect");
+        const connection = ProtocolConnection.fromSocket(socket, {
+            onClose: () => undefined,
+            onError: () => undefined,
+        });
+        connection.fallbackRequestHandler = () => Promise.resolve({ windows: [] });
+        try {
+            const [apps] = await Promise.all([
+                textResult(session.client, "gtkx_list_apps"),
+                delay(200).then(() =>
+                    connection.send("app.register", {
+                        applicationId: "org.gtkx.project",
+                        projectRoot: session.root,
+                        pid: process.pid,
+                    }),
+                ),
+            ]);
+            expect(JSON.parse(apps)).toEqual([expect.objectContaining({ applicationId: "org.gtkx.project" })]);
+        } finally {
+            await connection.close();
+        }
+    });
+
     it("rejects arguments a tool does not declare instead of ignoring them", async () => {
         await using session = await openServer();
         const socket = createConnection(session.socketPath);
