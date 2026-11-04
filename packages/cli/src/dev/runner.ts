@@ -83,6 +83,7 @@ type DevSession = {
     schemaFiles: Set<string>;
     workerSources: Set<string>;
     hasPendingSchemaChange: boolean;
+    isParked: boolean;
     storybook: StorybookSession | undefined;
 };
 
@@ -128,6 +129,11 @@ const announceFailure = (server: ViteDevServer, cause: unknown): void => {
 };
 
 const parkSession = (session: DevSession): void => {
+    if (session.isParked) {
+        return;
+    }
+
+    session.isParked = true;
     session.deps.log("Waiting for a change to restart the application...");
 };
 
@@ -967,6 +973,7 @@ const createSession = (
         schemaFiles: new Set(projectSchemaFiles(server.config.root).files),
         workerSources: new Set(),
         hasPendingSchemaChange: false,
+        isParked: false,
         storybook: undefined,
     };
 };

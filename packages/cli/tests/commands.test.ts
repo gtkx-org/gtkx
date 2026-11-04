@@ -1725,6 +1725,49 @@ describe("CLI commands", () => {
         });
     });
 
+    it("waits once for a change after the application fails while starting", async () => {
+        using project = createProject();
+        const readyPath = join(project.root, "ready.txt");
+        writeWidgetApp(
+            project,
+            readyPath,
+            `export const Content = () => {
+                throw new Error("Rendering the card failed");
+            };`,
+        );
+        await withMcpClient(project.root, async (client) => {
+            const session = spawn(
+                process.execPath,
+                [join(project.root, "node_modules/@gtkx/cli/bin/gtkx.js"), "dev", "--headless", "--size", "640x480"],
+                {
+                    cwd: project.root,
+                    env: Object.fromEntries(
+                        Object.entries(process.env).filter(
+                            ([name]) => !name.startsWith("VITEST") && name !== "DISPLAY",
+                        ),
+                    ),
+                },
+            );
+            let output = "";
+            session.stdout.on("data", (chunk: Buffer) => (output += chunk.toString()));
+            session.stderr.on("data", (chunk: Buffer) => (output += chunk.toString()));
+            const exited = once(session, "exit");
+            try {
+                await expect
+                    .poll(async () => (await callTool(client, "gtkx_get_widget_tree", { appTimeout: 1000 })).text, {
+                        timeout: 60_000,
+                    })
+                    .toContain("Rendering the card failed");
+                project.write("src/content.tsx", "export const Content = () => null;");
+                await expect.poll(() => existsSync(readyPath), { timeout: 60_000 }).toBe(true);
+            } finally {
+                session.kill("SIGTERM");
+                await exited;
+            }
+            expect(output.match(/Waiting for a change/g)).toHaveLength(1);
+        });
+    });
+
     it("points application errors in development at the source line that threw", async () => {
         using project = createProject();
         writeWidgetApp(
