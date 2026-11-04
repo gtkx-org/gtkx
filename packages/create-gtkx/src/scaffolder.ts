@@ -813,7 +813,7 @@ const missingHeadlessToolsNote = (): string => {
         : ["", "", "To run tests, install these tools:", ...missingToolLines(missing)].join("\n");
 };
 
-const addRootMcpServer = ({ workspace, name }: ResolvedOptions): void => {
+const addRootMcpServer = ({ workspace, name, root }: ResolvedOptions): void => {
     if (workspace === null) {
         return;
     }
@@ -824,6 +824,12 @@ const addRootMcpServer = ({ workspace, name }: ResolvedOptions): void => {
         p.log.info(
             `Added the MCP server "${result.key}" to ${result.path}, so an AI client opened at the workspace ` +
                 "root reaches this app.",
+        );
+    } else if (result.kind === "shared") {
+        p.log.info(
+            `The MCP server "${result.key}" in ${result.path} drives every running GTKX app, including this one, ` +
+                `so no server was added for it. To look up this app's bindings, pass projectRoot "${root}" to its ` +
+                "reference tools.",
         );
     } else if (result.kind === "unreadable") {
         p.log.warn(

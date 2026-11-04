@@ -379,7 +379,7 @@ describe("scaffold command", () => {
         );
     });
 
-    it("adds each workspace app's MCP server to the root .mcp.json next to the servers already there", async () => {
+    it("adds one MCP server for every workspace app to the root .mcp.json next to the servers already there", async () => {
         using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-mcp-workspace-"));
         writeFileSync(join(directory.path, "pnpm-workspace.yaml"), "packages:\n  - apps/*\n");
         writeFileSync(
@@ -387,17 +387,17 @@ describe("scaffold command", () => {
             JSON.stringify({ mcpServers: { docs: { command: "docs-server" } } }),
         );
         const notes = { command: "pnpm", args: ["--dir", "apps/notes", "exec", "gtkx", "mcp"] };
-        const clock = { command: "pnpm", args: ["--dir", "apps/clock", "exec", "gtkx", "mcp"] };
 
         expect((await create(join(directory.path, "apps/notes"), ["--package-manager", "pnpm"])).status).toBe(0);
         const { status, output } = await create(join(directory.path, "apps/clock"), ["--package-manager", "pnpm"]);
         expect(status).toBe(0);
-        expect(output).toContain(`"gtkx-clock" to ${join(directory.path, ".mcp.json")}`);
+        expect(output).toContain(`"gtkx" in ${join(directory.path, ".mcp.json")} drives every running GTKX app`);
+        expect(output).toContain(`projectRoot "${join(directory.path, "apps/clock")}"`);
         expect(
             (await create(join(directory.path, "apps/notes"), ["--package-manager", "pnpm", "--overwrite"])).status,
         ).toBe(0);
         expect(JSON.parse(read(directory.path, ".mcp.json"))).toEqual({
-            mcpServers: { docs: { command: "docs-server" }, gtkx: notes, "gtkx-clock": clock },
+            mcpServers: { docs: { command: "docs-server" }, gtkx: notes },
         });
 
         writeFileSync(join(directory.path, ".mcp.json"), "{ mcpServers: ");

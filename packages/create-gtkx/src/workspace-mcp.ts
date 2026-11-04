@@ -10,6 +10,7 @@ type McpServer = { command: string; args: string[] };
 type WorkspaceMcpResult =
     | { kind: "added"; path: string; key: string }
     | { kind: "present"; path: string; key: string }
+    | { kind: "shared"; path: string; key: string }
     | { kind: "unreadable"; path: string; key: string; server: McpServer; reason: string };
 
 const MCP_CONFIG_FILE = ".mcp.json";
@@ -53,22 +54,21 @@ const readConfig = (path: string): Record<string, unknown> => {
     return config;
 };
 
-const serverKey = (servers: Record<string, unknown>, server: McpServer, name: string): string => {
-    const existing = Object.keys(servers).find((key) => isDeepStrictEqual(servers[key], server));
-
-    if (existing !== undefined) {
-        return existing;
+const isGtkxServer = (key: string, server: unknown): boolean => {
+    if (key === SERVER_NAME) {
+        return true;
     }
 
-    return Object.hasOwn(servers, SERVER_NAME)
-        ? `${SERVER_NAME}-${name.replace(/^@/, "").replace(/[^\w-]+/g, "-")}`
-        : SERVER_NAME;
+    const args = isRecord(server) && Array.isArray(server.args) ? server.args : [];
+
+    return isDeepStrictEqual(args.slice(-SERVER_COMMAND.length), SERVER_COMMAND);
 };
 
 /**
  * Adds a server that starts the app's own `gtkx mcp` through the workspace's package manager to the
  * workspace root's `.mcp.json`, where AI clients opened at the repository root look for it. Other servers
- * stay; the entry is named `gtkx`, or `gtkx-<name>` when another app's server already has that name.
+ * stay. When the file already has a GTKX server, such as an earlier app's, no second one is added: the GTKX
+ * servers of a session share one socket, and that server drives every running app.
  */
 const addWorkspaceMcpServer = (workspace: Workspace, name: string): WorkspaceMcpResult => {
     const path = join(workspace.root, MCP_CONFIG_FILE);
@@ -82,15 +82,25 @@ const addWorkspaceMcpServer = (workspace: Workspace, name: string): WorkspaceMcp
     }
 
     const servers = isRecord(config[SERVERS_KEY]) ? config[SERVERS_KEY] : {};
-    const key = serverKey(servers, server, name);
+    const keys = Object.keys(servers);
+    const present = keys.find((key) => isDeepStrictEqual(servers[key], server));
 
-    if (isDeepStrictEqual(servers[key], server)) {
-        return { kind: "present", path, key };
+    if (present !== undefined) {
+        return { kind: "present", path, key: present };
     }
 
-    writeFileSync(path, `${JSON.stringify({ ...config, [SERVERS_KEY]: { ...servers, [key]: server } }, null, 4)}\n`);
+    const shared = keys.find((key) => isGtkxServer(key, servers[key]));
 
-    return { kind: "added", path, key };
+    if (shared !== undefined) {
+        return { kind: "shared", path, key: shared };
+    }
+
+    writeFileSync(
+        path,
+        `${JSON.stringify({ ...config, [SERVERS_KEY]: { ...servers, [SERVER_NAME]: server } }, null, 4)}\n`,
+    );
+
+    return { kind: "added", path, key: SERVER_NAME };
 };
 
 export { addWorkspaceMcpServer };
