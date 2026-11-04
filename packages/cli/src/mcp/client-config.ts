@@ -17,7 +17,7 @@ type ClientResult =
 
 const SERVER_NAME = "gtkx";
 const COMMAND = "npx";
-const ARGS = ["gtkx", "mcp"];
+const ARGS = ["--no", "gtkx", "mcp"];
 const CODEX_PATH = "~/.codex/config.toml";
 
 const CODEX_SNIPPET = [

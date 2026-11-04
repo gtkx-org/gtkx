@@ -33,9 +33,9 @@ From the project root, register the server with your client:
 npx gtkx mcp init --client claude
 ```
 
-The command supports `claude`, `cursor`, `vscode`, `opencode`, and `codex`. It preserves existing server entries. For Codex, it prints configuration to add to your client instead of editing its settings. A scaffolded project already includes the Claude configuration.
+The command supports `claude`, `cursor`, `vscode`, `opencode`, and `codex`. It preserves other server entries and replaces an older `gtkx` entry. For Codex, it prints configuration to add to your client instead of editing its settings. A scaffolded project already includes the Claude configuration.
 
-For another MCP client, configure a stdio server that runs `npx gtkx mcp` from the project root. The standalone `gtkx-mcp` command is also available when `@gtkx/mcp` is installed directly.
+For another MCP client, configure a stdio server that runs `npx --no gtkx mcp` from the project root. Clients start servers without a terminal, where plain `npx` installs and runs a package named `gtkx` from the npm registry whenever `@gtkx/cli` is not installed; `--no` makes npx exit with an error instead. npx looks for the CLI in the project's `node_modules/.bin` and, inside an npm or Yarn workspace, in the workspace root's, where those package managers place it. pnpm installs it only in the app, so in a pnpm workspace start the server from the app's directory. The standalone `gtkx-mcp` command is also available when `@gtkx/mcp` is installed directly.
 
 Start the app in another terminal:
 
@@ -97,5 +97,5 @@ export default defineConfig({
 Command-line flags override the project settings for one client:
 
 ```bash
-npx gtkx mcp --read-only --tools "gtkx_*_api,gtkx_get_widget_tree"
+npx --no gtkx mcp --read-only --tools "gtkx_*_api,gtkx_get_widget_tree"
 ```

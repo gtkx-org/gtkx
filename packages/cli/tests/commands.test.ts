@@ -1339,10 +1339,13 @@ describe("CLI commands", () => {
 
     it("writes editor MCP configuration and preserves other registered servers", async () => {
         using project = createProject();
-        project.write(".mcp.json", '{"mcpServers":{"other":{"command":"other"}}}');
+        project.write(
+            ".mcp.json",
+            '{"mcpServers":{"other":{"command":"other"},"gtkx":{"command":"npx","args":["gtkx","mcp"]}}}',
+        );
         await invoke(["mcp", "init", "--cwd", project.root, "--client", "claude"]);
-        expect(JSON.parse(readFileSync(join(project.root, ".mcp.json"), "utf8"))).toMatchObject({
-            mcpServers: { other: { command: "other" }, gtkx: { command: "npx", args: ["gtkx", "mcp"] } },
+        expect(JSON.parse(readFileSync(join(project.root, ".mcp.json"), "utf8"))).toEqual({
+            mcpServers: { other: { command: "other" }, gtkx: { command: "npx", args: ["--no", "gtkx", "mcp"] } },
         });
         await expect(invoke(["mcp", "init", "--cwd", project.root, "--client", "missing"])).rejects.toThrow();
     });

@@ -57,7 +57,9 @@ describe("scaffold command", () => {
         expect(existsSync(join(target, "tsconfig.json"))).toBe(hasTypes);
         expect(existsSync(join(target, "vitest.config.ts"))).toBe(hasTests);
         expect(read(target, hasTypes ? "gtkx.config.ts" : "gtkx.config.js")).toContain("org.gtkx.example");
-        expect(JSON.parse(read(target, ".mcp.json"))).toHaveProperty("mcpServers.gtkx");
+        expect(JSON.parse(read(target, ".mcp.json"))).toEqual({
+            mcpServers: { gtkx: { command: "npx", args: ["--no", "gtkx", "mcp"] } },
+        });
     });
 
     it("configures Yarn to install into node_modules without committing its install state", async () => {
