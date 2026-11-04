@@ -43,7 +43,7 @@ import { readPackageManifest } from "./settings/package-manifest.js";
 import { prepareDeployOutDir } from "./settings/paths.js";
 import { missingDeployError } from "./settings/starter.js";
 import { finishArgsFor, hasDisplaySocket, runtimeLabelFor } from "./targets/flatpak-manifest.js";
-import { detectPackageManager } from "./targets/flatpak-sources.js";
+import { assertStandaloneProject, detectPackageManager } from "./targets/flatpak-sources.js";
 import {
     APPSTREAMCLI,
     assertTools,
@@ -300,6 +300,10 @@ const catalogTools = (project: CatalogProject | null, shouldSkipBuild: boolean):
 
 const preflight = ({ plan, settings, shouldPrintManifests, shouldSkipBuild }: PreflightRequest): void => {
     const { targets, arches, project } = plan;
+
+    if (isFlathubSubmission(settings, targets)) {
+        assertStandaloneProject(settings);
+    }
 
     const packagerTools = shouldPrintManifests
         ? []

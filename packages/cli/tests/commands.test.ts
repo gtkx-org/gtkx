@@ -1610,6 +1610,46 @@ describe("CLI commands", () => {
         ]);
     });
 
+    it("stops a source Flatpak of a workspace member and points to a standalone project", async () => {
+        using project = createProject();
+        project.write(
+            "package.json",
+            JSON.stringify({ name: "studio", private: true, type: "module", workspaces: ["apps/*"] }),
+        );
+        project.write("yarn.lock", "__metadata:\n  version: 10\n  cacheKey: 10c0\n");
+        project.write(
+            "apps/swatches/package.json",
+            JSON.stringify({ name: "swatches", version: "1.0.0", type: "module", license: "MIT", dependencies: {} }),
+        );
+        project.write(
+            "apps/swatches/gtkx.config.ts",
+            `export default ${JSON.stringify({
+                applicationId: "org.gtkx.swatches",
+                codegen: false,
+                agents: { reference: false, rules: false },
+                deploy: {
+                    name: "Swatches",
+                    summary: "Exercises a workspace member's source Flatpak",
+                    categories: ["Utility"],
+                    description: ["An example application inside a workspace."],
+                    developer: { id: "dev.gtkx", name: "GTKX", email: "hello@gtkx.dev" },
+                    license: "MIT",
+                    homepage: "https://gtkx.dev",
+                    flatpak: {
+                        mode: "source",
+                        source: { url: "https://example.org/studio.git", commit: "0".repeat(40) },
+                    },
+                },
+            })};`,
+        );
+        project.write("apps/swatches/src/index.ts", 'export const greeting = "hello from a member";');
+        const app = join(project.root, "apps/swatches");
+        const deploy = invoke(["deploy", "--cwd", app, "--print-manifests", "--target", "flatpak"]);
+        await expect(deploy).rejects.toThrow(`member of the workspace at ${project.root}`);
+        await expect(deploy).rejects.toThrow("standalone project");
+        expect(existsSync(join(app, "build"))).toBe(false);
+    });
+
     it("preserves arguments, configuration, translations and MCP across headless dev restarts", async () => {
         using project = createProject({ codegen: true });
         const readyPath = join(project.root, "ready.txt");

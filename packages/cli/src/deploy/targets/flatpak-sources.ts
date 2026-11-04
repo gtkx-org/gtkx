@@ -4,6 +4,7 @@ import type { DeploySettings } from "../types.js";
 import { runCliTool } from "../../internal/run-cli-tool.js";
 import { withStagingDir } from "../../internal/staging-dir.js";
 import { gitRemoteUrl, runGit } from "../git.js";
+import { memberWorkspaceRoot } from "../../upgrade/workspace.js";
 import { optional } from "../nfpm/optional.js";
 import { FLATPAK_NODE_GENERATOR, GENERATOR_PNPM_OPTION } from "../tools.js";
 import { pnpmInstallCommand, type PnpmPin, pnpmStoreVersionFor, resolvePnpmPin } from "./flatpak-pnpm.js";
@@ -40,6 +41,21 @@ const LOCKFILE_BY_MANAGER: Record<PackageManager, string> = {
 const INSTALL_COMMAND: Record<VendoredManager, string> = {
     npm: "npm ci --offline",
     yarn: "yarn install --offline",
+};
+
+const assertStandaloneProject = (settings: DeploySettings): void => {
+    const workspaceRoot = memberWorkspaceRoot(settings.paths.root);
+
+    if (workspaceRoot === null) {
+        return;
+    }
+
+    throw new Error(
+        `Cannot build a source-mode Flatpak of ${settings.paths.root}: it is a member of the workspace at ` +
+            `${workspaceRoot}, and a source-mode manifest installs dependencies from the lockfile and package ` +
+            "manager in the project's own directory, so it needs a standalone project. Move the app into its own " +
+            'repository, or drop `deploy.flatpak.mode: "source"` to package the local build as a prebuilt Flatpak.',
+    );
 };
 
 const detectPackageManager = (settings: DeploySettings): PackageManager => {
@@ -199,6 +215,7 @@ const generateNodeSources = (settings: DeploySettings, manager: PackageManager, 
 };
 
 export {
+    assertStandaloneProject,
     detectPackageManager,
     GENERATED_SOURCES,
     generateNodeSources,

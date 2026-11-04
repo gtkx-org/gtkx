@@ -85,4 +85,14 @@ const findWorkspace = (cwd: string): Workspace => {
     return { root, members, catalogFile: existsSync(catalogFile) ? catalogFile : null };
 };
 
-export { findWorkspace, type Workspace };
+/**
+ * Finds the root of the npm, pnpm or Yarn workspace that lists the project as a member, or `null` when the
+ * project is standalone or is that workspace's root.
+ */
+const memberWorkspaceRoot = (project: string): string | null => {
+    const root = enclosingWorkspace(project)?.root ?? project;
+
+    return root === project ? null : root;
+};
+
+export { findWorkspace, memberWorkspaceRoot, type Workspace };
