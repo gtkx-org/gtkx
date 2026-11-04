@@ -1,6 +1,6 @@
 ---
 title: "Components"
-description: "Render lists, tables, dropdowns, tabs, menu widgets, and toast notifications from React state."
+description: "Render lists, tables, dropdowns, grid cells, tabs, menu widgets, and toast notifications from React state."
 ---
 
 # Components
@@ -178,6 +178,28 @@ import { AdwTabBar } from "@gtkx/jsx/adw";
 ```
 
 Here `renameTab` updates the state the page's `title` prop comes from. Removing `extraDropTarget` disables the additional drop target. Types can be GType values or generated classes. Use explicit `null` when clearing nullable object props such as a tab's `icon`.
+
+## Grid cells
+
+GTK places a widget in a `GtkGrid` through the layout manager's child object, which GtkBuilder writes as a `<layout>` element and C code sets with `gtk_grid_attach`. Wrap each child of the grid in `GtkGridLayoutChild` and give it the cell's `column` and `row`, plus `columnSpan` or `rowSpan` to cover several cells:
+
+```tsx
+import { GtkButton, GtkGrid, GtkGridLayoutChild, GtkLabel } from "@gtkx/jsx/gtk";
+
+<GtkGrid columnSpacing={6} rowSpacing={6}>
+    <GtkGridLayoutChild column={0} row={0}>
+        <GtkLabel label="Name" />
+    </GtkGridLayoutChild>
+    <GtkGridLayoutChild column={1} row={0}>
+        <GtkButton label="Edit" />
+    </GtkGridLayoutChild>
+    <GtkGridLayoutChild column={0} row={1} columnSpan={2}>
+        <GtkButton label="Save" />
+    </GtkGridLayoutChild>
+</GtkGrid>
+```
+
+The grid creates the layout child for the widget, and changing `column` or `row` moves it. A child without the wrapper sits in the first cell. Other layout managers' child objects work the same way, such as `GtkFixedLayoutChild` for a widget's `transform` inside a `GtkFixed`, which [Animations](/v2/guide/animations#moving-widgets) animates.
 
 ## Widgets in menus
 
