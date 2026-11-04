@@ -30,6 +30,7 @@ type DevRunnerDepsOptions = {
     mcpSocketPath?: string | undefined;
     staging: ProjectStaging;
     localeDir?: string | null | undefined;
+    hasStoreChanged: () => boolean;
 };
 
 const DEV_MODE = "development";
@@ -138,6 +139,7 @@ const createDevRunnerDeps = (
         };
     },
     getApplicationRegistrationState: currentApplicationRegistrationState,
+    hasStoreChanged: options.hasStoreChanged,
     installShutdownHandlers: (onSignal) => {
         installGracefulShutdown({ onSignal });
     },

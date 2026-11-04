@@ -2,6 +2,7 @@ import { ensureStoreLinks } from "@gtkx/codegen/internal";
 import { createConfigLoader, LIBRARY_APPLICATION_ID } from "@gtkx/config/internal";
 import { resolve } from "node:path";
 import { createProjectStaging } from "../internal/project-staging.js";
+import { storeGeneration, storeLinkDirs } from "../internal/store-generation.js";
 import { storybookApplicationId } from "../storybook/entry.js";
 import { receiveDevRunnerBootstrap } from "./bootstrap.js";
 import { prepareDevFontDir } from "./font-dir.js";
@@ -33,6 +34,8 @@ const main = async (): Promise<void> => {
     prepareDevFontDir(root, staging.fonts);
     const entryPath = resolve(cwd, entryArg);
     ensureStoreLinks(root);
+    const linkDirs = storeLinkDirs(root);
+    const generation = storeGeneration(linkDirs);
     const { defaultDevRunnerDeps } = await import("./runner-deps.js");
     const runner = createDevRunner(
         defaultDevRunnerDeps(configFile, config.deploy?.outDir, {
@@ -43,6 +46,7 @@ const main = async (): Promise<void> => {
             mcpSocketPath,
             staging,
             localeDir,
+            hasStoreChanged: () => storeGeneration(linkDirs) !== generation,
         }),
         { storybookConfig },
     );

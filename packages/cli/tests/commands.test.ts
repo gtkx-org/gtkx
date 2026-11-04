@@ -1022,27 +1022,48 @@ describe("CLI commands", () => {
         expect(readFileSync(readyPath("editor"), "utf8")).toBe("editor");
 
         rmSync(readyPath("journal"));
-        const session = spawn(process.execPath, [workspace.cli("journal"), "dev", "--headless", "--size", "640x480"], {
-            cwd: appDir("journal"),
-            env: childEnv(),
-        });
-        let output = "";
-        session.stdout.on("data", (chunk: Buffer) => (output += chunk.toString()));
-        session.stderr.on("data", (chunk: Buffer) => (output += chunk.toString()));
-        const exited = once(session, "exit");
-        const deadline = Date.now() + 120_000;
-        try {
-            while (!existsSync(readyPath("journal"))) {
-                if (session.exitCode !== null || session.signalCode !== null || Date.now() > deadline) {
-                    throw new Error(`gtkx dev did not render the app:\n${output}`);
+        const regenerated = join(workspace.root, "regenerated.txt");
+        workspace.write(
+            "apps/journal/src/regenerate.ts",
+            `import { execFileSync } from "node:child_process";
+            import { existsSync, writeFileSync } from "node:fs";
+            if (!existsSync(${JSON.stringify(regenerated)})) {
+                execFileSync(process.execPath, [${JSON.stringify(workspace.cli("editor"))}, "codegen", "--force"], {
+                    cwd: ${JSON.stringify(appDir("editor"))},
+                });
+                writeFileSync(${JSON.stringify(regenerated)}, "");
+            }`,
+        );
+        renameSync(join(appDir("journal"), "src/index.tsx"), join(appDir("journal"), "src/app.tsx"));
+        workspace.write("apps/journal/src/index.tsx", 'import "./regenerate.ts";\nimport "./app.tsx";\n');
+        await withMcpClient(workspace.root, async (client) => {
+            const session = spawn(
+                process.execPath,
+                [workspace.cli("journal"), "dev", "--headless", "--size", "640x480"],
+                { cwd: appDir("journal"), env: childEnv() },
+            );
+            let output = "";
+            session.stdout.on("data", (chunk: Buffer) => (output += chunk.toString()));
+            session.stderr.on("data", (chunk: Buffer) => (output += chunk.toString()));
+            const exited = once(session, "exit");
+            const deadline = Date.now() + 120_000;
+            try {
+                while (!existsSync(readyPath("journal"))) {
+                    if (session.exitCode !== null || session.signalCode !== null || Date.now() > deadline) {
+                        throw new Error(`gtkx dev did not render the app:\n${output}`);
+                    }
+                    await setTimeout(200);
                 }
-                await setTimeout(200);
+                expect(existsSync(regenerated)).toBe(true);
+                expect(readFileSync(readyPath("journal"), "utf8")).toBe("journal");
+                expect(
+                    await queryWidgets(client, { by: "role", value: "label", options: { name: "journal" } }),
+                ).toHaveLength(1);
+            } finally {
+                session.kill("SIGTERM");
+                await exited;
             }
-            expect(readFileSync(readyPath("journal"), "utf8")).toBe("journal");
-        } finally {
-            session.kill("SIGTERM");
-            await exited;
-        }
+        });
     });
 
     it("replaces edited stylesheets in place, appends edited global styles and refreshes raw imports, keeping state", async () => {

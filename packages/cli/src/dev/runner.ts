@@ -44,6 +44,7 @@ type DevRunnerDeps = {
     watchUncaughtErrors(onUncaughtError: (cause: unknown) => void): void;
     watchWorkerSources(onSource: (path: string) => void): void;
     getApplicationRegistrationState(): ApplicationState;
+    hasStoreChanged(): boolean;
     installShutdownHandlers(onSignal: () => void | Promise<void>): void;
     quitDefaultApplication(): void;
     performRefresh: () => void;
@@ -1005,6 +1006,12 @@ const createDevRunner = (deps: DevRunnerDeps, options: DevRunnerOptions = {}): D
         deps.watchApplicationShutdown(onApplicationShutdown(session));
         watchProjectFiles(session);
         await loadEntry(session, entryPath, options.storybookConfig);
+
+        if (deps.hasStoreChanged()) {
+            deps.log("Generated bindings changed while the application loaded.");
+            await requestRestart(session);
+        }
+
         await attachApplication(session);
         announceReady(session);
     },

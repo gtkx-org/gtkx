@@ -1,14 +1,10 @@
 import type { ConfigLoader, LoadConfigOptions } from "@gtkx/config";
 import type { Plugin, UserConfig } from "vite";
-import { resolveStore } from "@gtkx/codegen";
 import { viteProjectRoot } from "@gtkx/config/internal";
-import { existsSync, realpathSync } from "node:fs";
 import { ensureGenerated } from "../codegen/run-codegen.js";
+import { storeGeneration, storeLinkDirs } from "../internal/store-generation.js";
 
 const TEST_MODE = "test";
-
-const storeGeneration = (linkDirs: string[]): string =>
-    linkDirs.map((linkDir) => (existsSync(linkDir) ? realpathSync(linkDir) : "")).join("\n");
 
 const gtkxEnsureStore = (
     options: Pick<LoadConfigOptions, "configFile" | "defaultApplicationId">,
@@ -26,8 +22,7 @@ const gtkxEnsureStore = (
         },
 
         configureVitest({ project, defineCacheKeyGenerator }) {
-            const { gi, jsx } = resolveStore(project.config.root);
-            const linkDirs = jsx === null ? [gi.linkDir] : [gi.linkDir, jsx.linkDir];
+            const linkDirs = storeLinkDirs(project.config.root);
             defineCacheKeyGenerator(() => `${storeGeneration(linkDirs)}\n${state.configKey}`);
         },
     };
