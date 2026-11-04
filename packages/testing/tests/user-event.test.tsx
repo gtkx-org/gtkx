@@ -1452,6 +1452,79 @@ describe("userEvent.dragAndDrop", () => {
         expect(handleDrop.calls[1]).toEqual(["direct", 4, 0]);
     });
 
+    it("drops on tab bar tabs and overview thumbnails through their extra drop target", async () => {
+        const drops: [string, string | null, Gdk.DragAction][] = [];
+        const overview = createRef<Adw.TabOverview>();
+        const extraDropTarget = {
+            actions: Gdk.DragAction.COPY | Gdk.DragAction.MOVE,
+            types: [GObject.TYPE_STRING],
+        };
+        const onExtraDragDrop = (
+            page: Adw.TabPage,
+            value: GObject.Value,
+            self: Adw.TabBar | Adw.TabOverview,
+        ): boolean => {
+            drops.push([page.getTitle(), value.getString(), self.getExtraDragPreferredAction()]);
+
+            return true;
+        };
+        const TabbedDrops = () => {
+            const [view, setView] = useState<Adw.TabView | null>(null);
+
+            return (
+                <AdwTabOverview
+                    ref={overview}
+                    view={view}
+                    extraDropTarget={extraDropTarget}
+                    onExtraDragDrop={onExtraDragDrop}
+                >
+                    <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                        <AdwTabBar
+                            view={view}
+                            autohide={false}
+                            extraDropTarget={extraDropTarget}
+                            onExtraDragDrop={onExtraDragDrop}
+                        />
+                        <AdwTabView ref={setView}>
+                            <AdwTabPage title="First">
+                                <GtkLabel
+                                    controllers={
+                                        <GtkDragSource
+                                            actions={Gdk.DragAction.MOVE}
+                                            onPrepare={() => Gdk.ContentProvider.newForValue("dragged")}
+                                        />
+                                    }
+                                >
+                                    First page
+                                </GtkLabel>
+                            </AdwTabPage>
+                            <AdwTabPage title="Second">
+                                <GtkLabel>Second page</GtkLabel>
+                            </AdwTabPage>
+                        </AdwTabView>
+                    </GtkBox>
+                </AdwTabOverview>
+            );
+        };
+        await render(<TabbedDrops />);
+        const second = await screen.findByRole(Gtk.AccessibleRole.TAB, { name: "Second" });
+        await userEvent.dragAndDrop(await screen.findByText("First page"), second);
+        await userEvent.drop(second, "dropped");
+        overview.current?.setOpen(true);
+        const thumbnail = (await screen.findAllByText("Second")).find((widget) => !widget.isAncestor(second));
+
+        if (thumbnail === undefined) {
+            throw new Error("expected an overview thumbnail title");
+        }
+
+        await userEvent.drop(pointerTargetAt(thumbnail), "thumbnail");
+        expect(drops).toEqual([
+            ["Second", "dragged", Gdk.DragAction.MOVE],
+            ["Second", "dropped", Gdk.DragAction.COPY],
+            ["Second", "thumbnail", Gdk.DragAction.COPY],
+        ]);
+    });
+
     it("throws when the source has no DragSource controller", async () => {
         const { source, target } = await renderDragAndDropPair({ onDrop: () => true, hasDragSource: false });
         await expect(userEvent.dragAndDrop(source, target, "payload")).rejects.toThrow();

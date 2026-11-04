@@ -9,6 +9,7 @@ import { findControllerOwner } from "./controller.js";
 import { dispatchOnControllers, dispatchOnOrCreateControllers } from "./dispatch.js";
 import { wrapPointerEvent } from "./event-wrapper.js";
 import { usageError } from "../usage-error.js";
+import { emitTabViewExtraDrop, isTabViewTab } from "./tab-view-click.js";
 
 /** The value delivered to a drop target: a primitive (converted to a GObject.Value) or an explicit GObject.Value. */
 type DropContent = string | number | boolean | GObject.Value;
@@ -237,22 +238,45 @@ const drag = async (widget: Gtk.Widget, dx: number, dy: number, options: DragOpt
 };
 
 type DropSite = {
+    owner: Gtk.Widget;
     targets: Gtk.DropTarget[];
     point: DragOffset;
 };
 
+const PREFERRED_DROP_ACTIONS = [Gdk.DragAction.COPY, Gdk.DragAction.MOVE, Gdk.DragAction.LINK];
+
 const resolveDropSite = (target: Gtk.Widget, options: DropOptions): DropSite => {
     const owner = findControllerOwner(target, Gtk.DropTarget);
 
-    return { targets: owner.controllers, point: toOwnerPoint(target, owner.widget, options.x ?? 0, options.y ?? 0) };
+    return {
+        owner: owner.widget,
+        targets: owner.controllers,
+        point: toOwnerPoint(target, owner.widget, options.x ?? 0, options.y ?? 0),
+    };
+};
+
+const preferredDropAction = (actions: Gdk.DragAction): Gdk.DragAction =>
+    PREFERRED_DROP_ACTIONS.find((action) => (actions & action) !== 0) ?? Gdk.DragAction.NONE;
+
+const emitDrop = (
+    site: DropSite,
+    dropTarget: Gtk.DropTarget,
+    value: GObject.Value,
+    offeredActions: Gdk.DragAction,
+): boolean => {
+    if (isTabViewTab(site.owner)) {
+        return emitTabViewExtraDrop(site.owner, value, preferredDropAction(dropTarget.getActions() & offeredActions));
+    }
+
+    return dropTarget.emit("drop", value, site.point.x, site.point.y);
 };
 
 const didEmitAcceptedDrop = (target: Gtk.Widget, content: DropContent, options: DropOptions): boolean => {
-    const { targets, point } = resolveDropSite(target, options);
+    const site = resolveDropSite(target, options);
     let isAccepted = false;
 
-    for (const dropTarget of targets) {
-        isAccepted = dropTarget.emit("drop", buildDropValue(content), point.x, point.y) || isAccepted;
+    for (const dropTarget of site.targets) {
+        isAccepted = emitDrop(site, dropTarget, buildDropValue(content), dropTarget.getActions()) || isAccepted;
     }
 
     return isAccepted;
@@ -329,7 +353,8 @@ const beginDragSources = (
     return activeDrags;
 };
 
-const didEmitProviderValue = (provider: Gdk.ContentProvider, target: Gtk.DropTarget, point: DragOffset): boolean => {
+const didEmitProviderValue = (drag: Gdk.Drag, target: Gtk.DropTarget, site: DropSite): boolean => {
+    const provider = drag.getContent();
     const formats = target.getFormats();
     const type = formats === null ? GObject.TYPE_INVALID : formats.matchGtype(provider.refFormats());
 
@@ -341,15 +366,13 @@ const didEmitProviderValue = (provider: Gdk.ContentProvider, target: Gtk.DropTar
     value.init(type);
     provider.getValue(value);
 
-    return target.emit("drop", value, point.x, point.y);
+    return emitDrop(site, target, value, drag.getActions());
 };
 
 const didEmitProviderDrop = (target: Gtk.Widget, drags: ActiveDrag[], options: DropOptions): boolean => {
-    const { targets, point } = resolveDropSite(target, options);
+    const site = resolveDropSite(target, options);
 
-    return drags.some(({ drag }) =>
-        targets.some((dropTarget) => didEmitProviderValue(drag.getContent(), dropTarget, point)),
-    );
+    return drags.some(({ drag }) => site.targets.some((dropTarget) => didEmitProviderValue(drag, dropTarget, site)));
 };
 
 /** Drops content on a widget. */

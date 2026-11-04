@@ -374,8 +374,7 @@ const buildSignalNames = (type: bigint): string[] => {
 
 const signalNamesFor = (type: bigint): string[] => signalNameCache.getOrInsertComputed(type, buildSignalNames);
 
-const getSignalId = (instance: object, signal: string): number =>
-    signalIdFor((instance as TypedClass).__type__, signal);
+const getSignalId = (instance: object, signal: string): number => signalIdFor(getInstanceType(instance), signal);
 
 /**
  * Connects a handler to a GObject signal on an instance and returns the handler id.
