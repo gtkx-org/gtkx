@@ -76,6 +76,8 @@ Generated JSX elements use their GObject type names: `AdwApplicationWindow`, `Gt
 
 GObject properties become camelCase props, such as `widthRequest`. Signals become handlers such as `onCloseRequest`; here, closing the window calls `quit()` to unmount the application.
 
+After `quit()`, the process exits once nothing else keeps Node's event loop busy, as with any Node program. A request still in flight or an interval still running keeps the process alive without a window, so abort requests and clear timers when the component that started them unmounts, and avoid timers at module level. `gtkx dev` warns, naming the kinds of pending work, when the process is still running a few seconds after the application quits; see [Async Operations](/v2/guide/async-operations#ending-work-on-unmount).
+
 `AdwApplication` takes its application ID from `gtkx.config.ts` and starts the application when it mounts. Rendering `AdwApplicationWindow` opens the window; removing it from the tree closes it.
 
 The minimum width leaves room to test the narrow layout in [Adapt the Layout](/v2/tutorial/an-adaptive-layout).

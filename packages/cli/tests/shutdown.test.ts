@@ -5,7 +5,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { createProject } from "./project.js";
+import { createProject, linkWorkspaceBindings } from "./project.js";
 
 type Exit = { code: number | null; signal: NodeJS.Signals | null };
 
@@ -178,6 +178,47 @@ describe("development process shutdown", () => {
             expect(isProcessAlive(runnerPid)).toBe(false);
         } finally {
             await running.stop(runner);
+        }
+    });
+
+    it("names the pending timer that outlives the application before stopping", async () => {
+        using project = createProject();
+        const readyPath = join(project.root, "ready.txt");
+        linkWorkspaceBindings(project.root);
+        project.write(
+            "src/index.tsx",
+            `import { AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
+            import { createRoot, quit } from "@gtkx/react";
+            import { writeFileSync } from "node:fs";
+            import { useEffect } from "react";
+            setInterval(() => undefined, 60_000);
+            const QuitWhenShown = () => {
+                useEffect(() => {
+                    writeFileSync(${JSON.stringify(readyPath)}, String(process.pid));
+                    setTimeout(quit, 0);
+                }, []);
+                return null;
+            };
+            createRoot().render(
+                <AdwApplication applicationId="org.gtkx.example">
+                    <AdwApplicationWindow><QuitWhenShown /></AdwApplicationWindow>
+                </AdwApplication>
+            );`,
+        );
+        const stopDisplay = await startHeadlessDisplay(resolveHeadlessOptions({ size: "640x480" }));
+        try {
+            const running = observeChild(
+                spawn(process.execPath, [cliPath, "dev", "--cwd", project.root], { stdio: "pipe" }),
+            );
+            try {
+                await running.waitForFile(readyPath);
+                expect(await running.waitForExit()).toEqual({ code: 0, signal: null });
+                expect(running.output()).toContain("Timeout");
+            } finally {
+                await running.stop(undefined);
+            }
+        } finally {
+            stopDisplay();
         }
     });
 

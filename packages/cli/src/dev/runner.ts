@@ -57,6 +57,7 @@ type DevRunnerDeps = {
     plugins(entryPath: string): Plugin[];
     log(message: string): void;
     exit(code: number): never;
+    exitWhenIdle(code: number): void;
 };
 
 type DevRunner = {
@@ -735,17 +736,20 @@ const onShutdownSignal =
         });
     };
 
-const closeAndExit = async (session: DevSession, code = 0): Promise<never> => {
+const closeSession = async (session: DevSession): Promise<boolean> => {
     try {
         await session.controller.shutdown((): void => undefined);
     } catch (error_) {
         error("Error closing server:", error_);
 
-        return session.deps.exit(1);
+        return false;
     }
 
-    return session.deps.exit(code);
+    return true;
 };
+
+const closeAndExit = async (session: DevSession, code = 0): Promise<never> =>
+    session.deps.exit((await closeSession(session)) ? code : 1);
 
 const isSessionInactive = (session: DevSession): boolean => {
     if (session.controller.isShuttingDown()) {
@@ -761,10 +765,14 @@ const isSessionInactive = (session: DevSession): boolean => {
     return true;
 };
 
-const stopForApplicationQuit = (session: DevSession): Promise<never> => {
+const stopForApplicationQuit = async (session: DevSession): Promise<void> => {
     session.deps.log("Application quit - stopping dev runner...");
 
-    return closeAndExit(session, process.exitCode === undefined ? 0 : Number(process.exitCode));
+    if (!(await closeSession(session))) {
+        session.deps.exit(1);
+    }
+
+    session.deps.exitWhenIdle(process.exitCode === undefined ? 0 : Number(process.exitCode));
 };
 
 const settleUnmount = (session: DevSession, wasRefreshing: boolean): void => {

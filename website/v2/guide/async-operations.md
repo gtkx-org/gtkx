@@ -132,6 +132,42 @@ Unpacking always reads the variant's actual runtime type. An explicit type param
 
 The generated promise is named `call` here; use the generated signature rather than deriving a name from the C function.
 
+## Ending work on unmount
+
+When the application quits, GTKX unmounts the tree, and the Node process exits once its event loop has no work left. A pending `fetch` or a running timer keeps the process alive after its window has closed. Abort requests and clear timers in the cleanup of the effect that started them, and start timers in effects rather than at module level:
+
+```tsx
+import { useEffect, useState } from "react";
+
+export const useFeed = (url: string, intervalMs: number): string | null => {
+    const [body, setBody] = useState<string | null>(null);
+
+    useEffect(() => {
+        const controller = new AbortController();
+        const refresh = (): void => {
+            fetch(url, { signal: controller.signal })
+                .then((response) => response.text())
+                .then(setBody)
+                .catch((error: unknown) => {
+                    if (!controller.signal.aborted) console.error(error);
+                });
+        };
+
+        refresh();
+        const timer = setInterval(refresh, intervalMs);
+
+        return () => {
+            clearInterval(timer);
+            controller.abort();
+        };
+    }, [url, intervalMs]);
+
+    return body;
+};
+```
+
+`gtkx dev` waits a few seconds after the application quits. If the process is still running then, it prints a warning naming the kinds of pending work, such as `Timeout` for a timer or `TCPSocketWrap` for an open connection, and stops. Run the built bundle to see the same work keep a production process alive.
+
 ## Handling termination signals
 
 Listen for `SIGINT` and `SIGTERM` with Node's `process.on`, not `GLibUnix.signalAdd`. GTKX quits the application on `SIGINT`, `SIGTERM` and `SIGHUP` while no other listener handles the signal. A listener you add takes over, so finish your cleanup and call `quit()`:

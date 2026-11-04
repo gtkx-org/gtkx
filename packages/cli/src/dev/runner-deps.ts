@@ -2,7 +2,7 @@ import type { ConfigLoader } from "@gtkx/config";
 import * as Gio from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
 import { onExit } from "@gtkx/runtime";
-import { info, installGracefulShutdown } from "@gtkx/utils";
+import { info, installGracefulShutdown, warn } from "@gtkx/utils";
 import { readFile } from "node:fs/promises";
 import { createServer } from "vite";
 import type { ApplicationState, DevRunnerDeps } from "./runner.js";
@@ -35,6 +35,7 @@ type DevRunnerDepsOptions = {
 
 const DEV_MODE = "development";
 const APPLICATION_POLL_INTERVAL_MS = 50;
+const PENDING_WORK_GRACE_MS = 3000;
 const registeredApplications: WeakSet<object> = new WeakSet();
 
 const currentApplicationId = (): string | null => Gio.Application.getDefault()?.applicationId ?? null;
@@ -104,6 +105,53 @@ const devPlugins =
         gtkxReactDomPrebundle(),
     ];
 
+const withoutResources = (resources: readonly string[], excluded: readonly string[]): string[] => {
+    const remaining = [...excluded];
+
+    return resources.filter((resource) => {
+        const index = remaining.indexOf(resource);
+
+        if (index === -1) {
+            return true;
+        }
+
+        remaining.splice(index, 1);
+
+        return false;
+    });
+};
+
+const describeResources = (resources: readonly string[]): string => {
+    const counts = Map.groupBy(resources, (resource) => resource);
+
+    return [...counts]
+        .map(([resource, { length }]) => (length === 1 ? resource : `${resource} (${length})`))
+        .join(", ");
+};
+
+const warnAboutPendingWork = (runnerResources: readonly string[]): void => {
+    const pending = withoutResources(process.getActiveResourcesInfo(), runnerResources);
+    const holders = pending.length === 0 ? "" : `: ${describeResources(pending)}`;
+
+    warn(
+        `The application quit ${PENDING_WORK_GRACE_MS / 1000} s ago, but pending work still keeps the process running${holders}. ` +
+            "A built application would keep running without a window until that work ends; clear timers and abort requests when components unmount, and avoid module-level timers.",
+    );
+};
+
+const createExitWhenIdle = (): ((code: number) => void) => {
+    const runnerResources = process.getActiveResourcesInfo();
+
+    return (code) => {
+        process.exitCode = code;
+        process.channel?.unref();
+        setTimeout(() => {
+            warnAboutPendingWork(runnerResources);
+            process.exit(code);
+        }, PENDING_WORK_GRACE_MS).unref();
+    };
+};
+
 const createDevRunnerDeps = (
     configFile: string,
     deployOutDir: string | undefined,
@@ -160,6 +208,7 @@ const createDevRunnerDeps = (
     plugins: devPlugins(configFile, catalogWrites, options),
     log: info,
     exit: (code: number): never => process.exit(code),
+    exitWhenIdle: createExitWhenIdle(),
 });
 
 const defaultDevRunnerDeps = (
