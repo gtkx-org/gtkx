@@ -181,6 +181,8 @@ export const handleCommandLine = (commandLine: Gio.ApplicationCommandLine, appli
 
 Pass the handler as `onCommandLine` on the application element. A handler that answers after asynchronous work calls `setExitStatus` and `done()` when that work completes.
 
+During development, `gtkx dev` passes the arguments after `--` to the application, so `gtkx dev -- notes.txt` starts an app with `HANDLES_OPEN` on that file. pnpm and Yarn 2 or newer pass `--` on to the `dev` script, as in `pnpm dev -- notes.txt`; npm removes the first `--`, so write `npm run dev -- -- notes.txt`.
+
 A GTKX app needs a display even for `--help` and other options that exit before a window opens. The generated `@gtkx/gi/gtk` and `@gtkx/gi/adw` modules initialize GTK when they are imported, before the application parses its command line, so without a Wayland or X11 display the process prints `Failed to open display` and exits with status 1. Run command-line checks of a packaged app, such as a smoke test in a container or CI, inside a desktop session or a virtual display such as `xvfb-run`.
 
 GTKX sets the program name to the last segment of the application ID before the entry module runs, as GJS does before an app's code. `--help` prints it as the usage line, and GTK's X11 backend uses it as the window class, even when a library such as GStreamer initializes while the app's modules load. To choose another name, call `GLib.setPrgname()` before the application starts.

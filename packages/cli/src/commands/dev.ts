@@ -13,7 +13,7 @@ const createDevCommand = (options: { signal?: AbortSignal; applicationArgs?: str
     defineCommand({
         meta: {
             name: "dev",
-            description: "Start development server with HMR",
+            description: "Start development server with HMR; arguments after -- go to the application",
         },
         args: {
             ...entryArg,

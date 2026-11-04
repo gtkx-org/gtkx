@@ -53,9 +53,18 @@ const resolveDefaultEntry = (cwd: string): string => {
 
 const resolveGivenEntry = (cwd: string, entry: string): string => {
     const path = resolve(cwd, entry);
+    const extension = extname(path);
 
-    if ([".cjs", ".cts"].includes(extname(path))) {
+    if ([".cjs", ".cts"].includes(extension)) {
         throw new Error(`Application entry must use ESM: ${path}`);
+    }
+
+    if (![...DEFAULT_ENTRY_EXTENSIONS, ".mjs", ".mts"].includes(extension)) {
+        throw new Error(
+            `Application entry must be a JavaScript or TypeScript module: ${path}. ` +
+                `To pass "${entry}" to the application, put it after "--", as in "gtkx dev -- ${entry}"; ` +
+                `npm drops the first "--" of "npm run", so there write "npm run dev -- -- ${entry}".`,
+        );
     }
 
     if (!isFile(path)) {

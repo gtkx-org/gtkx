@@ -148,6 +148,15 @@ describe("CLI commands", () => {
         expect(existsSync(join(project.root, "dist"))).toBe(false);
     });
 
+    it("points a document passed as the entry to application arguments", async () => {
+        using project = createProject();
+        project.write("COMMIT_EDITMSG", "# Please enter the commit message\n");
+
+        await expect(invoke(["dev", "--cwd", project.root, "COMMIT_EDITMSG"])).rejects.toThrow(
+            "gtkx dev -- COMMIT_EDITMSG",
+        );
+    });
+
     it("keeps builds out of the deploy output directory that each deployment replaces", async () => {
         using project = createProject({ deploy: { outDir: "packages" } });
 
