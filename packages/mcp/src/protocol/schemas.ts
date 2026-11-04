@@ -65,11 +65,14 @@ const treeParams: z.ZodObject<{ rootId: z.ZodOptional<z.ZodString>; maxDepth: z.
     maxDepth: z.number().int().nonnegative().optional(),
 });
 
-const queryOptionsSchema: z.ZodObject<{
-    name: z.ZodOptional<z.ZodString>;
-    exact: z.ZodOptional<z.ZodBoolean>;
-    timeout: z.ZodOptional<z.ZodNumber>;
-}> = z.object({
+const queryOptionsSchema: z.ZodObject<
+    {
+        name: z.ZodOptional<z.ZodString>;
+        exact: z.ZodOptional<z.ZodBoolean>;
+        timeout: z.ZodOptional<z.ZodNumber>;
+    },
+    z.core.$strict
+> = z.strictObject({
     name: z.string().optional(),
     exact: z.boolean().optional(),
     timeout: z.number().optional(),

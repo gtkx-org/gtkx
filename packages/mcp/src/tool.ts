@@ -1,6 +1,6 @@
 import type { McpServer, ToolCallback } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import type { z } from "zod";
+import { z } from "zod";
 import { errorMessage } from "@gtkx/utils";
 import { ProtocolError } from "./protocol/errors.js";
 
@@ -53,15 +53,16 @@ const runTool = async (
 const defineTool = <Shape extends Record<string, z.ZodType>>(tool: Tool<Shape>): Tool => tool as Tool;
 
 const registerTool = (server: McpServer, tool: Tool): void => {
+    const inputSchema = z.strictObject(tool.inputSchema);
     const callback = ((args: ToolArgs<Record<string, z.ZodType>>) => runTool(tool.handler, args)) as ToolCallback<
-        Record<string, z.ZodType>
+        typeof inputSchema
     >;
 
     server.registerTool(
         tool.name,
         {
             description: tool.description,
-            inputSchema: tool.inputSchema,
+            inputSchema,
             annotations: {
                 title: tool.title,
                 readOnlyHint: tool.kind === "readOnly",

@@ -98,6 +98,34 @@ describe("MCP server", () => {
         }
     });
 
+    it("rejects arguments a tool does not declare instead of ignoring them", async () => {
+        await using session = await openServer();
+        const socket = createConnection(session.socketPath);
+        await once(socket, "connect");
+        const connection = ProtocolConnection.fromSocket(socket, {
+            onClose: () => undefined,
+            onError: () => undefined,
+        });
+        connection.fallbackRequestHandler = () => Promise.resolve({ widgets: [] });
+        try {
+            await connection.send("app.register", { applicationId: "org.gtkx.test", pid: process.pid });
+            await textResult(session.client, "gtkx_query_widgets", { by: "role", value: "button" });
+            for (const args of [
+                { by: "role", value: "button", name: "Increment" },
+                { by: "role", value: "button", options: { label: "Increment" } },
+            ]) {
+                expect(await session.client.callTool({ name: "gtkx_query_widgets", arguments: args })).toMatchObject({
+                    isError: true,
+                });
+            }
+            expect(await session.client.callTool({ name: "gtkx_list_apps", arguments: { wait: true } })).toMatchObject({
+                isError: true,
+            });
+        } finally {
+            await connection.close();
+        }
+    });
+
     it("routes requests without an application ID to the app from the server's project, waiting for it while it reconnects", async () => {
         await using session = await openServer();
         const other = mkdtempDisposableSync(join(tmpdir(), "gtkx-mcp-other-"));
