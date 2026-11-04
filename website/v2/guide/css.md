@@ -73,7 +73,27 @@ const action = css({ minWidth: 96 });
 <GtkButton label="Save" cssClasses={cx(action, canSave && "suggested-action")} />;
 ```
 
-When several generated classes are combined, `cx` merges their declarations into one class. Later arguments win on conflicting properties.
+When several generated classes are combined, `cx` merges their declarations into one class. Later arguments win on conflicting declarations. As within one `css` call, nested selectors and `@media` blocks follow all plain declarations, so an earlier argument's `@media` rule still overrides a later argument's plain declaration while its query matches. Give the later class its own `@media` rule when it must win there too:
+
+```ts
+import { css, cx } from "@gtkx/css";
+
+const chip = css`
+    background: alpha(var(--accent-bg-color), 0.15);
+    @media (prefers-color-scheme: dark) {
+        background: alpha(var(--accent-bg-color), 0.35);
+    }
+`;
+
+const warning = css`
+    background: alpha(var(--warning-bg-color), 0.2);
+    @media (prefers-color-scheme: dark) {
+        background: alpha(var(--warning-bg-color), 0.35);
+    }
+`;
+
+const unsaved = cx(chip, warning);
+```
 
 ## Apply global rules
 

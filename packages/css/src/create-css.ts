@@ -15,7 +15,8 @@ type Css = {
     css: (...args: CSSInterpolation[]) => string;
     /**
      * Filters out falsy tokens and returns the remaining class names, collapsing two or more
-     * GTKX-generated classes into one merged class where later styles win.
+     * GTKX-generated classes into one merged class where later declarations win. Nested rules
+     * and at-rules follow all merged declarations, as within one `css` call.
      */
     cx: (...classNames: CxToken[]) => string[];
     /** Serializes and inserts the given styles into the stylesheet globally, unscoped by any class. */
