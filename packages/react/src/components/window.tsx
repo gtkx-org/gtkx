@@ -15,9 +15,7 @@ type WindowComponentProps = PresentedProps<Gtk.Window> & {
 };
 
 const presentWindow = (window: Gtk.Window): void => {
-    applyMutation(() => {
-        window.present();
-    });
+    window.present();
 };
 
 /**

@@ -5,7 +5,16 @@ import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwAlertDialog, AdwApplication, AdwApplicationWindow, AdwWindow } from "@gtkx/jsx/adw";
 import { GSimpleAction } from "@gtkx/jsx/gio";
-import { GtkApplication, GtkApplicationWindow, GtkBox, GtkHeaderBar, GtkLabel, GtkWindow } from "@gtkx/jsx/gtk";
+import {
+    GtkApplication,
+    GtkApplicationWindow,
+    GtkBox,
+    GtkHeaderBar,
+    GtkLabel,
+    GtkListBox,
+    GtkListBoxRow,
+    GtkWindow,
+} from "@gtkx/jsx/gtk";
 import { rootElement, useApplication, useParentWindow } from "@gtkx/react";
 import { act, render as baseRender, render, screen, waitFor } from "@gtkx/testing";
 import { Activity, createRef, Suspense, use, useEffect, useRef, useState } from "react";
@@ -407,6 +416,34 @@ describe("render - Window", () => {
                 expect(screen.queryByRole(Gtk.AccessibleRole.WINDOW, { name: "Info", hidden: true })).toBeNull();
             });
             expect(maps).not.toHaveBeenCalled();
+        });
+
+        it("reports the row a list box selects when the window takes focus", async () => {
+            const Sidebar = () => {
+                const [selected, setSelected] = useState("none");
+
+                return (
+                    <GtkWindow title="Sidebar">
+                        <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                            <GtkLabel label={`Selected ${selected}`} />
+                            <GtkListBox onRowSelected={(row) => setSelected(row?.getName() ?? "none")}>
+                                <GtkListBoxRow name="first">
+                                    <GtkLabel label="First" />
+                                </GtkListBoxRow>
+                                <GtkListBoxRow name="second">
+                                    <GtkLabel label="Second" />
+                                </GtkListBoxRow>
+                            </GtkListBox>
+                        </GtkBox>
+                    </GtkWindow>
+                );
+            };
+
+            await render(<Sidebar />, { container: rootElement });
+            const list = await screen.findByRole(Gtk.AccessibleRole.LIST);
+
+            expect(list instanceof Gtk.ListBox ? list.getSelectedRow()?.getName() : null).toBe("first");
+            expect(await screen.findByText("Selected first")).toBeDefined();
         });
     });
 
