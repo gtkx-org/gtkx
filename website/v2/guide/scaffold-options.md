@@ -48,7 +48,7 @@ min-release-age-exclude[]=create-gtkx
 
 :::
 
-Yarn releases before 4.10 refuse to run with a setting they do not know, so `.yarnrc.yml` gets `npmPreapprovedPackages` only when the project's Yarn is 4.10 or newer: the release its `packageManager` field pins, otherwise the Yarn running the scaffold, otherwise the one `yarn --version` reports in the project directory. The same entries keep `gtkx upgrade` working on release day.
+Yarn releases before 4.10 refuse to run with a setting they do not know, so `.yarnrc.yml` gets `npmPreapprovedPackages` only when the project's Yarn is 4.10 or newer: the release its `packageManager` field pins, otherwise the Yarn running the scaffold, otherwise the one `yarn --version` reports in the project directory. `gtkx upgrade` adds the same entries to a project that lacks them before it installs a new release.
 
 ## Workspaces
 

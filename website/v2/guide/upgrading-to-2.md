@@ -23,7 +23,15 @@ pnpm dlx @gtkx/cli@beta upgrade
 
 :::
 
-The 1.x CLI has no `upgrade` command, so this runs the 2.0 CLI without installing it first. It moves every `@gtkx/*` package declared in the project, or in each package of its workspace, to the newest 2.0 beta, including pnpm catalog entries, then installs and deduplicates with the project's package manager. Later releases need only `npx gtkx upgrade`; see [Updating GTKX](/v2/guide/getting-started#updating-gtkx).
+The 1.x CLI has no `upgrade` command, so this runs the 2.0 CLI without installing it first. It moves every `@gtkx/*` package declared in the project, or in each package of its workspace, to the newest 2.0 beta, including pnpm catalog entries, then installs and deduplicates with the project's package manager. Before installing, it exempts GTKX's own packages from the package manager's [release-age gate](/v2/guide/scaffold-options#release-age-gates) in the project or workspace root settings, so 2.0 installs on the day it is released; if the install still fails, it puts `package.json`, the lockfile and those settings back as they were. Later releases need only `npx gtkx upgrade`; see [Updating GTKX](/v2/guide/getting-started#updating-gtkx).
+
+On a release day, the gate can also stop `npx` or `pnpm dlx` from downloading the 2.0 CLI. When npm's `min-release-age` is set, run `npx --min-release-age=0 @gtkx/cli@beta upgrade`; when pnpm's `minimumReleaseAge` is set, exempt GTKX for that one command:
+
+```bash
+pnpm_config_minimum_release_age_exclude='["@gtkx/*","create-gtkx"]' pnpm dlx @gtkx/cli@beta upgrade
+```
+
+Yarn's gate does not apply to `npx`.
 
 Use ESM `import` and `export` in application code, configuration files, and their local helpers. Convert `.cjs` and `.cts` files to ESM. Configuration runs through Node's native loader, so TypeScript configuration must use erasable syntax. Storybook main configuration uses `.ts`, `.mts`, `.js`, or `.mjs`; keep JSX in previews and stories. External CommonJS dependencies remain supported through ESM imports.
 

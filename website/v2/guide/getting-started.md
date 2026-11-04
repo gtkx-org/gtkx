@@ -118,7 +118,9 @@ npx gtkx upgrade
 
 It moves every `@gtkx/*` package in the project, or in each package of its workspace, to the newest release on the dist-tag the project follows, such as `beta`. Pass a version or dist-tag to choose one, as in `npx gtkx upgrade 2.0.1`. The command rewrites the versions in each `package.json` and in pnpm catalogs, keeping their range operators, then installs and deduplicates with the project's package manager. A `peerDependencies` range, such as a shared package's `@gtkx/react`, moves only when it does not accept the new version, so a range like `^1.6.0 || ^2.0.0` stays as written. The command fails, naming the packages, when the install leaves some on another version, for example through a Yarn catalog, `overrides` or `resolutions`, or when a peer range it cannot rewrite still excludes the new version; change those and install again.
 
-The CLI of 2.0.0-beta.12 and earlier releases has no `upgrade` command. Run the newer one once with `npx @gtkx/cli@beta upgrade`.
+Before installing, the command exempts GTKX's own packages from the package manager's [release-age gate](/v2/guide/scaffold-options#release-age-gates) at the project or workspace root, adding the entries `create gtkx` writes for new projects to `pnpm-workspace.yaml`, `.yarnrc.yml` (Yarn 4.10 or newer) or `.npmrc` and keeping the rest of the file, so a release published that day installs. When the install still fails, it puts each `package.json`, the lockfile and those settings back as they were, so the project stays on its previous release.
+
+The CLI of 2.0.0-beta.12 and earlier releases has no `upgrade` command. Run the newer one once with `npx @gtkx/cli@beta upgrade`; on a release day, [Upgrading to 2.0](/v2/guide/upgrading-to-2) shows how to run it past a release-age gate.
 
 `gtkx dev`, `gtkx build` and the other project commands warn when the installed GTKX packages are not all on one version.
 
@@ -135,7 +137,7 @@ The CLI of 2.0.0-beta.12 and earlier releases has no `upgrade` command. Run the 
   pnpm_config_minimum_release_age_exclude='["@gtkx/*","create-gtkx"]' pnpm create gtkx
   ```
 
-  A project created by an earlier scaffolder has no exemption. Add it to `.yarnrc.yml` before installing or upgrading on a release day, or install again a day later:
+  A project created by an earlier scaffolder has no exemption. [`gtkx upgrade`](#updating-gtkx) adds it before installing; to install on a release day without upgrading, add it to `.yarnrc.yml` yourself, or install again a day later:
 
   ```yaml [.yarnrc.yml]
   npmPreapprovedPackages:
