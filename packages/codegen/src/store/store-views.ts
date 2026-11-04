@@ -26,6 +26,7 @@ type NamespaceView = { storeDir: string; viewDir: string; namespaces: Set<string
 const storeManifestSchema = z.looseObject({ name: z.string(), exports: z.record(z.string(), z.unknown()) });
 
 const SCOPE = "@gtkx";
+const VIEW_DIR = ".gtkx";
 const MANIFEST_FILENAME = "package.json";
 const MANIFEST_EXPORT = `./${MANIFEST_FILENAME}`;
 const STUB_FILENAME = "index.d.ts";
@@ -34,15 +35,35 @@ const canonicalPath = (path: string): string => realpathOrNull(path) ?? resolve(
 
 /**
  * Where a project keeps its view of a store written into another `node_modules`, such as the root of a pnpm
- * workspace: `@gtkx/gi` or `@gtkx/jsx` in its own `node_modules`. Null when the store was written into the
- * project's own `node_modules`, whose link then exposes the whole store.
+ * workspace: `.gtkx/gi` or `.gtkx/jsx` in its own `node_modules`, the paths a single project's store takes, which
+ * package managers leave alone on install. Null when the store was written into the project's own `node_modules`,
+ * whose link then exposes the whole store.
  */
 const storeViewDir = (projectRoot: string, store: ViewedStore): string | null => {
     const nodeModules = join(projectRoot, "node_modules");
-    const viewDir = join(nodeModules, SCOPE, basename(store.linkDir));
+    const viewDir = join(nodeModules, VIEW_DIR, basename(store.storeDir));
     const isOwnStore = canonicalPath(nodeModules) === canonicalPath(dirname(dirname(store.storeDir)));
 
-    return isOwnStore || canonicalPath(viewDir) === canonicalPath(store.linkDir) ? null : viewDir;
+    return isOwnStore || canonicalPath(viewDir) === canonicalPath(store.storeDir) ? null : viewDir;
+};
+
+const viewLinkDir = (projectRoot: string, store: ViewedStore): string =>
+    join(projectRoot, "node_modules", SCOPE, basename(store.linkDir));
+
+const isViewLinked = (linkDir: string, viewDir: string): boolean =>
+    lstatSync(linkDir, { throwIfNoEntry: false })?.isSymbolicLink() === true &&
+    readlinkSync(linkDir) === relative(dirname(linkDir), viewDir);
+
+const linkView = (linkDir: string, viewDir: string): void => {
+    if (isViewLinked(linkDir, viewDir)) {
+        return;
+    }
+
+    if (lstatSync(linkDir, { throwIfNoEntry: false })?.isDirectory() === true) {
+        rmSync(linkDir, { recursive: true });
+    }
+
+    symlinkRelative(linkDir, viewDir);
 };
 
 const viewNamespaces = (includes: NamespaceIncludes, libraries: string[]): Set<string> => {
@@ -171,6 +192,7 @@ const writeStoreView = (gi: ViewedStore, jsx: ViewedStore | null, owner: string,
 
         if (viewDir !== null) {
             writeNamespaceView({ storeDir: store.storeDir, viewDir, namespaces });
+            linkView(viewLinkDir(owner, store), viewDir);
         }
     }
 };
@@ -189,17 +211,26 @@ const writeSharedStoreViews = (gi: ViewedStore, jsx: ViewedStore | null, project
     }
 };
 
-/** Restores a project's views of the stores it shares when they are missing, as after a package install. */
+/** Restores a project's views of the stores it shares, and their links, when an install removed them. */
 const ensureStoreViews = (owner: string, gi: ViewedStore, jsx: ViewedStore | null): void => {
-    const isMissing = [gi, jsx].some((store) => {
-        const viewDir = store === null ? null : storeViewDir(owner, store);
+    const views = (jsx === null ? [gi] : [gi, jsx]).flatMap((store) => {
+        const viewDir = storeViewDir(owner, store);
 
-        return viewDir !== null && !existsSync(join(viewDir, MANIFEST_FILENAME));
+        return viewDir === null ? [] : [{ viewDir, linkDir: viewLinkDir(owner, store) }];
     });
+    const isMissing = views.some(({ viewDir }) => !existsSync(join(viewDir, MANIFEST_FILENAME)));
     const project = isMissing ? readSharedProject(gi.storeDir, owner) : undefined;
 
     if (project !== undefined) {
         writeStoreView(gi, jsx, owner, project);
+
+        return;
+    }
+
+    for (const { viewDir, linkDir } of views) {
+        if (existsSync(join(viewDir, MANIFEST_FILENAME))) {
+            linkView(linkDir, viewDir);
+        }
     }
 };
 

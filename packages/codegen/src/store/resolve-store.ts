@@ -1,5 +1,5 @@
 import { isPathWithin } from "@gtkx/utils";
-import { existsSync, lstatSync, readFileSync, realpathSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, readlinkSync, realpathSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import type { StoreOptions } from "./store-fs.js";
 import { EXTERNAL_NAMESPACES } from "../gir/external-namespaces.js";
@@ -201,8 +201,15 @@ const resolvesStoreIn = (projectRoot: string, nodeModules: string): boolean => {
     return anchored !== null && realpathSync(anchored) === realpathSync(nodeModules);
 };
 
-const isStoreView = (path: string): boolean =>
-    basename(dirname(path)) === SCOPE && lstatSync(path, { throwIfNoEntry: false })?.isDirectory() === true;
+const isStoreView = (path: string): boolean => {
+    const entry = lstatSync(path, { throwIfNoEntry: false });
+
+    if (basename(dirname(path)) === STORE_DIR) {
+        return entry?.isDirectory() === true;
+    }
+
+    return entry?.isSymbolicLink() === true && readlinkSync(path) === join("..", STORE_DIR, basename(path));
+};
 
 /**
  * Stores and links in a project's own `node_modules` that would shadow the store its packages resolve from

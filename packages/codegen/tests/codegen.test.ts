@@ -28,7 +28,7 @@ import {
     resolveStore,
     runCodegen,
 } from "../src/index.js";
-import { generateBindings, readBuiltinElementsForDocs, writeDocs } from "../src/internal.js";
+import { ensureStoreLinks, generateBindings, readBuiltinElementsForDocs, writeDocs } from "../src/internal.js";
 
 const workspace = fileURLToPath(new URL("../../..", import.meta.url));
 const createProject = () => {
@@ -48,10 +48,11 @@ const createProject = () => {
     return directory;
 };
 
-const diagnostics = (root: string, source: string) => {
+const diagnostics = (root: string, source: string, options: ts.CompilerOptions = {}) => {
     const file = join(root, "consumer.ts");
     writeFileSync(file, source);
     const program = ts.createProgram([file], {
+        ...options,
         strict: true,
         noEmit: true,
         skipLibCheck: true,
@@ -416,9 +417,45 @@ describe("generated bindings", () => {
             ),
         ).toEqual([]);
 
+        for (const prunedRoot of [app, directory.path]) {
+            for (const kind of ["gi", "jsx"]) {
+                rmSync(join(prunedRoot, "node_modules", "@gtkx", kind), { recursive: true });
+            }
+        }
+        const viewPaths = (kind: string) => [
+            join(app, "node_modules", ".gtkx", kind, "*", "index.d.ts"),
+            join(app, "node_modules", ".gtkx", kind, "*.d.ts"),
+        ];
+        const scaffoldPaths = { paths: { "@gtkx/gi/*": viewPaths("gi"), "@gtkx/jsx/*": viewPaths("jsx") } };
+        expect(
+            diagnostics(
+                app,
+                `import { typeFromName } from "@gtkx/gi/gobject";
+                export const type: bigint = typeFromName("GObject");`,
+                scaffoldPaths,
+            ),
+        ).toEqual([]);
+        expect(
+            diagnostics(
+                app,
+                `import { File } from "@gtkx/gi/gio"; export const file = File.newForPath("/tmp");`,
+                scaffoldPaths,
+            ),
+        ).not.toEqual([]);
+        ensureStoreLinks(app);
+        expect(resolveFrom(app, "@gtkx/gi/gobject")).toBe(resolveFrom(directory.path, "@gtkx/gi/gobject"));
+        expect(resolveFrom(app, "@gtkx/jsx/gobject")).toBe(resolveFrom(directory.path, "@gtkx/jsx/gobject"));
+
         await runCodegen({ libraries: ["Gio-2.0", "Json-1.0"], girPath, gi: root.gi, jsx: root.jsx });
         expect(
             diagnostics(app, `import { Parser } from "@gtkx/gi/json"; export const parser: Parser = new Parser();`),
+        ).not.toEqual([]);
+        expect(
+            diagnostics(
+                app,
+                `import { Parser } from "@gtkx/gi/json"; export const parser: Parser = new Parser();`,
+                scaffoldPaths,
+            ),
         ).not.toEqual([]);
         expect(
             diagnostics(
