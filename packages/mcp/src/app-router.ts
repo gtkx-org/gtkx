@@ -50,6 +50,8 @@ class AppRouter extends EventTarget {
 
     private connectionToApp: Map<string, string> = new Map();
 
+    private unregisteredConnections: Set<string> = new Set();
+
     private connections: AppConnections;
 
     private pendingAppWaits: Set<PendingAppWait> = new Set();
@@ -68,8 +70,14 @@ class AppRouter extends EventTarget {
         this.isServerProject = isServerProject;
         this.connections.onRequest = (connection, request) => this.handleRequest(connection, request);
 
+        this.connections.addEventListener("connection", (event) => {
+            this.unregisteredConnections.add((event as ConnectionEvent).detail.id);
+        });
+
         this.connections.addEventListener("disconnection", (event) => {
-            this.removeApp((event as ConnectionEvent).detail);
+            const connection = (event as ConnectionEvent).detail;
+            this.unregisteredConnections.delete(connection.id);
+            this.removeApp(connection);
         });
     }
 
@@ -114,6 +122,7 @@ class AppRouter extends EventTarget {
 
         const params = parseResult.data;
         this.removeApp(connection);
+        this.unregisteredConnections.delete(connection.id);
         this.apps.set(params.applicationId, { info: params, connection });
         this.connectionToApp.set(connection.id, params.applicationId);
         this.dispatchEvent(appRegisteredEvent(params));
@@ -174,6 +183,12 @@ class AppRouter extends EventTarget {
         }
 
         return this.listeningSince + 2 * RECONNECT_DELAY_MS - now;
+    }
+
+    private hasSettledStartup(): boolean {
+        return (
+            this.unregisteredConnections.size === 0 && this.apps.values().some(({ info }) => this.isProjectApp(info))
+        );
     }
 
     private projectAppWait(timeout: number): number {
@@ -303,17 +318,23 @@ class AppRouter extends EventTarget {
 
     /**
      * Resolves once the apps that were running when the socket started listening have had their first client
-     * reconnect interval to register. In that interval it waits, until two reconnect intervals after the socket
-     * started, for the project's app; otherwise, or once that app is registered, it resolves at once.
+     * reconnect interval to register. In that interval it waits for the interval to end, then, until two
+     * reconnect intervals after the socket started, for every connection accepted by then to register and for
+     * the project's app; after the interval it resolves at once.
      */
     async waitForStartupReconnect(): Promise<void> {
         const wait = this.startupReconnectWait();
 
-        if (this.isDisposed || wait === 0 || this.apps.values().some(({ info }) => this.isProjectApp(info))) {
+        if (this.isDisposed || wait === 0) {
             return;
         }
 
-        await this.waitForRegistration((info) => this.isProjectApp(info), wait);
+        const deadline = Date.now() + wait;
+        await this.waitForRegistration(() => false, wait - RECONNECT_DELAY_MS);
+
+        if (!this.hasSettledStartup()) {
+            await this.waitForRegistration(() => this.hasSettledStartup(), Math.max(0, deadline - Date.now()));
+        }
     }
 
     /** Resolves with the first app registered, waiting up to `timeout` when none is. */

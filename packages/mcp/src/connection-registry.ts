@@ -2,6 +2,7 @@ import type { Socket } from "node:net";
 import { methodNotFoundError } from "./protocol/errors.js";
 import {
     type AppConnections,
+    connectionAcceptedEvent,
     connectionDisconnectionEvent,
     connectionErrorEvent,
     type ConnectionRequestHandler,
@@ -24,6 +25,7 @@ class ConnectionRegistry extends EventTarget implements AppConnections {
 
         this.sockets.set(connection.id, socket);
         connection.fallbackRequestHandler = (request) => this.onRequest(connection, request);
+        this.dispatchEvent(connectionAcceptedEvent(connection));
 
         return connection;
     }

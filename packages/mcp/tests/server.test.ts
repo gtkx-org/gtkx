@@ -124,6 +124,40 @@ describe("MCP server", () => {
         }
     });
 
+    it("lists a Storybook explorer that reconnects after the project's app during the first call", async () => {
+        await using session = await openServer();
+        const connect = async () => {
+            const socket = createConnection(session.socketPath);
+            await once(socket, "connect");
+            const connection = ProtocolConnection.fromSocket(socket, {
+                onClose: () => undefined,
+                onError: () => undefined,
+            });
+            connection.fallbackRequestHandler = () => Promise.resolve({ windows: [] });
+            return connection;
+        };
+        const register = (connection: ProtocolConnection, applicationId: string) =>
+            connection.send("app.register", { applicationId, projectRoot: session.root, pid: process.pid });
+        const app = await connect();
+        let explorer: ProtocolConnection | undefined;
+        try {
+            const [apps] = await Promise.all([
+                textResult(session.client, "gtkx_list_apps"),
+                delay(100).then(() => register(app, "org.gtkx.project")),
+                delay(1500).then(async () => {
+                    explorer = await connect();
+                    await register(explorer, "org.gtkx.project.Storybook");
+                }),
+            ]);
+            expect(JSON.parse(apps)).toEqual([
+                expect.objectContaining({ applicationId: "org.gtkx.project" }),
+                expect.objectContaining({ applicationId: "org.gtkx.project.Storybook" }),
+            ]);
+        } finally {
+            await Promise.all([app.close(), explorer?.close()]);
+        }
+    });
+
     it("rejects arguments a tool does not declare instead of ignoring them", async () => {
         await using session = await openServer();
         const socket = createConnection(session.socketPath);
