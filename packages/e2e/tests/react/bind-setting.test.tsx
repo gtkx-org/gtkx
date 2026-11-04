@@ -1,8 +1,7 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import type { SettingsSchema } from "@gtkx/react/internal";
 import * as Gio from "@gtkx/gi/gio";
 import { GtkSwitch } from "@gtkx/jsx/gtk";
-import { useBindSetting } from "@gtkx/react";
+import { type SettingsSchema, useBindSetting } from "@gtkx/react";
 import { act, render, renderHook, waitFor } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";

@@ -1,8 +1,8 @@
-import type { SettingsSchema, SettingValue } from "@gtkx/react/internal";
+import type { SettingValue } from "@gtkx/react/internal";
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as GObject from "@gtkx/gi/gobject";
-import { useSetting } from "@gtkx/react";
+import { type SettingsSchema, useSetting } from "@gtkx/react";
 import { act, renderHook, waitFor } from "@gtkx/testing";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import schema, { com_gtkx_test_useSetting_profile as profile } from "../fixtures/com.gtkx.test.useSetting.gschema.xml";
@@ -246,6 +246,41 @@ describe("useSetting (typed refs: relocatable paths)", () => {
         expect(first.getString("title")).toBe("old target");
         await unmount();
         expect(GObject.signalHasHandlerPending(second, changedSignal, titleDetail, true)).toBe(false);
+    });
+});
+
+describe("useSetting (hand-written schema objects)", () => {
+    const handWritten = {
+        id: "com.gtkx.test.useSetting",
+        path: null,
+        keys: { label: "s", "wrap-mode": "enum" },
+        values: { "wrap-mode": { none: 0, word: 7, char: 42 } },
+    } as const satisfies SettingsSchema;
+
+    it("types reads of a schema the project does not import", async () => {
+        await resetSettingsKey(handWritten.id, "label");
+        await resetSettingsKey(handWritten.id, "wrap-mode");
+        const settings = await renderSettings(handWritten.id);
+        const { result } = await renderHook(() => ({
+            label: useSetting(settings, handWritten, "label"),
+            wrapMode: useSetting(settings, handWritten, "wrap-mode"),
+        }));
+
+        expectTypeOf(result.current.label[0]).toEqualTypeOf<string>();
+        expectTypeOf(result.current.wrapMode[0]).toEqualTypeOf<0 | 7 | 42>();
+        expect(result.current.label[0]).toBe("initial");
+        expect(result.current.wrapMode[0]).toBe(handWritten.values["wrap-mode"].none);
+    });
+
+    it("rejects keys the hand-written object does not declare", async () => {
+        const settings = await renderSettings(handWritten.id);
+
+        await expect(
+            renderHook(() =>
+                // @ts-expect-error "count" is installed but the hand-written object does not declare it
+                useSetting(settings, handWritten, "count"),
+            ),
+        ).rejects.toThrow();
     });
 });
 

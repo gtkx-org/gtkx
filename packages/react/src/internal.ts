@@ -81,5 +81,5 @@ export type {
 export { isRootElement } from "./reconciler/root-element.js";
 export { applyWrite } from "./reconciler/signals.js";
 export { applyStyle } from "./reconciler/style.js";
-export type { SettingsSchema, SettingsSchemaKeys, SettingsSchemaValues, SettingValue } from "./utils/settings.js";
+export type { SettingsSchemaKeys, SettingsSchemaValues, SettingValue } from "./utils/settings.js";
 export type { DistributedOmit } from "@gtkx/utils";
