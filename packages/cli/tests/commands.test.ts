@@ -1754,20 +1754,36 @@ describe("CLI commands", () => {
         });
     });
 
-    it("summarizes widgets by their accessible name", async () => {
+    it("summarizes widgets by their accessible name and reads boxed properties as text", async () => {
         using project = createProject();
         const readyPath = join(project.root, "ready.txt");
         writeWidgetApp(
             project,
             readyPath,
-            `import { GtkButton } from "@gtkx/jsx/gtk";
-            export const Content = () => <GtkButton iconName="list-add-symbolic" tooltipText="New Note" />;`,
+            `import * as Gdk from "@gtkx/gi/gdk";
+            import { GtkBox, GtkButton, GtkColorDialog, GtkColorDialogButton } from "@gtkx/jsx/gtk";
+            const accent = new Gdk.RGBA({ red: 1, green: 0.5, blue: 0, alpha: 1 });
+            export const Content = () => (
+                <GtkBox>
+                    <GtkButton iconName="list-add-symbolic" tooltipText="New Note" />
+                    <GtkColorDialogButton tooltipText="Accent" rgba={accent} dialog={<GtkColorDialog />} />
+                </GtkBox>
+            );`,
         );
         await withMcpClient(project.root, async (client) => {
             await withSession("dev", project.root, readyPath, async () => {
-                expect(await queryWidgets(client, { by: "role", value: "button" })).toEqual([
+                expect(await queryWidgets(client, { by: "name", value: "New Note" })).toEqual([
                     expect.objectContaining({ type: "Button", name: "New Note" }),
                 ]);
+                const [swatch] = await queryWidgets(client, { by: "name", value: "Accent" });
+                const props = await callTool(client, "gtkx_get_widget_props", {
+                    widgetId: swatch?.id,
+                    properties: ["rgba"],
+                    maxDepth: 0,
+                });
+                expect(JSON.parse(props.text)).toMatchObject({
+                    properties: { rgba: { type: "GdkRGBA", value: "rgb(255,128,0)" } },
+                });
             });
         });
     });

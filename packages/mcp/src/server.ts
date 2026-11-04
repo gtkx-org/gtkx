@@ -351,8 +351,9 @@ const widgetPropsTool = (appRouter: AppRouter): Tool =>
             "order. `hiddenChildren` counts omitted direct children; query that widget's ID to expand it. " +
             "Use `gtkx_get_widget_tree` for an overview. Requested GObject `properties` appear first, " +
             "keyed by canonical kebab-case name with `{type, value}`. Enum/flags values use GType value " +
-            "names, 64-bit integers use decimal strings, and objects use their GType name plus `widgetId` " +
-            "for widgets. Unknown properties fail; values that cannot be converted include a `note`.",
+            "names, 64-bit integers use decimal strings, boxed values such as `GdkRGBA` use their string " +
+            "form, and objects use their GType name plus `widgetId` for widgets. Unknown properties fail; " +
+            "values that cannot be converted include a `note`.",
         inputSchema: widgetPropsShape,
         handler: async ({ applicationId, appTimeout, ...params }) => {
             const result = await appRouter.sendToApp(applicationId, "widget.getProps", params, appTimeout);
