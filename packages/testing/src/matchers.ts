@@ -260,7 +260,12 @@ const toHaveAccessibleErrorMessage: TextMatcher = textMatcher(
 );
 
 const toHaveSelection: TextMatcher = textMatcher("toHaveSelection", getWidgetSelection, "exact");
-const toBePressed: StateMatcher = booleanStateMatcher("toBePressed", "pressed", getWidgetPressedState);
+const toBePressed: StateMatcher = booleanStateMatcher(
+    "toBePressed",
+    "pressed",
+    getWidgetPressedState,
+    checkedInsteadHint,
+);
 const toBeRequired: StateMatcher = booleanStateMatcher("toBeRequired", "required", getWidgetRequiredState);
 
 const toContainAnyByRole: ContainmentMatcher<RoleQueryArgs> = containmentMatcher(
@@ -656,24 +661,33 @@ function toHaveTextContent(received: unknown, expected?: TextExpectation, option
     return textMatcher("toHaveTextContent", read, "substring")(received, expected);
 }
 
-function notApplicable(matcherName: string, stateName: string, widget: Gtk.Widget): Error {
+function notApplicable(matcherName: string, stateName: string, widget: Gtk.Widget, hint = ""): Error {
     return new Error(
         `${matcherName}: widget does not expose a ${stateName} ` +
-            `(role ${Gtk.AccessibleRole[widget.getAccessibleRole()]})\n${describeWidget(widget)}`,
+            `(role ${Gtk.AccessibleRole[widget.getAccessibleRole()]})${hint}\n${describeWidget(widget)}`,
     );
+}
+
+function pressedInsteadHint(widget: Gtk.Widget): string {
+    return getWidgetPressedState(widget) === null ? "" : "; it exposes a pressed state instead; use toBePressed";
+}
+
+function checkedInsteadHint(widget: Gtk.Widget): string {
+    return getWidgetCheckedState(widget) === null ? "" : "; it exposes a checked state instead; use toBeChecked";
 }
 
 function booleanStateMatcher(
     matcherName: string,
     stateName: string,
     read: (widget: Gtk.Widget) => boolean | null,
+    hint: (widget: Gtk.Widget) => string = () => "",
 ): StateMatcher {
     return (received: unknown): MatcherResult => {
         const widget = asWidget(received, matcherName);
         const state = read(widget);
 
         if (state === null) {
-            throw notApplicable(matcherName, `${stateName} state`, widget);
+            throw notApplicable(matcherName, `${stateName} state`, widget, hint(widget));
         }
 
         return stateResult(widget, stateName, state);
@@ -771,7 +785,7 @@ function toBePartiallyPressed(received: unknown): MatcherResult {
     const state = readAccessibleState(widget, Gtk.AccessibleState.PRESSED);
 
     if (state === null) {
-        throw notApplicable("toBePartiallyPressed", "pressed state", widget);
+        throw notApplicable("toBePartiallyPressed", "pressed state", widget, checkedInsteadHint(widget));
     }
 
     return stateResult(widget, "partially pressed", state === MIXED_TRISTATE);
@@ -795,7 +809,7 @@ function readCheckedState(widget: Gtk.Widget, matcherName: string): CheckedState
     const state = getWidgetCheckedState(widget);
 
     if (state === null) {
-        throw notApplicable(matcherName, "checked state", widget);
+        throw notApplicable(matcherName, "checked state", widget, pressedInsteadHint(widget));
     }
 
     return state;

@@ -230,6 +230,26 @@ describe("state matchers", () => {
             expect(label).toBePartiallyPressed();
         }).toThrow();
     });
+
+    it("point a toggle button to toBePressed and a check button to toBeChecked", async () => {
+        const { container } = await render(
+            <VBox>
+                <GtkCheckButton label="Accept" active={true} />
+                <GtkToggleButton label="Bold" active={true} />
+            </VBox>,
+        );
+
+        const view = within(container);
+        const toggle = await view.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, { name: "Bold" });
+        const check = await view.findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "Accept" });
+
+        expect(() => {
+            expect(toggle).toBeChecked();
+        }).toThrow("it exposes a pressed state instead; use toBePressed");
+        expect(() => {
+            expect(check).toBePressed();
+        }).toThrow("it exposes a checked state instead; use toBeChecked");
+    });
 });
 
 describe("toHaveClass", () => {
