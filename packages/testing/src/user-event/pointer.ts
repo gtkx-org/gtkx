@@ -84,12 +84,11 @@ const pointerTargetFor = (widget: Gtk.Widget): PointerTarget => {
     return { widget: target, click: directClickFor(target) };
 };
 
-const pressPointer = ({ click }: PointerTarget, state: UserEventState): void => {
+const pressPointer = ({ click }: PointerTarget, state: UserEventState): ClickSite[] =>
     emitSitePhase(click.sites, 1, "pressed", state.modifierState);
-};
 
-const releasePointer = ({ widget, click }: PointerTarget, state: UserEventState): void => {
-    emitSitePhase(click.sites, 1, "released", state.modifierState);
+const releasePointer = ({ widget, click }: PointerTarget, state: UserEventState, sites: ClickSite[]): void => {
+    emitSitePhase(sites, 1, "released", state.modifierState);
     click.outcome?.(widget, 1, state.modifierState);
 };
 
@@ -98,37 +97,37 @@ const isPointerPressable = (target: PointerTarget): boolean =>
 
 const applyPrimaryInput = (widget: Gtk.Widget, state: UserEventState, action: PointerAction): void => {
     const target = pointerTargetFor(widget);
-    const isHeld = state.heldButtons.has(Gdk.BUTTON_PRIMARY);
+    const held = state.heldButtons.get(Gdk.BUTTON_PRIMARY);
 
     if (action === "click") {
-        pressPointer(target, state);
-        releasePointer(target, state);
+        releasePointer(target, state, pressPointer(target, state));
         state.heldButtons.delete(Gdk.BUTTON_PRIMARY);
-    } else if (action === "press" && !isHeld && isPointerPressable(target)) {
-        pressPointer(target, state);
-        state.heldButtons.add(Gdk.BUTTON_PRIMARY);
-    } else if (action === "release" && isHeld) {
-        releasePointer(target, state);
+    } else if (action === "press" && held === undefined && isPointerPressable(target)) {
+        state.heldButtons.set(Gdk.BUTTON_PRIMARY, pressPointer(target, state));
+    } else if (action === "release" && held !== undefined) {
+        releasePointer(target, state, held);
         state.heldButtons.delete(Gdk.BUTTON_PRIMARY);
     }
 };
 
-const emitButtonPhase = (sites: ClickSite[], state: UserEventState, phase: "pressed" | "released", button: number) =>
-    emitSitePhase(sites, 1, phase, state.modifierState, button);
+const emitButtonPhase = (
+    sites: ClickSite[],
+    state: UserEventState,
+    phase: "pressed" | "released",
+    button: number,
+): ClickSite[] => emitSitePhase(sites, 1, phase, state.modifierState, button);
 
 const applyButtonInput = (widget: Gtk.Widget, state: UserEventState, { action, button }: PointerToken): void => {
     const sites = buttonSitesFor(pointerWidgetFor(widget), button);
-    const isHeld = state.heldButtons.has(button);
+    const held = state.heldButtons.get(button);
 
     if (action === "click") {
-        emitButtonPhase(sites, state, "pressed", button);
-        emitButtonPhase(sites, state, "released", button);
+        emitButtonPhase(emitButtonPhase(sites, state, "pressed", button), state, "released", button);
         state.heldButtons.delete(button);
-    } else if (action === "press" && !isHeld && sites.length > 0) {
-        emitButtonPhase(sites, state, "pressed", button);
-        state.heldButtons.add(button);
-    } else if (action === "release" && isHeld) {
-        emitButtonPhase(sites, state, "released", button);
+    } else if (action === "press" && held === undefined && sites.length > 0) {
+        state.heldButtons.set(button, emitButtonPhase(sites, state, "pressed", button));
+    } else if (action === "release" && held !== undefined) {
+        emitButtonPhase(held, state, "released", button);
         state.heldButtons.delete(button);
     }
 };

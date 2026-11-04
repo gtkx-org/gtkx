@@ -586,6 +586,34 @@ describe("userEvent.click", () => {
         expect(clicked.count).toBe(0);
     });
 
+    it("stops a pointer button at the gesture that claims its press, as GTK propagation does", async () => {
+        const events: string[] = [];
+        const listen = (name: string, claims: boolean) => (
+            <GtkGestureClick
+                button={Gdk.BUTTON_SECONDARY}
+                onPressed={(_nPress, _x, _y, self) => {
+                    events.push(`${name} pressed`);
+                    if (claims) self.setState(Gtk.EventSequenceState.CLAIMED);
+                }}
+                onReleased={() => events.push(`${name} released`)}
+            />
+        );
+
+        await render(
+            <GtkBox controllers={listen("canvas", false)}>
+                <GtkLabel label="Item" controllers={listen("item", true)} />
+            </GtkBox>,
+        );
+
+        const item = await screen.findByText("Item");
+        const user = userEvent.setup();
+        await user.pointer(item, "[MouseRight]");
+        await user.pointer(item, "[MouseRight>]");
+        await user.pointer(item, "[/MouseRight]");
+
+        expect(events).toEqual(["item pressed", "item released", "item pressed", "item released"]);
+    });
+
     it("rejects a pointer input it does not know", async () => {
         const { button } = await renderClickButton();
         const input: string = "[MouseBack]";

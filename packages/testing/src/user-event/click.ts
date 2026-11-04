@@ -16,6 +16,7 @@ type DirectClick = { sites: ClickSite[]; outcome: NativeClick | null };
 type CurrentEventPatch = {
     getCurrentButton?: Gtk.GestureClick["getCurrentButton"] | undefined;
     getCurrentEventState?: Gtk.GestureClick["getCurrentEventState"] | undefined;
+    setState?: Gtk.GestureClick["setState"] | undefined;
 };
 
 type ClickTarget = {
@@ -59,14 +60,21 @@ const emitWithCurrentEvent = (
     button: number,
     modifiers: Gdk.ModifierType,
     emit: () => void,
-): void => {
+): boolean => {
     const instance: CurrentEventPatch = controller;
     const hasOwnButton = Object.hasOwn(instance, "getCurrentButton");
     const hasOwnState = Object.hasOwn(instance, "getCurrentEventState");
+    const hasOwnSetState = Object.hasOwn(instance, "setState");
     const previousButton = instance.getCurrentButton;
     const previousState = instance.getCurrentEventState;
+    const previousSetState = instance.setState;
+    let isClaimed = false;
     instance.getCurrentButton = () => button;
     instance.getCurrentEventState = () => modifiers;
+    instance.setState = (state) => {
+        isClaimed = state === Gtk.EventSequenceState.CLAIMED;
+        return true;
+    };
 
     try {
         emit();
@@ -82,7 +90,15 @@ const emitWithCurrentEvent = (
         } else {
             delete instance.getCurrentEventState;
         }
+
+        if (hasOwnSetState) {
+            instance.setState = previousSetState;
+        } else {
+            delete instance.setState;
+        }
     }
+
+    return isClaimed;
 };
 
 const emitGesture = (
@@ -92,12 +108,17 @@ const emitGesture = (
     signal: ClickPhase,
     button: number,
     modifiers: Gdk.ModifierType,
-): void => {
+): boolean => {
+    let isClaimed = false;
+
     for (const controller of controllers) {
-        emitWithCurrentEvent(controller, button, modifiers, () => {
+        const hasClaimed = emitWithCurrentEvent(controller, button, modifiers, () => {
             controller.emit(signal, nPress, point.x, point.y);
         });
+        isClaimed ||= hasClaimed;
     }
+
+    return isClaimed;
 };
 
 const emitSitePhase = (
@@ -106,16 +127,24 @@ const emitSitePhase = (
     phase: ClickPhase,
     modifiers: Gdk.ModifierType,
     button: number = Gdk.BUTTON_PRIMARY,
-): void => {
+): ClickSite[] => {
+    const reached: ClickSite[] = [];
+
     for (const site of sites) {
-        emitGesture(site.point, site.gestures, nPress, phase, button, modifiers);
+        reached.push(site);
+
+        if (emitGesture(site.point, site.gestures, nPress, phase, button, modifiers)) {
+            break;
+        }
     }
+
+    return reached;
 };
 
 const emitClickSequence = (sites: ClickSite[], nPress: number, modifiers: Gdk.ModifierType): void => {
     for (let i = 1; i <= nPress; i++) {
-        emitSitePhase(sites, i, "pressed", modifiers);
-        emitSitePhase(sites, i, "released", modifiers);
+        const reached = emitSitePhase(sites, i, "pressed", modifiers);
+        emitSitePhase(reached, i, "released", modifiers);
     }
 };
 
