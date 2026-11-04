@@ -29,6 +29,8 @@ export default defineConfig({
 });
 ```
 
+In a JavaScript project, name the file `vitest.config.js` and include `tests/**/*.test.{js,jsx}` instead.
+
 The plugin gives each worker a private headless display and session bus, which need Sway and `dbus-daemon`. On Fedora 44, install these with:
 
 ```bash
