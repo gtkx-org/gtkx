@@ -127,7 +127,13 @@ The CLI of 2.0.0-beta.12 and earlier releases has no `upgrade` command. Run the 
 - **Missing GIR file:** install the library's development package, then run `npx gtkx codegen` from the project. For libraries outside the standard directories, set [`girPath`](/v2/guide/configuration-and-codegen#the-config-file).
 - **Native versions are too old:** use a distribution or development container that meets the minimums. Installing newer TypeScript packages does not upgrade GTK or libadwaita.
 - **No display connection:** run from a desktop terminal or configure your container's display and session access. Tests have a separate [headless setup](/v2/guide/testing#setup).
-- **Dependency installation failed:** the generated files remain in the project directory. Resolve the package manager's error and rerun its install command there. For pnpm release-age restrictions, see the [pnpm settings](https://pnpm.io/settings/dependency-resolution#minimumreleaseage).
+- **Dependency installation failed:** the generated files remain in the project directory, but the scaffolder stops before initializing Git. Resolve the package manager's error, rerun its install command there, and run `git init` if you want the project under version control. For pnpm release-age restrictions, see the [pnpm settings](https://pnpm.io/settings/dependency-resolution#minimumreleaseage). Yarn 4.18 quarantines packages published within its [`npmMinimalAgeGate`](https://yarnpkg.com/configuration/yarnrc#npmMinimalAgeGate), one day by default, so on the day of a GTKX release it reports that all versions of the `@gtkx` packages are quarantined. Add them to `npmPreapprovedPackages` in the project's `.yarnrc.yml`, or install again a day later:
+
+  ```yaml [.yarnrc.yml]
+  npmPreapprovedPackages:
+      - "@gtkx/*"
+      - create-gtkx
+  ```
 
 ## Next
 
