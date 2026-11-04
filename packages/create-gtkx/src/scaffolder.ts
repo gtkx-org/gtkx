@@ -12,7 +12,7 @@ import {
     enclosingWorkspace,
     packageManagerPin,
     type Workspace,
-    writeBuildAllowance,
+    writePackageManagerSettings,
 } from "./build-allowance.js";
 import { OperationCanceledError, ScaffoldAbortedError } from "./errors.js";
 import { updateManifest } from "./manifest.js";
@@ -720,6 +720,25 @@ const runWithSpinner = async (step: SpinnerStep): Promise<void> => {
     }
 };
 
+const printWorkspaceAllowances = ({ root, packageManager, workspace }: ResolvedOptions): void => {
+    const installed = workspace === null ? null : enclosingWorkspace(root, packageManager);
+
+    if (installed === null || installed.missingSettings.length === 0) {
+        return;
+    }
+
+    p.log.warn(
+        `The ${installed.packageManager} workspace lacks settings this app needs. ` +
+            `Set these entries, then run ${INSTALL_COMMAND[installed.packageManager]}:\n\n` +
+            installed.missingSettings
+                .map(
+                    ({ file, section, entries }) =>
+                        `${section === null ? file : `${file} (under ${section})`}:\n${entries}`,
+                )
+                .join("\n\n"),
+    );
+};
+
 const hasMissingAllowances = (resolved: ResolvedOptions): boolean =>
     resolved.workspace?.packageManager === "pnpm" && resolved.workspace.missingSettings.length > 0;
 
@@ -744,6 +763,7 @@ const installAllDependencies = async (resolved: ResolvedOptions, devDependencies
             }
         },
         explain: () => {
+            printWorkspaceAllowances(resolved);
             p.log.info(formatRecovery(resolved));
         },
     });
@@ -793,25 +813,6 @@ const missingHeadlessToolsNote = (): string => {
         : ["", "", "To run tests, install these tools:", ...missingToolLines(missing)].join("\n");
 };
 
-const printWorkspaceAllowances = ({ root, packageManager, workspace }: ResolvedOptions): void => {
-    const installed = workspace === null ? null : enclosingWorkspace(root, packageManager);
-
-    if (installed === null || installed.missingSettings.length === 0) {
-        return;
-    }
-
-    p.log.warn(
-        `The ${installed.packageManager} workspace lacks settings this app needs. ` +
-            `Set these entries, then run ${INSTALL_COMMAND[installed.packageManager]}:\n\n` +
-            installed.missingSettings
-                .map(
-                    ({ file, section, entries }) =>
-                        `${section === null ? file : `${file} (under ${section})`}:\n${entries}`,
-                )
-                .join("\n\n"),
-    );
-};
-
 const addRootMcpServer = ({ workspace, name }: ResolvedOptions): void => {
     if (workspace === null) {
         return;
@@ -850,7 +851,7 @@ const createProjectStructure = async (root: string, resolved: ResolvedOptions, p
             scaffoldProject(root, plan);
 
             if (resolved.workspace === null) {
-                writeBuildAllowance(root, resolved.packageManager);
+                writePackageManagerSettings(root, resolved.packageManager);
             }
         },
     });
