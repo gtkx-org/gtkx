@@ -131,7 +131,7 @@ type UserEvent = {
         (input: string): Promise<void>;
         (widget: Gtk.Accessible, input: string): Promise<void>;
     };
-    /** Applies a pointer token while preserving held-button state. */
+    /** Applies a pointer token, such as `[MouseLeft]` or `[MouseRight>]`, while preserving held-button state. */
     pointer: (widget: Gtk.Accessible, input: PointerInput) => Promise<void>;
 };
 

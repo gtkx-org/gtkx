@@ -137,6 +137,8 @@ await user.click(saveButton);
 
 `keyboard` sends keys to the focused widget inside the given widget, or to the widget itself, through GTK's key bindings and key controllers. Called with only the keys, as in `await user.keyboard("{Enter}")`, it sends them to the focused widget of the active window, as Testing Library does, or to the window itself while its focus is on a widget that is not on screen, as a keyboard does. A key no widget handles reaches the window's bindings, so `{Tab}`, `{Shift>}{Tab}{/Shift}` and arrow keys move focus as they do on a keyboard. In a `GtkSourceView`, keys behave as in a plain `GtkTextView`: GtkSourceView's own key handling, such as auto-indent and bracket completion, needs a real key event and does not run. Key controllers the app adds still receive the keys.
 
+`pointer` takes Testing Library's button tokens. `[MouseLeft]` clicks the widget as `click` does, and `[MouseRight]` and `[MouseMiddle]` press and release the other buttons for the click gestures on the widget and its ancestors that listen for them, so `pointer(cell, "[MouseRight]")` opens a context menu that a `GtkGestureClick` with `button={Gdk.BUTTON_SECONDARY}` shows. Add `>` to only press a button, as in `[MouseRight>]`, and a leading `/` to release it.
+
 `selectOptions` and `deselectOptions` take positions rather than option values or labels, because GTK drop-downs, lists and grids have no option values: `selectOptions(dropDown, 2)` selects the third item, and an array selects several positions in a multiple-selection list.
 
 Use `slide(range, value)` for a slider. `drag` drives application-defined drag gestures and cannot drive a range's native slider. The [interaction reference](/v2/reference/@gtkx/testing/) covers the available helpers.

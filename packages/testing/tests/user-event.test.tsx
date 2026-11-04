@@ -58,7 +58,16 @@ import {
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
-import { type BoundQueries, queryAllControllers, render, screen, userEvent, waitFor, within } from "@gtkx/testing";
+import {
+    type BoundQueries,
+    type PointerInput,
+    queryAllControllers,
+    render,
+    screen,
+    userEvent,
+    waitFor,
+    within,
+} from "@gtkx/testing";
 import { createRef, useState } from "react";
 import { describe, expect, it } from "vitest";
 import {
@@ -533,6 +542,57 @@ describe("userEvent.click", () => {
         ]);
         const [gesture] = queryAllControllers(tile, Gtk.GestureClick);
         expect(gesture?.getCurrentButton()).toBe(0);
+    });
+
+    it("delivers right and middle pointer buttons to the gestures listening for them, not to the button's click", async () => {
+        const events: [string, number][] = [];
+        const clicked = callCounter();
+        const record = (phase: string, gesture: Gtk.GestureClick) => events.push([phase, gesture.getCurrentButton()]);
+
+        await render(
+            <GtkButton
+                label="Cell"
+                onClicked={clicked.callback}
+                controllers={
+                    <>
+                        <GtkGestureClick
+                            button={Gdk.BUTTON_SECONDARY}
+                            onPressed={(_nPress, _x, _y, self) => record("secondary pressed", self)}
+                            onReleased={(_nPress, _x, _y, self) => record("secondary released", self)}
+                        />
+                        <GtkGestureClick
+                            button={Gdk.BUTTON_MIDDLE}
+                            onPressed={(_nPress, _x, _y, self) => record("middle pressed", self)}
+                        />
+                    </>
+                }
+            />,
+        );
+
+        const cell = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Cell" });
+        const user = userEvent.setup();
+        await user.pointer(cell, "[MouseRight]");
+        await user.pointer(cell, "[MouseMiddle]");
+        await user.pointer(cell, "[MouseRight>]");
+        await user.pointer(cell, "[/MouseRight]");
+
+        expect(events).toEqual([
+            ["secondary pressed", Gdk.BUTTON_SECONDARY],
+            ["secondary released", Gdk.BUTTON_SECONDARY],
+            ["middle pressed", Gdk.BUTTON_MIDDLE],
+            ["secondary pressed", Gdk.BUTTON_SECONDARY],
+            ["secondary released", Gdk.BUTTON_SECONDARY],
+        ]);
+        expect(clicked.count).toBe(0);
+    });
+
+    it("rejects a pointer input it does not know", async () => {
+        const { button } = await renderClickButton();
+        const input: string = "[MouseBack]";
+
+        await expect(userEvent.pointer(button, input as PointerInput)).rejects.toThrow(
+            'Unknown pointer input "[MouseBack]"',
+        );
     });
 
     it("activates sidebar rows through click and pointer without driving internal gestures", async () => {

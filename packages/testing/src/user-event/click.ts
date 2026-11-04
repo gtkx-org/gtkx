@@ -54,13 +54,18 @@ const getClickPoint = (clicked: Gtk.Widget, carrier: Gtk.Widget): PressPoint => 
     return { x: bounds.getX() + bounds.getWidth() / 2, y: bounds.getY() + bounds.getHeight() / 2 };
 };
 
-const emitWithCurrentEvent = (controller: Gtk.GestureClick, modifiers: Gdk.ModifierType, emit: () => void): void => {
+const emitWithCurrentEvent = (
+    controller: Gtk.GestureClick,
+    button: number,
+    modifiers: Gdk.ModifierType,
+    emit: () => void,
+): void => {
     const instance: CurrentEventPatch = controller;
     const hasOwnButton = Object.hasOwn(instance, "getCurrentButton");
     const hasOwnState = Object.hasOwn(instance, "getCurrentEventState");
     const previousButton = instance.getCurrentButton;
     const previousState = instance.getCurrentEventState;
-    instance.getCurrentButton = () => Gdk.BUTTON_PRIMARY;
+    instance.getCurrentButton = () => button;
     instance.getCurrentEventState = () => modifiers;
 
     try {
@@ -85,18 +90,25 @@ const emitGesture = (
     controllers: Gtk.GestureClick[],
     nPress: number,
     signal: ClickPhase,
+    button: number,
     modifiers: Gdk.ModifierType,
 ): void => {
     for (const controller of controllers) {
-        emitWithCurrentEvent(controller, modifiers, () => {
+        emitWithCurrentEvent(controller, button, modifiers, () => {
             controller.emit(signal, nPress, point.x, point.y);
         });
     }
 };
 
-const emitSitePhase = (sites: ClickSite[], nPress: number, phase: ClickPhase, modifiers: Gdk.ModifierType): void => {
+const emitSitePhase = (
+    sites: ClickSite[],
+    nPress: number,
+    phase: ClickPhase,
+    modifiers: Gdk.ModifierType,
+    button: number = Gdk.BUTTON_PRIMARY,
+): void => {
     for (const site of sites) {
-        emitGesture(site.point, site.gestures, nPress, phase, modifiers);
+        emitGesture(site.point, site.gestures, nPress, phase, button, modifiers);
     }
 };
 
@@ -279,6 +291,32 @@ const directClickFor = (widget: Gtk.Widget): DirectClick => {
     return { sites: targetSites(widget, target), outcome: native ?? (container === null ? null : applyContainerClick) };
 };
 
+const listensForButton = (gesture: Gtk.GestureClick, button: number): boolean => {
+    const listened = gesture.getButton();
+
+    return listened === 0 || listened === button;
+};
+
+/**
+ * The press sites a non-primary button reaches: the authored click gestures listening for that button on the widget
+ * and its ancestors, as GTK propagates the press up the tree. Widgets react to these buttons only through gestures.
+ */
+const buttonSitesFor = (widget: Gtk.Widget, button: number): ClickSite[] => {
+    const sites: ClickSite[] = [];
+
+    for (let current: Gtk.Widget | null = widget; current !== null; current = current.getParent()) {
+        const gestures = queryAllControllers(current, Gtk.GestureClick).filter(
+            (gesture) => listensForButton(gesture, button) && hasClickHandlers(gesture),
+        );
+
+        if (gestures.length > 0) {
+            sites.push({ gestures, point: getClickPoint(widget, current) });
+        }
+    }
+
+    return sites;
+};
+
 const applyClickOutcomes = (targets: ClickTarget[], nPress: number, modifiers: Gdk.ModifierType): void => {
     for (const target of targets) {
         applyClickOutcome(target, nPress, modifiers);
@@ -321,5 +359,5 @@ const dblClick = (state: UserEventState, widget: Gtk.Widget): Promise<void> => d
 /** Delivers a triple-click gesture. */
 const tripleClick = (state: UserEventState, widget: Gtk.Widget): Promise<void> => deliverClick(state, widget, 3);
 
-export { directClickFor, emitSitePhase, click, dblClick, tripleClick };
-export type { DirectClick };
+export { buttonSitesFor, directClickFor, emitSitePhase, click, dblClick, tripleClick };
+export type { ClickSite, DirectClick };
