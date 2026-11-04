@@ -477,8 +477,8 @@ function buildInteractionTools(appRouter: AppRouter): Tool[] {
             title: "Press pointer button",
             kind: "action",
             description:
-                "Press a mouse button on a widget through userEvent.pointer, as `gtkx_press_keys` presses keys " +
-                "through userEvent.keyboard. `[MouseRight]` right-clicks: it reaches the click gestures on the " +
+                "Press a mouse button on a widget through userEvent.pointer, with one pointer token in `input`. " +
+                "`[MouseRight]` right-clicks: it reaches the click gestures on the " +
                 "widget and its ancestors that listen for the secondary button, such as a `GtkGestureClick` with " +
                 "`button={Gdk.BUTTON_SECONDARY}` that opens a context menu. `[MouseMiddle]` does the same for the " +
                 "middle button, and `[MouseLeft]` clicks like `gtkx_click`. Hold a button with `[MouseRight>]` " +
