@@ -10,6 +10,8 @@ import {
     AdwClampScrollable,
     AdwHeaderBar,
     AdwEntryRow,
+    AdwNavigationPage,
+    AdwNavigationSplitView,
     AdwOverlaySplitView,
     AdwPreferencesDialog,
     AdwPreferencesGroup,
@@ -212,6 +214,33 @@ describe("default child adapters", () => {
             />,
         );
         expect(stderr).toHaveBeenCalledTimes(2);
+    });
+
+    it("names the props that take a hidden child when warning about a single-child slot", async () => {
+        const stderr = observeStderr();
+        await render(
+            <AdwNavigationSplitView>
+                <AdwNavigationPage title="Feeds">
+                    <GtkLabel>Feeds</GtkLabel>
+                </AdwNavigationPage>
+                <AdwNavigationPage title="Articles">
+                    <GtkLabel>Articles</GtkLabel>
+                </AdwNavigationPage>
+            </AdwNavigationSplitView>,
+        );
+        expect(stderr).toHaveBeenCalledTimes(1);
+        const warning = String(stderr.mock.calls[0]?.[0]);
+        expect(warning).toContain("sidebar={<AdwNavigationPage />}");
+        expect(warning).not.toContain("<GtkBox>");
+        await render(
+            <AdwToolbarView>
+                <GtkSearchEntry />
+                <GtkLabel>Content</GtkLabel>
+            </AdwToolbarView>,
+        );
+        const toolbarWarning = String(stderr.mock.calls[1]?.[0]);
+        expect(toolbarWarning).toContain("<GtkBox>");
+        expect(toolbarWarning).toContain("topBar={<GtkSearchEntry />}");
     });
 
     it("accepts a scrollable widget and replaces it without retaining the old child", async () => {

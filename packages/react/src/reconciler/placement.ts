@@ -1,9 +1,10 @@
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
+import { getClassType } from "@gtkx/runtime";
 import { createLogger, drain, indexBeforeOrEnd, type Logger } from "@gtkx/utils";
 import type { DetachInfo, ElementBehavior, PlaceInfo } from "./registry.js";
 import { applyAdoptedProps, discardAccessible, placeDependingProps } from "./apply-props.js";
-import { claimingSlot, holdsOneChild, slotAccepting } from "./behaviors.js";
+import { claimingSlot, holdsOneChild, slotAccepting, slotAcceptsType } from "./behaviors.js";
 import { isKnownProp, propertiesAccepting, typeInfoFor } from "./metadata.js";
 import {
     DEFAULT_SLOT,
@@ -134,6 +135,30 @@ const singleChildGroups = (entries: readonly PlacedChild[]): PlacedChild[][] => 
     return [...groups.values()];
 };
 
+const WRAP_ADVICE = "Wrap them in a container such as <GtkBox>";
+
+const hiddenChildAdvice = (parent: ElementNode, slot: string, group: readonly PlacedChild[]): string => {
+    const behavior = group[0]?.behavior ?? null;
+    const wraps = behavior === null || slotAcceptsType(behavior, getClassType(Gtk.Box));
+    const props = [
+        ...new Set(
+            group.flatMap((entry) =>
+                slotsAccepting(parent, entry.object)
+                    .filter((name) => name !== slot)
+                    .map((name) => `${name}={<${entry.typeName} />}`),
+            ),
+        ),
+    ];
+
+    if (props.length === 0) {
+        return `${WRAP_ADVICE}, or pass the others through the props that take them.`;
+    }
+
+    const passAdvice = `the props that take them: ${props.join(" or ")}.`;
+
+    return wraps ? `${WRAP_ADVICE}, or pass the others through ${passAdvice}` : `Pass the others through ${passAdvice}`;
+};
+
 const warnHiddenChildren = (parent: ElementNode, slot: string, entries: readonly PlacedChild[]): void => {
     for (const group of singleChildGroups(entries)) {
         const shown = group.filter((entry) => isShownWidget(entry));
@@ -143,8 +168,7 @@ const warnHiddenChildren = (parent: ElementNode, slot: string, entries: readonly
             const place = slot === DEFAULT_SLOT ? "as its child" : `in ${slot}`;
             log.warn(
                 `<${parent.typeName}> shows one widget ${place} but was given ${String(shown.length)} visible ones; ` +
-                    `only the last, <${last.typeName}>, is shown. Wrap them in a container such as <GtkBox>, ` +
-                    `or pass the others through the props that take them.`,
+                    `only the last, <${last.typeName}>, is shown. ${hiddenChildAdvice(parent, slot, shown.slice(0, -1))}`,
             );
         }
     }

@@ -99,6 +99,18 @@ const slotAccepting = (
     return matcher?.matches(parent, child) === true ? matcher.slotName : undefined;
 };
 
+const slotAcceptsType = (behavior: ElementBehavior, type: bigint): boolean => {
+    const childClass = slotMatchers.get(behavior)?.childClass;
+
+    if (childClass === undefined) {
+        return true;
+    }
+
+    const classType = childClassType(childClass);
+
+    return classType === TYPE_INVALID || typeIsA(type, classType);
+};
+
 const claimingSlot = (
     behaviors: readonly ElementBehavior[],
     slotName: string,
@@ -421,6 +433,7 @@ export {
     indexedSlot,
     rowSlot,
     slotAccepting,
+    slotAcceptsType,
     slotNameOf,
     holdingOneChild,
     holdsOneChild,
