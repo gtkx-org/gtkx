@@ -158,9 +158,22 @@ const require = createRequire(import.meta.url);
 const addon = require(addonPath) as { open(path: string): unknown };
 ```
 
-Choose a prebuild matching the deployment architecture and Node.js ABI. A package loader that searches its
-original `node_modules` directory will not find that directory after bundling. GTKX's own addon uses the
-emitted asset path in the same way.
+Choose a prebuild matching the deployment architecture and Node.js ABI. Import the `.node` file itself, not
+the package that loads it: `gtkx build` cannot bundle a package whose entry point requires its `.node` file,
+and a loader that searches its original `node_modules` directory will not find that directory after bundling.
+GTKX's own addon uses the emitted asset path in the same way. For prebuilds published as one package per
+platform, such as `@node-rs/xxhash-linux-x64-gnu`, add that package as a dependency and import its `.node` file.
+
+Every package of one deployment contains the same build. When `deploy.architectures` or `--arch` selects more
+than one architecture, import a prebuild for each and load the one matching `process.arch`; GTKX does not check
+the architecture of imported addons.
+
+```ts
+import arm64Addon from "@node-rs/xxhash-linux-arm64-gnu/xxhash.linux-arm64-gnu.node?url";
+import x64Addon from "@node-rs/xxhash-linux-x64-gnu/xxhash.linux-x64-gnu.node?url";
+
+const addon = require(process.arch === "arm64" ? arm64Addon : x64Addon) as { xxh64(input: string): bigint };
+```
 
 ## Third-party notices
 
