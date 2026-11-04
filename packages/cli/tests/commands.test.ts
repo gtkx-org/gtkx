@@ -1496,6 +1496,88 @@ describe("CLI commands", () => {
         ).toBe(true);
     });
 
+    it("renders a source Flatpak that installs a Yarn 4 project with its pinned Yarn release", async () => {
+        const digest =
+            "b2e1e7524f654f2749d32b4ebcb4622473cb5bcbc485df2007e12a154e50162a4d795526768bc5f5b8f81717bfd79deb" +
+            "2472813d86fb5ae2eb551fa9c872b08f";
+        using project = createProject({
+            applicationIcon: "icon.svg",
+            deploy: {
+                name: "CLI Example",
+                summary: "Exercises the source Flatpak manifest",
+                categories: ["Utility"],
+                description: ["An example application used to exercise a Flathub source manifest."],
+                developer: { id: "dev.gtkx", name: "GTKX", email: "hello@gtkx.dev" },
+                license: "MIT",
+                homepage: "https://gtkx.dev",
+                releases: [{ version: "1.0.0", date: "2026-11-04" }],
+                contentRating: {},
+                flatpak: {
+                    mode: "source",
+                    source: { url: "https://example.org/cli-example.git", commit: "0".repeat(40) },
+                },
+            },
+        });
+        project.write(
+            "package.json",
+            JSON.stringify({
+                name: "cli-example",
+                version: "1.0.0",
+                type: "module",
+                license: "MIT",
+                packageManager: `yarn@4.18.1+sha512.${digest}`,
+                dependencies: {},
+            }),
+        );
+        project.write(
+            "yarn.lock",
+            '__metadata:\n  version: 10\n  cacheKey: 10c0\n\n"cli-example@workspace:.":\n  version: 0.0.0-use.local\n' +
+                '  resolution: "cli-example@workspace:."\n  languageName: unknown\n  linkType: soft\n',
+        );
+        project.write(
+            "icon.svg",
+            '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="blue"/></svg>',
+        );
+        await invoke(["deploy", "--cwd", project.root, "--print-manifests", "--target", "flatpak"]);
+        const manifest = parse(
+            readFileSync(join(project.root, "build", process.arch, "targets/flatpak/org.gtkx.example.yml"), "utf8"),
+        ) as {
+            modules: {
+                "build-options": { "append-path": string; env: Record<string, string> };
+                sources: Record<string, unknown>[];
+                "build-commands": string[];
+            }[];
+        };
+        const module = manifest.modules.at(-1);
+        expect(module?.sources).toContainEqual({
+            type: "file",
+            url: "https://repo.yarnpkg.com/4.18.1/packages/yarnpkg-cli/bin/yarn.js",
+            sha512: digest,
+            dest: "flatpak-yarn",
+            "dest-filename": "yarn.cjs",
+        });
+        expect(module?.sources).toContainEqual({
+            type: "script",
+            dest: "flatpak-yarn",
+            "dest-filename": "yarn",
+            commands: ['exec node /run/build/cli-example/flatpak-yarn/yarn.cjs "$@"'],
+        });
+        expect(module?.["build-options"]["append-path"]).toBe(
+            "/run/build/cli-example/flatpak-yarn:/usr/lib/sdk/node26/bin",
+        );
+        expect(module?.["build-options"].env).toEqual({
+            npm_config_nodedir: "/usr/lib/sdk/node26",
+            YARN_ENABLE_NETWORK: "0",
+            YARN_ENABLE_GLOBAL_CACHE: "0",
+            YARN_GLOBAL_FOLDER: "/run/build/cli-example/flatpak-node/yarn-berry",
+        });
+        expect(module?.["build-commands"].slice(0, 3)).toEqual([
+            "yarn plugin import /run/build/cli-example/flatpak-node/flatpak-yarn.js",
+            "yarn convertToZip /usr/lib/sdk/node26/bin/yarn",
+            "yarn install --immutable",
+        ]);
+    });
+
     it("preserves arguments, configuration, translations and MCP across headless dev restarts", async () => {
         using project = createProject({ codegen: true });
         const readyPath = join(project.root, "ready.txt");

@@ -7,6 +7,7 @@ import { gitRemoteUrl, runGit } from "../git.js";
 import { optional } from "../nfpm/optional.js";
 import { FLATPAK_NODE_GENERATOR, GENERATOR_PNPM_OPTION } from "../tools.js";
 import { pnpmInstallCommand, type PnpmPin, pnpmStoreVersionFor, resolvePnpmPin } from "./flatpak-pnpm.js";
+import { BERRY_INSTALL, isBerryLockfile, resolveYarnPin, type YarnPin } from "./flatpak-yarn.js";
 
 type PackageManager = "npm" | "pnpm" | "yarn";
 type VendoredManager = Exclude<PackageManager, "pnpm">;
@@ -62,11 +63,24 @@ const detectPackageManager = (settings: DeploySettings): PackageManager => {
     return found;
 };
 
+const lockfileFor = (settings: DeploySettings, manager: PackageManager): string =>
+    settings.deploy.flatpak?.lockfile ?? LOCKFILE_BY_MANAGER[manager];
+
 const pnpmPinFor = (settings: DeploySettings, manager: PackageManager): PnpmPin | null =>
     manager === "pnpm" ? resolvePnpmPin(settings) : null;
 
-const installCommandFor = (settings: DeploySettings, manager: PackageManager): string =>
-    manager === "pnpm" ? pnpmInstallCommand(resolvePnpmPin(settings)) : INSTALL_COMMAND[manager];
+const yarnPinFor = (settings: DeploySettings, manager: PackageManager): YarnPin | null =>
+    manager === "yarn" && isBerryLockfile(resolve(settings.paths.root, lockfileFor(settings, manager)))
+        ? resolveYarnPin(settings)
+        : null;
+
+const installCommandFor = (settings: DeploySettings, manager: PackageManager): string => {
+    if (manager === "pnpm") {
+        return pnpmInstallCommand(resolvePnpmPin(settings));
+    }
+
+    return yarnPinFor(settings, manager) === null ? INSTALL_COMMAND[manager] : BERRY_INSTALL;
+};
 
 const nodeExtensionFor = (settings: DeploySettings): string =>
     settings.deploy.flatpak?.nodeExtension ?? DEFAULT_NODE_EXTENSION;
@@ -169,7 +183,7 @@ const storeVersionArgs = (pin: PnpmPin | null): string[] =>
     pin === null ? [] : [GENERATOR_PNPM_OPTION, pnpmStoreVersionFor(pin)];
 
 const generateNodeSources = (settings: DeploySettings, manager: PackageManager, pin: PnpmPin | null): void => {
-    const lockfile = settings.deploy.flatpak?.lockfile ?? LOCKFILE_BY_MANAGER[manager];
+    const lockfile = lockfileFor(settings, manager);
     const output = generatedSourcesPath(settings);
     mkdirSync(dirname(output), { recursive: true });
 
@@ -194,4 +208,5 @@ export {
     type PackageManager,
     pnpmPinFor,
     resolveGitSource,
+    yarnPinFor,
 };

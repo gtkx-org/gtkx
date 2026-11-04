@@ -230,6 +230,13 @@ project needs a generator with `--pnpm-store-version`. Explicit pnpm pins suppor
 runs as a native binary, the manifest also vendors that binary for each architecture, with checksums read from
 the npm registry when the manifest is generated.
 
+A Yarn 2 or later project, recognized by its `yarn.lock` format, installs with the release its `packageManager`
+field names instead of the SDK's Yarn 1, so that field is required. The manifest vendors that release, checked
+against the field's sha512 digest when it carries one, as `corepack use yarn@<version>` writes it, or against the
+checksum the npm registry publishes for `@yarnpkg/cli-dist` otherwise. The offline install follows
+flatpak-node-generator's recipe for these lockfiles: its Yarn plugin turns the vendored package tarballs into
+Yarn's cache before `yarn install --immutable`.
+
 Keep the generated Flatpak manifest and `generated-sources.json` together, and regenerate them after dependency
 changes.
 

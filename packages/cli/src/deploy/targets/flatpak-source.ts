@@ -34,7 +34,9 @@ import {
     type PackageManager,
     pnpmPinFor,
     resolveGitSource,
+    yarnPinFor,
 } from "./flatpak-sources.js";
+import { yarnOfflineEnv, yarnPathFor, type YarnPin, yarnSetupCommands, yarnSources } from "./flatpak-yarn.js";
 
 type InstalledFile = {
     destination: string;
@@ -251,9 +253,17 @@ const extraFileInstallCommands = (settings: DeploySettings): string[] =>
 
 const moduleDirFor = (settings: DeploySettings): string => `${MODULE_BUILD_ROOT}/${settings.binaryName}`;
 
-const offlineEnvFor = (manager: PackageManager, settings: DeploySettings): Record<string, string> => {
+const offlineEnvFor = (
+    manager: PackageManager,
+    settings: DeploySettings,
+    yarnPin: YarnPin | null,
+): Record<string, string> => {
     if (manager === "pnpm") {
         return {};
+    }
+
+    if (yarnPin !== null) {
+        return yarnOfflineEnv(moduleDirFor(settings));
     }
 
     if (manager === "yarn") {
@@ -263,8 +273,16 @@ const offlineEnvFor = (manager: PackageManager, settings: DeploySettings): Recor
     return { npm_config_cache: `${moduleDirFor(settings)}/${NPM_CACHE_DIR}`, npm_config_offline: "true" };
 };
 
-const appendPathFor = (settings: DeploySettings, pin: PnpmPin | null, nodeExtensionPath: string): string =>
-    pin === null ? `${nodeExtensionPath}/bin` : `${pnpmPathFor(moduleDirFor(settings))}:${nodeExtensionPath}/bin`;
+const vendoredPathFor = (settings: DeploySettings, pin: PnpmPin | null, yarnPin: YarnPin | null): string | null => {
+    if (pin !== null) {
+        return pnpmPathFor(moduleDirFor(settings));
+    }
+
+    return yarnPin === null ? null : yarnPathFor(moduleDirFor(settings));
+};
+
+const appendPathFor = (vendoredPath: string | null, nodeExtensionPath: string): string =>
+    vendoredPath === null ? `${nodeExtensionPath}/bin` : `${vendoredPath}:${nodeExtensionPath}/bin`;
 
 const sourceBuildCommand = (settings: DeploySettings): string => {
     const configFile = projectRelative(settings, settings.configFile);
@@ -281,6 +299,7 @@ const flatpakSourceModule = async (payload: DeployPayload): Promise<FlatpakModul
     const settings = payload.settings;
     const manager = detectPackageManager(settings);
     const pin = pnpmPinFor(settings, manager);
+    const yarnPin = yarnPinFor(settings, manager);
     const postInstall = postInstallCommands(payload);
     const nodeExtensionPath = nodeExtensionPathFor(settings);
 
@@ -288,14 +307,15 @@ const flatpakSourceModule = async (payload: DeployPayload): Promise<FlatpakModul
         name: settings.binaryName,
         buildsystem: "simple",
         "build-options": {
-            "append-path": appendPathFor(settings, pin, nodeExtensionPath),
-            env: { npm_config_nodedir: nodeExtensionPath, ...offlineEnvFor(manager, settings) },
+            "append-path": appendPathFor(vendoredPathFor(settings, pin, yarnPin), nodeExtensionPath),
+            env: { npm_config_nodedir: nodeExtensionPath, ...offlineEnvFor(manager, settings, yarnPin) },
             strip: false,
             "no-debuginfo": true,
         },
         sources: [
             resolveGitSource(settings),
             ...(pin === null ? [] : await pnpmSources(pin, moduleDirFor(settings))),
+            ...(yarnPin === null ? [] : await yarnSources(yarnPin, moduleDirFor(settings))),
             GENERATED_SOURCES,
             ...stagedMetadataSources(payload),
             inlineSource(LAUNCHER_FILENAME, renderLauncher(settings)),
@@ -309,6 +329,7 @@ const flatpakSourceModule = async (payload: DeployPayload): Promise<FlatpakModul
         ],
         "build-commands": [
             ...(pin === null ? [] : pnpmSetupCommands(pin)),
+            ...(yarnPin === null ? [] : yarnSetupCommands(moduleDirFor(settings), nodeExtensionPath)),
             installCommandFor(settings, manager),
             sourceBuildCommand(settings),
             ...runtimeInstallCommands(settings, nodeExtensionPath),
