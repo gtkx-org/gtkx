@@ -1,7 +1,7 @@
 import { errorCode } from "@gtkx/utils";
 import { readFileSync, rmSync, writeFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import { join } from "node:path";
+import { findDepPkgJsonPath } from "vitefu";
 import { REFERENCE_PATH } from "../codegen/reference.js";
 
 type AgentRulesResult = {
@@ -24,22 +24,8 @@ const referenceRules = [
     "",
 ];
 
-const isInstalled = (root: string, packageName: string): boolean => {
-    try {
-        createRequire(join(root, "package.json")).resolve(`${packageName}/package.json`);
-
-        return true;
-    } catch (error) {
-        if (errorCode(error) === "MODULE_NOT_FOUND") {
-            return false;
-        }
-
-        throw error;
-    }
-};
-
-const projectCommands = (root: string, hasReference: boolean): string[] =>
-    [
+const projectCommands = async (root: string, hasReference: boolean): Promise<string[]> => {
+    const commands = [
         { command: "gtkx dev", description: "Run the app with fast refresh" },
         {
             command: "gtkx storybook",
@@ -50,9 +36,18 @@ const projectCommands = (root: string, hasReference: boolean): string[] =>
         { command: "gtkx cleanup", description: "Remove stale headless runtime and compile cache directories" },
         { command: "tsc --noEmit", description: "Typecheck", packageName: "typescript" },
         { command: "vitest run", description: "Run the tests", packageName: "vitest" },
-    ]
-        .filter(({ packageName }) => packageName === undefined || isInstalled(root, packageName))
+    ];
+    const isAvailable = await Promise.all(
+        commands.map(
+            async ({ packageName }) =>
+                packageName === undefined || (await findDepPkgJsonPath(packageName, root)) !== undefined,
+        ),
+    );
+
+    return commands
+        .filter((_, index) => isAvailable[index])
         .map(({ command, description }) => `| \`${command}\` | ${description} |`);
+};
 
 const rulesBody = (heading: string, hasReference: boolean, commands: string[]): string[] => [
     `${heading} GTKX`,
@@ -150,12 +145,13 @@ const hasWrittenClaudeImport = (root: string): boolean => {
     }
 };
 
-const upsertAgentRules = (root: string, hasReference: boolean): AgentRulesResult => {
+const upsertAgentRules = async (root: string, hasReference: boolean): Promise<AgentRulesResult> => {
     const agentsPath = join(root, AGENTS_FILENAME);
     const existing = readOrUndefined(agentsPath) ?? "";
+    const commands = await projectCommands(root, hasReference);
     const files: string[] = [];
 
-    if (hasWritten(agentsPath, nextContents(existing, hasReference, projectCommands(root, hasReference)))) {
+    if (hasWritten(agentsPath, nextContents(existing, hasReference, commands))) {
         files.push(AGENTS_FILENAME);
     }
 

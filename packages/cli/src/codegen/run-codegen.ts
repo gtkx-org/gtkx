@@ -109,7 +109,7 @@ const runCodegen = async (options: RunCodegenOptions): Promise<RunCodegenResult>
     });
 
     if (isAgentRulesEnabled(config, isApplication)) {
-        upsertAgentRules(cwd, isAgentReferenceEnabled(config, isApplication));
+        await upsertAgentRules(cwd, isAgentReferenceEnabled(config, isApplication));
     } else {
         removeAgentRules(cwd);
     }

@@ -1374,12 +1374,25 @@ describe("CLI commands", () => {
     it("lists only the commands that the project's packages provide in the agent rules", async () => {
         using project = createProject({ codegen: true, libraries: ["Gio-2.0"], agents: { rules: true } });
         const rules = () => readFileSync(join(project.root, "AGENTS.md"), "utf8");
-        await invoke(["codegen", "--cwd", project.root]);
+        const hoisted = "node_modules/.pnpm/node_modules";
+        const typescriptManifest = JSON.stringify({ name: "typescript", version: "6.0.3" });
+        project.write(`${hoisted}/typescript/package.json`, typescriptManifest);
+        const codegen = () =>
+            promisify(execFile)(
+                process.execPath,
+                [join(project.root, "node_modules/@gtkx/cli/bin/gtkx.js"), "codegen"],
+                {
+                    cwd: project.root,
+                    env: { ...process.env, NODE_PATH: join(project.root, hoisted) },
+                },
+            );
+
+        await codegen();
         expect(rules()).toContain("`vitest run`");
         expect(rules()).not.toContain("`tsc --noEmit`");
 
-        project.write("node_modules/typescript/package.json", JSON.stringify({ name: "typescript", version: "6.0.3" }));
-        await invoke(["codegen", "--cwd", project.root]);
+        project.write("node_modules/typescript/package.json", typescriptManifest);
+        await codegen();
         expect(rules()).toContain("`tsc --noEmit`");
     });
 
