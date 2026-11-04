@@ -122,6 +122,8 @@ Queries exclude widgets that are not mapped, including content on inactive stack
 
 A text button's child label takes precedence over its `accessibleLabel` prop. Query the visible label and use `within` when several buttons share it.
 
+GTK ignores `accessibleLabel` on widgets whose accessible role takes no name, such as the `generic` role of a plain `GtkBox` or a `GtkDrawingArea`, so neither assistive technologies nor queries see it. Give such a widget a role that is named, as in `<GtkDrawingArea accessibleRole={Gtk.AccessibleRole.IMG} accessibleLabel="Usage chart" />` for a chart or `Gtk.AccessibleRole.GROUP` for a box of related controls.
+
 ## Interacting and waiting
 
 Await every `userEvent` call. Helpers wait for the target to become actionable and flush React updates before resolving, and fail naming what blocks it, such as an open dialog over the target. Clicks and other pointer helpers also wait for a pointer to be able to reach the target, which an ancestor whose `canTarget` is off prevents. That error names the nearest ancestor a pointer would land on instead, such as the box inside an `AdwTabOverview` thumbnail that holds its title, so the test can click that widget. Use `userEvent.setup()` when a sequence needs to retain held keyboard modifiers or pointer buttons.
@@ -148,6 +150,18 @@ Use `dragAndDrop(source, target)` to transfer a drag source's typed content to a
 `fireEvent(object, signalName, ...args)` emits a GObject signal directly. Await its promise so the resulting React updates finish before asserting. Use it when testing a signal handler or a tree without a visible window. Wrap state changes made outside these helpers in `act`.
 
 For asynchronous assertions, use `waitFor`; for a widget leaving the tree, use `waitForElementToBeRemoved`. Their timeout defaults to one second and can be changed per call or through `configure`.
+
+### Fake timers
+
+Vitest's fake timers replace JavaScript timers only. GLib timeouts keep the real clock, including GTK's own, such as the `searchDelay` after which a `GtkSearchEntry` emits `search-changed`, so advancing fake time does not fire them. Under `vi.useFakeTimers()`, `waitFor` and `findBy` queries advance the fake clock by their polling interval and then wait the same interval in real time, so both kinds of timer run while they poll. Assert through them rather than right after `vi.advanceTimersByTime()`:
+
+```ts
+vi.useFakeTimers();
+await user.type(screen.getByRole(Gtk.AccessibleRole.SEARCH_BOX), "mus");
+await waitFor(() => expect(screen.queryByText("photos/")).toBeNull());
+```
+
+`userEvent` helpers wait between actions only when `delay` is set, so `userEvent.setup()` takes no `advanceTimers` option.
 
 ## Assertions and debugging
 
