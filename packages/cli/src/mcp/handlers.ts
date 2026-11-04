@@ -191,7 +191,13 @@ const requireWidget = (registry: WidgetRegistry, widgetId: string | undefined): 
     return widget;
 };
 
-const canTakeFocus = (widget: Gtk.Widget): boolean => widget.getFocusable() && widget.getCanFocus();
+const isFocusable = (widget: Gtk.Widget): boolean => widget.getFocusable() && widget.getCanFocus();
+
+const canTakeFocus = (widget: Gtk.Widget): boolean => {
+    const delegate = widget instanceof Gtk.Editable ? widget.getDelegate() : null;
+
+    return isFocusable(widget) || (delegate !== null && isFocusable(delegate));
+};
 
 const focusableAncestor = (widget: Gtk.Widget): Gtk.Widget | null => {
     for (let parent = widget.getParent(); parent !== null; parent = parent.getParent()) {

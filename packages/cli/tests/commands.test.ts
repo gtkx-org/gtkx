@@ -2356,8 +2356,9 @@ describe("CLI commands", () => {
             project,
             readyPath,
             `import { AdwEntryRow, AdwPreferencesGroup, AdwSwitchRow } from "@gtkx/jsx/adw";
+            import { GtkSearchEntry } from "@gtkx/jsx/gtk";
             export const Content = () => (
-                <AdwPreferencesGroup>
+                <AdwPreferencesGroup headerSuffix={<GtkSearchEntry />}>
                     <AdwEntryRow title="Greeting" />
                     <AdwSwitchRow title="Show counter" />
                 </AdwPreferencesGroup>
@@ -2388,6 +2389,10 @@ describe("CLI commands", () => {
                 expect((await callTool(client, "gtkx_press_keys", { widgetId: inner?.id, keys: "{Space}" })).text).toBe(
                     "Pressed keys",
                 );
+                const [search] = await queryWidgets(client, { by: "role", value: "search_box" });
+                expect(
+                    (await callTool(client, "gtkx_press_keys", { widgetId: search?.id, keys: "{Enter}" })).text,
+                ).toBe("Pressed keys");
             });
         });
     });

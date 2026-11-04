@@ -379,6 +379,23 @@ describe("keyboard focus movement", () => {
         },
     );
 
+    it("focuses an entry that delegates its focus to its text before pressing keys", async () => {
+        const activated: string[] = [];
+
+        await render(
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                <GtkSearchEntry name="search" text="Ada" onActivate={() => activated.push("search")} />
+                <GtkButton name="other" label="Other" onClicked={() => activated.push("other")} />
+            </GtkBox>,
+        );
+
+        screen.getByName("other").grabFocus();
+        const search = screen.getByName("search");
+        await userEvent.keyboard(search, "{Enter}");
+        expect(search).toHaveFocus();
+        expect(activated).toEqual(["search"]);
+    });
+
     it("keeps a text view's Tab and Return as text instead of moving focus", async () => {
         await render(
             <GtkBox orientation={Gtk.Orientation.VERTICAL}>

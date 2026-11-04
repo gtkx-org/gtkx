@@ -683,12 +683,23 @@ const keyLabel = (keyval: number): string => {
     return character === 0 ? `{${Gdk.keyvalName(keyval) ?? String(keyval)}}` : String.fromCodePoint(character);
 };
 
+const canTakeFocus = (widget: Gtk.Widget): boolean => widget.getFocusable() && widget.getCanFocus();
+
 /**
  * Focuses a focusable target whose window has its focus elsewhere, as a user does before typing, so the window's
- * own bindings such as {Space} and {Enter} activating the focus widget act on the target.
+ * own bindings such as {Space} and {Enter} activating the focus widget act on the target. An entry that delegates
+ * its focus to its text, such as a search entry, takes it there without selecting the text, as a click does.
  */
 const focusKeyTarget = (widget: Gtk.Widget): void => {
-    if (focusWithin(widget) === null && widget.getFocusable() && widget.getCanFocus()) {
+    if (focusWithin(widget) !== null) {
+        return;
+    }
+
+    const delegate = getEditableDelegate(widget);
+
+    if (delegate instanceof Gtk.Text && canTakeFocus(delegate)) {
+        delegate.grabFocusWithoutSelecting();
+    } else if (canTakeFocus(widget)) {
         widget.grabFocus();
     }
 };
