@@ -792,15 +792,22 @@ const missingHeadlessToolsNote = (): string => {
         : ["", "", "To run tests, install these tools:", ...missingToolLines(missing)].join("\n");
 };
 
-const printWorkspaceAllowances = ({ workspace }: ResolvedOptions): void => {
-    if (workspace === null || workspace.missingSettings.length === 0) {
+const printWorkspaceAllowances = ({ root, packageManager, workspace }: ResolvedOptions): void => {
+    const installed = workspace === null ? null : enclosingWorkspace(root, packageManager);
+
+    if (installed === null || installed.missingSettings.length === 0) {
         return;
     }
 
     p.log.warn(
-        `The ${workspace.packageManager} workspace lacks settings this app needs. ` +
-            `Add these entries, then run ${INSTALL_COMMAND[workspace.packageManager]}:\n\n` +
-            workspace.missingSettings.map(({ file, entries }) => `${file}:\n${entries}`).join("\n\n"),
+        `The ${installed.packageManager} workspace lacks settings this app needs. ` +
+            `Set these entries, then run ${INSTALL_COMMAND[installed.packageManager]}:\n\n` +
+            installed.missingSettings
+                .map(
+                    ({ file, section, entries }) =>
+                        `${section === null ? file : `${file} (under ${section})`}:\n${entries}`,
+                )
+                .join("\n\n"),
     );
 };
 

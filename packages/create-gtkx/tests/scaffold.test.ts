@@ -149,29 +149,48 @@ describe("scaffold command", () => {
         },
     );
 
-    it("adds an app to the pnpm workspace that includes it and prints the build scripts to allow there", async () => {
-        using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-workspace-"));
-        const bin = join(directory.path, "node_modules/.bin");
-        mkdirSync(bin, { recursive: true });
-        writeFileSync(
-            join(bin, "corepack"),
-            `#!${process.execPath}\nimport { appendFileSync, readFileSync, writeFileSync } from "node:fs";\nif (process.argv[2] === "--version") process.exit(0);\nappendFileSync(${JSON.stringify(join(directory.path, "install.log"))}, process.argv.slice(3).join(" ") + "\\n");\nconst catalog = ["react", "vitest"];\nconst manifest = JSON.parse(readFileSync("package.json", "utf8"));\nconst field = process.argv.includes("-D") ? "devDependencies" : "dependencies";\nmanifest[field] ??= {};\nfor (const spec of process.argv.slice(4).filter((arg) => !arg.startsWith("-"))) {\n    const at = spec.lastIndexOf("@");\n    const name = at > 0 ? spec.slice(0, at) : spec;\n    const range = spec.slice(at + 1);\n    manifest[field][name] = at < 1 ? (catalog.includes(spec) ? "catalog:" : "^1.0.0") : range === "latest" ? "^1.0.0" : range;\n}\nwriteFileSync("package.json", JSON.stringify(manifest));\nprocess.exit(process.env.pnpm_config_strict_dep_builds === "false" ? 0 : 1);\n`,
-            { mode: 0o755 },
-        );
-        const workspace =
-            "packages:\n  - apps/*\ncatalog:\n  react: ^18.3.0\n  vitest: ^4.0.0\nallowBuilds:\n  esbuild: true\n";
-        writeFileSync(join(directory.path, "pnpm-workspace.yaml"), workspace);
-        const target = join(directory.path, "apps/example");
-        const { status, output } = await create(target, ["--no-skip-install", "--package-manager", "pnpm"]);
-        expect(status).toBe(0);
-        expect(read(directory.path, "install.log")).toContain("add");
-        expect(existsSync(join(target, "pnpm-workspace.yaml"))).toBe(false);
-        expect(read(directory.path, "pnpm-workspace.yaml")).toBe(workspace);
-        expect(output).toContain(join(directory.path, "pnpm-workspace.yaml"));
-        expect(output).toContain('"@swc/core": true');
-        expect(output).not.toContain("esbuild: true");
-        expect(read(target, "package.json")).not.toContain("catalog:");
-    });
+    it.each([
+        {
+            allowBuilds: "allowBuilds:\n  esbuild: true\n",
+            printed: ['  "@swc/core": true'],
+            omitted: ["esbuild: true"],
+        },
+        { allowBuilds: "", printed: ['  "@swc/core": true', "  esbuild: true"], omitted: [] },
+    ])(
+        "adds an app to the pnpm workspace that includes it and prints the build scripts to allow there",
+        async ({ allowBuilds, printed, omitted }) => {
+            using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-workspace-"));
+            const bin = join(directory.path, "node_modules/.bin");
+            const workspaceFile = join(directory.path, "pnpm-workspace.yaml");
+            mkdirSync(bin, { recursive: true });
+            writeFileSync(
+                join(bin, "corepack"),
+                `#!${process.execPath}\nimport { appendFileSync, readFileSync, writeFileSync } from "node:fs";\nif (process.argv[2] === "--version") process.exit(0);\nappendFileSync(${JSON.stringify(join(directory.path, "install.log"))}, process.argv.slice(3).join(" ") + "\\n");\nconst catalog = ["react", "vitest"];\nconst manifest = JSON.parse(readFileSync("package.json", "utf8"));\nconst field = process.argv.includes("-D") ? "devDependencies" : "dependencies";\nmanifest[field] ??= {};\nfor (const spec of process.argv.slice(4).filter((arg) => !arg.startsWith("-"))) {\n    const at = spec.lastIndexOf("@");\n    const name = at > 0 ? spec.slice(0, at) : spec;\n    const range = spec.slice(at + 1);\n    manifest[field][name] = at < 1 ? (catalog.includes(spec) ? "catalog:" : "^1.0.0") : range === "latest" ? "^1.0.0" : range;\n}\nwriteFileSync("package.json", JSON.stringify(manifest));\nif (process.env.pnpm_config_strict_dep_builds !== "false") process.exit(1);\nconst settings = readFileSync(${JSON.stringify(workspaceFile)}, "utf8");\nconst placeholder = "  '@swc/core': set this to true or false\\n";\nif (!settings.includes(placeholder)) writeFileSync(${JSON.stringify(workspaceFile)}, settings.includes("allowBuilds:\\n") ? settings.replace("allowBuilds:\\n", "allowBuilds:\\n" + placeholder) : settings + "allowBuilds:\\n" + placeholder);\n`,
+                { mode: 0o755 },
+            );
+            writeFileSync(
+                workspaceFile,
+                `packages:\n  - apps/*\ncatalog:\n  react: ^18.3.0\n  vitest: ^4.0.0\n${allowBuilds}`,
+            );
+            const target = join(directory.path, "apps/example");
+            const { status, output } = await create(target, ["--no-skip-install", "--package-manager", "pnpm"]);
+            expect(status).toBe(0);
+            expect(read(directory.path, "install.log")).toContain("add");
+            expect(existsSync(join(target, "pnpm-workspace.yaml"))).toBe(false);
+            expect(parse(read(directory.path, "pnpm-workspace.yaml"))).toMatchObject({
+                allowBuilds: { "@swc/core": "set this to true or false" },
+            });
+            expect(output).toContain(`${workspaceFile} (under allowBuilds):`);
+            expect(output).not.toMatch(/allowBuilds:\s*$/m);
+            for (const entry of printed) {
+                expect(output).toContain(entry);
+            }
+            for (const entry of omitted) {
+                expect(output).not.toContain(entry);
+            }
+            expect(read(target, "package.json")).not.toContain("catalog:");
+        },
+    );
 
     it("leaves the build scripts of an app in an npm workspace to the workspace root", async () => {
         using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-npm-workspace-"));

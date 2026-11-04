@@ -6,6 +6,7 @@ import { updateManifest } from "./manifest.js";
 
 type MissingSetting = {
     file: string;
+    section: string | null;
     entries: string;
 };
 
@@ -182,10 +183,15 @@ const pnpmWorkspaceAt = (file: string, project: string): Workspace | null => {
         return null;
     }
 
-    const missing = missingBuilds(recordField(settings, "allowBuilds"));
-    const entries = stringify({ allowBuilds: Object.fromEntries(missing.map((name) => [name, true])) }).trimEnd();
+    const allowances = recordField(settings, "allowBuilds");
+    const missing = BUILT_DEPENDENCIES.filter((name) => typeof allowances[name] !== "boolean");
+    const required = Object.fromEntries(missing.map((name) => [name, true]));
+    const setting: MissingSetting =
+        isRecord(settings) && isRecord(settings.allowBuilds)
+            ? { file, section: "allowBuilds", entries: stringify(required).trimEnd().replace(/^/gm, "  ") }
+            : { file, section: null, entries: stringify({ allowBuilds: required }).trimEnd() };
 
-    return { packageManager: "pnpm", missingSettings: settingsToAdd([missing.length > 0 ? { file, entries } : null]) };
+    return { packageManager: "pnpm", missingSettings: settingsToAdd([missing.length > 0 ? setting : null]) };
 };
 
 const npmWorkspaceAt = (file: string, project: string): Workspace | null => {
@@ -198,7 +204,10 @@ const npmWorkspaceAt = (file: string, project: string): Workspace | null => {
     const missing = missingBuilds(recordField(manifest, "allowScripts"));
     const entries = `"allowScripts": ${JSON.stringify(Object.fromEntries(missing.map((name) => [name, true])), null, 4)}`;
 
-    return { packageManager: "npm", missingSettings: settingsToAdd([missing.length > 0 ? { file, entries } : null]) };
+    return {
+        packageManager: "npm",
+        missingSettings: settingsToAdd([missing.length > 0 ? { file, section: null, entries } : null]),
+    };
 };
 
 /**
@@ -233,9 +242,9 @@ const yarnWorkspaceAt = (file: string, project: string): Workspace | null => {
         missingSettings: settingsToAdd([
             yarnNodeLinker(dirname(file)) === YARN_NODE_LINKER
                 ? null
-                : { file: configFile, entries: stringify({ nodeLinker: YARN_NODE_LINKER }).trimEnd() },
+                : { file: configFile, section: null, entries: stringify({ nodeLinker: YARN_NODE_LINKER }).trimEnd() },
             missing.length > 0
-                ? { file, entries: `"dependenciesMeta": ${JSON.stringify(dependenciesMeta, null, 4)}` }
+                ? { file, section: null, entries: `"dependenciesMeta": ${JSON.stringify(dependenciesMeta, null, 4)}` }
                 : null,
         ]),
     };
