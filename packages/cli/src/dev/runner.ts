@@ -1001,6 +1001,7 @@ const createDevRunner = (deps: DevRunnerDeps, options: DevRunnerOptions = {}): D
 
         deps.watchWorkerSources((path) => {
             session.workerSources.add(path);
+            server.watcher.add(path);
         });
 
         deps.watchApplicationShutdown(onApplicationShutdown(session));

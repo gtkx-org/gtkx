@@ -11,6 +11,7 @@ import {
     copyFileSync,
     existsSync,
     mkdirSync,
+    mkdtempDisposableSync,
     readFileSync,
     readdirSync,
     realpathSync,
@@ -19,6 +20,7 @@ import {
     symlinkSync,
     writeFileSync,
 } from "node:fs";
+import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { setTimeout } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
@@ -443,13 +445,23 @@ describe("CLI commands", () => {
 
     it("runs workers with asset imports in development, tests and production and restarts for their edits", async () => {
         using project = createProject();
+        using shared = mkdtempDisposableSync(join(tmpdir(), "gtkx-cli-shared-"));
         const readyPath = join(project.root, "worker.json");
         const sourcePath = join(project.root, "data/notes.txt");
+        const sharedPath = join(shared.path, "index.ts");
         const workerSource = `import { readFileSync } from "node:fs";
             import { parentPort } from "node:worker_threads";
+            import { label } from "@example/shared";
             import notesPath from "../../data/notes.txt?url";
             import notes from "../../data/notes.txt?raw";
-            parentPort?.postMessage({ path: notesPath, text: readFileSync(notesPath, "utf8"), raw: notes });`;
+            parentPort?.postMessage({ path: notesPath, text: readFileSync(notesPath, "utf8"), raw: notes, label });`;
+        writeFileSync(
+            join(shared.path, "package.json"),
+            JSON.stringify({ name: "@example/shared", type: "module", exports: "./index.ts" }),
+        );
+        writeFileSync(sharedPath, 'export const label = "shared";');
+        mkdirSync(join(project.root, "node_modules/@example"));
+        symlinkSync(shared.path, join(project.root, "node_modules/@example/shared"), "dir");
         project.write("data/notes.txt", "worker asset");
         project.write("src/workers/read.ts", workerSource);
         project.write(
@@ -475,6 +487,7 @@ describe("CLI commands", () => {
                     path: fileURLToPath(new URL("../data/notes.txt", import.meta.url)),
                     text: "worker asset",
                     raw: "worker asset",
+                    label: "shared",
                 });
             });`,
         );
@@ -486,15 +499,25 @@ describe("CLI commands", () => {
         const result = () => JSON.parse(readFileSync(readyPath, "utf8")) as Record<string, string>;
 
         await withSession("dev", project.root, readyPath, async () => {
-            await expect.poll(result).toEqual({ path: sourcePath, text: "worker asset", raw: "worker asset" });
+            await expect.poll(result).toEqual({
+                path: sourcePath,
+                text: "worker asset",
+                raw: "worker asset",
+                label: "shared",
+            });
             project.write("data/notes.txt", "edited asset");
             await expect.poll(result, { timeout: 30_000 }).toEqual({
                 path: sourcePath,
                 text: "edited asset",
                 raw: "edited asset",
+                label: "shared",
             });
             project.write("data/notes.txt", "worker asset");
             await expect.poll(result, { timeout: 30_000 }).toMatchObject({ raw: "worker asset" });
+            writeFileSync(sharedPath, 'export const label = "edited shared";');
+            await expect.poll(result, { timeout: 30_000 }).toMatchObject({ label: "edited shared" });
+            writeFileSync(sharedPath, 'export const label = "shared";');
+            await expect.poll(result, { timeout: 30_000 }).toMatchObject({ label: "shared" });
             rmSync(readyPath);
             project.write("src/workers/read.ts", workerSource);
             await expect.poll(() => existsSync(readyPath), { timeout: 30_000 }).toBe(true);
@@ -516,6 +539,7 @@ describe("CLI commands", () => {
         await promisify(execFile)(process.execPath, [join(project.root, "dist/bundle.mjs")], { timeout: 30_000 });
         expect(result().text).toBe("worker asset");
         expect(result().raw).toBe("worker asset");
+        expect(result().label).toBe("shared");
         expect(result().path).toMatch(new RegExp(`^${RegExp.escape(join(project.root, "dist"))}/`));
     });
 
