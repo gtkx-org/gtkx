@@ -173,6 +173,23 @@ describe("headless Vitest integration", () => {
         await expect(createVitest({ root: directory.path, config, watch: false, reporters: [] })).rejects.toThrow();
     });
 
+    it("rejects runs that share a worker between test files", async () => {
+        using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-vitest-shared-"));
+        const config = join(directory.path, "vitest.config.mjs");
+        writeFileSync(config, `import gtkx from ${JSON.stringify(pluginPath)}; export default { plugins: [gtkx()] };`);
+        const sharedConfig = join(directory.path, "vitest.shared.config.mjs");
+        writeFileSync(
+            sharedConfig,
+            `import gtkx from ${JSON.stringify(pluginPath)}; export default { plugins: [gtkx()], test: { isolate: false } };`,
+        );
+        await expect(
+            createVitest({ root: directory.path, config, isolate: false, watch: false, reporters: [] }),
+        ).rejects.toThrow();
+        await expect(
+            createVitest({ root: directory.path, config: sharedConfig, watch: false, reporters: [] }),
+        ).rejects.toThrow();
+    });
+
     it("rejects when sway is missing, leaving no runtime directory or environment changes", async () => {
         using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-vitest-missing-"));
         const runtimeRoot = join(directory.path, "tmp");

@@ -47,6 +47,8 @@ If `sway` or `dbus-daemon` is missing from `PATH`, the run stops before any test
 
 With the GTKX Vitest plugin, importing `@gtkx/testing` registers widget matchers and automatic cleanup. No additional setup file is needed.
 
+Each test file runs in its own worker process, with a GTK runtime and display that shut down once the file's tests finish. Vitest's `isolate: false` would reuse that worker for the next file, so the run stops before any test starts when it is set.
+
 A package that is not an application, such as a [component library](/v2/guide/configuration-and-codegen#component-libraries), runs its tests the same way without an `applicationId`, as the application `org.gtkx.Test`.
 
 The private session bus contains GTKX's minimal notifications service. Other desktop services, such as portals and keyrings, are absent; provide any D-Bus services the component under test needs on that bus.
