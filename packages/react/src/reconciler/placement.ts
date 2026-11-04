@@ -2,7 +2,7 @@ import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { createLogger, drain, indexBeforeOrEnd, type Logger } from "@gtkx/utils";
 import type { DetachInfo, ElementBehavior, PlaceInfo } from "./registry.js";
-import { applyAdoptedProps, discardAccessible, markDependentPropsDirty } from "./apply-props.js";
+import { applyAdoptedProps, discardAccessible, placeDependingProps } from "./apply-props.js";
 import { claimingSlot, holdsOneChild, slotAccepting } from "./behaviors.js";
 import { isKnownProp, propertiesAccepting, typeInfoFor } from "./metadata.js";
 import {
@@ -168,9 +168,10 @@ const wireBufferView = (node: PlaceableNode, parent: ElementNode): void => {
 };
 
 const writeSlot = (parent: ElementNode, entry: PlacedChild, value: GObject.Object | null): void => {
-    applyWrite(entry.slot, () => {
-        Reflect.set(parent.object, entry.slot, value);
-        markDependentPropsDirty(parent);
+    placeDependingProps(parent, () => {
+        applyWrite(entry.slot, () => {
+            Reflect.set(parent.object, entry.slot, value);
+        });
     });
 };
 

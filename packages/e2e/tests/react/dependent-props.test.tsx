@@ -1,7 +1,7 @@
 import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwComboRow, AdwPreferencesGroup, AdwSpinRow } from "@gtkx/jsx/adw";
-import { GtkAdjustment, GtkBox, GtkStringList } from "@gtkx/jsx/gtk";
+import { GtkAdjustment, GtkBox, GtkLabel, GtkPaned, GtkStringList } from "@gtkx/jsx/gtk";
 import { act, render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -37,6 +37,48 @@ describe("dependent native properties", () => {
         expect(notifications).toEqual([]);
         await act(() => row.current?.setSelected(1));
         expect(notifications).toEqual([1]);
+    });
+
+    it("does not report the first item a JSX model selects when the app asked for it", async () => {
+        const row = createRef<Adw.ComboRow>();
+        const notifications: (number | null)[] = [];
+        await render(
+            <AdwPreferencesGroup>
+                <AdwComboRow
+                    ref={row}
+                    selected={0}
+                    onNotifySelected={(value) => notifications.push(value)}
+                    model={<GtkStringList strings={options} />}
+                />
+            </AdwPreferencesGroup>,
+        );
+        await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+        expect(row.current?.getSelected()).toBe(0);
+        expect(notifications).toEqual([]);
+    });
+
+    it("keeps a value the user changed when a slot child is replaced", async () => {
+        const paned = createRef<Gtk.Paned>();
+        const app = (detail: string | null) => (
+            <GtkPaned
+                ref={paned}
+                position={200}
+                startChild={<GtkLabel label="Recipes" />}
+                endChild={
+                    detail === null ? (
+                        <GtkLabel label="No recipe" />
+                    ) : (
+                        <GtkBox>
+                            <GtkLabel label={detail} />
+                        </GtkBox>
+                    )
+                }
+            />
+        );
+        const { rerender } = await render(app(null));
+        await act(() => paned.current?.setPosition(320));
+        await rerender(app("Gyoza"));
+        expect(paned.current?.getPosition()).toBe(320);
     });
 
     it("restores unchanged selection after replacing a JSX model without reporting user input", async () => {

@@ -16,7 +16,14 @@ import {
     typeInfoFor,
 } from "./metadata.js";
 import { type ElementNode, type SignalTarget } from "./node.js";
-import { applyMutation, applyPlacement, applyWrite, connectHandler, disconnectHandler } from "./signals.js";
+import {
+    applyMutation,
+    applyPlacement,
+    applyWrite,
+    connectHandler,
+    disconnectHandler,
+    settleQueuedNotifies,
+} from "./signals.js";
 import { updateStyle } from "./style.js";
 import { bufferText, hasSameText, isContentPaintableProp, markTextDirty, TEXT_PROP } from "./text.js";
 
@@ -29,6 +36,7 @@ const NOTIFY_PREFIX = "onNotify";
 const HANDLER_NAME = /^on[A-Z]/;
 const accessibleDirty: Map<ElementNode, Props> = new Map();
 const dependentPropsDirty: Set<ElementNode> = new Set();
+const dependentValuesBefore: Map<ElementNode, Props> = new Map();
 
 const isHandlerName = (name: string): boolean => HANDLER_NAME.test(name);
 const notifiedAccessor = (name: string): string => lowerFirst(name.slice(NOTIFY_PREFIX.length));
@@ -185,8 +193,9 @@ const applyEntry = (node: ElementNode, info: TypeInfo, delta: PropDelta, consume
     }
 
     if (value instanceof GObject.Object || prevValue instanceof GObject.Object) {
-        applyPlacement(node, () => setOrReset(node.object, info, name, value));
-        markDependentPropsDirty(node);
+        placeDependingProps(node, () => {
+            applyPlacement(node, () => setOrReset(node.object, info, name, value));
+        });
 
         return;
     }
@@ -342,6 +351,7 @@ const flushAccessible = (): void => {
 const discardAccessible = (node: ElementNode): void => {
     accessibleDirty.delete(node);
     dependentPropsDirty.delete(node);
+    dependentValuesBefore.delete(node);
 };
 
 const applyElementProps = (node: ElementNode, prev: Props, next: Props, initialized?: Props): void => {
@@ -386,25 +396,57 @@ const applyAdoptedProps = (target: SignalTarget, prev: Props, next: Props): void
     applyHandlers(target, info, prev, next);
 };
 
+const isRestorableProp = (node: ElementNode, info: TypeInfo, name: string, value: unknown): boolean =>
+    value !== undefined &&
+    isReadableProperty(info, name) &&
+    info.construct.has(name) &&
+    !isSkippedValueName(name, info, node.behaviorProps) &&
+    (value === null || typeof value !== "object" || value instanceof GObject.Object);
+
+const restorableProps = (node: ElementNode): [string, unknown][] => {
+    const info = typeInfoFor(node.typeName);
+
+    return Object.entries(node.props).filter(([name, value]) => isRestorableProp(node, info, name, value));
+};
+
+/**
+ * Restores every construct prop of a newly built `node` that construction left at another value.
+ */
 const markDependentPropsDirty = (node: ElementNode): void => {
+    dependentValuesBefore.set(node, {});
     dependentPropsDirty.add(node);
 };
 
+/**
+ * Runs a write that places a native object on `node`, then restores the construct props that placing it changed.
+ * Props that kept their value through the placement are left alone, so a value the user changed survives.
+ */
+const placeDependingProps = (node: ElementNode, write: () => void): void => {
+    if (!dependentValuesBefore.has(node)) {
+        dependentValuesBefore.set(
+            node,
+            Object.fromEntries(restorableProps(node).map(([name]) => [name, Reflect.get(node.object, name)])),
+        );
+    }
+
+    write();
+    dependentPropsDirty.add(node);
+};
+
+const isChangedByPlacement = (before: Props, name: string, current: unknown): boolean =>
+    !Object.hasOwn(before, name) || !Object.is(before[name], current);
+
 const restoreDependentProps = (node: ElementNode): void => {
-    const info = typeInfoFor(node.typeName);
+    const before = dependentValuesBefore.get(node) ?? {};
+    dependentValuesBefore.delete(node);
 
     applyMutation(() => {
-        for (const [name, value] of Object.entries(node.props)) {
-            if (
-                value === undefined ||
-                !isReadableProperty(info, name) ||
-                !info.construct.has(name) ||
-                isSkippedValueName(name, info, node.behaviorProps) ||
-                (value !== null && typeof value === "object" && !(value instanceof GObject.Object))
-            ) {
-                continue;
-            }
-            if (!Object.is(Reflect.get(node.object, name), value)) {
+        for (const [name, value] of restorableProps(node)) {
+            const current: unknown = Reflect.get(node.object, name);
+
+            if (Object.is(current, value)) {
+                settleQueuedNotifies(node, name);
+            } else if (isChangedByPlacement(before, name, current)) {
                 writeValue(node.object, name, value);
             }
         }
@@ -420,6 +462,7 @@ export {
     flushAccessible,
     flushDependentProps,
     markDependentPropsDirty,
+    placeDependingProps,
     applyElementProps,
     applyAdoptedProps,
     assertPropsCanChange,

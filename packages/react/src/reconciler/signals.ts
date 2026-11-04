@@ -118,6 +118,18 @@ const applyPlacement = <T>(target: SignalTarget, write: () => T): T => {
 };
 
 /**
+ * Drops the notifications of `property` that child placement queued for `target`, for a property the commit leaves at
+ * the value its prop asks for.
+ */
+const settleQueuedNotifies = (target: SignalTarget, property: string): void => {
+    const name = canonicalName(property);
+
+    for (const record of target.handlers.values()) {
+        dropQueuedNotify(record, name);
+    }
+};
+
+/**
  * Delivers, after the commit's layout effects, the notifications that its child attaches and detaches caused and
  * that no later write in the commit superseded.
  */
@@ -244,4 +256,5 @@ export {
     disconnectAllHandlers,
     isApplyingWrite,
     scheduleQueuedNotifies,
+    settleQueuedNotifies,
 };
