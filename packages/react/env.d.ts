@@ -1,6 +1,8 @@
 declare module "virtual:gtkx-config" {
     /** The application id from `gtkx.config.ts`, used as the default for application elements. */
     export const applicationId: import("@gtkx/config").ResolvedConfig["applicationId"];
+    /** The production application id, used as the gettext domain and for the program name in every mode. */
+    export const translationDomain: import("@gtkx/config").ResolvedConfig["translationDomain"];
     /** The resource base derived from `gtkx.config.ts`, used by application elements. */
     export const resourceBasePath: string;
     /**

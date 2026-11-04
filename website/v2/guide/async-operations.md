@@ -185,7 +185,7 @@ During development, `gtkx dev` passes the arguments after `--` to the applicatio
 
 A GTKX app needs a display even for `--help` and other options that exit before a window opens. The generated `@gtkx/gi/gtk` and `@gtkx/gi/adw` modules initialize GTK when they are imported, before the application parses its command line, so without a Wayland or X11 display the process prints `Failed to open display` and exits with status 1. Run command-line checks of a packaged app, such as a smoke test in a container or CI, inside a desktop session or a virtual display such as `xvfb-run`.
 
-GTKX sets the program name to the last segment of the application ID before the entry module runs, as GJS does before an app's code. `--help` prints it as the usage line, and GTK's X11 backend uses it as the window class, even when a library such as GStreamer initializes while the app's modules load. To choose another name, call `GLib.setPrgname()` before the application starts.
+GTKX sets the program name to the last segment of the production application ID before the entry module runs, as GJS does before an app's code. `--help` prints it as the usage line, and GTK's X11 backend uses it as the window class, even when a library such as GStreamer initializes while the app's modules load. A development ID such as `$development: { applicationId: "com.example.Tasks.Devel" }` keeps the name `Tasks` under `gtkx dev`. To choose another name, call `GLib.setPrgname()` before the application starts.
 
 ## Keeping a helper process alive
 

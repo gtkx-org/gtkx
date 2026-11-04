@@ -1791,7 +1791,7 @@ describe("CLI commands", () => {
         }
     });
 
-    it("keeps the production translation domain under a development application ID", async () => {
+    it("keeps the production translation domain and program name under a development application ID", async () => {
         using project = createProject({ codegen: true, $development: { applicationId: "org.gtkx.example.Devel" } });
         const readyPath = join(project.root, "ready.txt");
         project.write("po/LINGUAS", "fr\n");
@@ -1802,6 +1802,7 @@ describe("CLI commands", () => {
         project.write(
             "src/index.ts",
             `import { Application } from "@gtkx/gi/gio";
+            import { getPrgname } from "@gtkx/gi/glib";
             import { t } from "@gtkx/i18n";
             import { applicationId } from "virtual:gtkx-config";
             import { writeFileSync } from "node:fs";
@@ -1809,10 +1810,10 @@ describe("CLI commands", () => {
             application.setDefault();
             application.register(null);
             application.hold();
-            writeFileSync(${JSON.stringify(readyPath)}, applicationId + ":" + t("Hello, {{name}}!", { name: "Ada" }));`,
+            writeFileSync(${JSON.stringify(readyPath)}, [applicationId, getPrgname(), t("Hello, {{name}}!", { name: "Ada" })].join(":"));`,
         );
         await withSession("dev", project.root, readyPath, () => Promise.resolve());
-        expect(readFileSync(readyPath, "utf8")).toBe("org.gtkx.example.Devel:Bonjour, Ada !");
+        expect(readFileSync(readyPath, "utf8")).toBe("org.gtkx.example.Devel:example:Bonjour, Ada !");
         expect(readdirSync(join(project.root, "po")).toSorted()).toEqual([
             "LINGUAS",
             "POTFILES.in",
