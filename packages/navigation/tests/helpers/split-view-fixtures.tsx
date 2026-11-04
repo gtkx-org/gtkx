@@ -11,7 +11,13 @@ import type { ComponentProps, ReactNode } from "react";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkLabel, GtkListBox } from "@gtkx/jsx/gtk";
-import { createSplitViewNavigator, NavigationContainer, useNavigationState, usePreventRemove } from "@gtkx/navigation";
+import {
+    createSplitViewNavigator,
+    NavigationContainer,
+    useNavigationState,
+    usePreventRemove,
+    useSplitViewCollapsed,
+} from "@gtkx/navigation";
 import { render, screen, userEvent } from "@gtkx/testing";
 import { createContext, useContext, useEffect, useState } from "react";
 import { expect } from "vitest";
@@ -234,6 +240,24 @@ const buildSidebarSplit = (collapseCondition: string): ReactNode => (
     </NavigationContainer>
 );
 
+const CollapsedState = ({ pane }: { pane: string }): ReactNode => {
+    const isCollapsed = useSplitViewCollapsed();
+
+    return <GtkLabel>{`${pane} ${isCollapsed ? "collapsed" : "expanded"}`}</GtkLabel>;
+};
+
+const CollapsedSidebar = (): ReactNode => <CollapsedState pane="Sidebar" />;
+const CollapsedContent = (): ReactNode => <CollapsedState pane="Content" />;
+
+const buildCollapsedStateSplit = (navigator: NavigatorProps): ReactNode => (
+    <NavigationContainer>
+        <Split.Navigator {...navigator}>
+            <Split.Screen name="Lists" component={CollapsedSidebar} />
+            <Split.Screen name="Tasks" component={CollapsedContent} initialParams={{ listId: "personal" }} />
+        </Split.Navigator>
+    </NavigationContainer>
+);
+
 const renderSplit = (options: SplitOptions = {}): Promise<RenderResult> =>
     render(buildSplit(options), { areAnimationsEnabled: options.isAnimated });
 
@@ -295,6 +319,7 @@ const expectHidden = (text: string): void => {
 };
 
 export {
+    buildCollapsedStateSplit,
     buildSidebarSplit,
     buildSplit,
     clickButton,

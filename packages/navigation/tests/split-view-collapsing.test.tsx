@@ -2,6 +2,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { render, screen, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import {
+    buildCollapsedStateSplit,
     buildSidebarSplit,
     buildSplit,
     clickButton,
@@ -145,5 +146,31 @@ describe("split view - collapsing", () => {
 
         expectHidden("Tasks personal");
         expectHidden("Tasks work");
+    });
+
+    it("tells its screens whether the collapse condition holds", async () => {
+        const { rerender } = await render(
+            buildCollapsedStateSplit({ initialRouteName: "Tasks", collapseCondition: "max-width: 1px" }),
+        );
+        await screen.findByText("Sidebar expanded");
+        expectVisible("Content expanded");
+        await rerender(
+            buildCollapsedStateSplit({ initialRouteName: "Tasks", collapseCondition: "max-width: 10000px" }),
+        );
+        await screen.findByText("Content collapsed");
+        await clickButton("Back");
+        await screen.findByText("Sidebar collapsed");
+        await rerender(buildCollapsedStateSplit({ initialRouteName: "Tasks", collapseCondition: "max-width: 1px" }));
+        await screen.findByText("Sidebar expanded");
+    });
+
+    it("tells its screens when the collapsed prop changes", async () => {
+        const { rerender } = await render(buildCollapsedStateSplit({ collapsed: true }));
+        await screen.findByText("Sidebar collapsed");
+        await rerender(buildCollapsedStateSplit({ collapsed: false }));
+
+        await waitFor(() => {
+            expectVisible("Sidebar expanded");
+        });
     });
 });

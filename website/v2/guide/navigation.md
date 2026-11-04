@@ -360,6 +360,38 @@ export const App = () => (
 );
 ```
 
+`useSplitViewCollapsed()` tells the navigator's screens whether the panes are collapsed, whether `collapsed` or `collapseCondition` collapsed them. libadwaita's [`AdwSidebar`](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/class.Sidebar.html) switches to page mode with the breakpoint that collapses its split view, so a sidebar screen reads the hook instead of repeating the condition in a window breakpoint:
+
+```tsx
+import * as Adw from "@gtkx/gi/adw";
+import { AdwSidebar, AdwSidebarItem, AdwSidebarSection } from "@gtkx/jsx/adw";
+import { type SplitViewScreenProps, useSplitViewCollapsed } from "@gtkx/navigation";
+
+const folders = ["Inbox", "Sent", "Archive"];
+
+const Folders = ({ navigation }: SplitViewScreenProps<MailParams, "Folders">) => {
+    const isCollapsed = useSplitViewCollapsed();
+
+    return (
+        <AdwSidebar
+            mode={isCollapsed ? Adw.SidebarMode.PAGE : Adw.SidebarMode.SIDEBAR}
+            onActivated={(index) => {
+                const folder = folders[index];
+                if (folder) navigation.navigate("Messages", { folder });
+            }}
+        >
+            <AdwSidebarSection>
+                {folders.map((folder) => (
+                    <AdwSidebarItem key={folder} title={folder} />
+                ))}
+            </AdwSidebarSection>
+        </AdwSidebar>
+    );
+};
+```
+
+The value changes after libadwaita has laid out the collapsed or widened panes, so use it for how a screen presents itself rather than to collapse anything.
+
 In a collapsed split view, Back or Escape from the first content page returns directly to the sidebar. Sizing and sidebar placement are covered by the [split view configuration reference](/v2/reference/@gtkx/navigation/type-aliases/SplitViewNavigationConfig).
 
 Focus follows the selected content route even when the sidebar remains visible. A sidebar's `useFocusEffect` therefore stops when a content page is selected; refresh sidebar data based on the data source or navigation state instead.

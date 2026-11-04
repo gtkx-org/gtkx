@@ -13,8 +13,9 @@ import {
     AdwToolbarView,
 } from "@gtkx/jsx/adw";
 import { GtkEventControllerKey } from "@gtkx/jsx/gtk";
+import { useProperty } from "@gtkx/react";
 import { StackActions } from "@react-navigation/core";
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import type {
     SplitViewDescriptor,
     SplitViewDescriptorMap,
@@ -24,8 +25,7 @@ import type {
 import { HeaderBar } from "../shared/header-bar.js";
 import { requireDescriptor } from "../shared/routes.js";
 import { StackView } from "../stack/stack-view.js";
-
-type ViewRef = { current: Adw.NavigationSplitView | null };
+import { SplitViewCollapsedContext } from "./split-view-collapsed.js";
 
 type SplitViewProps = SplitViewNavigationConfig & {
     state: StackNavigationState<ParamListBase>;
@@ -64,52 +64,34 @@ const collapsedValue = (): GObject.Value => {
 };
 
 const useCollapseBreakpoint = (
-    viewRef: ViewRef,
+    view: Adw.NavigationSplitView | null,
     collapseCondition: string | undefined,
-): { breakpoint: ReactNode; isCollapsed: boolean } => {
+): ReactNode => {
     const [breakpoint, setBreakpoint] = useState<Adw.Breakpoint | null>(null);
-    const [isCollapsed, setIsCollapsed] = useState(false);
     const condition = useMemo(
         () => (collapseCondition === undefined ? null : Adw.BreakpointCondition.parse(collapseCondition)),
         [collapseCondition],
     );
 
     useLayoutEffect(() => {
-        const view = viewRef.current;
-
         if (breakpoint === null || view === null) {
             return;
         }
 
         breakpoint.addSetter(view, "collapsed", collapsedValue());
-    }, [viewRef, breakpoint]);
+    }, [view, breakpoint]);
 
-    return {
-        breakpoint:
-            condition === null ? null : (
-                <AdwBreakpoint
-                    ref={setBreakpoint}
-                    condition={condition}
-                    onApply={() => {
-                        setIsCollapsed(true);
-                    }}
-                    onUnapply={() => {
-                        setIsCollapsed(false);
-                    }}
-                />
-            ),
-        isCollapsed,
-    };
+    return condition === null ? null : <AdwBreakpoint ref={setBreakpoint} condition={condition} />;
 };
 
-const settleShowContent = (viewRef: ViewRef, isShown: boolean, isSettled: boolean): void => {
-    if (isSettled !== isShown && viewRef.current !== null) {
-        viewRef.current.setShowContent(isSettled);
+const settleShowContent = (view: Adw.NavigationSplitView | null, isShown: boolean, isSettled: boolean): void => {
+    if (isSettled !== isShown && view !== null) {
+        view.setShowContent(isSettled);
     }
 };
 
 const useContentSync = (
-    viewRef: ViewRef,
+    view: Adw.NavigationSplitView | null,
     navigation: SplitViewNavigationHelpers,
 ): ((isShown: boolean | null) => void) =>
     useCallback(
@@ -122,9 +104,9 @@ const useContentSync = (
                 popContent(navigation);
             }
 
-            settleShowContent(viewRef, isShown, hasContent(navigation.getState()));
+            settleShowContent(view, isShown, hasContent(navigation.getState()));
         },
-        [viewRef, navigation],
+        [view, navigation],
     );
 
 const EscapeGuard = (): ReactNode => (
@@ -158,48 +140,50 @@ const SidebarPage = ({ descriptor }: { descriptor: SplitViewDescriptor }): React
 const SplitView = (props: SplitViewProps): ReactNode => {
     const { state, navigation, descriptors, describe, contentPlaceholder, collapseCondition } = props;
     const { sidebarPosition = "start", minSidebarWidth, maxSidebarWidth } = props;
-    const viewRef = useRef<Adw.NavigationSplitView | null>(null);
-    const onShowContentChanged = useContentSync(viewRef, navigation);
-    const collapseBreakpoint = useCollapseBreakpoint(viewRef, collapseCondition);
+    const [view, setView] = useState<Adw.NavigationSplitView | null>(null);
+    const onShowContentChanged = useContentSync(view, navigation);
+    const collapseBreakpoint = useCollapseBreakpoint(view, collapseCondition);
     const sidebar = requireDescriptor(descriptors, state.routes[0]?.key ?? "");
     const collapsed = collapseCondition === undefined ? (props.collapsed ?? false) : undefined;
-    const isCollapsed = collapsed ?? collapseBreakpoint.isCollapsed;
+    const isCollapsed = useProperty(view, "collapsed") ?? collapsed ?? false;
 
     // AdwBreakpointBin warns without a size request; the window's size request sets the smallest supported size.
     return (
-        <AdwBreakpointBin widthRequest={1} heightRequest={1} breakpoints={collapseBreakpoint.breakpoint}>
-            <AdwNavigationSplitView
-                ref={viewRef}
-                collapsed={collapsed}
-                showContent={hasContent(state)}
-                sidebarPosition={PACK_TYPES[sidebarPosition]}
-                minSidebarWidth={minSidebarWidth}
-                maxSidebarWidth={maxSidebarWidth}
-                sidebarWidthFraction={props.sidebarWidthFraction}
-                onNotifyShowContent={onShowContentChanged}
-                sidebar={<SidebarPage descriptor={sidebar} />}
-            >
-                <AdwNavigationPage
-                    title={contentTitle(state, descriptors)}
-                    controllers={isCollapsed && props.popOnEscape === false ? <EscapeGuard /> : null}
+        <SplitViewCollapsedContext value={isCollapsed}>
+            <AdwBreakpointBin widthRequest={1} heightRequest={1} breakpoints={collapseBreakpoint}>
+                <AdwNavigationSplitView
+                    ref={setView}
+                    collapsed={collapsed}
+                    showContent={hasContent(state)}
+                    sidebarPosition={PACK_TYPES[sidebarPosition]}
+                    minSidebarWidth={minSidebarWidth}
+                    maxSidebarWidth={maxSidebarWidth}
+                    sidebarWidthFraction={props.sidebarWidthFraction}
+                    onNotifyShowContent={onShowContentChanged}
+                    sidebar={<SidebarPage descriptor={sidebar} />}
                 >
-                    {hasContent(state) ? (
-                        <StackView
-                            offset={1}
-                            popOnEscape={props.popOnEscape}
-                            state={state}
-                            navigation={navigation}
-                            descriptors={descriptors}
-                            describe={describe}
-                        />
-                    ) : (
-                        <AdwToolbarView topBar={<AdwHeaderBar showTitle={false} />}>
-                            {contentPlaceholder}
-                        </AdwToolbarView>
-                    )}
-                </AdwNavigationPage>
-            </AdwNavigationSplitView>
-        </AdwBreakpointBin>
+                    <AdwNavigationPage
+                        title={contentTitle(state, descriptors)}
+                        controllers={isCollapsed && props.popOnEscape === false ? <EscapeGuard /> : null}
+                    >
+                        {hasContent(state) ? (
+                            <StackView
+                                offset={1}
+                                popOnEscape={props.popOnEscape}
+                                state={state}
+                                navigation={navigation}
+                                descriptors={descriptors}
+                                describe={describe}
+                            />
+                        ) : (
+                            <AdwToolbarView topBar={<AdwHeaderBar showTitle={false} />}>
+                                {contentPlaceholder}
+                            </AdwToolbarView>
+                        )}
+                    </AdwNavigationPage>
+                </AdwNavigationSplitView>
+            </AdwBreakpointBin>
+        </SplitViewCollapsedContext>
     );
 };
 
