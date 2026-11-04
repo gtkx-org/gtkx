@@ -1,4 +1,4 @@
-import type { LoadConfigOptions } from "@gtkx/config";
+import type { ConfigLoader, LoadConfigOptions } from "@gtkx/config";
 import type { Plugin, UserConfig } from "vite";
 import { resolveStore } from "@gtkx/codegen";
 import { viteProjectRoot } from "@gtkx/config/internal";
@@ -10,18 +10,27 @@ const TEST_MODE = "test";
 const storeGeneration = (linkDirs: string[]): string =>
     linkDirs.map((linkDir) => (existsSync(linkDir) ? realpathSync(linkDir) : "")).join("\n");
 
-const gtkxEnsureStore = (options: Pick<LoadConfigOptions, "configFile" | "defaultApplicationId">): Plugin => ({
-    name: "gtkx:ensure-store",
+const gtkxEnsureStore = (
+    options: Pick<LoadConfigOptions, "configFile" | "defaultApplicationId">,
+    loadConfig: ConfigLoader,
+): Plugin => {
+    const state = { configKey: "" };
 
-    async config(config: UserConfig) {
-        await ensureGenerated(viteProjectRoot(config), { ...options, shouldAnnounce: true, mode: TEST_MODE });
-    },
+    return {
+        name: "gtkx:ensure-store",
 
-    configureVitest({ project, defineCacheKeyGenerator }) {
-        const { gi, jsx } = resolveStore(project.config.root);
-        const linkDirs = jsx === null ? [gi.linkDir] : [gi.linkDir, jsx.linkDir];
-        defineCacheKeyGenerator(() => storeGeneration(linkDirs));
-    },
-});
+        async config(config: UserConfig) {
+            const root = viteProjectRoot(config);
+            await ensureGenerated(root, { ...options, shouldAnnounce: true, mode: TEST_MODE });
+            state.configKey = JSON.stringify((await loadConfig.load(root)).config);
+        },
+
+        configureVitest({ project, defineCacheKeyGenerator }) {
+            const { gi, jsx } = resolveStore(project.config.root);
+            const linkDirs = jsx === null ? [gi.linkDir] : [gi.linkDir, jsx.linkDir];
+            defineCacheKeyGenerator(() => `${storeGeneration(linkDirs)}\n${state.configKey}`);
+        },
+    };
+};
 
 export { gtkxEnsureStore };

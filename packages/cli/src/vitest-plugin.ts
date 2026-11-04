@@ -29,7 +29,7 @@ const gtkx = (options: PluginOptions = {}): Plugin[] => {
     const loadConfig = createConfigLoader(configOptions);
 
     return [
-        gtkxEnsureStore(configOptions),
+        gtkxEnsureStore(configOptions, loadConfig),
         gtkxRendererLibraries(),
         ...gtkxVitePlugins({ loadConfig, localeDir: options.localeDir, staging }),
         gtkxSettingsWorkerEnv(staging.schemas, loadConfig),

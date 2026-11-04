@@ -1221,6 +1221,58 @@ describe("CLI commands", () => {
         expect(await runTests()).toEqual(["passed"]);
     });
 
+    it("applies a changed React Compiler setting to the next test run", async () => {
+        using project = createProject({ codegen: true });
+        project.write(
+            "src/reading.tsx",
+            `import { GtkLabel } from "@gtkx/jsx/gtk";
+            export const Reading = ({ source }: { source: { read: () => string } }) => <GtkLabel label={source.read()} />;`,
+        );
+        const writeTest = (expected: string) =>
+            project.write(
+                "tests/reading.test.tsx",
+                `import { render, screen } from "@gtkx/testing";
+                import { expect, test } from "vitest";
+                import { Reading } from "../src/reading.js";
+                test("shows ${expected} after a rerender", async () => {
+                    let value = "first";
+                    const source = { read: () => value };
+                    const { rerender } = await render(<Reading source={source} />);
+                    value = "second";
+                    await rerender(<Reading source={source} />);
+                    expect(await screen.findByText(${JSON.stringify(expected)})).toBeTruthy();
+                });`,
+            );
+        project.write(
+            "vitest.config.mjs",
+            `import gtkx from "@gtkx/cli/vitest-plugin";
+            export default { plugins: [gtkx()], test: { include: ["tests/*.test.tsx"] } };`,
+        );
+        const runTests = async () => {
+            const runner = await createVitest({
+                root: project.root,
+                config: join(project.root, "vitest.config.mjs"),
+                watch: false,
+                reporters: [],
+            });
+            try {
+                const results = await runner.start();
+                return results.testModules.map((module) => module.state());
+            } finally {
+                await runner.close();
+            }
+        };
+
+        writeTest("first");
+        expect(await runTests()).toEqual(["passed"]);
+        project.write(
+            "gtkx.config.ts",
+            `export default ${JSON.stringify({ applicationId: "org.gtkx.example", codegen: true, agents: { reference: false, rules: false }, reactCompiler: false })};`,
+        );
+        writeTest("second");
+        expect(await runTests()).toEqual(["passed"]);
+    });
+
     it("keeps the agent rules in step with the generated reference", async () => {
         using project = createProject({ codegen: true, libraries: ["Gio-2.0"], agents: { rules: true } });
         const rules = () => readFileSync(join(project.root, "AGENTS.md"), "utf8");
