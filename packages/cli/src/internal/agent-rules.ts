@@ -1,5 +1,6 @@
 import { errorCode } from "@gtkx/utils";
 import { readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { join } from "node:path";
 import { REFERENCE_PATH } from "../codegen/reference.js";
 
@@ -23,7 +24,37 @@ const referenceRules = [
     "",
 ];
 
-const rulesBody = (heading: string, hasReference: boolean): string[] => [
+const isInstalled = (root: string, packageName: string): boolean => {
+    try {
+        createRequire(join(root, "package.json")).resolve(`${packageName}/package.json`);
+
+        return true;
+    } catch (error) {
+        if (errorCode(error) === "MODULE_NOT_FOUND") {
+            return false;
+        }
+
+        throw error;
+    }
+};
+
+const projectCommands = (root: string, hasReference: boolean): string[] =>
+    [
+        { command: "gtkx dev", description: "Run the app with fast refresh" },
+        {
+            command: "gtkx storybook",
+            description: "Explore native component stories with controls and actions",
+            packageName: "@gtkx/storybook",
+        },
+        { command: "gtkx codegen", description: `Regenerate bindings${hasReference ? " and this reference" : ""}` },
+        { command: "gtkx cleanup", description: "Remove stale headless runtime and compile cache directories" },
+        { command: "tsc --noEmit", description: "Typecheck", packageName: "typescript" },
+        { command: "vitest run", description: "Run the tests", packageName: "vitest" },
+    ]
+        .filter(({ packageName }) => packageName === undefined || isInstalled(root, packageName))
+        .map(({ command, description }) => `| \`${command}\` | ${description} |`);
+
+const rulesBody = (heading: string, hasReference: boolean, commands: string[]): string[] => [
     `${heading} GTKX`,
     "",
     "GTKX applications are Adwaita-first, with GTK4 underneath. Most GNOME UI code in your training data is C, " +
@@ -44,12 +75,7 @@ const rulesBody = (heading: string, hasReference: boolean): string[] => [
     ...(hasReference ? referenceRules : []),
     "| Command | What it does |",
     "| --- | --- |",
-    "| `gtkx dev` | Run the app with fast refresh |",
-    "| `gtkx storybook` | Explore native component stories with controls and actions |",
-    `| \`gtkx codegen\` | Regenerate bindings${hasReference ? " and this reference" : ""} |`,
-    "| `gtkx cleanup` | Remove stale headless runtime and compile cache directories |",
-    "| `tsc --noEmit` | Typecheck |",
-    "| `vitest run` | Run the tests |",
+    ...commands,
     "",
     "Never call UI work done without looking at the running app. With `gtkx dev` up, the gtkx MCP server " +
         "exposes the live widget tree, queries, clicks and screenshots; use them to confirm the change landed.",
@@ -58,8 +84,8 @@ const rulesBody = (heading: string, hasReference: boolean): string[] => [
         "committing the block with your work keeps the tree clean.",
 ];
 
-const renderBlock = (heading: string, hasReference: boolean): string =>
-    [BEGIN_MARKER, "", ...rulesBody(heading, hasReference), "", END_MARKER].join("\n");
+const renderBlock = (heading: string, hasReference: boolean, commands: string[]): string =>
+    [BEGIN_MARKER, "", ...rulesBody(heading, hasReference, commands), "", END_MARKER].join("\n");
 
 const headingFor = (contents: string): string => (TOP_LEVEL_HEADING.test(contents) ? "##" : "#");
 const withTrailingNewline = (contents: string): string => (contents.endsWith("\n") ? contents : `${contents}\n`);
@@ -82,10 +108,10 @@ const replaceBlock = (contents: string, block: string): string => {
     return contents.slice(0, match.index) + block + contents.slice(match.index + match[0].length);
 };
 
-const nextContents = (contents: string, hasReference: boolean): string => {
+const nextContents = (contents: string, hasReference: boolean, commands: string[]): string => {
     const heading = headingFor(contents.replace(BLOCK_PATTERN, ""));
 
-    return replaceBlock(contents, renderBlock(heading, hasReference));
+    return replaceBlock(contents, renderBlock(heading, hasReference, commands));
 };
 
 const readOrUndefined = (path: string): string | undefined => {
@@ -129,7 +155,7 @@ const upsertAgentRules = (root: string, hasReference: boolean): AgentRulesResult
     const existing = readOrUndefined(agentsPath) ?? "";
     const files: string[] = [];
 
-    if (hasWritten(agentsPath, nextContents(existing, hasReference))) {
+    if (hasWritten(agentsPath, nextContents(existing, hasReference, projectCommands(root, hasReference)))) {
         files.push(AGENTS_FILENAME);
     }
 

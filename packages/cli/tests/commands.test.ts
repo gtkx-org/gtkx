@@ -1371,6 +1371,18 @@ describe("CLI commands", () => {
         expect(existsSync(join(project.root, ".gtkx/reference"))).toBe(false);
     });
 
+    it("lists only the commands that the project's packages provide in the agent rules", async () => {
+        using project = createProject({ codegen: true, libraries: ["Gio-2.0"], agents: { rules: true } });
+        const rules = () => readFileSync(join(project.root, "AGENTS.md"), "utf8");
+        await invoke(["codegen", "--cwd", project.root]);
+        expect(rules()).toContain("`vitest run`");
+        expect(rules()).not.toContain("`tsc --noEmit`");
+
+        project.write("node_modules/typescript/package.json", JSON.stringify({ name: "typescript", version: "6.0.3" }));
+        await invoke(["codegen", "--cwd", project.root]);
+        expect(rules()).toContain("`tsc --noEmit`");
+    });
+
     it("removes the agent rules it wrote once rules are disabled", async () => {
         using project = createProject({ codegen: true, libraries: ["Gio-2.0"], agents: { rules: true } });
         const configure = (rules: boolean) =>
