@@ -461,7 +461,6 @@ export {
     discardAccessible,
     flushAccessible,
     flushDependentProps,
-    markDependentPropsDirty,
     placeDependingProps,
     applyElementProps,
     applyAdoptedProps,
