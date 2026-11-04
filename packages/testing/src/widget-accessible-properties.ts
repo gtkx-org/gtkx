@@ -317,8 +317,12 @@ const hasDisplayValue = (widget: Gtk.Widget): boolean => {
 
 const isWidgetDisabled = (widget: Gtk.Widget): boolean => !widget.isSensitive();
 
-/** Why a widget does not count as visible: the nearest widget, itself or an ancestor, that hides it. */
-type HiddenCause = { widget: Gtk.Widget; cause: "hidden" | "transparent" };
+/**
+ * Why a widget does not count as visible: the nearest widget, itself or an ancestor, that is hidden,
+ * that its container does not show, such as a collapsed revealer's child or an inactive stack page,
+ * or that is fully transparent.
+ */
+type HiddenCause = { widget: Gtk.Widget; cause: "hidden" | "unshown" | "transparent" };
 
 const findHiddenCause = (widget: Gtk.Widget): HiddenCause | null => {
     let current: Gtk.Widget | null = widget;
@@ -326,6 +330,10 @@ const findHiddenCause = (widget: Gtk.Widget): HiddenCause | null => {
     while (current) {
         if (!current.getVisible()) {
             return { widget: current, cause: "hidden" };
+        }
+
+        if (!current.getChildVisible()) {
+            return { widget: current, cause: "unshown" };
         }
 
         if (current.getOpacity() === 0) {

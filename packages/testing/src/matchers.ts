@@ -167,7 +167,10 @@ type MatcherImplementations = {
     toBeDisabled: StateMatcher;
     /** Asserts the widget and all of its ancestors are sensitive. */
     toBeEnabled: StateMatcher;
-    /** Asserts the widget and its ancestors are all visible, and that none of them is fully transparent. */
+    /**
+     * Asserts the widget and its ancestors are all visible and shown by their containers, as a collapsed
+     * revealer or an inactive stack page does not show its child, and that none of them is fully transparent.
+     */
     toBeVisible: StateMatcher;
     /** Asserts the widget's root is a window that is still in the toplevel list. */
     toBeRooted: StateMatcher;
@@ -875,6 +878,12 @@ function toBeEnabled(received: unknown): MatcherResult {
     return stateResult(widget, "enabled", !isWidgetDisabled(widget));
 }
 
+const HIDDEN_REASONS = {
+    hidden: "is hidden",
+    unshown: "is not shown by its parent",
+    transparent: "has opacity 0",
+} as const;
+
 function toBeVisible(received: unknown): MatcherResult {
     const widget = asWidget(received, "toBeVisible");
     const hidden = findHiddenCause(widget);
@@ -884,7 +893,7 @@ function toBeVisible(received: unknown): MatcherResult {
     }
 
     const subject = hidden.widget === widget ? "it" : `its ancestor ${describeWidget(hidden.widget)}`;
-    const reason = hidden.cause === "hidden" ? "is hidden" : "has opacity 0";
+    const reason = HIDDEN_REASONS[hidden.cause];
 
     return {
         pass: false,

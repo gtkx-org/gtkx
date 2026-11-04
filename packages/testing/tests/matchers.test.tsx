@@ -11,6 +11,7 @@ import {
     GtkLabel,
     GtkListBox,
     GtkListBoxRow,
+    GtkRevealer,
     GtkScale,
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
@@ -146,6 +147,26 @@ describe("state matchers", () => {
         expect(enabled).not.toHaveRole(Gtk.AccessibleRole.CHECKBOX);
         expect(new Gtk.Label({ label: "Detached" })).not.toBeRooted();
         expect(null).not.toBeRooted();
+    });
+
+    it("treats a widget its container stops showing as hidden", async () => {
+        const Collapsible = ({ isRevealed }: { isRevealed: boolean }) => (
+            <GtkRevealer revealChild={isRevealed}>
+                <GtkBox>
+                    <GtkLabel>Details</GtkLabel>
+                </GtkBox>
+            </GtkRevealer>
+        );
+        const { rerender } = await render(<Collapsible isRevealed />);
+        const details = await screen.findByText("Details");
+        expect(details).toBeVisible();
+
+        await rerender(<Collapsible isRevealed={false} />);
+
+        expect(details).not.toBeVisible();
+        expect(() => {
+            expect(details).toBeVisible();
+        }).toThrow(/its ancestor <GENERIC> is not shown by its parent/);
     });
 
     it("read emptiness, validity and containment", async () => {
