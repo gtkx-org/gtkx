@@ -63,6 +63,14 @@ export const PreferencesForm = ({ onSave }: { onSave: (values: Preferences) => v
 
 You can also import `FormProvider` from `@gtkx/forms` to supply the control to rows below it. When a row relies on the provider, give it the form type explicitly, such as `<EntryRow<Preferences> name="displayName" />`, to check its field name.
 
+GTKX compiles components with the React Compiler by default, so read a field with `useWatch` rather than `form.watch`. As [React Hook Form documents](https://react-hook-form.com/docs/useform/watch), the compiler can cache what `watch` returns, and the component keeps showing a stale value after `setValue`:
+
+```tsx
+import { useWatch } from "@gtkx/forms";
+
+const theme = useWatch({ control: form.control, name: "theme" });
+```
+
 ## Choose a row
 
 | Row                            | Stored value |
