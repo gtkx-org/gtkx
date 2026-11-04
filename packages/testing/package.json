@@ -69,6 +69,11 @@
         "react": "^19.3",
         "vitest": ">=5"
     },
+    "peerDependenciesMeta": {
+        "vitest": {
+            "optional": true
+        }
+    },
     "devDependencies": {
         "@gtkx/config": "workspace:*",
         "@gtkx/vitest": "workspace:*",

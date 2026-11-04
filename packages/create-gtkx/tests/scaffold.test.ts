@@ -61,12 +61,15 @@ describe("scaffold command", () => {
         });
         expect(JSON.parse(read(target, "package.json"))).toHaveProperty(["dependencies", "@gtkx/react"]);
         expect(JSON.parse(read(target, "package.json"))).toHaveProperty(["devDependencies", "@types/react"]);
+        expect(JSON.parse(read(target, "package.json"))).toHaveProperty(["devDependencies", "@gtkx/testing"]);
         expect(existsSync(join(target, "tsconfig.json"))).toBe(hasTypes);
         expect(existsSync(join(target, "vitest.config.ts"))).toBe(hasTests);
         expect(read(target, hasTypes ? "gtkx.config.ts" : "gtkx.config.js")).toContain("org.gtkx.example");
         expect(JSON.parse(read(target, ".mcp.json"))).toEqual({
             mcpServers: { gtkx: { command: "npx", args: ["--no", "gtkx", "mcp"] } },
         });
+        const settings = JSON.parse(read(target, ".claude/settings.json")) as { permissions: { allow: string[] } };
+        expect(settings.permissions.allow.includes("Bash(npx tsc --noEmit)")).toBe(hasTypes);
     });
 
     it("configures Yarn to install into node_modules without committing its install state", async () => {

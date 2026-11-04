@@ -88,9 +88,9 @@ const DEPENDENCY_RANGES: Record<string, string | undefined> = {
 };
 
 const DEPENDENCIES = ["@gtkx/cairo", "@gtkx/css", "@gtkx/runtime", "@gtkx/react", "react"];
-const DEV_DEPENDENCIES = ["@gtkx/cli", "@gtkx/config", "@gtkx/mcp", "@types/react", "vite"];
+const DEV_DEPENDENCIES = ["@gtkx/cli", "@gtkx/config", "@gtkx/mcp", "@gtkx/testing", "@types/react", "vite"];
 const TYPESCRIPT_DEV_DEPENDENCIES = ["@types/node", "typescript"];
-const TESTING_DEV_DEPENDENCIES = ["@gtkx/testing", "vitest"];
+const TESTING_DEV_DEPENDENCIES = ["vitest"];
 
 const DEV_COMMAND: Record<PackageManager, string> = Object.fromEntries(
     PACKAGE_MANAGERS.map((manager) => [manager.value, manager.devCommand]),
