@@ -61,7 +61,7 @@ Create shaders and buffers in `onRealize`, after calling `area.makeCurrent()` an
 
 `onRender` and `onResize` already run with the context current. Call `makeCurrent()` before issuing GL commands from other handlers. GTK sets the viewport when the area resizes; use `onResize` for other size-dependent state, such as a camera's aspect ratio.
 
-Configure the context through JSX before realization. `allowedApis` selects GL or GLES, while `hasDepthBuffer` and `hasStencilBuffer` request framebuffer attachments. Use `area.getApi()` to choose rendering code compatible with the context that was created. See [GTK's GLArea documentation](https://docs.gtk.org/gtk4/class.GLArea.html) for the native lifecycle and context options.
+Configure the context through JSX before realization. `allowedApis` selects GL or GLES, while `hasDepthBuffer` and `hasStencilBuffer` request framebuffer attachments. Use `area.getApi()` to choose rendering code compatible with the context that was created. A realized area keeps its context: GTK rejects a later `allowedApis` change with a critical, including one made by editing the prop while `gtkx dev` runs. To switch APIs, give the area a React `key` that changes with `allowedApis`, so React replaces it with a new area. See [GTK's GLArea documentation](https://docs.gtk.org/gtk4/class.GLArea.html) for the native lifecycle and context options.
 
 ## Request another frame
 
