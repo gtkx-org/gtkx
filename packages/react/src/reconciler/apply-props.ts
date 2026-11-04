@@ -16,7 +16,7 @@ import {
     typeInfoFor,
 } from "./metadata.js";
 import { type ElementNode, type SignalTarget } from "./node.js";
-import { applyMutation, applyWrite, connectHandler, disconnectHandler } from "./signals.js";
+import { applyMutation, applyPlacement, applyWrite, connectHandler, disconnectHandler } from "./signals.js";
 import { updateStyle } from "./style.js";
 import { bufferText, hasSameText, isContentPaintableProp, markTextDirty, TEXT_PROP } from "./text.js";
 
@@ -180,11 +180,18 @@ const applyEntry = (node: ElementNode, info: TypeInfo, delta: PropDelta, consume
 
     assertKnownProp(node, info, delta, consumed);
 
-    const isInitialNull = value === null && prevValue === undefined;
-
-    if (!isInitialNull) {
-        setOrReset(node.object, info, name, value);
+    if (value === null && prevValue === undefined) {
+        return;
     }
+
+    if (value instanceof GObject.Object || prevValue instanceof GObject.Object) {
+        applyPlacement(node, () => setOrReset(node.object, info, name, value));
+        markDependentPropsDirty(node);
+
+        return;
+    }
+
+    setOrReset(node.object, info, name, value);
 };
 
 const eachChangedName = (prev: Props, next: Props, visit: (name: string) => void): void => {

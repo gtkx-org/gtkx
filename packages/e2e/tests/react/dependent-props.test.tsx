@@ -86,4 +86,26 @@ describe("dependent native properties", () => {
         await act(() => row.current?.setValue(800));
         expect(notifications).toEqual([800]);
     });
+
+    it("restores the controlled value after replacing a native adjustment without reporting user input", async () => {
+        const row = createRef<Adw.SpinRow>();
+        const notifications: (number | null)[] = [];
+        const app = () => (
+            <AdwPreferencesGroup>
+                <AdwSpinRow
+                    ref={row}
+                    value={750}
+                    onNotifyValue={(value) => notifications.push(value)}
+                    adjustment={new Gtk.Adjustment({ lower: 100, upper: 1000, value: 200, stepIncrement: 50 })}
+                />
+            </AdwPreferencesGroup>
+        );
+        const { rerender } = await render(app());
+        expect(row.current?.getValue()).toBe(750);
+        const original = row.current?.getAdjustment();
+        await rerender(app());
+        expect(row.current?.getAdjustment()).not.toBe(original);
+        expect(row.current?.getValue()).toBe(750);
+        expect(notifications).toEqual([]);
+    });
 });
