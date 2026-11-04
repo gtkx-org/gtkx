@@ -6,8 +6,6 @@ import { buttonSitesFor, type ClickSite, type DirectClick, directClickFor, emitS
 import { wrapPointerEvent } from "./event-wrapper.js";
 import { isClickTransparent } from "./native-click.js";
 
-type PointerButtonName = "Left" | "Middle" | "Right";
-
 /**
  * A pointer action token, as in Testing Library: a full click (`[MouseLeft]`, `[MouseRight]`, `[MouseMiddle]`), a
  * button press (`[MouseLeft>]`) or a button release (`[/MouseLeft]`). `click`, `down` and `up` are the left button.
@@ -18,9 +16,9 @@ type PointerInput =
     | "click"
     | "down"
     | "up"
-    | `[Mouse${PointerButtonName}]`
-    | `[Mouse${PointerButtonName}>]`
-    | `[/Mouse${PointerButtonName}]`;
+    | `[Mouse${"Left" | "Middle" | "Right"}]`
+    | `[Mouse${"Left" | "Middle" | "Right"}>]`
+    | `[/Mouse${"Left" | "Middle" | "Right"}]`;
 type PointerAction = "click" | "press" | "release";
 type PointerToken = { action: PointerAction; button: number };
 type PointerTarget = { widget: Gtk.Widget; click: DirectClick };
