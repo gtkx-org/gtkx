@@ -241,7 +241,7 @@ const LevelStore = registerClass(LevelStoreBase, {
 });
 ```
 
-Write vfuncs as prototype methods, not arrow-function fields. The `Impl` type checks signatures; it does not establish that every required native operation has an implementation. Follow the interface's prerequisites and behavior contract. For this example, [Gio.ListModel](https://docs.gtk.org/gio/iface.ListModel.html) also requires change notifications when items change.
+Write vfuncs as prototype methods, not arrow-function fields. Every slot of an `Impl` type is optional, so TypeScript rejects `implements` on a class that fills none of them, such as a `Gtk.Scrollable` widget that only overrides the interface's adjustment and scroll-policy properties; register that class with `implements: [Gtk.Scrollable]` and leave out the `implements` clause. The `Impl` type checks signatures; it does not establish that every required native operation has an implementation. Follow the interface's prerequisites and behavior contract. For this example, [Gio.ListModel](https://docs.gtk.org/gio/iface.ListModel.html) also requires change notifications when items change.
 
 Registration adds the interface's public members to instances. Inside the class, declare any added member you call, such as `declare itemsChanged: Gio.ListModel["itemsChanged"];`. Use a base class whose native state agrees with the implementation you provide.
 

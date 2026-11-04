@@ -330,7 +330,9 @@ const implTypeNote = (className: string, implName: string): string =>
         "",
         "Every slot is optional: an unfilled one keeps whatever the interface installs by default, and a",
         "GIR update can add one. Declaring a slot pins its signature; declaring it as a class field rather",
-        "than a method satisfies this type but never reaches the vtable.",
+        "than a method satisfies this type but never reaches the vtable. A class that fills none of the",
+        `slots, such as one that only overrides the interface's properties, leaves out \`implements ${implName}\`:`,
+        "TypeScript rejects a class that shares no member with a type whose members are all optional.",
     ].join("\n");
 
 const implPrerequisiteRefs = (context: ModuleContext, iface: GirClass): string[] => {
