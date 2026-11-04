@@ -73,6 +73,24 @@ test("a registered subclass fills the int8 vtable slots the C callers dispatch t
     expect(instance.methodStrArgOutRet("hi")).toEqual(["hi!", 9]);
 });
 
+test("a vfunc result the C caller cannot take is reported by the vfunc that returned it", () => {
+    class FractionalInt8 extends GIMarshallingTests.Object {
+        override vfuncMethodInt8Out(): number {
+            return 1.5;
+        }
+
+        override vfuncMethodInt8ArgAndOutCaller(arg: number): number {
+            return arg / 2;
+        }
+    }
+
+    const Registered = registerClass(FractionalInt8, { typeName: uniqueName("GtkxFractionalInt8") });
+    const instance = new Registered({});
+
+    expect(() => instance.methodInt8Out()).toThrow(/FractionalInt8\.vfuncMethodInt8Out/);
+    expect(() => instance.methodInt8ArgAndOutCaller(3)).toThrow(/FractionalInt8\.vfuncMethodInt8ArgAndOutCaller/);
+});
+
 test("an override reaches the implementation it replaces through super", () => {
     const seen: number[] = [];
 

@@ -532,7 +532,7 @@ function registerClass(klass: AnyClass, options: AnyRegisterClassOptions = {}): 
 
     const installSignals = prepareClassSignals(signals.native, parentType, declaredTypes);
     const initializeClassOptions = prepareClassOptions(klass, { cssName: options.cssName });
-    const nativeOptions = toNativeOptions(classVfuncs, interfaceBindings, options);
+    const nativeOptions = toNativeOptions(klass, classVfuncs, interfaceBindings, options);
     nativeOptions.initialize = (handle, type) => {
         initializeClassOptions(handle);
         installSignals(type);
@@ -1045,7 +1045,7 @@ function installDeclaredSignalMethods(klass: AnyClass, table: Map<string, Declar
     });
 }
 
-const toNativeVfunc = (descriptor: DiscoveredVfunc): NativeRegisterClassVfunc => {
+const toNativeVfunc = (klass: AnyClass, descriptor: DiscoveredVfunc): NativeRegisterClassVfunc => {
     const plans = compileDescriptors(descriptor.argDescriptors, descriptor.returnDescriptor);
     return {
         byteOffset: descriptor.byteOffset,
@@ -1056,14 +1056,18 @@ const toNativeVfunc = (descriptor: DiscoveredVfunc): NativeRegisterClassVfunc =>
             callLayout(descriptor.argDescriptors),
             { canThrow: descriptor.canThrow ?? false },
         ),
-        fn: adaptCallback(descriptor, descriptor.fn as (...args: unknown[]) => unknown, plans),
+        fn: adaptCallback(
+            { ...descriptor, resultOwner: `${klass.name}.${descriptor.methodName}` },
+            descriptor.fn as (...args: unknown[]) => unknown,
+            plans,
+        ),
     };
 };
 
-function toNativeInterface(binding: InterfaceVfuncBinding): NativeRegisterClassInterface {
+function toNativeInterface(klass: AnyClass, binding: InterfaceVfuncBinding): NativeRegisterClassInterface {
     const nativeInterface: NativeRegisterClassInterface = {
         type: binding.gtype,
-        vfuncs: binding.vfuncs.map((descriptor) => toNativeVfunc(descriptor)),
+        vfuncs: binding.vfuncs.map((descriptor) => toNativeVfunc(klass, descriptor)),
     };
 
     const vtableSize = binding.vfuncs[0]?.vtableSize;
@@ -1095,14 +1099,15 @@ function sortInterfaceTypes(parentType: bigint, types: bigint[]): void {
 }
 
 function toNativeOptions(
+    klass: AnyClass,
     classVfuncs: DiscoveredVfunc[],
     interfaceBindings: InterfaceVfuncBinding[],
     source: AnyRegisterClassOptions,
 ): NativeRegisterClassOptions {
     return {
         flags: source.abstract === true ? 16 : 0,
-        vfuncs: classVfuncs.map((descriptor) => toNativeVfunc(descriptor)),
-        interfaces: interfaceBindings.map((binding) => toNativeInterface(binding)),
+        vfuncs: classVfuncs.map((descriptor) => toNativeVfunc(klass, descriptor)),
+        interfaces: interfaceBindings.map((binding) => toNativeInterface(klass, binding)),
     };
 }
 

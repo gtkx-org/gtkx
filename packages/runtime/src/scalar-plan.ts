@@ -45,6 +45,8 @@ type CallbackShape = {
     returnDescriptor: Descriptor;
     userDataIndex?: number;
     canThrow?: boolean;
+    /** Names the callback, such as `Class.vfuncName`, in errors for results its native caller cannot take. */
+    resultOwner?: string;
 };
 type EnumDescriptor = Extract<Descriptor, { kind: "enum" | "flags" }>;
 
@@ -345,6 +347,29 @@ const writeCallbackOutputs = (plans: ScalarPlan[], values: unknown[], decoded: u
     }
 };
 
+type ResultEncoder = (returned: unknown, values: unknown[], decoded: unknown[]) => unknown;
+
+/**
+ * Reports a result the native caller cannot take by the callback that returned it rather than by the
+ * conversion that rejected it, since the callback's own frames are gone from the stack by then.
+ */
+const ownedResultEncoder = (owner: string | undefined, encodeResults: ResultEncoder): ResultEncoder => {
+    if (owner === undefined) {
+        return encodeResults;
+    }
+
+    return (returned, values, decoded) => {
+        try {
+            return encodeResults(returned, values, decoded);
+        } catch (error) {
+            const reason = error instanceof Error ? error.message : String(error);
+            throw new TypeError(`${owner} returned a value its native caller cannot take: ${reason}`, {
+                cause: error,
+            });
+        }
+    };
+};
+
 const adaptCallback = (
     shape: CallbackShape,
     callback: Callback,
@@ -353,16 +378,22 @@ const adaptCallback = (
     const args = plans.args.filter((_, index) => index !== shape.userDataIndex);
     const result = plans.returns;
 
+    const encodeResults = (returned: unknown, values: unknown[], decoded: unknown[]): unknown => {
+        const encodedReturn = result.encode(returned);
+        writeCallbackOutputs(args, values, decoded);
+
+        return encodedReturn;
+    };
+    const encode = ownedResultEncoder(shape.resultOwner, encodeResults);
+
     const invoke: Callback = (...values) => {
         const decoded = args.map((plan, index) => plan.decode(values[index]));
         const returned = callback(...decoded);
         if (returned === signalDefaultReturn) {
             return defaultAbiReturn(result.abi);
         }
-        const encodedReturn = result.encode(returned);
-        writeCallbackOutputs(args, values, decoded);
 
-        return encodedReturn;
+        return encode(returned, values, decoded);
     };
 
     if (shape.canThrow !== true) {
