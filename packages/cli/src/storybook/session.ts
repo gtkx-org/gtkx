@@ -23,6 +23,7 @@ type StorybookSession = {
 };
 
 type StorybookHooks = {
+    log: (message: string) => void;
     isRefreshBoundary: (module: Record<string, unknown>) => boolean;
     restartForRegistration: (changedPath: string) => Promise<void>;
 };
@@ -231,7 +232,15 @@ const createStorybookSession = (
                 return false;
             }
 
+            if (change.event === "change") {
+                state.hooks.log(`File changed: ${change.path}`);
+            }
+
             await reload(state, change.path);
+
+            if (change.event === "change" && !state.hasFailedLoad) {
+                state.hooks.log("Stories reloaded");
+            }
 
             return true;
         },

@@ -2211,7 +2211,7 @@ describe("CLI commands", () => {
         expect(output).toContain("introduction.mdx");
     });
 
-    it("lists storybook stories of a sibling workspace package", async () => {
+    it("lists and reloads storybook stories of a sibling workspace package", async () => {
         using project = createProject({ codegen: true });
         const app = "workspace/apps/timer";
         const readyPath = join(project.root, "ready.txt");
@@ -2226,10 +2226,13 @@ describe("CLI commands", () => {
             `${app}/.storybook/main.mts`,
             'export default { stories: ["src/**/*.stories.tsx", "../../packages/ui/**/*.stories.tsx"] };',
         );
+        const tone = "workspace/packages/ui/src/tone.ts";
+        project.write(tone, 'export const tone = "accent";');
         project.write(
             "workspace/packages/ui/src/badge.stories.tsx",
             `import { writeFileSync } from "node:fs";
-            writeFileSync(${JSON.stringify(readyPath)}, "badge");
+            import { tone } from "./tone.ts";
+            writeFileSync(${JSON.stringify(readyPath)}, tone);
             export default { title: "Badge" }; export const Empty = { render: () => null };`,
         );
         project.write(
@@ -2239,9 +2242,40 @@ describe("CLI commands", () => {
             export default { title: "Kit" }; export const Empty = { render: () => null };`,
         );
 
-        await withSession("storybook", join(project.root, app), readyPath, async () => {
-            await expect.poll(() => readFileSync(readyPath, "utf8")).toBe("badge");
-        });
+        const session = spawn(
+            process.execPath,
+            [
+                join(project.root, "node_modules/@gtkx/cli/bin/gtkx.js"),
+                "storybook",
+                "--cwd",
+                join(project.root, app),
+                "--headless",
+                "--size",
+                "640x480",
+            ],
+            {
+                cwd: project.root,
+                env: Object.fromEntries(
+                    Object.entries(process.env).filter(([name]) => !name.startsWith("VITEST") && name !== "DISPLAY"),
+                ),
+            },
+        );
+        let output = "";
+        session.stdout.on("data", (chunk: Buffer) => (output += chunk.toString()));
+        session.stderr.on("data", (chunk: Buffer) => (output += chunk.toString()));
+        const exited = once(session, "exit");
+        try {
+            await expect
+                .poll(() => existsSync(readyPath) && readFileSync(readyPath, "utf8"), { timeout: 60_000 })
+                .toBe("accent");
+            project.write(tone, 'export const tone = "warning";');
+            await expect.poll(() => readFileSync(readyPath, "utf8"), { timeout: 30_000 }).toBe("warning");
+            await expect.poll(() => output).toContain("Stories reloaded");
+            expect(output).toContain(`File changed: ${join(realpathSync(project.root), tone)}`);
+        } finally {
+            session.kill("SIGTERM");
+            await exited;
+        }
 
         expect(existsSync(dependencyPath)).toBe(false);
     });

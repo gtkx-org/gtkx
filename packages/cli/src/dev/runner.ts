@@ -880,6 +880,7 @@ const loadEntry = async (
         const entry = await loadModuleExclusively(session.server, entryPath);
         if (storybookConfig !== undefined) {
             session.storybook = createStorybookSession(session.server, entry, storybookConfig, {
+                log: (message) => session.deps.log(message),
                 isRefreshBoundary: (module) => session.deps.isRefreshBoundary(module),
                 restartForRegistration: (changedPath) => restartForRegistration(session, changedPath),
             });
