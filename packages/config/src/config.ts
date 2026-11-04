@@ -3,16 +3,16 @@ import { defu } from "defu";
 import { resolve } from "node:path";
 import { z } from "zod";
 import { configError, isRecord } from "./config-error.ts";
-import { deploySchema } from "./deploy.ts";
+import { type DeployOptions, deploySchema } from "./deploy.ts";
 import { girLibrary, text } from "./schema-text.ts";
 import { resolveUserEventSignals } from "./user-event-signals.ts";
 
 /** Object form of the `reactCompiler` config key, forwarded to `babel-plugin-react-compiler`. */
 type ReactCompilerOptions = {
-    /** Which functions the compiler processes. */
-    compilationMode?: (typeof COMPILATION_MODES)[number];
-    /** Which compiler diagnostics fail the build. */
-    panicThreshold?: (typeof PANIC_THRESHOLDS)[number];
+    /** Which functions the React Compiler processes. */
+    compilationMode?: "all" | "annotation" | "infer" | "syntax" | undefined;
+    /** Which React Compiler diagnostics fail the build. */
+    panicThreshold?: "all_errors" | "critical_errors" | "none" | undefined;
 };
 
 /**
@@ -27,13 +27,127 @@ type ResolvedReactCompilerOptions = ReactCompilerOptions & {
 /**
  * GTKX project configuration authored in `gtkx.config.ts` and validated when loaded.
  */
-type Config = z.infer<typeof configSchema>;
+type Config = {
+    /**
+     * Additional GIR libraries to bind, such as `WebKit-6.0`.
+     * Adwaita and GTK are included implicitly and must not be listed.
+     */
+    libraries?: string[] | undefined;
+    /** Additional GIR search directories. Relative paths are resolved from the project root. */
+    girPath?: string[] | undefined;
+    /**
+     * GApplication identifier, such as `com.example.Tasks`. Required to run, build or deploy the project as an
+     * application; a package that is not an application, such as a component library, leaves it out.
+     */
+    applicationId?: string | undefined;
+    /** Whether to enable the React Compiler, or options passed to it. Enabled by default. */
+    reactCompiler?: boolean | ReactCompilerOptions | undefined;
+    /**
+     * Whether GTKX generates project bindings. Set to `false` to reuse an installed binding store.
+     * Defaults to `true`.
+     */
+    codegen?: boolean | undefined;
+    /**
+     * Additional signals to suppress during React property updates, keyed by GLib type name.
+     * Entries extend the built-in signal lists.
+     */
+    userEventSignals?: Record<string, string[]> | undefined;
+    /** Custom element behaviors and overrides for generated components, props, and documentation. */
+    elements?: ElementsOptions | undefined;
+    /** Path to an icon theme directory or a single application icon file, relative to the project root. */
+    applicationIcon?: string | undefined;
+    /** Application metadata, bundled runtime settings, and packaging options used by `gtkx deploy`. */
+    deploy?: DeployOptions | undefined;
+    /** Controls the project instructions and reference files generated for coding agents. */
+    agents?: AgentsOptions | undefined;
+    /** Default tool selection and access mode for the project's MCP server. Command-line flags take precedence. */
+    mcp?: McpOptions | undefined;
+    /** Controls warnings for deprecated configuration and behavior. */
+    deprecations?: DeprecationsOptions | undefined;
+};
 /** A {@link Config} whose `applicationId` is known, as loaded for an application. */
 type ApplicationConfig = Config & { applicationId: string };
-type ModuleExport = z.infer<typeof moduleExportSchema>;
-type ElementPropsExport = z.infer<typeof elementPropsSchema>;
+
+/** A named export of a module, which `elements.config` entries reference for components and props. */
+type ModuleExport = {
+    /** Module specifier containing the named export; relative paths start at the project root. */
+    module: string;
+    /** Name of the export to import from the module. */
+    export: string;
+};
+
+/** The props type an `elements.config` entry adds to a generated element, and how it combines with them. */
+type ElementPropsExport = {
+    /** Module specifier containing the named export; relative paths start at the project root. */
+    module: string;
+    /** Name of the props type to import from the module. */
+    export: string;
+    /**
+     * How the exported props are combined: `intersection` is inherited; `factory` applies only to this type.
+     * Defaults to `intersection`.
+     */
+    composition?: "factory" | "intersection" | undefined;
+    /** Props that can only be set when the element is created; changing them afterward throws. */
+    constructOnly?: string[] | undefined;
+};
+
 /** Overrides for one GLib type in `elements.config`, keyed by its registered type name. */
-type ElementConfigOptions = z.infer<typeof elementConfigSchema>;
+type ElementConfigOptions = {
+    /** Component export that wraps the generated element. */
+    component?: ModuleExport | undefined;
+    /** Additional props type to combine with the generated element props. */
+    props?: ElementPropsExport | undefined;
+    /** Whether the parent container creates this element's GObject instead of the element constructing its own. */
+    isLazy?: boolean | undefined;
+    /** Accepted child GLib type names to show in the generated element documentation. */
+    acceptedChildTypes?: string[] | undefined;
+    /** GObject properties to leave out of generated props, such as properties managed by an element behavior. */
+    omittedProps?: string[] | undefined;
+};
+
+/** The `elements` options: custom element behaviors and per-type overrides for generated elements. */
+type ElementsOptions = {
+    /** Path, relative to the project root, of the module exporting the element behavior map. */
+    behaviors?: string | undefined;
+    /** Element configuration overrides keyed by GLib type name, such as `GtkWidget`. */
+    config?: Record<string, ElementConfigOptions> | undefined;
+};
+
+/** The `agents` options: which files codegen maintains for coding agents. */
+type AgentsOptions = {
+    /**
+     * Whether codegen maintains the GTKX rules in `AGENTS.md` and creates a missing `CLAUDE.md` import.
+     * `false` removes rules written earlier, deleting `AGENTS.md` and the `CLAUDE.md` import when nothing else
+     * remains. Defaults to `true` for an application and `false` for a package without an `applicationId`.
+     */
+    rules?: boolean | undefined;
+    /**
+     * Whether codegen writes the generated element reference to `.gtkx/reference` and points the rules at it.
+     * `false` removes a reference generated earlier. Defaults to `true` for an application and `false` for a
+     * package without an `applicationId`.
+     */
+    reference?: boolean | undefined;
+};
+
+/** The `mcp` options: the tools `gtkx mcp` offers by default and whether it may interact with the app. */
+type McpOptions = {
+    /**
+     * Tool name patterns applied in order: `*` matches any text and a leading `!` excludes matches.
+     * Omitted, empty, or exclusion-only lists start with all tools; other lists start with none.
+     */
+    tools?: string[] | undefined;
+    /**
+     * Whether the MCP server exposes only inspection and reference tools, excluding app interactions.
+     * Defaults to `false`.
+     */
+    readOnly?: boolean | undefined;
+};
+
+/** The `deprecations` options: which deprecation warnings stay silent. */
+type DeprecationsOptions = {
+    /** Deprecation identifiers whose warnings are suppressed. There are currently no accepted identifiers. */
+    silence?: never[] | undefined;
+};
 
 type McpSettings = {
     tools: string[];
@@ -89,15 +203,12 @@ const applicationIdSchema = z
         error: 'must satisfy g_application_id_is_valid, such as "org.example.MyApp"',
     });
 
-const reactCompilerSchema = z.union([
-    z.boolean(),
-    z.strictObject({
-        /** Which functions the React Compiler processes. */
-        compilationMode: z.enum(COMPILATION_MODES).optional(),
-        /** Which React Compiler diagnostics fail the build. */
-        panicThreshold: z.enum(PANIC_THRESHOLDS).optional(),
-    }),
-]);
+const reactCompilerOptionsSchema = z.strictObject({
+    compilationMode: z.enum(COMPILATION_MODES).optional(),
+    panicThreshold: z.enum(PANIC_THRESHOLDS).optional(),
+}) satisfies z.ZodType<ReactCompilerOptions>;
+
+const reactCompilerSchema = z.union([z.boolean(), reactCompilerOptionsSchema]);
 
 const userEventSignalsSchema = z.record(
     z.string(),
@@ -112,35 +223,22 @@ const userEventSignalsSchema = z.record(
 
 const moduleExportSchema = z.strictObject(
     {
-        /** Module specifier containing the named export; relative paths start at the project root. */
         module: z.string({ error: "must be a module specifier" }).min(1, { error: "must be a module specifier" }),
-        /** Name of the export to import from the module. */
         export: z.string({ error: "must be an export name" }).min(1, { error: "must be an export name" }),
     },
     { error: "must be a { module, export } object" },
-);
+) satisfies z.ZodType<ModuleExport>;
 
 const elementPropsSchema = moduleExportSchema.extend({
-    /**
-     * How the exported props are combined: `intersection` is inherited; `factory` applies only to this type.
-     * Defaults to `intersection`.
-     */
     composition: z.enum(["factory", "intersection"]).optional(),
-    /** Props that can only be set when the element is created; changing them afterward throws. */
     constructOnly: z.array(z.string()).optional(),
-});
+}) satisfies z.ZodType<ElementPropsExport>;
 
-/** Schema for one element override and the source of {@link ElementConfigOptions}. */
 const elementConfigSchema = z.strictObject({
-    /** Component export that wraps the generated element. */
     component: moduleExportSchema.optional(),
-    /** Additional props type to combine with the generated element props. */
     props: elementPropsSchema.optional(),
-    /** Whether the parent container creates this element's GObject instead of the element constructing its own. */
     isLazy: z.boolean({ error: "must be a boolean" }).optional(),
-    /** Accepted child GLib type names to show in the generated element documentation. */
     acceptedChildTypes: z.array(z.string()).optional(),
-    /** GObject properties to leave out of generated props, such as properties managed by an element behavior. */
     omittedProps: z
         .array(
             z.string({ error: "must be a non-empty property name" }).min(1, {
@@ -149,52 +247,29 @@ const elementConfigSchema = z.strictObject({
             { error: "must be an array of property names" },
         )
         .optional(),
-});
+}) satisfies z.ZodType<ElementConfigOptions>;
 
 const elementsSchema = z.strictObject({
-    /** Path, relative to the project root, of the module exporting the element behavior map. */
     behaviors: z
         .string({ error: "must be a path to a module exporting element behaviors" })
         .min(1, { error: "must be a path to a module exporting element behaviors" })
         .optional(),
-    /**
-     * Element configuration overrides keyed by GLib type name, such as `GtkWidget`.
-     * @see {@link ElementConfigOptions} for the fields accepted by each entry.
-     */
     config: z.record(z.string(), elementConfigSchema).optional(),
-});
+}) satisfies z.ZodType<ElementsOptions>;
 
 const agentsSchema = z.strictObject({
-    /**
-     * Whether codegen maintains the GTKX rules in `AGENTS.md` and creates a missing `CLAUDE.md` import.
-     * `false` removes rules written earlier, deleting `AGENTS.md` and the `CLAUDE.md` import when nothing else
-     * remains. Defaults to `true` for an application and `false` for a package without an `applicationId`.
-     */
     rules: z.boolean({ error: "must be a boolean" }).optional(),
-    /**
-     * Whether codegen writes the generated element reference to `.gtkx/reference` and points the rules at it.
-     * `false` removes a reference generated earlier. Defaults to `true` for an application and `false` for a
-     * package without an `applicationId`.
-     */
     reference: z.boolean({ error: "must be a boolean" }).optional(),
-});
+}) satisfies z.ZodType<AgentsOptions>;
 
 const mcpSchema = z.strictObject({
-    /**
-     * Tool name patterns applied in order: `*` matches any text and a leading `!` excludes matches.
-     * Omitted, empty, or exclusion-only lists start with all tools; other lists start with none.
-     */
     tools: z
         .array(z.string({ error: "must be a tool name pattern" }).min(1, { error: "must be a tool name pattern" }), {
             error: "must be an array of tool name patterns",
         })
         .optional(),
-    /**
-     * Whether the MCP server exposes only inspection and reference tools, excluding app interactions.
-     * Defaults to `false`.
-     */
     readOnly: z.boolean({ error: "must be a boolean" }).optional(),
-});
+}) satisfies z.ZodType<McpOptions>;
 
 const graduatedFutureSchema = z
     .object({
@@ -209,53 +284,28 @@ const graduatedFutureSchema = z
     .strict();
 
 const deprecationsSchema = z.strictObject({
-    /** Deprecation identifiers whose warnings are suppressed. There are currently no accepted identifiers. */
     silence: z
         .array(z.never({ error: "does not name a current deprecation" }), {
             error: "must be an array of current deprecation ids",
         })
         .optional(),
-});
+}) satisfies z.ZodType<DeprecationsOptions>;
 
-/** Schema every `gtkx.config.ts` is validated against, and the source of the {@link Config} type. */
+/** Schema every `gtkx.config.ts` is validated against. */
 const configSchema = z.strictObject({
-    /**
-     * Additional GIR libraries to bind, such as `WebKit-6.0`.
-     * Adwaita and GTK are included implicitly and must not be listed.
-     */
     libraries: librariesSchema.optional(),
-    /** Additional GIR search directories. Relative paths are resolved from the project root. */
     girPath: z.array(z.string(), { error: "must be an array of strings if provided" }).optional(),
-    /**
-     * GApplication identifier, such as `com.example.Tasks`. Required to run, build or deploy the project as an
-     * application; a package that is not an application, such as a component library, leaves it out.
-     */
     applicationId: applicationIdSchema.optional(),
-    /** Whether to enable the React Compiler, or options passed to it. Enabled by default. */
     reactCompiler: reactCompilerSchema.optional(),
-    /**
-     * Whether GTKX generates project bindings. Set to `false` to reuse an installed binding store.
-     * Defaults to `true`.
-     */
     codegen: z.boolean({ error: "must be a boolean" }).optional(),
-    /**
-     * Additional signals to suppress during React property updates, keyed by GLib type name.
-     * Entries extend the built-in signal lists.
-     */
     userEventSignals: userEventSignalsSchema.optional(),
-    /** Custom element behaviors and overrides for generated components, props, and documentation. */
     elements: elementsSchema.optional(),
-    /** Path to an icon theme directory or a single application icon file, relative to the project root. */
     applicationIcon: text("must be a path to an icon theme directory or a single icon file").optional(),
-    /** Application metadata, bundled runtime settings, and packaging options used by `gtkx deploy`. */
     deploy: deploySchema.optional(),
-    /** Controls the project instructions and reference files generated for coding agents. */
     agents: agentsSchema.optional(),
-    /** Default tool selection and access mode for the project's MCP server. Command-line flags take precedence. */
     mcp: mcpSchema.optional(),
-    /** Controls warnings for deprecated configuration and behavior. */
     deprecations: deprecationsSchema.optional(),
-});
+}) satisfies z.ZodType<Config>;
 
 /**
  * Returns the given configuration unchanged, typed as {@link Config}, so `gtkx.config.ts` gets
@@ -370,6 +420,7 @@ const resolveConfig = (config: ApplicationConfig, translationDomain: string, roo
 });
 
 export {
+    configSchema,
     APPLICATION_ID_MAX_LENGTH,
     LIBRARY_APPLICATION_ID,
     defineConfig,
@@ -386,7 +437,12 @@ export {
     resolveMcpSettings,
     resolveOmittedProps,
     resolveConfig,
+    type AgentsOptions,
+    type DeprecationsOptions,
+    type ElementsOptions,
+    type McpOptions,
     type McpSettings,
+    type ReactCompilerOptions,
     type ResolvedReactCompilerOptions,
     type ApplicationConfig,
     type Config,
