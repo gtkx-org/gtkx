@@ -101,4 +101,4 @@ function gtkxBuildManifest(collector: BuildManifestCollector, identity: BuildCon
     };
 }
 
-export { gtkxBuildManifest };
+export { gtkxBuildManifest, isInstalled, packageForModule };

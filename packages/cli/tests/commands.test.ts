@@ -17,6 +17,7 @@ import {
     renameSync,
     rmSync,
     symlinkSync,
+    writeFileSync,
 } from "node:fs";
 import { join, relative } from "node:path";
 import { setTimeout } from "node:timers/promises";
@@ -328,6 +329,34 @@ describe("CLI commands", () => {
 
         await expect(invoke(["build", "--cwd", project.root])).rejects.toThrow(
             'Add "GtkSource-5" to `libraries` in gtkx.config.ts',
+        );
+    });
+
+    it("names the package that loads a native addon a build cannot bundle, but emits addons imported with ?url", async () => {
+        using project = createProject();
+        const addon = "node_modules/@studio/hash-linux-x64-gnu/hash.linux-x64-gnu.node";
+        project.write(
+            "node_modules/@studio/hash-linux-x64-gnu/package.json",
+            JSON.stringify({ name: "@studio/hash-linux-x64-gnu", version: "1.0.0", main: "hash.linux-x64-gnu.node" }),
+        );
+        writeFileSync(join(project.root, addon), Buffer.from([0x7f, 0x45, 0x4c, 0x46, 0x02, 0xff, 0xfe, 0x00]));
+        project.write(
+            "node_modules/@studio/hash/package.json",
+            JSON.stringify({ name: "@studio/hash", version: "1.0.0", main: "index.js" }),
+        );
+        project.write("node_modules/@studio/hash/index.js", 'module.exports = require("@studio/hash-linux-x64-gnu");');
+        project.write(
+            "src/index.ts",
+            `import addonPath from "@studio/hash-linux-x64-gnu/hash.linux-x64-gnu.node?url";
+            process.stdout.write(addonPath);`,
+        );
+
+        await invoke(["build", "--cwd", project.root]);
+        expect(readdirSync(join(project.root, "dist/assets")).some((name) => name.endsWith(".node"))).toBe(true);
+
+        project.write("src/index.ts", 'import { xxh64 } from "@studio/hash";\nprocess.stdout.write(String(xxh64));');
+        await expect(invoke(["build", "--cwd", project.root])).rejects.toThrow(
+            /@studio\/hash loads the native addon .*hash\.linux-x64-gnu\.node.*Additional native addons/s,
         );
     });
 

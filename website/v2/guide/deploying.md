@@ -160,8 +160,8 @@ const addon = require(addonPath) as { open(path: string): unknown };
 ```
 
 Choose a prebuild matching the deployment architecture and Node.js ABI. Import the `.node` file itself, not
-the package that loads it: `gtkx build` cannot bundle a package whose entry point requires its `.node` file,
-and a loader that searches its original `node_modules` directory will not find that directory after bundling.
+the package that loads it: `gtkx build` cannot bundle a package whose entry point requires its `.node` file
+and stops with an error naming that package, and a loader that searches its original `node_modules` directory will not find that directory after bundling.
 GTKX's own addon uses the emitted asset path in the same way. For prebuilds published as one package per
 platform, such as `@node-rs/xxhash-linux-x64-gnu`, add that package as a dependency and import its `.node` file.
 
