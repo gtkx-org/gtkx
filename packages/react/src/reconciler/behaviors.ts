@@ -422,5 +422,6 @@ export {
     rowSlot,
     slotAccepting,
     slotNameOf,
+    holdingOneChild,
     holdsOneChild,
 };

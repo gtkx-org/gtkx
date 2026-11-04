@@ -32,6 +32,7 @@ import {
     childSetterSlot,
     contentSetterSlot,
     controlledText,
+    holdingOneChild,
     indexedSlot,
     keyedList,
     list,
@@ -597,7 +598,21 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
         ],
     }),
     GtkWindow: {
-        behaviors: [childSetterSlot()],
+        behaviors: [
+            childSetterSlot(),
+            holdingOneChild(
+                slot<Gtk.Window, Gtk.Widget>("titlebar", Gtk.Widget, {
+                    attach: (window, titlebar) => {
+                        window.setTitlebar(titlebar);
+                    },
+                    detach: (window, _titlebar, info) => {
+                        if (!info.isParentRemoved) {
+                            window.setTitlebar(info.remaining.at(-1) ?? null);
+                        }
+                    },
+                }),
+            ),
+        ],
     },
     GtkMenuButton: {
         behaviors: [

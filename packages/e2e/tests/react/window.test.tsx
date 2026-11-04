@@ -5,7 +5,7 @@ import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwAlertDialog, AdwApplication, AdwApplicationWindow, AdwWindow } from "@gtkx/jsx/adw";
 import { GSimpleAction } from "@gtkx/jsx/gio";
-import { GtkApplication, GtkApplicationWindow, GtkBox, GtkLabel, GtkWindow } from "@gtkx/jsx/gtk";
+import { GtkApplication, GtkApplicationWindow, GtkBox, GtkHeaderBar, GtkLabel, GtkWindow } from "@gtkx/jsx/gtk";
 import { rootElement, useApplication, useParentWindow } from "@gtkx/react";
 import { act, render as baseRender, render, screen, waitFor } from "@gtkx/testing";
 import { Activity, createRef, Suspense, use, useEffect, useRef, useState } from "react";
@@ -390,6 +390,23 @@ describe("render - Window", () => {
             await waitFor(() => {
                 expect(screen.queryByRole(Gtk.AccessibleRole.WINDOW, { name: "Destroy", hidden: true })).toBeNull();
             });
+        });
+
+        it("destroys a window with a titlebar on unmount without showing it again", async () => {
+            const Info = ({ isOpen }: { isOpen: boolean }) => (
+                <GtkWindow title="Main">{isOpen && <GtkWindow title="Info" titlebar={<GtkHeaderBar />} />}</GtkWindow>
+            );
+
+            const { rerender } = await render(<Info isOpen />, { container: rootElement });
+            const info = await screen.findByRole(Gtk.AccessibleRole.WINDOW, { name: "Info" });
+            const maps = vi.fn();
+            info.connect("map", maps);
+            await rerender(<Info isOpen={false} />);
+
+            await waitFor(() => {
+                expect(screen.queryByRole(Gtk.AccessibleRole.WINDOW, { name: "Info", hidden: true })).toBeNull();
+            });
+            expect(maps).not.toHaveBeenCalled();
         });
     });
 

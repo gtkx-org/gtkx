@@ -90,7 +90,7 @@ const replaceAdopted = (node: LazyNode, object: GObject.Object | null): void => 
     }
 
     if (node.propertyHost !== null) {
-        teardownPlacements(node.propertyHost);
+        teardownPlacements(node.propertyHost, false);
         discardAccessible(node.propertyHost);
     }
 
@@ -265,12 +265,18 @@ const attachEntry = (parent: ElementNode, entry: PlacedChild, index: number, sib
     });
 };
 
-const detachInfo = (entry: PlacedChild, index: number, remaining: readonly PlacedChild[]): DetachInfo => ({
+const detachInfo = (
+    entry: PlacedChild,
+    index: number,
+    remaining: readonly PlacedChild[],
+    isParentRemoved: boolean,
+): DetachInfo => ({
     index,
     slot: entry.slot,
     adopted: entry.adopted,
     props: entry.node.props,
     remaining: remaining.filter((other) => other.behavior === entry.behavior).map((other) => other.object),
+    isParentRemoved,
 });
 
 const runDetach = (parent: ElementNode, entry: PlacedChild, info: DetachInfo): void => {
@@ -290,8 +296,9 @@ const detachEntry = (
     entry: PlacedChild,
     index: number,
     remaining: readonly PlacedChild[],
+    isParentRemoved: boolean,
 ): void => {
-    const info = detachInfo(entry, index, remaining);
+    const info = detachInfo(entry, index, remaining, isParentRemoved);
 
     applyPlacement(parent, () => {
         runDetach(parent, entry, info);
@@ -305,7 +312,7 @@ const detachEntry = (
 
 const rebuild = (parent: ElementNode, entries: PlacedChild[]): void => {
     for (const [index, entry] of entries.entries()) {
-        detachEntry(parent, entry, 0, entries.slice(index + 1));
+        detachEntry(parent, entry, 0, entries.slice(index + 1), false);
     }
 
     for (const [index, entry] of entries.entries()) {
@@ -402,18 +409,18 @@ const unplaceChild = (parent: ElementNode, slot: string, node: PlaceableNode): v
     const [entry] = entries.splice(index, 1);
 
     if (entry !== undefined) {
-        detachEntry(parent, entry, index, entries);
+        detachEntry(parent, entry, index, entries, false);
     }
 };
 
-const teardownPlacements = (parent: ElementNode): void => {
+const teardownPlacements = (parent: ElementNode, isParentRemoved: boolean): void => {
     for (const [slot, entries] of parent.placements) {
         const retained: PlacedChild[] = [];
         for (const [index, entry] of entries.entries()) {
             if (parent.externalChildren.has(entry.node)) {
                 retained.push(entry);
             } else {
-                detachEntry(parent, entry, 0, [...retained, ...entries.slice(index + 1)]);
+                detachEntry(parent, entry, 0, [...retained, ...entries.slice(index + 1)], isParentRemoved);
             }
         }
         if (retained.length === 0) {

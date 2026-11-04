@@ -217,7 +217,7 @@ const detachElement = (instance: ElementNode): void => {
         }
     }
 
-    teardownPlacements(instance);
+    teardownPlacements(instance, true);
     instance.children = instance.children.filter((child) => instance.externalChildren.has(child));
     instance.content = instance.content.filter((child) => instance.externalChildren.has(child));
 
