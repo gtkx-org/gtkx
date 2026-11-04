@@ -66,6 +66,11 @@ const relationsSchema = z.strictObject({
     rpm: textList("RPM package relation", "must be an array of RPM package relations").optional(),
 });
 
+const debRelationsSchema = z.strictObject({
+    /** Package relations expressed in Debian dependency syntax. RPM has no equivalent relation. */
+    deb: textList("Debian package relation", "must be an array of Debian package relations").optional(),
+});
+
 const developerSchema = z.strictObject({
     /** Reverse-DNS developer identifier, derived from the application ID when omitted. */
     id: text("must be a reverse-DNS developer id").optional(),
@@ -214,13 +219,13 @@ const nodeRuntimeSchema: z.ZodType<DeployNodeOptions> = z.strictObject({
 });
 
 const scriptsSchema = z.strictObject({
-    /** Shell script run before installing a Debian or RPM package. */
+    /** Path to a shell script, relative to the project root, run before installing a Debian or RPM package. */
     preInstall: text(SCRIPT_ERROR).optional(),
-    /** Shell script run after installing a Debian or RPM package. */
+    /** Path to a shell script, relative to the project root, run after installing a Debian or RPM package. */
     postInstall: text(SCRIPT_ERROR).optional(),
-    /** Shell script run before removing a Debian or RPM package. */
+    /** Path to a shell script, relative to the project root, run before removing a Debian or RPM package. */
     preRemove: text(SCRIPT_ERROR).optional(),
-    /** Shell script run after removing a Debian or RPM package. */
+    /** Path to a shell script, relative to the project root, run after removing a Debian or RPM package. */
     postRemove: text(SCRIPT_ERROR).optional(),
 });
 
@@ -373,10 +378,10 @@ const extraRelationsSchema = z.strictObject({
     conflicts: relationsSchema.optional(),
     /** Packages whose files this package may replace. */
     replaces: relationsSchema.optional(),
-    /** Debian packages made incompatible by installing this package. Uses the `deb` entries. */
-    breaks: relationsSchema.optional(),
-    /** Debian dependencies required before unpacking this package. Uses the `deb` entries. */
-    preDepends: relationsSchema.optional(),
+    /** Debian packages made incompatible by installing this package. Debian packages only. */
+    breaks: debRelationsSchema.optional(),
+    /** Debian dependencies required before unpacking this package. Debian packages only. */
+    preDepends: debRelationsSchema.optional(),
 });
 
 const deploySchema = z.strictObject({

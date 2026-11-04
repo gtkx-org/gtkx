@@ -252,6 +252,21 @@ describe("project configuration", () => {
         await expect(loadConfig(directory.path, { configFile: "../elsewhere.ts" })).rejects.toThrow("inside");
     });
 
+    it.each(["breaks", "preDepends"])("rejects RPM entries for the Debian-only %s relation", async (relation) => {
+        using directory = project();
+        writeFileSync(
+            join(directory.path, "gtkx.config.json"),
+            JSON.stringify({
+                applicationId: "org.gtkx.test",
+                codegen: false,
+                deploy: { relations: { [relation]: { deb: ["other"], rpm: ["other"] } } },
+            }),
+        );
+        await expect(loadConfig(directory.path)).rejects.toThrow(
+            new RegExp(`Unrecognized key: "rpm"[\\s\\S]*deploy\\.relations\\.${relation}`),
+        );
+    });
+
     it("serves the resolved project configuration through Vite", async () => {
         using directory = project();
         writeFileSync(join(directory.path, "gtkx.config.ts"), config());
