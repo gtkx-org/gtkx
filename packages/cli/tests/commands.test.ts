@@ -121,7 +121,7 @@ const writeWidgetApp = (project: ReturnType<typeof createProject>, readyPath: st
 
 const queryWidgets = async (client: Client, query: Record<string, unknown>) => {
     const { text } = await callTool(client, "gtkx_query_widgets", query);
-    return (JSON.parse(text) as { widgets: { id: string; name: string | null }[] }).widgets;
+    return (JSON.parse(text) as { widgets: { id: string; type: string; name: string | null }[] }).widgets;
 };
 
 afterEach(() => {
@@ -2275,6 +2275,49 @@ describe("CLI commands", () => {
                 await openDialog();
                 await callTool(client, "gtkx_press_keys", { keys: "{Escape}" });
                 expect(await queryWidgets(client, { by: "text", value: "Cancelled" })).toHaveLength(1);
+            });
+        });
+    });
+
+    it("names the focusable ancestor when MCP keys target a widget that cannot take focus", async () => {
+        using project = createProject();
+        const readyPath = join(project.root, "ready.txt");
+        writeWidgetApp(
+            project,
+            readyPath,
+            `import { AdwEntryRow, AdwPreferencesGroup, AdwSwitchRow } from "@gtkx/jsx/adw";
+            export const Content = () => (
+                <AdwPreferencesGroup>
+                    <AdwEntryRow title="Greeting" />
+                    <AdwSwitchRow title="Show counter" />
+                </AdwPreferencesGroup>
+            );`,
+        );
+        await withMcpClient(project.root, async (client) => {
+            await withSession("dev", project.root, readyPath, async () => {
+                const [entry] = await queryWidgets(client, {
+                    by: "role",
+                    value: "text_box",
+                    options: { name: "Greeting" },
+                });
+                await callTool(client, "gtkx_type", { widgetId: entry?.id, text: "Hello" });
+                const switches = await queryWidgets(client, {
+                    by: "role",
+                    value: "switch",
+                    options: { name: "Show counter" },
+                });
+                const row = switches.find((widget) => widget.type !== "Switch");
+                const inner = switches.find((widget) => widget.type === "Switch");
+
+                const redirected = await callTool(client, "gtkx_press_keys", { widgetId: inner?.id, keys: "{Space}" });
+                expect(redirected.text).toContain("The widget cannot take focus");
+                expect(redirected.text).toContain(`press the keys on widget ID "${row?.id}"`);
+                expect((await callTool(client, "gtkx_press_keys", { widgetId: row?.id, keys: "{Space}" })).text).toBe(
+                    "Pressed keys",
+                );
+                expect((await callTool(client, "gtkx_press_keys", { widgetId: inner?.id, keys: "{Space}" })).text).toBe(
+                    "Pressed keys",
+                );
             });
         });
     });

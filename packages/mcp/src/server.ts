@@ -187,8 +187,10 @@ const pressKeysShape = {
     ...describeParams(pressKeysParams.shape, {
         widgetId:
             `${WIDGET_ID_DESCRIPTION} A widget that can take focus is focused first, as a user would before ` +
-            "typing. Omit it to press the keys on the focused widget of the active window, or of the first window " +
-            "when none is active.",
+            "typing. One that cannot, such as the switch inside a switch row, leaves the window's focus where it " +
+            "is, and the result names its nearest ancestor that can take focus to press the keys on instead. Omit " +
+            "it to press the keys on the focused widget of the active window, or of the first window when none is " +
+            "active.",
         keys:
             "Keys to press in order. A plain character presses that key. Name other keys in braces: {Enter}, " +
             "{Escape}, {Tab}, {Backspace}, {Delete}, {Space}, {ArrowUp}, {ArrowDown}, {ArrowLeft}, {ArrowRight}, " +
@@ -422,18 +424,42 @@ function buildInspectionTools(appRouter: AppRouter): Tool[] {
 }
 
 type ClickResult = { isHandled?: boolean };
-type PressKeysResult = { unhandledKeys?: string[] };
+type PressKeysResult = { unhandledKeys?: string[]; focusWidgetId?: string; focusableAncestorId?: string };
 
 const UNHANDLED_CLICK =
     "Clicked, but nothing on the widget or its ancestors handled the click. GTK's own handling of clicks, as on a " +
     "color chooser's swatch, needs a real pointer event, which this tool cannot send. If nothing changed, press " +
     "{Space} or {Enter} on the widget with gtkx_press_keys.";
 
-const pressKeysText = (unhandledKeys: string[]): string =>
-    unhandledKeys.length === 0
-        ? "Pressed keys"
-        : `Pressed keys, but nothing on the widget or its ancestors handled ${unhandledKeys.join(", ")}. Check ` +
-          "that the keys went to the intended widget, and use gtkx_type to enter text.";
+const focusRedirectText = ({ focusWidgetId, focusableAncestorId }: PressKeysResult): string | null => {
+    if (focusWidgetId === undefined) {
+        return null;
+    }
+
+    const redirect =
+        `The widget cannot take focus and the window's focus is on widget ID "${focusWidgetId}", so keys that ` +
+        "neither the widget nor its ancestors take, such as {Space} and {Enter}, went to that focused widget instead.";
+
+    return focusableAncestorId === undefined
+        ? `${redirect} No ancestor of the widget can take focus.`
+        : `${redirect} To act on this widget, press the keys on widget ID "${focusableAncestorId}", its nearest ` +
+              "ancestor that can take focus.";
+};
+
+const pressKeysText = (result: PressKeysResult): string => {
+    const unhandledKeys = result.unhandledKeys ?? [];
+    const redirect = focusRedirectText(result);
+
+    if (unhandledKeys.length === 0) {
+        return redirect === null ? "Pressed keys" : `Pressed keys. ${redirect}`;
+    }
+
+    const unhandled =
+        `Pressed keys, but nothing on the widget or its ancestors handled ${unhandledKeys.join(", ")}. Check ` +
+        "that the keys went to the intended widget, and use gtkx_type to enter text.";
+
+    return redirect === null ? unhandled : `${unhandled} ${redirect}`;
+};
 
 function buildInteractionTools(appRouter: AppRouter): Tool[] {
     return [
@@ -499,7 +525,7 @@ function buildInteractionTools(appRouter: AppRouter): Tool[] {
                     appTimeout,
                 );
 
-                return textContent(pressKeysText(result.unhandledKeys ?? []));
+                return textContent(pressKeysText(result));
             },
         }),
         defineTool({

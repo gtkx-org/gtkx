@@ -84,13 +84,23 @@ const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
     "widget.pressKeys": validated(ServerRequestParamsSchemas["widget.pressKeys"], async (ctx, params) => {
         const testing = await ctx.loadTesting();
         const widget = params.widgetId === undefined ? null : requireWidget(ctx.registry, params.widgetId);
+        const misdirected = widget === null ? null : misdirectedKeys(widget);
         const { unhandledKeys } = await interact(ctx, testing, () =>
             widget === null
                 ? testing.userEventReports.keyboard(params.keys)
                 : testing.userEventReports.keyboard(widget, params.keys),
         );
 
-        return { success: true, unhandledKeys };
+        return {
+            success: true,
+            unhandledKeys,
+            ...(misdirected !== null && {
+                focusWidgetId: ctx.registry.getOrCreateId(misdirected.focus),
+                ...(misdirected.ancestor !== null && {
+                    focusableAncestorId: ctx.registry.getOrCreateId(misdirected.ancestor),
+                }),
+            }),
+        };
     }),
     "widget.pointer": targeted(
         ServerRequestParamsSchemas["widget.pointer"],
@@ -179,6 +189,41 @@ const requireWidget = (registry: WidgetRegistry, widgetId: string | undefined): 
     }
 
     return widget;
+};
+
+const canTakeFocus = (widget: Gtk.Widget): boolean => widget.getFocusable() && widget.getCanFocus();
+
+const focusableAncestor = (widget: Gtk.Widget): Gtk.Widget | null => {
+    for (let parent = widget.getParent(); parent !== null; parent = parent.getParent()) {
+        if (parent instanceof Gtk.Window) {
+            return null;
+        }
+
+        if (canTakeFocus(parent)) {
+            return parent;
+        }
+    }
+
+    return null;
+};
+
+/**
+ * Finds the window's focus widget that keys sent to a widget which cannot take focus reach instead, through the
+ * window's bindings such as {Space} and {Enter} activating its focus widget, together with the widget's nearest
+ * ancestor that can take focus. Returns null when the widget can take focus, holds the focus, or its focusable
+ * ancestor already does.
+ */
+const misdirectedKeys = (widget: Gtk.Widget): { focus: Gtk.Widget; ancestor: Gtk.Widget | null } | null => {
+    const root = widget.getRoot();
+    const focus = root instanceof Gtk.Window ? root.getFocus() : null;
+
+    if (canTakeFocus(widget) || focus === null || focus === widget || focus.isAncestor(widget)) {
+        return null;
+    }
+
+    const ancestor = focusableAncestor(widget);
+
+    return ancestor === focus ? null : { focus, ancestor };
 };
 
 const collectedErrors = (cause: unknown): unknown[] => (cause instanceof AggregateError ? cause.errors : [cause]);
