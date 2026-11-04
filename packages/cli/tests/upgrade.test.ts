@@ -8,7 +8,13 @@ import { parse } from "yaml";
 import { createCommand } from "../dist/command.js";
 import { createProject } from "./project.js";
 
-type LoggedCommand = { name: string; cwd: string; args: string[] };
+type LoggedCommand = { name: string; cwd: string; args: string[]; settings: Record<string, string> };
+
+type ProjectOptions = { yarnVersion?: string; isInstallFailing?: boolean };
+
+const SETTINGS_FILES = [".npmrc", ".yarnrc.yml", "pnpm-workspace.yaml"];
+
+const LOCKFILES: Record<string, string> = { npm: "package-lock.json", pnpm: "pnpm-lock.yaml", yarn: "yarn.lock" };
 
 const REGISTRY_DOCUMENT = {
     name: "@gtkx/cli",
@@ -41,7 +47,10 @@ const registryOutput = (name: string, yarnVersion: string): string => {
     return JSON.stringify(REGISTRY_DOCUMENT);
 };
 
-const createTemporaryProject = (files: Record<string, string>, yarnVersion = "4.18.1") => {
+const createTemporaryProject = (
+    files: Record<string, string>,
+    { yarnVersion = "4.18.1", isInstallFailing = false }: ProjectOptions = {},
+) => {
     const directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-cli-upgrade-"));
     const root = join(directory.path, "project");
     const bin = join(directory.path, "node_modules/.bin");
@@ -56,14 +65,21 @@ const createTemporaryProject = (files: Record<string, string>, yarnVersion = "4.
         writeFileSync(
             join(bin, name),
             `#!${process.execPath}
-import { appendFileSync } from "node:fs";
+import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 const args = process.argv.slice(2);
 if (args[0] === "--version") {
     console.log(${JSON.stringify(name === "yarn" ? yarnVersion : "11.0.0")});
     process.exit(0);
 }
-appendFileSync(${JSON.stringify(log)}, JSON.stringify({ name: ${JSON.stringify(name)}, cwd: process.cwd(), args }) + "\\n");
+const settings = Object.fromEntries(
+    ${JSON.stringify(SETTINGS_FILES)}.filter((file) => existsSync(file)).map((file) => [file, readFileSync(file, "utf8")]),
+);
+appendFileSync(${JSON.stringify(log)}, JSON.stringify({ name: ${JSON.stringify(name)}, cwd: process.cwd(), args, settings }) + "\\n");
 if (args.includes("view") || args.includes("info")) console.log(${JSON.stringify(registryOutput(name, yarnVersion))});
+if (${JSON.stringify(isInstallFailing)} && args[0] === "install") {
+    writeFileSync(${JSON.stringify(LOCKFILES[name])}, "partial");
+    process.exit(1);
+}
 `,
             { mode: 0o755 },
         );
@@ -157,6 +173,7 @@ describe("gtkx upgrade", () => {
             packages: ["apps/*"],
             catalog: { "@gtkx/react": "^2.0.0-beta.13", react: "^19.3.0" },
             catalogs: { gtkx: { "@gtkx/cli": "~2.0.0-beta.13" } },
+            minimumReleaseAgeExclude: ["@gtkx/*", "create-gtkx"],
         });
         expect(workspace).toContain("# GTKX packages move together");
         expect(project.read("apps/one/package.json")).toBe(
@@ -186,7 +203,7 @@ describe("gtkx upgrade", () => {
                     "yarn.lock": "",
                     "packages/app/package.json": manifest({ "@gtkx/react": "^2.0.0-beta.11" }),
                 },
-                yarnVersion,
+                { yarnVersion },
             );
 
             await invoke(["upgrade", "2.0.0-beta.13", "--cwd", join(project.root, "packages/app")]);
@@ -249,6 +266,167 @@ describe("gtkx upgrade", () => {
 
         await expect(invoke(["upgrade", "2.0.0-beta.13", "--cwd", project.root])).rejects.toThrow();
     });
+
+    it.each([
+        {
+            packageManager: "npm",
+            files: {
+                "package.json": JSON.stringify({ name: "studio", private: true, workspaces: ["packages/*"] }),
+                "package-lock.json": JSON.stringify({ lockfileVersion: 3, packages: { "": { name: "studio" } } }),
+                ".npmrc": "registry=https://registry.example/\nmin-release-age-exclude[]=lodash",
+            },
+            settingsFile: ".npmrc",
+            exempted: [
+                "registry=https://registry.example/",
+                "min-release-age-exclude[]=lodash",
+                "min-release-age-exclude[]=@gtkx/*",
+                "min-release-age-exclude[]=create-gtkx",
+                "",
+            ].join("\n"),
+        },
+        {
+            packageManager: "pnpm",
+            files: {
+                "package.json": JSON.stringify({ name: "studio", private: true }),
+                "pnpm-workspace.yaml": [
+                    "packages:",
+                    "  - packages/*",
+                    "# Hold back fresh releases",
+                    "minimumReleaseAge: 1440",
+                    "minimumReleaseAgeExclude:",
+                    "  - lodash",
+                    "",
+                ].join("\n"),
+            },
+            settingsFile: "pnpm-workspace.yaml",
+            exempted: [
+                "packages:",
+                "  - packages/*",
+                "# Hold back fresh releases",
+                "minimumReleaseAge: 1440",
+                "minimumReleaseAgeExclude:",
+                "  - lodash",
+                '  - "@gtkx/*"',
+                "  - create-gtkx",
+                "",
+            ].join("\n"),
+        },
+        {
+            packageManager: "yarn",
+            files: {
+                "package.json": JSON.stringify({
+                    name: "studio",
+                    private: true,
+                    workspaces: ["packages/*"],
+                    packageManager: "yarn@4.18.1",
+                }),
+                "yarn.lock": "",
+                ".yarnrc.yml": "nodeLinker: node-modules\nnpmRegistryServer: https://registry.example/\n",
+            },
+            settingsFile: ".yarnrc.yml",
+            exempted: [
+                "nodeLinker: node-modules",
+                "npmRegistryServer: https://registry.example/",
+                "npmPreapprovedPackages:",
+                '  - "@gtkx/*"',
+                "  - create-gtkx",
+                "",
+            ].join("\n"),
+        },
+    ])(
+        "exempts GTKX's packages from the $packageManager release-age gate at the workspace root before installing",
+        async ({ files, settingsFile, exempted }) => {
+            using project = createTemporaryProject({
+                ...files,
+                "packages/app/package.json": manifest({ "@gtkx/react": "^2.0.0-beta.11" }),
+            });
+
+            const output = await invoke(["upgrade", "2.0.0-beta.13", "--cwd", join(project.root, "packages/app")]);
+
+            expect(project.read(settingsFile)).toBe(exempted);
+            expect(existsSync(join(project.root, "packages/app", settingsFile))).toBe(false);
+            const [install] = project.commands().filter(({ args }) => args[0] === "install");
+            expect(install?.settings[settingsFile]).toBe(exempted);
+            expect(output).toContain(
+                `upgrade: ${settingsFile} exempts @gtkx/* and create-gtkx from the release-age gate`,
+            );
+            expect(output).toContain("GTKX packages are on 2.0.0-beta.13");
+        },
+    );
+
+    it("leaves .yarnrc.yml alone when the project's Yarn predates npmPreapprovedPackages", async () => {
+        const settings = "nodeLinker: node-modules\n";
+        using project = createTemporaryProject(
+            {
+                "package.json": JSON.stringify({
+                    ...JSON.parse(manifest({ "@gtkx/react": "^2.0.0-beta.11" })),
+                    packageManager: "yarn@4.9.4",
+                }),
+                "yarn.lock": "",
+                ".yarnrc.yml": settings,
+            },
+            { yarnVersion: "4.9.4" },
+        );
+
+        await invoke(["upgrade", "2.0.0-beta.13", "--cwd", project.root]);
+
+        expect(project.read(".yarnrc.yml")).toBe(settings);
+    });
+
+    it.each([
+        {
+            packageManager: "npm",
+            files: {
+                "package.json": manifest({ "@gtkx/react": "^2.0.0-beta.11" }),
+                "package-lock.json": `${JSON.stringify(
+                    {
+                        lockfileVersion: 3,
+                        packages: {
+                            "": { name: "app" },
+                            "node_modules/@gtkx/react": { version: "2.0.0-beta.11" },
+                        },
+                    },
+                    null,
+                    2,
+                )}\n`,
+            },
+            restored: "package.json, .npmrc, package-lock.json",
+        },
+        {
+            packageManager: "pnpm",
+            files: {
+                "package.json": manifest({ "@gtkx/react": "catalog:" }),
+                "pnpm-lock.yaml": "lockfileVersion: '9.0'\n",
+                "pnpm-workspace.yaml": 'catalog:\n  "@gtkx/react": ^2.0.0-beta.11\nminimumReleaseAge: 1440\n',
+            },
+            restored: "pnpm-workspace.yaml, pnpm-lock.yaml",
+        },
+        {
+            packageManager: "yarn",
+            files: {
+                "package.json": `${JSON.stringify({ ...JSON.parse(manifest({ "@gtkx/react": "^2.0.0-beta.11" })), packageManager: "yarn@4.18.1" }, null, 2)}\n`,
+                "yarn.lock": "# yarn lockfile\n",
+                ".yarnrc.yml": "nodeLinker: node-modules\n",
+            },
+            restored: "package.json, .yarnrc.yml, yarn.lock",
+        },
+    ])(
+        "puts back the $packageManager project's files as they were when the install fails",
+        async ({ files, restored }) => {
+            using project = createTemporaryProject(files, { isInstallFailing: true });
+
+            await expect(invoke(["upgrade", "2.0.0-beta.13", "--cwd", project.root])).rejects.toThrow(
+                `gtkx upgrade restored ${restored} as they were`,
+            );
+
+            for (const [path, content] of Object.entries(files)) {
+                expect(project.read(path)).toBe(content);
+            }
+            for (const path of SETTINGS_FILES.filter((file) => !Object.hasOwn(files, file))) {
+                expect(existsSync(join(project.root, path))).toBe(false);
+            }
+        },
+    );
 
     it("leaves the project untouched when the registry has no such release", async () => {
         const original = manifest({ "@gtkx/react": "^2.0.0-beta.11" });

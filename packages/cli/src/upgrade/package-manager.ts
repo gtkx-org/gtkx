@@ -200,22 +200,31 @@ const releaseNpmLocks = (root: string): void => {
     writeFileSync(file, `${JSON.stringify(lockfile, null, 2)}\n`);
 };
 
+const commandOptions = (installer: Installer) => ({
+    cwd: installer.root,
+    packageManager: installer.packageManager,
+    corepack: false,
+});
+
 /**
- * Installs the workspace with its package manager, then deduplicates where the package manager has a
- * separate step for it; Yarn 1 deduplicates during install.
+ * Installs the workspace with its package manager.
  */
 const installWorkspace = async (installer: Installer): Promise<void> => {
-    const options = { cwd: installer.root, packageManager: installer.packageManager, corepack: false };
-
     if (installer.name === "npm") {
         releaseNpmLocks(installer.root);
     }
 
-    await installDependencies(options);
+    await installDependencies(commandOptions(installer));
+};
 
+/**
+ * Deduplicates the installed workspace where the package manager has a separate step for it; Yarn 1
+ * deduplicates during install.
+ */
+const dedupeWorkspace = async (installer: Installer): Promise<void> => {
     if (!installer.isYarnClassic) {
-        await dedupeDependencies(options);
+        await dedupeDependencies(commandOptions(installer));
     }
 };
 
-export { detectInstaller, installWorkspace, resolveTargetVersion };
+export { dedupeWorkspace, detectInstaller, installWorkspace, type Installer, resolveTargetVersion };

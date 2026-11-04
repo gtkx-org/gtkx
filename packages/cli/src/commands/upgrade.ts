@@ -1,8 +1,16 @@
-import { info } from "@gtkx/utils";
+import { errorMessage, info } from "@gtkx/utils";
 import { defineCommand } from "citty";
+import { writeReleaseAgeExemptions } from "create-gtkx";
 import { relative } from "node:path";
 import { cwdArg, resolveCwd } from "../internal/entry-arg.js";
-import { detectInstaller, installWorkspace, resolveTargetVersion } from "../upgrade/package-manager.js";
+import {
+    dedupeWorkspace,
+    detectInstaller,
+    type Installer,
+    installWorkspace,
+    resolveTargetVersion,
+} from "../upgrade/package-manager.js";
+import { snapshotUpgradeFiles } from "../upgrade/snapshot.js";
 import { excludingPeerRanges, planUpgrade, type UpgradePlan } from "../upgrade/specs.js";
 import { installedGtkxPackages } from "../upgrade/version-skew.js";
 import { findWorkspace, type Workspace } from "../upgrade/workspace.js";
@@ -17,6 +25,36 @@ const report = (root: string, plan: UpgradePlan): void => {
 
     for (const kept of plan.kept) {
         info(`upgrade: ${relative(root, kept.file)} keeps ${kept.name} at ${kept.spec}`);
+    }
+};
+
+/**
+ * Exempts GTKX's packages from the release-age gate in the workspace root's package manager settings, so a
+ * release published within the gate installs. Yarn 1 has no such gate.
+ */
+const exemptFromReleaseAgeGate = (installer: Installer): void => {
+    const changed = installer.isYarnClassic ? [] : writeReleaseAgeExemptions(installer.root, installer.name);
+
+    for (const file of changed) {
+        info(`upgrade: ${relative(installer.root, file)} exempts @gtkx/* and create-gtkx from the release-age gate`);
+    }
+};
+
+/**
+ * Installs the upgraded workspace, putting back the files the upgrade changed when the install fails.
+ */
+const installOrRestore = async (installer: Installer, restore: () => string[]): Promise<void> => {
+    try {
+        await installWorkspace(installer);
+    } catch (error) {
+        const restored = restore().map((file) => relative(installer.root, file));
+
+        throw new Error(
+            restored.length === 0
+                ? errorMessage(error)
+                : `${errorMessage(error)} gtkx upgrade restored ${restored.join(", ")} as they were.`,
+            { cause: error },
+        );
     }
 };
 
@@ -68,9 +106,12 @@ const upgrade = defineCommand({
         const plan = planUpgrade(workspace, version);
         info(`upgrade: moving GTKX packages to ${version}`);
         report(workspace.root, plan);
+        const snapshot = snapshotUpgradeFiles(workspace);
         plan.write();
+        exemptFromReleaseAgeGate(installer);
         info(`upgrade: installing with ${installer.name}`);
-        await installWorkspace(installer);
+        await installOrRestore(installer, snapshot.restore);
+        await dedupeWorkspace(installer);
         assertInstalledVersion(workspace, version);
         info(`upgrade: GTKX packages are on ${version}`);
     },

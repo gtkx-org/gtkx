@@ -86,15 +86,31 @@ const npmExemptions = (source: string): string[] =>
 const npmExemptionLines = (names: string[]): string =>
     names.map((name) => `${NPM_RELEASE_AGE_EXCLUDE}=${name}`).join("\n");
 
-const writeNpmExemptions = (root: string): void => {
+const writeNpmExemptions = (root: string): string[] => {
     const path = join(root, NPM_CONFIG_FILE);
     const source = existsSync(path) ? readFileSync(path, "utf8") : "";
     const missing = missingExemptions(npmExemptions(source));
 
-    if (missing.length > 0) {
-        const separator = source === "" || source.endsWith("\n") ? "" : "\n";
-        replaceFile(path, `${source}${separator}${npmExemptionLines(missing)}\n`);
+    if (missing.length === 0) {
+        return [];
     }
+
+    const separator = source === "" || source.endsWith("\n") ? "" : "\n";
+    replaceFile(path, `${source}${separator}${npmExemptionLines(missing)}\n`);
+
+    return [path];
+};
+
+const writeYamlExemptions = (path: string, key: string): string[] => {
+    const settings = readSettings(path, parse);
+
+    if (missingExemptions(isRecord(settings) ? settings[key] : undefined).length === 0) {
+        return [];
+    }
+
+    updateYamlFile(path, (document) => addReleaseAgeExemptions(document, key));
+
+    return [path];
 };
 
 const reportedYarnRelease = (root: string): string | null => {
@@ -207,6 +223,23 @@ const writePackageManagerSettings = (root: string, packageManager: PackageManage
 
     writeNpmAllowance(root);
 };
+
+const RELEASE_AGE_EXEMPTION_WRITERS: Record<PackageManager, (root: string) => string[]> = {
+    pnpm: (root) => writeYamlExemptions(join(root, PNPM_WORKSPACE_FILE), PNPM_RELEASE_AGE_EXCLUDE),
+    yarn: (root) =>
+        readsPreapprovedPackages(root)
+            ? writeYamlExemptions(join(root, YARN_CONFIG_FILE), YARN_PREAPPROVED_PACKAGES)
+            : [],
+    npm: writeNpmExemptions,
+};
+
+/**
+ * Exempts GTKX's own packages from the release-age gate of the package manager that installs the project or
+ * workspace at `root`, adding only the entries its `pnpm-workspace.yaml`, `.yarnrc.yml` (Yarn 4.10 or newer)
+ * or `.npmrc` lacks and keeping everything else in it, and returns the files it changed.
+ */
+const writeReleaseAgeExemptions = (root: string, packageManager: PackageManager): string[] =>
+    RELEASE_AGE_EXEMPTION_WRITERS[packageManager](root);
 
 const PACKAGE_MANAGER_CONFIG_FILES: Record<PackageManager, string[]> = {
     pnpm: [PNPM_WORKSPACE_FILE],
@@ -473,4 +506,5 @@ export {
     packageManagerPin,
     type Workspace,
     writePackageManagerSettings,
+    writeReleaseAgeExemptions,
 };
