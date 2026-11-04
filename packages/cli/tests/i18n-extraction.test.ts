@@ -332,6 +332,19 @@ function Local(t, Trans) {
         await expect(extract(project.root)).rejects.toThrow();
     });
 
+    it("reports every translation it cannot extract in one run", async () => {
+        using project = createProject();
+        project.write("po/LINGUAS", "");
+        project.write("src/sidebar.tsx", `${T_IMPORT}\nt(first);\nt(second);`);
+        project.write("src/window.tsx", `${T_IMPORT}\nt(third);`);
+
+        const failure = extract(project.root);
+
+        await expect(failure).rejects.toThrow("src/sidebar.tsx:2:3: Translation keys must be string literals");
+        await expect(failure).rejects.toThrow("src/sidebar.tsx:3:3: Translation keys must be string literals");
+        await expect(failure).rejects.toThrow("src/window.tsx:2:3: Translation keys must be string literals");
+    });
+
     it("keeps written-out plural forms that read the same in English for languages that need two", async () => {
         using project = createProject();
         project.write("po/LINGUAS", "it\n");

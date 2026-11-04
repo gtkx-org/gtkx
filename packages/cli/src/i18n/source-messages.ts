@@ -174,12 +174,32 @@ const errorSourcePoint = (error: unknown): SourcePoint | null => {
     return "location" in error && isSourcePoint(error.location) ? error.location : null;
 };
 
-const atSourceNode = <T>(root: string, path: string, node: LocatableNode, operation: () => T): T => {
+const collectAtSourceNode = (
+    errors: SourceExtractionError[],
+    root: string,
+    path: string,
+    node: LocatableNode,
+    operation: () => void,
+): void => {
     try {
-        return operation();
+        operation();
     } catch (error) {
-        throw sourceExtractionError(root, path, locatablePoint(node), error);
+        errors.push(sourceExtractionError(root, path, locatablePoint(node), error));
     }
+};
+
+const throwCollectedErrors = (errors: SourceExtractionError[]): void => {
+    const [first, ...rest] = errors;
+
+    if (first === undefined) {
+        return;
+    }
+
+    if (rest.length === 0) {
+        throw first;
+    }
+
+    throw new SourceExtractionError(errors.map((error) => error.message).join("\n"), { cause: first });
 };
 
 const atExtractedLocation = <T>(root: string, locations: SourceLocation[], operation: () => T): T => {
@@ -1304,10 +1324,11 @@ const translationReferences = (root: string, path: string, source: string): Tran
 
     const expressions: TranslationExpression[] = [];
     const emptyContainers: SourceSpan[] = [];
+    const errors: SourceExtractionError[] = [];
 
     traverse(parsed, {
         CallExpression(callPath) {
-            atSourceNode(root, path, callPath.node, () => {
+            collectAtSourceNode(errors, root, path, callPath.node, () => {
                 if (registerTranslationCall(callPath, references)) {
                     expressions.push(callPath.node);
                 }
@@ -1321,19 +1342,19 @@ const translationReferences = (root: string, path: string, source: string): Tran
             }
         },
         JSXOpeningElement(elementPath) {
-            atSourceNode(root, path, elementPath.node, () => {
+            collectAtSourceNode(errors, root, path, elementPath.node, () => {
                 if (registerTranslationElement(elementPath, references)) {
                     expressions.push(elementPath.node);
                 }
             });
         },
         OptionalCallExpression(callPath) {
-            atSourceNode(root, path, callPath.node, () => {
+            collectAtSourceNode(errors, root, path, callPath.node, () => {
                 assertSupportedOptionalCall(callPath);
             });
         },
         TaggedTemplateExpression(tagPath) {
-            atSourceNode(root, path, tagPath.node, () => {
+            collectAtSourceNode(errors, root, path, tagPath.node, () => {
                 assertUnsupportedTranslationTag(tagPath);
             });
         },
@@ -1342,7 +1363,7 @@ const translationReferences = (root: string, path: string, source: string): Tran
     for (const expression of expressions) {
         const location = types.isCallExpression(expression) ? (expression.arguments[0] ?? expression) : expression;
 
-        atSourceNode(root, path, location, () => {
+        collectAtSourceNode(errors, root, path, location, () => {
             if (types.isCallExpression(expression)) {
                 assertSupportedTranslationCall(expression);
             } else {
@@ -1351,6 +1372,7 @@ const translationReferences = (root: string, path: string, source: string): Tran
         });
     }
 
+    throwCollectedErrors(errors);
     registerTranslatorComments(parsed, source, expressions, emptyContainers, references);
 
     return references;
@@ -1787,9 +1809,21 @@ const findSourceMessages = async (root: string, sourceFiles: string[]): Promise<
     const sources = new Map(sourceFiles.map((file) => [file, readFileSync(file, "utf8")]));
     const references: Map<string, TranslationReferences> = new Map();
 
+    const errors: SourceExtractionError[] = [];
+
     for (const [file, source] of sources) {
-        references.set(file, translationReferences(root, file, source));
+        try {
+            references.set(file, translationReferences(root, file, source));
+        } catch (error) {
+            if (!(error instanceof SourceExtractionError)) {
+                throw error;
+            }
+
+            errors.push(error);
+        }
     }
+
+    throwCollectedErrors(errors);
 
     let extracted: ExtractedKeysMap | undefined;
     const { logger, reports } = quietLogger();
