@@ -2,6 +2,7 @@ import { runCommand } from "citty";
 import { existsSync, mkdirSync, mkdtempDisposableSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { stripVTControlCharacters } from "node:util";
 import { minVersion, satisfies, subset, validRange } from "semver";
 import { stdout, stderr } from "test-console";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -31,9 +32,15 @@ const create = async (target: string, args: string[] = []) => {
             });
         });
     });
-    return { status: process.exitCode, output: output.join("") };
+    return { status: process.exitCode, output: stripVTControlCharacters(output.join("")) };
 };
 const read = (root: string, path: string) => readFileSync(join(root, path), "utf8");
+const npmReleaseAgeExcludes = (root: string) =>
+    read(root, ".npmrc")
+        .split("\n")
+        .filter((line) => line.startsWith("min-release-age-exclude[]="))
+        .map((line) => line.slice("min-release-age-exclude[]=".length));
+const yarnUserAgent = (version: string) => `yarn/${version} npm/? node/v26.7.0 linux x64`;
 const packageManifest = (name: string) =>
     JSON.parse(read(join(import.meta.dirname, "../.."), `${name}/package.json`)) as {
         peerDependencies?: Record<string, string>;
@@ -63,6 +70,7 @@ describe("scaffold command", () => {
     });
 
     it("configures Yarn to install into node_modules without committing its install state", async () => {
+        vi.stubEnv("npm_config_user_agent", yarnUserAgent("4.18.1"));
         using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-yarn-"));
         const target = join(directory.path, "example");
         expect((await create(target, ["--package-manager", "yarn"])).status).toBe(0);
@@ -75,6 +83,7 @@ describe("scaffold command", () => {
         { packageManager: "npm", commands: ["npm run dev", "npm test", "npm run typecheck"] },
         { packageManager: "yarn", commands: ["yarn dev", "yarn test", "yarn typecheck"] },
     ])("lets coding agents run the $packageManager scripts of the project", async ({ packageManager, commands }) => {
+        vi.stubEnv("npm_config_user_agent", yarnUserAgent("4.18.1"));
         using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-agents-"));
         const target = join(directory.path, "example");
         expect((await create(target, ["--package-manager", packageManager])).status).toBe(0);
@@ -96,6 +105,38 @@ describe("scaffold command", () => {
         expect((JSON.parse(read(target, "package.json")) as { packageManager?: string }).packageManager).toBe(pin);
     });
 
+    it.each([
+        {
+            packageManager: "yarn",
+            excludes: (root: string) =>
+                (parse(read(root, ".yarnrc.yml")) as { npmPreapprovedPackages?: string[] }).npmPreapprovedPackages,
+        },
+        {
+            packageManager: "pnpm",
+            excludes: (root: string) =>
+                (parse(read(root, "pnpm-workspace.yaml")) as { minimumReleaseAgeExclude?: string[] })
+                    .minimumReleaseAgeExclude,
+        },
+        { packageManager: "npm", excludes: npmReleaseAgeExcludes },
+    ])(
+        "exempts GTKX's own packages from the $packageManager release-age gate",
+        async ({ packageManager, excludes }) => {
+            vi.stubEnv("npm_config_user_agent", yarnUserAgent("4.18.1"));
+            using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-release-age-"));
+            const target = join(directory.path, "example");
+            expect((await create(target, ["--package-manager", packageManager])).status).toBe(0);
+            expect(excludes(target)).toEqual(["@gtkx/*", "create-gtkx"]);
+        },
+    );
+
+    it.each(["4.9.4", "3.8.7"])("leaves out the preapproval Yarn %s rejects as an unknown setting", async (version) => {
+        vi.stubEnv("npm_config_user_agent", yarnUserAgent(version));
+        using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-old-yarn-"));
+        const target = join(directory.path, "example");
+        expect((await create(target, ["--package-manager", "yarn"])).status).toBe(0);
+        expect(parse(read(target, ".yarnrc.yml"))).toEqual({ nodeLinker: "node-modules" });
+    });
+
     it("protects an occupied target and preserves unrelated files when overwriting", async () => {
         using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-existing-"));
         const target = join(directory.path, "example");
@@ -113,17 +154,22 @@ describe("scaffold command", () => {
         {
             packageManager: "yarn",
             file: ".yarnrc.yml",
-            config: "# Company registry\nnpmRegistryServer: https://registry.example.com\nnodeLinker: pnp\n",
-            settings: { npmRegistryServer: "https://registry.example.com", nodeLinker: "node-modules" },
+            config: "# Company registry\nnpmRegistryServer: https://registry.example.com\nnodeLinker: pnp\nnpmPreapprovedPackages:\n  - lodash\n",
+            settings: {
+                npmRegistryServer: "https://registry.example.com",
+                nodeLinker: "node-modules",
+                npmPreapprovedPackages: ["lodash", "@gtkx/*", "create-gtkx"],
+            },
         },
         {
             packageManager: "pnpm",
             file: "pnpm-workspace.yaml",
-            config: "# Shared settings\npackages:\n  - tools/*\nallowBuilds:\n  sharp: true\nminimumReleaseAge: 1440\n",
+            config: "# Shared settings\npackages:\n  - tools/*\nallowBuilds:\n  sharp: true\nminimumReleaseAge: 1440\nminimumReleaseAgeExclude:\n  - '@gtkx/*'\n",
             settings: {
                 packages: ["tools/*"],
                 allowBuilds: { sharp: true, "@swc/core": true, esbuild: true },
                 minimumReleaseAge: 1440,
+                minimumReleaseAgeExclude: ["@gtkx/*", "create-gtkx"],
             },
         },
     ])(
@@ -150,6 +196,21 @@ describe("scaffold command", () => {
             expect(output).not.toContain(file);
         },
     );
+
+    it("keeps the settings of an existing .npmrc when overwriting", async () => {
+        using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-npmrc-"));
+        const target = join(directory.path, "example");
+        const config =
+            "; Company registry\nregistry=https://registry.example.com/\nmin-release-age=3\nmin-release-age-exclude[]=create-gtkx";
+        mkdirSync(target);
+        writeFileSync(join(target, ".npmrc"), config);
+        writeFileSync(join(target, "package.json"), '{"name":"keep"}');
+        const { status, output } = await create(target, ["--overwrite", "--package-manager", "npm"]);
+        expect(status).toBe(0);
+        expect(read(target, ".npmrc").startsWith(`${config}\n`)).toBe(true);
+        expect(npmReleaseAgeExcludes(target)).toEqual(["create-gtkx", "@gtkx/*"]);
+        expect(output).not.toContain(".npmrc");
+    });
 
     it.each([
         {
@@ -184,6 +245,9 @@ describe("scaffold command", () => {
             });
             expect(output).toContain(`${workspaceFile} (under allowBuilds):`);
             expect(output).not.toMatch(/allowBuilds:\s*$/m);
+            expect(output).toContain(
+                `${workspaceFile}:\n│  minimumReleaseAgeExclude:\n│    - "@gtkx/*"\n│    - create-gtkx`,
+            );
             for (const entry of printed) {
                 expect(output).toContain(entry);
             }
@@ -214,6 +278,10 @@ describe("scaffold command", () => {
         expect(output).toContain(join(directory.path, "package.json"));
         expect(output).toContain('"@swc/core": true');
         expect(output).not.toContain('"esbuild": true');
+        expect(existsSync(join(target, ".npmrc"))).toBe(false);
+        expect(output).toContain(
+            `${join(directory.path, ".npmrc")}:\n│  min-release-age-exclude[]=@gtkx/*\n│  min-release-age-exclude[]=create-gtkx`,
+        );
         expect(JSON.parse(read(directory.path, ".mcp.json"))).toEqual({
             mcpServers: {
                 gtkx: { command: "npm", args: ["exec", "--no", "--workspace", "apps/example", "--", "gtkx", "mcp"] },
@@ -236,20 +304,23 @@ describe("scaffold command", () => {
             userAgent: "yarn/4.18.1 npm/? node/v26.7.0 linux x64",
             pin: {},
             server: { command: "yarn", args: ["workspace", "example", "exec", "gtkx", "mcp"] },
+            hasPreapproval: true,
         },
         {
             userAgent: "npm/11.20.0 node/v26.7.0 linux x64",
             pin: { packageManager: "yarn@4.18.1" },
             server: { command: "yarn", args: ["workspace", "example", "exec", "gtkx", "mcp"] },
+            hasPreapproval: true,
         },
         {
             userAgent: "yarn/1.22.22 npm/? node/v26.7.0 linux x64",
             pin: {},
             server: { command: "yarn", args: ["--silent", "--cwd", "apps/example", "gtkx", "mcp"] },
+            hasPreapproval: false,
         },
     ])(
         "leaves the linker and build scripts of an app in a Yarn workspace to the workspace root ($userAgent)",
-        async ({ userAgent, pin, server }) => {
+        async ({ userAgent, pin, server, hasPreapproval }) => {
             vi.stubEnv("npm_config_user_agent", userAgent);
             using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-yarn-workspace-"));
             const root = JSON.stringify({
@@ -275,9 +346,38 @@ describe("scaffold command", () => {
             expect(output).toContain(join(directory.path, "package.json"));
             expect(output).toContain('"@swc/core"');
             expect(output).not.toContain('"esbuild"');
+            expect(output.includes('npmPreapprovedPackages:\n│    - "@gtkx/*"\n│    - create-gtkx')).toBe(
+                hasPreapproval,
+            );
             expect(JSON.parse(read(directory.path, ".mcp.json"))).toEqual({ mcpServers: { gtkx: server } });
         },
     );
+
+    it("names the workspace root settings when the install of a workspace app fails", async () => {
+        vi.stubEnv("npm_config_user_agent", yarnUserAgent("4.18.1"));
+        using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-yarn-gate-"));
+        const bin = join(directory.path, "node_modules/.bin");
+        mkdirSync(bin, { recursive: true });
+        writeFileSync(
+            join(bin, "corepack"),
+            `#!${process.execPath}\nprocess.exit(process.argv[2] === "--version" ? 0 : 1);\n`,
+            { mode: 0o755 },
+        );
+        writeFileSync(
+            join(directory.path, "package.json"),
+            JSON.stringify({ name: "kitchen", workspaces: ["apps/*"] }),
+        );
+        writeFileSync(join(directory.path, ".yarnrc.yml"), "nodeLinker: node-modules\n");
+        const { status, output } = await create(join(directory.path, "apps/example"), [
+            "--no-skip-install",
+            "--package-manager",
+            "yarn",
+        ]);
+        expect(status).toBe(1);
+        expect(output).toContain(
+            `${join(directory.path, ".yarnrc.yml")}:\n│  npmPreapprovedPackages:\n│    - "@gtkx/*"\n│    - create-gtkx`,
+        );
+    });
 
     it("adds each workspace app's MCP server to the root .mcp.json next to the servers already there", async () => {
         using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-mcp-workspace-"));

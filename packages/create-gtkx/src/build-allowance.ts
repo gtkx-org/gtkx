@@ -1,6 +1,8 @@
+import { tryResolveExecutable } from "@gtkx/utils";
+import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, matchesGlob, posix, relative, sep } from "node:path";
-import { type Document, isMap, parse, parseDocument, stringify } from "yaml";
+import { type Document, isMap, isSeq, parse, parseDocument, stringify } from "yaml";
 import type { PackageManager } from "./package-managers.js";
 import { updateManifest } from "./manifest.js";
 
@@ -18,23 +20,131 @@ type Workspace = {
 };
 
 const BUILT_DEPENDENCIES = ["@swc/core", "esbuild"];
+const RELEASE_AGE_EXEMPT_PACKAGES = ["@gtkx/*", "create-gtkx"];
 const YARN_NODE_LINKER = "node-modules";
 const PNPM_WORKSPACE_FILE = "pnpm-workspace.yaml";
 const YARN_CONFIG_FILE = ".yarnrc.yml";
+const NPM_CONFIG_FILE = ".npmrc";
 const PACKAGE_JSON_FILE = "package.json";
+const PNPM_RELEASE_AGE_EXCLUDE = "minimumReleaseAgeExclude";
+const YARN_PREAPPROVED_PACKAGES = "npmPreapprovedPackages";
+const NPM_RELEASE_AGE_EXCLUDE = "min-release-age-exclude[]";
+const NPM_RELEASE_AGE_EXCLUDE_PATTERN = /^\s*min-release-age-exclude(?:\[\])?\s*=\s*(["']?)(.*?)\1\s*$/;
 const NEGATION_PREFIX = "!";
 const YARN_USER_AGENT_PATTERN = /^yarn\/((\d+)\.\d+\.\d+\S*)/;
 const FIRST_PINNED_YARN_MAJOR = 2;
 const YARN_PIN_PATTERN = /^yarn@(\d+)\./;
+const YARN_PIN_PREFIX = "yarn@";
+const YARN_RELEASE_PATTERN = /^(\d+)\.(\d+)\./;
+const FIRST_PREAPPROVING_YARN = { major: 4, minor: 10 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === "object" && value !== null && !Array.isArray(value);
 
+const readSettings = (path: string, read: (source: string) => unknown): unknown => {
+    try {
+        return read(readFileSync(path, "utf8"));
+    } catch {
+        return undefined;
+    }
+};
+
+const replaceFile = (path: string, contents: string): void => {
+    rmSync(path, { force: true });
+    writeFileSync(path, contents);
+};
+
 const updateYamlFile = (path: string, update: (document: Document) => void): void => {
     const document = parseDocument(existsSync(path) ? readFileSync(path, "utf8") : "");
     update(document);
-    rmSync(path, { force: true });
-    writeFileSync(path, document.toString());
+    replaceFile(path, document.toString());
+};
+
+const missingExemptions = (exempted: unknown): string[] =>
+    RELEASE_AGE_EXEMPT_PACKAGES.filter((name) => !Array.isArray(exempted) || !exempted.includes(name));
+
+const addReleaseAgeExemptions = (document: Document, key: string): void => {
+    const current = document.get(key);
+    const missing = missingExemptions(isSeq(current) ? current.toJSON() : []);
+
+    if (!isSeq(current)) {
+        document.set(key, document.createNode([]));
+    }
+
+    for (const name of missing) {
+        document.addIn([key], name);
+    }
+};
+
+const npmExemptions = (source: string): string[] =>
+    source.split(/\r?\n/).flatMap((line) => {
+        const value = NPM_RELEASE_AGE_EXCLUDE_PATTERN.exec(line)?.[2];
+
+        return value === undefined ? [] : [value];
+    });
+
+const npmExemptionLines = (names: string[]): string =>
+    names.map((name) => `${NPM_RELEASE_AGE_EXCLUDE}=${name}`).join("\n");
+
+const writeNpmExemptions = (root: string): void => {
+    const path = join(root, NPM_CONFIG_FILE);
+    const source = existsSync(path) ? readFileSync(path, "utf8") : "";
+    const missing = missingExemptions(npmExemptions(source));
+
+    if (missing.length > 0) {
+        const separator = source === "" || source.endsWith("\n") ? "" : "\n";
+        replaceFile(path, `${source}${separator}${npmExemptionLines(missing)}\n`);
+    }
+};
+
+const reportedYarnRelease = (root: string): string | null => {
+    const corepack = tryResolveExecutable("corepack");
+    const command = corepack ?? tryResolveExecutable("yarn");
+
+    if (command === undefined) {
+        return null;
+    }
+
+    try {
+        return execFileSync(command, corepack === undefined ? ["--version"] : ["yarn", "--version"], {
+            cwd: root,
+            encoding: "utf8",
+            stdio: ["ignore", "pipe", "ignore"],
+        }).trim();
+    } catch {
+        return null;
+    }
+};
+
+/**
+ * The Yarn release that installs the project at `root`: the release its `packageManager` field pins, otherwise
+ * the Yarn running the scaffold, otherwise the one `yarn --version` reports there through Corepack, as the
+ * install runs it.
+ */
+const yarnRelease = (root: string): string | null => {
+    const manifest = readSettings(join(root, PACKAGE_JSON_FILE), JSON.parse);
+    const pin = isRecord(manifest) && typeof manifest.packageManager === "string" ? manifest.packageManager : "";
+
+    if (pin.startsWith(YARN_PIN_PREFIX)) {
+        return pin.slice(YARN_PIN_PREFIX.length);
+    }
+
+    return YARN_USER_AGENT_PATTERN.exec(process.env.npm_config_user_agent ?? "")?.[1] ?? reportedYarnRelease(root);
+};
+
+/**
+ * Whether the Yarn installing the project at `root` reads `npmPreapprovedPackages`. Yarn 4.10 added it next to
+ * its release-age gate, and older releases refuse to run with a setting they do not know.
+ */
+const readsPreapprovedPackages = (root: string): boolean => {
+    const matched = YARN_RELEASE_PATTERN.exec(yarnRelease(root) ?? "");
+    const major = Number(matched?.[1]);
+    const minor = Number(matched?.[2]);
+
+    return (
+        major > FIRST_PREAPPROVING_YARN.major ||
+        (major === FIRST_PREAPPROVING_YARN.major && minor >= FIRST_PREAPPROVING_YARN.minor)
+    );
 };
 
 const writePnpmAllowance = (root: string): void => {
@@ -50,6 +160,8 @@ const writePnpmAllowance = (root: string): void => {
         for (const name of BUILT_DEPENDENCIES) {
             document.setIn(["allowBuilds", name], true);
         }
+
+        addReleaseAgeExemptions(document, PNPM_RELEASE_AGE_EXCLUDE);
     });
 };
 
@@ -57,11 +169,18 @@ const writeNpmAllowance = (root: string): void => {
     updateManifest(root, (manifest) => {
         manifest.allowScripts = Object.fromEntries(BUILT_DEPENDENCIES.map((name) => [name, true]));
     });
+    writeNpmExemptions(root);
 };
 
 const writeYarnAllowance = (root: string): void => {
+    const isPreapproving = readsPreapprovedPackages(root);
+
     updateYamlFile(join(root, YARN_CONFIG_FILE), (document) => {
         document.set("nodeLinker", YARN_NODE_LINKER);
+
+        if (isPreapproving) {
+            addReleaseAgeExemptions(document, YARN_PREAPPROVED_PACKAGES);
+        }
     });
     updateManifest(root, (manifest) => {
         manifest.dependenciesMeta = Object.fromEntries(BUILT_DEPENDENCIES.map((name) => [name, { built: true }]));
@@ -69,10 +188,11 @@ const writeYarnAllowance = (root: string): void => {
 };
 
 /**
- * Configures the package manager to run the build scripts of the scaffold's native dependencies, adding
- * to an existing `pnpm-workspace.yaml` or `.yarnrc.yml` instead of replacing it.
+ * Configures the package manager to run the build scripts of the scaffold's native dependencies and to exempt
+ * GTKX's own packages from its release-age gate, so a project created on the day of a GTKX release installs it.
+ * Adds to an existing `pnpm-workspace.yaml`, `.yarnrc.yml` or `.npmrc` instead of replacing it.
  */
-const writeBuildAllowance = (root: string, packageManager: PackageManager): void => {
+const writePackageManagerSettings = (root: string, packageManager: PackageManager): void => {
     if (packageManager === "pnpm") {
         writePnpmAllowance(root);
 
@@ -91,7 +211,7 @@ const writeBuildAllowance = (root: string, packageManager: PackageManager): void
 const PACKAGE_MANAGER_CONFIG_FILES: Record<PackageManager, string[]> = {
     pnpm: [PNPM_WORKSPACE_FILE],
     yarn: [YARN_CONFIG_FILE],
-    npm: [],
+    npm: [NPM_CONFIG_FILE],
 };
 
 /**
@@ -179,6 +299,19 @@ const missingBuilds = (allowances: Record<string, unknown>): string[] =>
 const settingsToAdd = (settings: (MissingSetting | null)[]): MissingSetting[] =>
     settings.filter((setting) => setting !== null);
 
+const missingYamlExemptions = (file: string, settings: unknown, key: string): MissingSetting | null => {
+    const listed = isRecord(settings) ? settings[key] : undefined;
+    const missing = missingExemptions(listed);
+
+    if (missing.length === 0) {
+        return null;
+    }
+
+    return Array.isArray(listed)
+        ? { file, section: key, entries: stringify(missing).trimEnd().replace(/^/gm, "  ") }
+        : { file, section: null, entries: stringify({ [key]: missing }).trimEnd() };
+};
+
 const pnpmWorkspaceAt = (file: string, project: string): Workspace | null => {
     const settings: unknown = parse(readFileSync(file, "utf8"));
 
@@ -198,7 +331,10 @@ const pnpmWorkspaceAt = (file: string, project: string): Workspace | null => {
         packageManager: "pnpm",
         root: dirname(file),
         member: project,
-        missingSettings: settingsToAdd([missing.length > 0 ? setting : null]),
+        missingSettings: settingsToAdd([
+            missing.length > 0 ? setting : null,
+            missingYamlExemptions(file, settings, PNPM_RELEASE_AGE_EXCLUDE),
+        ]),
     };
 };
 
@@ -211,12 +347,17 @@ const npmWorkspaceAt = (file: string, project: string): Workspace | null => {
 
     const missing = missingBuilds(recordField(manifest, "allowScripts"));
     const entries = `"allowScripts": ${JSON.stringify(Object.fromEntries(missing.map((name) => [name, true])), null, 4)}`;
+    const configFile = join(dirname(file), NPM_CONFIG_FILE);
+    const exemptions = missingExemptions(npmExemptions(existsSync(configFile) ? readFileSync(configFile, "utf8") : ""));
 
     return {
         packageManager: "npm",
         root: dirname(file),
         member: project,
-        missingSettings: settingsToAdd([missing.length > 0 ? { file, section: null, entries } : null]),
+        missingSettings: settingsToAdd([
+            missing.length > 0 ? { file, section: null, entries } : null,
+            exemptions.length > 0 ? { file: configFile, section: null, entries: npmExemptionLines(exemptions) } : null,
+        ]),
     };
 };
 
@@ -246,6 +387,9 @@ const yarnWorkspaceAt = (file: string, project: string): Workspace | null => {
     const missing = missingBuilds(recordField(manifest, "dependenciesMeta"));
     const dependenciesMeta = Object.fromEntries(missing.map((name) => [name, { built: true }]));
     const configFile = join(dirname(file), YARN_CONFIG_FILE);
+    const exemptions = readsPreapprovedPackages(dirname(file))
+        ? missingYamlExemptions(configFile, readSettings(configFile, parse), YARN_PREAPPROVED_PACKAGES)
+        : null;
 
     return {
         packageManager: "yarn",
@@ -258,6 +402,7 @@ const yarnWorkspaceAt = (file: string, project: string): Workspace | null => {
             missing.length > 0
                 ? { file, section: null, entries: `"dependenciesMeta": ${JSON.stringify(dependenciesMeta, null, 4)}` }
                 : null,
+            exemptions,
         ]),
     };
 };
@@ -273,8 +418,8 @@ const MANIFEST_WORKSPACES: Record<
 /**
  * The pnpm, npm or Yarn workspace above `root` that includes it, with the settings its root configuration
  * still lacks for the app, or null when `root` is not part of an enclosing workspace. pnpm reads
- * `allowBuilds`, npm `allowScripts`, and Yarn `nodeLinker` and `dependenciesMeta` only for the whole
- * workspace, from its root.
+ * `allowBuilds` and `minimumReleaseAgeExclude`, npm `allowScripts` and `min-release-age-exclude`, and Yarn
+ * `nodeLinker`, `npmPreapprovedPackages` and `dependenciesMeta` only for the whole workspace, from its root.
  */
 const enclosingWorkspace = (root: string, packageManager: PackageManager): Workspace | null => {
     if (packageManager === "pnpm") {
@@ -294,14 +439,6 @@ const enclosingWorkspace = (root: string, packageManager: PackageManager): Works
     }
 
     return null;
-};
-
-const readSettings = (path: string, read: (source: string) => unknown): unknown => {
-    try {
-        return read(readFileSync(path, "utf8"));
-    } catch {
-        return undefined;
-    }
 };
 
 /**
@@ -335,5 +472,5 @@ export {
     isClassicYarn,
     packageManagerPin,
     type Workspace,
-    writeBuildAllowance,
+    writePackageManagerSettings,
 };
