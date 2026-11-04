@@ -1431,7 +1431,36 @@ describe("CLI commands", () => {
             "gtkx.config.ts",
             config.replace('"codegen":false', '"codegen":false,"applicationIcon":"icon.svg"'),
         );
+        project.write(
+            "data/org.gtkx.example.gschema.xml",
+            `<?xml version="1.0" encoding="UTF-8"?>
+            <schemalist>
+                <schema id="org.gtkx.example" path="/org/gtkx/example/">
+                    <key name="font" type="s"><default>'Monospace 12'</default></key>
+                </schema>
+            </schemalist>`,
+        );
+        project.write("src/index.ts", 'export { default } from "../data/org.gtkx.example.gschema.xml";');
         await invoke(["deploy", "--cwd", project.root, "--print-manifests", "--target", "appimage,deb,flatpak,rpm"]);
+        const build = join(project.root, "build", process.arch);
+        const packaged = (packager: string) =>
+            (
+                parse(readFileSync(join(build, "targets", packager, "nfpm.yaml"), "utf8")) as {
+                    contents: { dst: string }[];
+                }
+            ).contents.map((content) => content.dst);
+        for (const packager of ["deb", "rpm"]) {
+            expect(packaged(packager)).toContain("/usr/share/glib-2.0/schemas/org.gtkx.example.gschema.xml");
+            expect(packaged(packager).filter((path) => path.endsWith("gschemas.compiled"))).toEqual([]);
+        }
+        const flatpak = parse(readFileSync(join(build, "targets/flatpak/org.gtkx.example.yml"), "utf8")) as {
+            modules: { "post-install": string[] }[];
+        };
+        expect(flatpak.modules.at(-1)?.["post-install"]).toEqual([
+            "glib-compile-schemas ${FLATPAK_DEST}/share/glib-2.0/schemas",
+        ]);
+        expect(existsSync(join(build, "stage/lib/cli-example/gschemas.compiled"))).toBe(false);
+        expect(existsSync(join(build, "overlay/appimage/lib/cli-example/gschemas.compiled"))).toBe(true);
         const files = readdirSync(join(project.root, "build"), { recursive: true }).map(String);
         expect(files).toEqual(
             expect.arrayContaining([
@@ -1519,6 +1548,7 @@ describe("CLI commands", () => {
             true,
         );
         expect(JSON.stringify(module)).not.toContain("pnpm.cjs");
+        expect(JSON.stringify(module)).not.toContain("gschemas.compiled");
         const localeConfig = module?.sources.find((source) => source["dest-filename"] === "gtkx-i18n.json");
         expect(JSON.parse(String(localeConfig?.contents))).toEqual({ localeDir: "../../share/locale" });
         expect(

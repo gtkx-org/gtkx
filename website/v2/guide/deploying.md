@@ -147,6 +147,16 @@ baseline in `deploy.minimumLibraryVersions`; raise it when your app uses newer A
 it does not infer the minimum API version from your code. Publish the same requirements alongside an
 AppImage, and check prebuilt Flatpaks against the selected GNOME runtime.
 
+### Settings schemas
+
+Debian, RPM and Flatpak packages install the application's GSettings schemas into `share/glib-2.0/schemas`
+under their prefix and leave compiling them to the system: the distribution's GLib package compiles that
+directory when a package is installed, and the Flatpak manifest runs `glib-compile-schemas` after installing
+the app. Vendor `.gschema.override` files that a distribution or administrator places there therefore change
+the application's defaults, as they do for other GNOME applications. The AppImage and `node dist/bundle.mjs`
+read the `gschemas.compiled` that `gtkx build` writes beside the bundle, so vendor overrides do not apply to
+them.
+
 ### Additional native addons
 
 Import a prebuilt `.node` file with `?url` so GTKX includes it in the package:

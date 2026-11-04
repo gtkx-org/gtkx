@@ -79,8 +79,6 @@ const runtimeInstallCommands = (settings: DeploySettings, nodeExtensionPath: str
         installCommand(`dist/${BUNDLE_FILENAME}`, `${lib}/${BUNDLE_FILENAME}`, "m644"),
         installCommand(`dist/${BINDING_FILENAME}`, `${lib}/${BINDING_FILENAME}`, "m755"),
         "test ! -f dist/gtkx.gresource || " + installCommand("dist/gtkx.gresource", `${lib}/gtkx.gresource`, "m644"),
-        "test ! -f dist/gschemas.compiled || " +
-            installCommand("dist/gschemas.compiled", `${lib}/gschemas.compiled`, "m644"),
         `test ! -d dist/assets || cp -a dist/assets ${lib}/assets`,
         `test ! -d dist/${WORKER_DIR} || cp -a dist/${WORKER_DIR} ${lib}/${WORKER_DIR}`,
         `test ! -d dist/${FONTS_DIR} || cp -a dist/${FONTS_DIR} ${lib}/${FONTS_DIR}`,

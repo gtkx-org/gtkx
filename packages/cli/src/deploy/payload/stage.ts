@@ -6,6 +6,7 @@ import { LOCALE_DIRNAME } from "../../i18n/catalogs.js";
 import { I18N_RUNTIME_CONFIG_FILENAME, renderI18nRuntimeConfig } from "../../i18n/runtime-config.js";
 import { BUILD_METADATA_FILENAMES } from "../../internal/build-manifest.js";
 import { listFilesRecursive } from "../../internal/list-files.js";
+import { COMPILED_SCHEMAS_FILENAME } from "../../settings/compile.js";
 import { BUNDLE_FILENAME } from "../../vite-plugins/esm-extension.js";
 import { renderCopyright } from "../freedesktop/copyright.js";
 import { renderDbusService } from "../freedesktop/dbus-service.js";
@@ -67,8 +68,20 @@ const stageRuntimeFiles = (settings: DeploySettings, root: string): StagedFile[]
     }
 
     return listFilesRecursive(dist)
-        .filter((file) => !isIconAsset(file.rel) && !BUILD_METADATA_FILENAMES.has(file.rel) && !isLocaleAsset(file.rel))
+        .filter(
+            (file) =>
+                !isIconAsset(file.rel) &&
+                !BUILD_METADATA_FILENAMES.has(file.rel) &&
+                !isLocaleAsset(file.rel) &&
+                file.rel !== COMPILED_SCHEMAS_FILENAME,
+        )
         .map((file) => copyInto(root, join(libDirFor(settings), file.rel), file.absPath));
+};
+
+const stageCompiledSchemas = (settings: DeploySettings, root: string): StagedFile[] => {
+    const compiled = join(settings.paths.dist, COMPILED_SCHEMAS_FILENAME);
+
+    return existsSync(compiled) ? [copyInto(root, join(libDirFor(settings), COMPILED_SCHEMAS_FILENAME), compiled)] : [];
 };
 
 const stageAddon = (settings: DeploySettings, root: string, addon: string | null): StagedFile[] =>
@@ -252,6 +265,7 @@ const stageOverlay = (
 
     return [
         ...activation,
+        ...(target === "appimage" ? stageCompiledSchemas(settings, root) : []),
         ...(licenseFile === null ? [] : [copyInto(root, licenseDestination(settings), licenseFile)]),
         writeInto(root, noticesDestination(settings), renderNotices(settings, notices)),
     ];
