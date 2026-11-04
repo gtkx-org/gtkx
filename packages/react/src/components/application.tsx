@@ -9,6 +9,7 @@ import {
 import { ApplicationContext } from "../hooks/use-application.js";
 import { useMergedRef } from "../hooks/use-merged-refs.js";
 import { reconciler } from "../reconciler/host-config.js";
+import { programName } from "../utils/program-name.js";
 import { createPortaledComponent } from "./portaled.js";
 
 type ApplicationComponentProps = {
@@ -44,10 +45,7 @@ const holdForStartup = (lifecycle: ApplicationLifecycle): void => {
     };
 };
 
-const commandLine = (applicationId: string | null): string[] => [
-    applicationId?.split(".").at(-1) ?? "gtkx",
-    ...process.argv.slice(2),
-];
+const commandLine = (applicationId: string | null): string[] => [programName(applicationId), ...process.argv.slice(2)];
 
 const isRemoteInstance = (application: Gtk.Application): boolean =>
     application.getIsRegistered() && application.getIsRemote();

@@ -24,6 +24,7 @@
         "packages/cli/src/{cli,vitest-plugin}.ts",
         "packages/config/src/vite-plugin.ts",
         "packages/react/src/config.ts",
+        "packages/react/src/program-name.ts",
         "packages/storybook/src/{config,explorer}.ts",
         "packages/**/tests/**/*.{test,spec}.{ts,tsx}",
         "**/gtkx.config.ts",

@@ -49,6 +49,12 @@
             "import": "./dist/config.js",
             "require": null,
             "default": "./dist/config.js"
+        },
+        "./program-name": {
+            "types": "./dist/program-name.d.ts",
+            "import": "./dist/program-name.js",
+            "require": null,
+            "default": "./dist/program-name.js"
         }
     },
     "sideEffects": [
@@ -58,6 +64,8 @@
         "./dist/internal.js",
         "./src/bootstrap.ts",
         "./dist/bootstrap.js",
+        "./src/program-name.ts",
+        "./dist/program-name.js",
         "./src/element-behaviors.ts",
         "./dist/element-behaviors.js"
     ],

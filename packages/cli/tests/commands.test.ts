@@ -271,6 +271,29 @@ describe("CLI commands", () => {
         expect(JSON.parse(result.stdout)).toEqual({ matched: true, matches: ["hello", "hello"], replaced: "[hello]" });
     });
 
+    it("names the program after the application when a library parses options while the app loads", async () => {
+        using project = createProject({ codegen: true, libraries: ["Gio-2.0", "Gst-1.0"] });
+        project.write(
+            "src/player.ts",
+            `import * as Gst from "@gtkx/gi/gst";
+            export const isInitialized = Gst.isInitialized();`,
+        );
+        project.write(
+            "src/index.ts",
+            `import { isInitialized } from "./player.js";
+            import { Application } from "@gtkx/gi/gio";
+            if (!isInitialized) throw new Error("GStreamer is not initialized");
+            new Application({ applicationId: "org.gtkx.example" }).run(["example", ...process.argv.slice(2)]);`,
+        );
+
+        await invoke(["build", "--cwd", project.root]);
+        const result = await promisify(execFile)(process.execPath, [join(project.root, "dist/bundle.mjs"), "--help"], {
+            timeout: 30_000,
+        });
+
+        expect(result.stdout).toMatch(/^Usage:\n {2}example \[/);
+    });
+
     it("warns once about a class a production bundle dropped, unless the app references it", async () => {
         const buildEnumRow = async (itemCheck: string) => {
             const project = createProject();

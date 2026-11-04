@@ -31,6 +31,7 @@ type I18nPluginOptions = {
 
 type I18nState = {
     entryPath: string;
+    entryBootstrap: string;
     i18nRoot: string;
     outDir: string;
     project: CatalogProject | null;
@@ -40,6 +41,8 @@ type I18nState = {
 };
 
 const BOOTSTRAP_SPECIFIER = "@gtkx/i18n/bootstrap";
+const PROGRAM_NAME_SPECIFIER = "@gtkx/react/program-name";
+const PROGRAM_NAME_PACKAGES = ["@gtkx/react", "@gtkx/gi"];
 const LOCALE_URL_PLACEHOLDER = "__GTKX_BUNDLE_LOCALE_CONFIG__";
 const LOCALE_MODULE_PATHS = new Set(["dist/locale.js", "src/locale.ts"]);
 const LOCALE_URL_PATTERN = /new URL\((["'])gtkx-i18n\.json\1,\s*import\.meta\.url\)/;
@@ -77,6 +80,15 @@ const rebaseLocaleUrl = (state: I18nState, code: string, fileName: string, modul
     return code.replace(placeholder, () => JSON.stringify(localeUrlForChunk(fileName)));
 };
 
+const hasPackage = (projectRequire: NodeJS.Require, name: string): boolean => {
+    try {
+        projectRequire.resolve(`${name}/package.json`);
+        return true;
+    } catch {
+        return false;
+    }
+};
+
 const applyResolvedConfig = async (
     state: I18nState,
     config: ResolvedConfig,
@@ -86,11 +98,18 @@ const applyResolvedConfig = async (
     state.outDir = resolve(config.root, config.build.outDir);
     const application = await loadConfig.resolve(config.root);
     state.project = resolveCatalogProject(config.root, application.translationDomain);
+    const projectRequire = createRequire(resolve(config.root, "package.json"));
 
     if (state.project !== null) {
-        const projectRequire = createRequire(resolve(config.root, "package.json"));
         state.i18nRoot = dirname(projectRequire.resolve("@gtkx/i18n/package.json"));
     }
+
+    state.entryBootstrap = [
+        ...(PROGRAM_NAME_PACKAGES.every((name) => hasPackage(projectRequire, name)) ? [PROGRAM_NAME_SPECIFIER] : []),
+        ...(state.project === null ? [] : [BOOTSTRAP_SPECIFIER]),
+    ]
+        .map((specifier) => `import ${JSON.stringify(specifier)};\n`)
+        .join("");
 };
 
 const buildCatalogs = (state: I18nState): void => {
@@ -199,6 +218,7 @@ const gtkxI18n = ({
 }: I18nPluginOptions): Plugin => {
     const state: I18nState = {
         entryPath,
+        entryBootstrap: "",
         extraction: Promise.resolve(),
         hotUpdateTimestamp: null,
         i18nRoot: "",
@@ -233,11 +253,11 @@ const gtkxI18n = ({
                 return markLocaleUrl(code);
             }
 
-            if (state.project === null || resolve(stripQuery(id)) !== state.entryPath) {
+            if (state.entryBootstrap.length === 0 || resolve(stripQuery(id)) !== state.entryPath) {
                 return;
             }
 
-            return `import ${JSON.stringify(BOOTSTRAP_SPECIFIER)};\n${code}`;
+            return state.entryBootstrap + code;
         },
 
         renderChunk(code, chunk) {
