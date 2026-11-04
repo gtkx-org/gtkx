@@ -412,3 +412,22 @@ describe("useSetting (variant types: invalid input)", () => {
         await expect(renderSetting(untyped, "missing")).rejects.toThrow();
     });
 });
+
+describe("GSettings", () => {
+    it("rejects a schema that is not installed", async () => {
+        await expect(renderSettings("com.gtkx.test.notInstalled")).rejects.toThrow();
+    });
+
+    it("rejects a relocatable schema without a path", () => {
+        expect(() => new Gio.Settings({ schemaId: profile.id })).toThrow();
+    });
+
+    it("throws for keys and children the installed schema does not declare", async () => {
+        const settings = await renderSettings(SCHEMA_ID);
+
+        expect(() => settings.getBoolean("missing")).toThrow();
+        expect(() => settings.reset("missing")).toThrow();
+        expect(() => settings.getChild("missing")).toThrow();
+        expect(() => settings.settingsSchema?.getKey("missing")).toThrow();
+    });
+});

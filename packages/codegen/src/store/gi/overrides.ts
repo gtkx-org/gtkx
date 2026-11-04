@@ -18,6 +18,7 @@ const OVERRIDES: Record<string, Override[]> = {
             exports: ["Application"],
             needsBootstrap: true,
         },
+        { module: "settings", exports: ["Settings"], needsBootstrap: true },
     ],
     glib: [
         { module: "error", exports: ["Error", "type ErrorConstructor"], needsBootstrap: true },
