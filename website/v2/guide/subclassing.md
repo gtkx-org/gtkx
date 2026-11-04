@@ -203,6 +203,8 @@ registerClass(PaddedLabel, { typeName: "ExamplePaddedLabel" });
 
 Output parameters become return values, grouped into a tuple when there are several. Follow the [native operation's contract](https://docs.gtk.org/gtk4/vfunc.Widget.measure.html) when changing those values. Invoke the ordinary public method when using an instance; direct vfunc calls are for chaining from an override.
 
+Return whole numbers where the slot takes an integer, as `vfuncMeasure` does. GJS truncates a fractional result silently; GTKX rejects it with an error that names the vfunc, such as `TypeError: PaddedLabel.vfuncMeasure returned a value its native caller cannot take: Value 99.5 is not an integer, int32 expects a whole number`. Round sizes computed from fractional values, such as Pango units divided by `Pango.SCALE`, with `Math.round`, `Math.floor` or `Math.ceil` before returning them. See [Passing integers](/v2/guide/native-values#passing-integers).
+
 ### Slots with no generated member
 
 Use [`callParent`](/v2/reference/@gtkx/runtime/functions/callParent) when the virtual function has no generated member, including `vfuncDispose`. Pass the class whose override is running, the vfunc name, the instance, and its arguments. The same helper can chain interface slots that TypeScript cannot resolve through `super`.
@@ -258,6 +260,10 @@ Express native object relationships through JSX props and supported child slots.
 `vfuncConstructed` runs after native construct properties are set, while `super()` is still executing. JavaScript field initializers and the constructor body have not run yet. Use declared fields or native properties for state this override needs; private fields are unavailable at that point.
 
 Objects created by native code do not run the JavaScript constructor or its field initializers. Initialize state needed by those instances in `vfuncConstructed`, chaining to the parent. Keep ordinary component setup in React.
+
+## GtkBuilder and `.ui` files
+
+GTKX applications define their interface in JSX, where signal handlers are props; port a `.ui` file or a `Gtk.Template` to JSX rather than loading it. `Gtk.Builder` can still create instances of registered classes from XML, initialized in `vfuncConstructed` as above, but `<signal>` handlers in a `.ui` file are not supported. GTKX has no built-in JavaScript `Gtk.BuilderScope` like GJS's, and a scope implemented with `registerClass` cannot return a closure from `vfuncCreateClosure`, so such a file fails to load.
 
 ## Next
 

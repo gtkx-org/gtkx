@@ -1,6 +1,6 @@
 ---
 title: "Native Values"
-description: "Pass GTypes and GValues to native methods and read generated return values."
+description: "Pass GTypes, GValues and integers to native methods and read generated return values."
 ---
 
 # Native Values
@@ -54,6 +54,19 @@ For nullable value parameters, `null` means no value object. To represent a type
 Returned byte sequences use `Uint8Array`; byte inputs accept `Uint8Array` or `number[]`. Returned `GObject.Value` objects are unpacked to their payloads, typed as `unknown`.
 
 Promisified operations omit a redundant leading success boolean from multi-value finish results; boolean-only results remain booleans. Inout records and boxed values are updated in place without being repeated in the return value. See [Async Operations](/v2/guide/async-operations) for promise usage.
+
+## Passing integers
+
+Integer parameters, properties and vfunc results take whole numbers within their native type's range. GTKX throws a `RangeError` for any other number, such as `Value 10922.4 is not an integer, int32 expects a whole number`, where GJS truncates a fractional number silently. Ported GJS code that computes sizes or positions with fractional arithmetic must round each value before passing it, choosing the rounding the code needs:
+
+```ts
+import * as Pango from "@gtkx/gi/pango";
+
+const shrinkFont = (description: Pango.FontDescription, size: number) =>
+    description.setSize(Math.round(size * 0.8));
+```
+
+The same applies to sizes a [vfunc returns](/v2/guide/subclassing#subclass-virtual-methods) and to fields of records such as `Gdk.Rectangle`. Use `Math.trunc` to keep GJS's behavior exactly.
 
 ## Reading embedded records
 
