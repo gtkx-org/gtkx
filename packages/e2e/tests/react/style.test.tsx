@@ -110,6 +110,25 @@ describe("style prop", () => {
         expect(getColor(styled)).toEqual(GREEN);
     });
 
+    it("sets a custom property that descendants read through var()", async () => {
+        const ref = createRef<Gtk.Label>();
+        const laneRef = createRef<Gtk.Box>();
+        const Lane = ({ color }: { color: string }): ReactNode => (
+            <GtkBox ref={laneRef} style={{ "--lane-color": color, "&:hover": { "--lane-color": BLUE_CSS } }}>
+                <GtkLabel ref={ref} style={{ color: "var(--lane-color)" }}>
+                    lane
+                </GtkLabel>
+            </GtkBox>
+        );
+
+        const { rerender } = await render(<Lane color={RED_CSS} />);
+        expect(getColor(ref.current)).toEqual(RED);
+        await rerender(<Lane color={GREEN_CSS} />);
+        expect(getColor(ref.current)).toEqual(GREEN);
+        mounted(laneRef.current).setStateFlags(Gtk.StateFlags.PRELIGHT, false);
+        expect(getColor(ref.current)).toEqual(BLUE);
+    });
+
     it("preserves valid selector text matching the named-color escape prefix", async () => {
         const className = "gtkx-named-color__theme_fg_color";
         const { styled } = await renderPair({ [`&.${className}`]: { color: GREEN_CSS } }, [className]);

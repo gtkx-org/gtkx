@@ -251,12 +251,15 @@ type StyleProperties = Pick<
     | "transitionTimingFunction"
 >;
 
+/** Custom properties, such as `"--accent-bg-color"`, which the widget and its descendants read through `var()`. */
+type CustomProperties = Partial<Record<`--${string}`, string | number>>;
+
 /**
  * Style declarations for one widget. A key starting with `&` nests a block under a selector derived from
  * it, such as `"&:hover"` or `"& label"`. GTK4 CSS covers paint and typography only, so layout properties
  * such as `display`, `width` and `gap` are deliberately absent; use the widget's own layout props instead.
  */
-type Style = StyleProperties & Partial<Record<`&${string}`, StyleProperties>>;
+type Style = StyleProperties & CustomProperties & Partial<Record<`&${string}`, StyleProperties & CustomProperties>>;
 
 /** Objects a widget takes through a method call rather than a property. */
 type GtkWidgetProps = {

@@ -34,6 +34,16 @@ import { GtkButton } from "@gtkx/jsx/gtk";
 />;
 ```
 
+Keys starting with `--` set CSS custom properties, which the widget and its descendants read through `var()`. Overriding Adwaita's variables recolors a subtree:
+
+```tsx
+import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
+
+<GtkBox style={{ "--accent-bg-color": "#26a269", "--accent-color": "#1b8553" }}>
+    <GtkButton label="Save" cssClasses={["suggested-action"]} />
+</GtkBox>;
+```
+
 A declaration in `style` takes precedence over the same declaration supplied through `cssClasses`. GTKX adds a generated class to apply the style; leave that class under GTKX's control.
 
 Use `style` for values that change with an individual widget. GTKX batches these updates through a shared style provider, but frequent changes still make GTK recalculate styles. Prefer native animated properties or CSS transitions when they express the effect. See [Animations](/v2/guide/animations) for animated styles.
