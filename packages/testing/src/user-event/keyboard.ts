@@ -684,6 +684,16 @@ const keyLabel = (keyval: number): string => {
 };
 
 /**
+ * Focuses a focusable target whose window has its focus elsewhere, as a user does before typing, so the window's
+ * own bindings such as {Space} and {Enter} activating the focus widget act on the target.
+ */
+const focusKeyTarget = (widget: Gtk.Widget): void => {
+    if (focusWithin(widget) === null && widget.getFocusable() && widget.getCanFocus()) {
+        widget.grabFocus();
+    }
+};
+
+/**
  * Sends the key sequence and returns the keys, as `keyboard` input would name them, whose presses nothing on the
  * widget, its focused descendant or their ancestors handled.
  */
@@ -691,6 +701,7 @@ const keyboard = async (state: UserEventState, widget: Gtk.Widget, input: string
     let unhandled: number[] = [];
 
     await wrapEvent(widget, async () => {
+        focusKeyTarget(widget);
         unhandled = await applyKeyActions(widget, state, parseKeyboardInput(input));
     });
 

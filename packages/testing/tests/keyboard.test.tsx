@@ -22,6 +22,7 @@ import {
     GtkShortcutController,
     GtkStack,
     GtkStackPage,
+    GtkSwitch,
     GtkTextView,
     GtkTreeView,
 } from "@gtkx/jsx/gtk";
@@ -356,6 +357,27 @@ describe("keyboard focus movement", () => {
         await userEvent.keyboard(apply, input);
         expect(clicks).toBe(1);
     });
+
+    it.each(["{Enter}", "{Space}"])(
+        "activates the target rather than the window's focus widget when %s is pressed",
+        async (input) => {
+            const activated: string[] = [];
+
+            await render(
+                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                    <GtkEntry name="greeting" onActivate={() => activated.push("greeting")} />
+                    <GtkSwitch name="toggle" />
+                </GtkBox>,
+            );
+
+            await userEvent.click(screen.getByName("greeting"));
+            const toggle = screen.getByName("toggle");
+            await userEvent.keyboard(toggle, input);
+            expect(toggle).toHaveFocus();
+            expect(toggle instanceof Gtk.Switch && toggle.getActive()).toBe(true);
+            expect(activated).toEqual([]);
+        },
+    );
 
     it("keeps a text view's Tab and Return as text instead of moving focus", async () => {
         await render(

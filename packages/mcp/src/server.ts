@@ -186,8 +186,9 @@ const pressKeysShape = {
     ...applicationIdShape,
     ...describeParams(pressKeysParams.shape, {
         widgetId:
-            `${WIDGET_ID_DESCRIPTION} Omit it to press the keys on the focused widget of the active window, ` +
-            "or of the first window when none is active.",
+            `${WIDGET_ID_DESCRIPTION} A widget that can take focus is focused first, as a user would before ` +
+            "typing. Omit it to press the keys on the focused widget of the active window, or of the first window " +
+            "when none is active.",
         keys:
             "Keys to press in order. A plain character presses that key. Name other keys in braces: {Enter}, " +
             "{Escape}, {Tab}, {Backspace}, {Delete}, {Space}, {ArrowUp}, {ArrowDown}, {ArrowLeft}, {ArrowRight}, " +
