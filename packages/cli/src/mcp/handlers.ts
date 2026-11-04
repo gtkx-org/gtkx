@@ -1,4 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
+import type { PointerInput } from "@gtkx/testing";
 import {
     invalidRequestError,
     methodNotFoundError,
@@ -89,6 +90,14 @@ const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
 
         return { success: true };
     }),
+    "widget.pointer": targeted(
+        ServerRequestParamsSchemas["widget.pointer"],
+        async (ctx, { testing, widget }, params) => {
+            await interact(ctx, testing, () => testing.userEvent.pointer(widget, params.input as PointerInput));
+
+            return { success: true };
+        },
+    ),
     "widget.fireEvent": targeted(
         ServerRequestParamsSchemas["widget.fireEvent"],
         async (ctx, { testing, widget }, params) => {

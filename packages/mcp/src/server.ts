@@ -23,6 +23,7 @@ import {
     DEFAULT_SUBTREE_DEPTH,
     fireEventParams,
     MAX_SUBTREE_WIDGETS,
+    pointerParams,
     pressKeysParams,
     queryParams,
     screenshotParams,
@@ -192,6 +193,17 @@ const pressKeysShape = {
             "{Escape}, {Tab}, {Backspace}, {Delete}, {Space}, {ArrowUp}, {ArrowDown}, {ArrowLeft}, {ArrowRight}, " +
             "{Home}, {End}, {PageUp}, {PageDown} and {F1} to {F12}. Hold a modifier with {Control>}, {Shift>}, " +
             "{Alt>} or {Meta>} and release it with {/Control} and so on, so Ctrl+S is `{Control>}s{/Control}`.",
+    }),
+};
+
+const pointerShape = {
+    ...applicationIdShape,
+    ...describeParams(pointerParams.shape, {
+        widgetId: WIDGET_ID_DESCRIPTION,
+        input:
+            "One pointer token: [MouseLeft], [MouseRight] or [MouseMiddle] clicks that button, a trailing > " +
+            "presses and holds it ([MouseRight>]) and a leading / releases it ([/MouseRight]). click, down and " +
+            "up are the left button.",
     }),
 };
 
@@ -458,6 +470,25 @@ function buildInteractionTools(appRouter: AppRouter): Tool[] {
                 await appRouter.sendToApp(applicationId, "widget.pressKeys", params, appTimeout);
 
                 return textContent("Pressed keys");
+            },
+        }),
+        defineTool({
+            name: "gtkx_pointer",
+            title: "Press pointer button",
+            kind: "action",
+            description:
+                "Press a mouse button on a widget through userEvent.pointer, as `gtkx_press_keys` presses keys " +
+                "through userEvent.keyboard. `[MouseRight]` right-clicks: it reaches the click gestures on the " +
+                "widget and its ancestors that listen for the secondary button, such as a `GtkGestureClick` with " +
+                "`button={Gdk.BUTTON_SECONDARY}` that opens a context menu. `[MouseMiddle]` does the same for the " +
+                "middle button, and `[MouseLeft]` clicks like `gtkx_click`. Hold a button with `[MouseRight>]` " +
+                "and release it with `[/MouseRight]`. A widget behind an open dialog is refused with an error " +
+                "naming the dialog.",
+            inputSchema: pointerShape,
+            handler: async ({ applicationId, appTimeout, ...params }) => {
+                await appRouter.sendToApp(applicationId, "widget.pointer", params, appTimeout);
+
+                return textContent(`Applied ${params.input}`);
             },
         }),
         defineTool({

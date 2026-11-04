@@ -91,6 +91,9 @@ describe("MCP server", () => {
             ]);
             expect(await textResult(session.client, "gtkx_get_widget_tree")).toBe("Application > Button");
             expect(await textResult(session.client, "gtkx_click", { widgetId: "button" })).toBe("Clicked");
+            expect(
+                await textResult(session.client, "gtkx_pointer", { widgetId: "button", input: "[MouseRight]" }),
+            ).toBe("Applied [MouseRight]");
             await connection.send("app.unregister");
             expect(JSON.parse(await textResult(session.client, "gtkx_list_apps"))).toEqual([]);
         } finally {

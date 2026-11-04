@@ -2147,6 +2147,59 @@ describe("CLI commands", () => {
         });
     });
 
+    it("presses right and middle pointer buttons through MCP on the gestures listening for them", async () => {
+        using project = createProject();
+        const readyPath = join(project.root, "ready.txt");
+        writeWidgetApp(
+            project,
+            readyPath,
+            `import * as Gdk from "@gtkx/gi/gdk";
+            import { GtkBox, GtkGestureClick, GtkLabel } from "@gtkx/jsx/gtk";
+            import { useState } from "react";
+            export const Content = () => {
+                const [events, setEvents] = useState<string[]>([]);
+                const record = (event: string) => setEvents((previous) => [...previous, event]);
+                return (
+                    <GtkBox
+                        controllers={
+                            <>
+                                <GtkGestureClick
+                                    button={Gdk.BUTTON_SECONDARY}
+                                    onPressed={() => record("menu")}
+                                    onReleased={() => record("menu released")}
+                                />
+                                <GtkGestureClick button={Gdk.BUTTON_MIDDLE} onPressed={() => record("paste")} />
+                            </>
+                        }
+                    >
+                        <GtkLabel label="Habit" />
+                        <GtkLabel label={events.join(", ") || "Idle"} />
+                    </GtkBox>
+                );
+            };`,
+        );
+        await withMcpClient(project.root, async (client) => {
+            await withSession("dev", project.root, readyPath, async () => {
+                const [habit] = await queryWidgets(client, { by: "text", value: "Habit" });
+                expect(await callTool(client, "gtkx_pointer", { widgetId: habit?.id, input: "[MouseRight>]" })).toEqual(
+                    { isError: false, text: "Applied [MouseRight>]" },
+                );
+                expect(await queryWidgets(client, { by: "text", value: "menu" })).toHaveLength(1);
+                await callTool(client, "gtkx_pointer", { widgetId: habit?.id, input: "[/MouseRight]" });
+                await callTool(client, "gtkx_pointer", { widgetId: habit?.id, input: "[MouseMiddle]" });
+                expect(await queryWidgets(client, { by: "text", value: "menu, menu released, paste" })).toHaveLength(1);
+
+                const unknown = await callTool(client, "gtkx_pointer", { widgetId: habit?.id, input: "[MouseBack]" });
+                expect(unknown.isError).toBe(true);
+                expect(unknown.text).toContain('Unknown pointer input "[MouseBack]"');
+                expect(
+                    (await callTool(client, "gtkx_pointer", { widgetId: habit?.id, input: "[MouseRight]", x: 4 }))
+                        .isError,
+                ).toBe(true);
+            });
+        });
+    });
+
     it("reloads imported configuration after atomic saves and missing directories are created", async () => {
         using project = createProject({ codegen: true, libraries: ["Gio-2.0"] });
         const readyPath = join(project.root, "ready.txt");

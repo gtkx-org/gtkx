@@ -96,6 +96,11 @@ const pressKeysParams: z.ZodObject<{ widgetId: z.ZodOptional<z.ZodString>; keys:
     keys: z.string(),
 });
 
+const pointerParams: z.ZodObject<{ widgetId: z.ZodString; input: z.ZodString }> = z.object({
+    widgetId: z.string(),
+    input: z.string(),
+});
+
 const fireEventParams: z.ZodObject<{
     widgetId: z.ZodString;
     signal: z.ZodString;
@@ -116,6 +121,7 @@ const ServerRequestParamsSchemas: {
     "widget.click": typeof widgetIdParams;
     "widget.type": typeof typeParams;
     "widget.pressKeys": typeof pressKeysParams;
+    "widget.pointer": typeof pointerParams;
     "widget.fireEvent": typeof fireEventParams;
     "widget.screenshot": typeof screenshotParams;
 } = {
@@ -126,6 +132,7 @@ const ServerRequestParamsSchemas: {
     "widget.click": widgetIdParams,
     "widget.type": typeParams,
     "widget.pressKeys": pressKeysParams,
+    "widget.pointer": pointerParams,
     "widget.fireEvent": fireEventParams,
     "widget.screenshot": screenshotParams,
 };
@@ -141,6 +148,7 @@ export {
     queryParams,
     typeParams,
     pressKeysParams,
+    pointerParams,
     fireEventParams,
     screenshotParams,
     ServerRequestParamsSchemas,
