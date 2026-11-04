@@ -8,6 +8,7 @@ import { isAbsolute, join, relative, resolve } from "node:path";
 import type { CatalogProject } from "./catalogs.js";
 import { runCliTool } from "../internal/run-cli-tool.js";
 import { sourceLanguage } from "../internal/source-imports.js";
+import { prepareStorybookFiles } from "../storybook/config.js";
 import { replaceCatalogTemplate } from "./catalog-template.js";
 import { metadataTemplateFiles } from "./metadata-templates.js";
 import { clearI18nResources, i18nToolkitConfig } from "./types.js";
@@ -2089,10 +2090,39 @@ const extractCatalogTemplate = ({
     replaceCatalogTemplate(template, output);
 };
 
-const extractSourceCatalogTo = async (project: CatalogProject, paths: string[], output: string): Promise<void> => {
+const projectStoryFiles = async (root: string): Promise<ReadonlySet<string>> => {
+    const { stories, skippedMdx } = await prepareStorybookFiles(root);
+
+    return new Set([...stories.map((story) => story.id), ...skippedMdx]);
+};
+
+const withoutStoryLocations = (
+    root: string,
+    messages: SourceMessage[],
+    storyFiles: ReadonlySet<string>,
+): SourceMessage[] =>
+    messages.flatMap((message) => {
+        const locations = message.locations.filter(
+            (location) => !storyFiles.has(extractedLocationFile(root, location.file)),
+        );
+
+        return locations.length === 0 && message.locations.length > 0 ? [] : [{ ...message, locations }];
+    });
+
+const prepareSourceCatalog = async (project: CatalogProject, paths: string[]): Promise<SourceMessage[]> => {
     const sourceFiles = normalizedSourceFiles(project.root, paths);
+    const storyFiles = await projectStoryFiles(project.root);
     const messages = await findSourceMessages(project.root, sourceFiles);
-    writePotfiles(project, sourceFiles);
+    writePotfiles(
+        project,
+        sourceFiles.filter((path) => !storyFiles.has(path)),
+    );
+
+    return withoutStoryLocations(project.root, messages, storyFiles);
+};
+
+const extractSourceCatalogTo = async (project: CatalogProject, paths: string[], output: string): Promise<void> => {
+    const messages = await prepareSourceCatalog(project, paths);
     extractCatalogTemplate({ project, messages, shouldPreserveMetadataMessages: false, output });
 };
 
@@ -2101,9 +2131,7 @@ const extractSourceCatalog = async (
     paths: string[],
     shouldPreserveMetadataMessages = true,
 ): Promise<void> => {
-    const sourceFiles = normalizedSourceFiles(project.root, paths);
-    const messages = await findSourceMessages(project.root, sourceFiles);
-    writePotfiles(project, sourceFiles);
+    const messages = await prepareSourceCatalog(project, paths);
     extractCatalogTemplate({ project, messages, shouldPreserveMetadataMessages });
 };
 

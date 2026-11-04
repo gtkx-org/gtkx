@@ -106,6 +106,8 @@ GTKX rejects aliases, member calls such as `i18n.t(...)`, and dynamic keys durin
 
 Extraction follows `t` from its import or from a `useTranslation()` call in the same module. A `t` received in any other way, such as a function parameter, a prop, `withTranslation`, or the `Translation` render prop, is not extracted, and the generated declarations then reject its keys. Helpers outside components can import `t` from `@gtkx/i18n` instead, since gettext uses one language for the whole process.
 
+[Storybook](/v2/guide/storybook) stories stay out of the catalogs. Files matched by the `stories` patterns in `.storybook/main.ts`, or by `src/**/*.stories.*` without that file, are left out of `po/POTFILES.in` and the template, so translators never see story fixture text. A `t` call in a story still type-checks and shows its source text, and the components a story renders show their translations as in the application.
+
 Generated declarations under `node_modules/.gtkx` extend the upstream translation types. They check message keys and contexts, and the interpolation values of an options object. As in i18next, they do not require the options object itself or a plural message's `count`: `t("Hello, {{name}}!")` compiles and renders the placeholder unchanged. Run codegen after adding messages; do not edit the declarations.
 
 ## Develop and build

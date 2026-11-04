@@ -262,6 +262,35 @@ t("Yesterday");`,
         expect(statSync(path).mtimeMs).toBe(timestamp.getTime());
     });
 
+    it("keeps the messages of Storybook stories out of the catalogs", async () => {
+        using project = createProject();
+        project.write("po/LINGUAS", "fr\n");
+        project.write(
+            ".storybook/main.ts",
+            'export default { stories: ["src/**/*.stories.tsx", "src/demos/*.tsx", "../ui/src/**/*.stories.tsx"] };',
+        );
+        project.write("src/button.tsx", `${T_IMPORT}\nexport const label = t("Save");`);
+        project.write(
+            "src/button.stories.tsx",
+            `${T_IMPORT}\nexport default { args: { label: t("Save"), document: t("Story fixture document") } };`,
+        );
+        project.write("src/demos/gallery.tsx", `${T_IMPORT}\nexport const title = t("Demo gallery");`);
+
+        await extract(project.root);
+
+        expect(readMessages(project.root).map((message) => [message.msgid, message.comments?.reference])).toEqual([
+            ["Save", "src/button.tsx:2"],
+        ]);
+        expect(Object.keys(po.parse(readFileSync(join(project.root, "po/fr.po"))).translations[""] ?? {})).toEqual([
+            "",
+            "Save",
+        ]);
+        expect(readFileSync(join(project.root, "po/POTFILES.in"), "utf8")).toBe("src/button.tsx\nsrc/index.ts\n");
+        expect(readFileSync(join(project.root, "node_modules/.gtkx/i18n-resources.d.ts"), "utf8")).toContain(
+            "Story fixture document",
+        );
+    });
+
     it("extracts imported hooks and components while ignoring shadowed bindings", async () => {
         using project = createProject();
         project.write("po/LINGUAS", "");
