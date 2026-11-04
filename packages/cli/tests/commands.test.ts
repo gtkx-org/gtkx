@@ -2176,6 +2176,41 @@ describe("CLI commands", () => {
         });
     });
 
+    it("picks a color chooser swatch with keys through MCP and says when a click or key did nothing", async () => {
+        using project = createProject();
+        const readyPath = join(project.root, "ready.txt");
+        writeWidgetApp(
+            project,
+            readyPath,
+            `import { GtkColorChooserWidget } from "@gtkx/jsx/gtk";
+            export const Content = () => <GtkColorChooserWidget name="chooser" useAlpha={false} />;`,
+        );
+        await withMcpClient(project.root, async (client) => {
+            await withSession("dev", project.root, readyPath, async () => {
+                const [chooser] = await queryWidgets(client, { by: "name", value: "chooser" });
+                const [red] = await queryWidgets(client, { by: "role", value: "radio", options: { name: "Red" } });
+                const color = async () => {
+                    const { text } = await callTool(client, "gtkx_get_widget_props", {
+                        widgetId: chooser?.id,
+                        properties: ["rgba"],
+                        maxDepth: 0,
+                    });
+                    return (JSON.parse(text) as { properties: { rgba: { value: string } } }).properties.rgba.value;
+                };
+                const click = await callTool(client, "gtkx_click", { widgetId: red?.id });
+                expect(click.isError).toBe(false);
+                expect(click.text).not.toBe("Clicked");
+                expect(await color()).toBe("rgb(255,255,255)");
+                const ignored = await callTool(client, "gtkx_press_keys", { widgetId: red?.id, keys: "x" });
+                expect(ignored.text).not.toBe("Pressed keys");
+                expect((await callTool(client, "gtkx_press_keys", { widgetId: red?.id, keys: "{Space}" })).text).toBe(
+                    "Pressed keys",
+                );
+                expect(await color()).toBe("rgb(224,27,36)");
+            });
+        });
+    });
+
     it("presses right and middle pointer buttons through MCP on the gestures listening for them", async () => {
         using project = createProject();
         const readyPath = join(project.root, "ready.txt");

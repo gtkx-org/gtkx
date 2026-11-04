@@ -66,9 +66,9 @@ const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
             }),
     ),
     "widget.click": targeted(ServerRequestParamsSchemas["widget.click"], async (ctx, { testing, widget }) => {
-        await interact(ctx, testing, () => testing.userEvent.click(widget));
+        const { isHandled } = await interact(ctx, testing, () => testing.userEventReports.click(widget));
 
-        return { success: true };
+        return { success: true, isHandled };
     }),
     "widget.type": targeted(ServerRequestParamsSchemas["widget.type"], async (ctx, { testing, widget }, params) => {
         await interact(ctx, testing, async () => {
@@ -84,11 +84,13 @@ const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
     "widget.pressKeys": validated(ServerRequestParamsSchemas["widget.pressKeys"], async (ctx, params) => {
         const testing = await ctx.loadTesting();
         const widget = params.widgetId === undefined ? null : requireWidget(ctx.registry, params.widgetId);
-        await interact(ctx, testing, () =>
-            widget === null ? testing.userEvent.keyboard(params.keys) : testing.userEvent.keyboard(widget, params.keys),
+        const { unhandledKeys } = await interact(ctx, testing, () =>
+            widget === null
+                ? testing.userEventReports.keyboard(params.keys)
+                : testing.userEventReports.keyboard(widget, params.keys),
         );
 
-        return { success: true };
+        return { success: true, unhandledKeys };
     }),
     "widget.pointer": targeted(
         ServerRequestParamsSchemas["widget.pointer"],
@@ -191,9 +193,9 @@ const withPointerTargetId = (registry: WidgetRegistry, testing: TestingModule, c
     return new Error(`${errorMessage(cause)}. Its widget ID is "${registry.getOrCreateId(target)}".`, { cause });
 };
 
-const interact = async (ctx: HandlerContext, testing: TestingModule, run: () => Promise<void>): Promise<void> => {
+const interact = async <T>(ctx: HandlerContext, testing: TestingModule, run: () => Promise<T>): Promise<T> => {
     try {
-        await run();
+        return await run();
     } catch (cause) {
         if (testing.isUsageError(cause)) {
             throw withPointerTargetId(ctx.registry, testing, cause);

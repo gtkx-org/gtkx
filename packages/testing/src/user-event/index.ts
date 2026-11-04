@@ -161,10 +161,36 @@ const onWidgetPair =
     (source: Gtk.Accessible, target: Gtk.Accessible, ...args: Args): Promise<void> =>
         helper(requireWidget(source), requireWidget(target), ...args);
 
+const silently =
+    <Args extends unknown[]>(helper: (...args: Args) => Promise<unknown>) =>
+    async (...args: Args): Promise<void> => {
+        await helper(...args);
+    };
+
+/** Whether anything on the widget or its ancestors is known to have handled a click. */
+type ClickReport = { isHandled: boolean };
+/** The keys of a sequence whose presses nothing handled, named as `keyboard` input names them. */
+type KeyboardReport = { unhandledKeys: string[] };
+
+const defaultState = createInitialState();
+
 /** User interactions that dispatch GTK events and gestures. */
 const userEvent: UserEvent = {
-    ...createInstance(createInitialState(), {}),
+    ...createInstance(defaultState, {}),
     setup: (options?: UserEventOptions): UserEvent => createInstance(createInitialState(), options ?? {}),
+};
+
+/**
+ * `userEvent.click` and `userEvent.keyboard` with the default instance's state, reporting whether anything on the
+ * target or its ancestors handled the input, for tools that tell an agent when its input had no effect.
+ */
+const userEventReports = {
+    click: async (target: Gtk.Accessible): Promise<ClickReport> => ({
+        isHandled: await click(defaultState, requireWidget(target)),
+    }),
+    keyboard: async (...args: KeyboardArgs): Promise<KeyboardReport> => ({
+        unhandledKeys: await keyboard(defaultState, ...resolveKeyboardArgs(args)),
+    }),
 };
 
 const settle = (ms: number | null | undefined): Promise<void> => {
@@ -185,9 +211,9 @@ function createInstance(state: UserEventState, options: UserEventOptions): UserE
 
     return {
         setup: (overrides?: UserEventOptions): UserEvent => createInstance(state, { ...options, ...overrides }),
-        click: after(onWidget((widget: Gtk.Widget): Promise<void> => click(state, widget))),
-        dblClick: after(onWidget((widget: Gtk.Widget): Promise<void> => dblClick(state, widget))),
-        tripleClick: after(onWidget((widget: Gtk.Widget): Promise<void> => tripleClick(state, widget))),
+        click: after(onWidget(silently((widget: Gtk.Widget) => click(state, widget)))),
+        dblClick: after(onWidget(silently((widget: Gtk.Widget) => dblClick(state, widget)))),
+        tripleClick: after(onWidget(silently((widget: Gtk.Widget) => tripleClick(state, widget)))),
         tab: after(onWidget(tab)),
         type: after(
             onWidget((widget: Gtk.Widget, text: string, options?: TypeOptions): Promise<void> =>
@@ -211,7 +237,7 @@ function createInstance(state: UserEventState, options: UserEventOptions): UserE
         dragAndDrop: after(onWidgetPair(dragAndDrop)),
         slide: after(onWidget(slide)),
         scroll: after(onWidget(scroll)),
-        keyboard: after((...args: KeyboardArgs): Promise<void> => keyboard(state, ...resolveKeyboardArgs(args))),
+        keyboard: after(silently((...args: KeyboardArgs) => keyboard(state, ...resolveKeyboardArgs(args)))),
         pointer: after(
             onWidget((widget: Gtk.Widget, input: PointerInput): Promise<void> => pointer(state, widget, input)),
         ),
@@ -224,4 +250,4 @@ export type { TabOptions } from "./keyboard.js";
 export type { PointerInput } from "./pointer.js";
 export type { TypeOptions } from "./text.js";
 export { resetClipboard } from "./text.js";
-export { userEvent, type UserEvent, type UserEventOptions };
+export { userEvent, userEventReports, type ClickReport, type KeyboardReport, type UserEvent, type UserEventOptions };

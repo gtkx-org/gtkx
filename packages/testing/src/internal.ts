@@ -14,3 +14,4 @@ export { getWidgetAccessibleName } from "./widget-accessible-properties.js";
 export { isUsageError } from "./usage-error.js";
 export { getTypeTag } from "./widget-getters.js";
 export { getPointerTarget } from "./user-event/event-wrapper.js";
+export { type ClickReport, type KeyboardReport, userEventReports } from "./user-event/index.js";

@@ -420,6 +420,20 @@ function buildInspectionTools(appRouter: AppRouter): Tool[] {
     ];
 }
 
+type ClickResult = { isHandled?: boolean };
+type PressKeysResult = { unhandledKeys?: string[] };
+
+const UNHANDLED_CLICK =
+    "Clicked, but nothing on the widget or its ancestors handled the click. GTK's own handling of clicks, as on a " +
+    "color chooser's swatch, needs a real pointer event, which this tool cannot send. If nothing changed, press " +
+    "{Space} or {Enter} on the widget with gtkx_press_keys.";
+
+const pressKeysText = (unhandledKeys: string[]): string =>
+    unhandledKeys.length === 0
+        ? "Pressed keys"
+        : `Pressed keys, but nothing on the widget or its ancestors handled ${unhandledKeys.join(", ")}. Check ` +
+          "that the keys went to the intended widget, and use gtkx_type to enter text.";
+
 function buildInteractionTools(appRouter: AppRouter): Tool[] {
     return [
         defineTool({
@@ -432,12 +446,20 @@ function buildInteractionTools(appRouter: AppRouter): Tool[] {
                 "row is selected, an expander toggles its row's expansion, and a header sorts its column. A widget " +
                 "a pointer cannot reach, such as one behind an open dialog, is refused with an error naming what " +
                 "blocks it. A widget inside one that cannot receive pointer input, such as a tab overview title, is " +
-                "refused with the widget ID of the ancestor a pointer lands on instead; click that ID.",
+                "refused with the widget ID of the ancestor a pointer lands on instead; click that ID. The result " +
+                "says when nothing on the widget or its ancestors handled the click, as with GTK's own widgets " +
+                "such as a color chooser's swatches, which need a real pointer; press {Space} or {Enter} on them " +
+                "with `gtkx_press_keys` instead.",
             inputSchema: widgetIdShape,
             handler: async ({ applicationId, appTimeout, ...params }) => {
-                await appRouter.sendToApp(applicationId, "widget.click", params, appTimeout);
+                const result = await appRouter.sendToApp<ClickResult>(
+                    applicationId,
+                    "widget.click",
+                    params,
+                    appTimeout,
+                );
 
-                return textContent("Clicked");
+                return textContent(result.isHandled === false ? UNHANDLED_CLICK : "Clicked");
             },
         }),
         defineTool({
@@ -464,12 +486,19 @@ function buildInteractionTools(appRouter: AppRouter): Tool[] {
                 "entry and the dialog's default response, {Escape} closes a dialog or popover, and shortcuts " +
                 "such as `{Control>}s{/Control}` run the actions bound to them. Keys reach the widget's own key " +
                 "bindings first, such as arrows in a list or slider; otherwise {Tab}, `{Shift>}{Tab}{/Shift}` and " +
-                "arrows move focus between widgets. Use `gtkx_type` to enter text.",
+                "arrows move focus between widgets. {Space} or {Enter} also selects or activates GTK's own " +
+                "widgets, such as a color chooser's swatches. The result names the keys that nothing on the " +
+                "widget or its ancestors handled. Use `gtkx_type` to enter text.",
             inputSchema: pressKeysShape,
             handler: async ({ applicationId, appTimeout, ...params }) => {
-                await appRouter.sendToApp(applicationId, "widget.pressKeys", params, appTimeout);
+                const result = await appRouter.sendToApp<PressKeysResult>(
+                    applicationId,
+                    "widget.pressKeys",
+                    params,
+                    appTimeout,
+                );
 
-                return textContent("Pressed keys");
+                return textContent(pressKeysText(result.unhandledKeys ?? []));
             },
         }),
         defineTool({

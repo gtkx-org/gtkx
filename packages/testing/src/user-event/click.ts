@@ -352,13 +352,30 @@ const applyClickOutcomes = (targets: ClickTarget[], nPress: number, modifiers: G
     }
 };
 
-const deliverClick = (state: UserEventState, widget: Gtk.Widget, nPress: number): Promise<void> =>
-    wrapPointerEvent(widget, () => {
+/**
+ * Whether a click target is known to handle the click: app code listens to its gestures, GTKX applies the outcome a
+ * real click has, or it is a button. GTK's other gestures read the real pointer event, so a click that reaches only
+ * them may do nothing.
+ */
+const isHandlingTarget = (target: ClickTarget): boolean =>
+    target.native !== null ||
+    target.container !== null ||
+    target.widget instanceof Gtk.Button ||
+    target.gestures.some((gesture) => hasClickHandlers(gesture));
+
+const deliverClick = async (state: UserEventState, widget: Gtk.Widget, nPress: number): Promise<boolean> => {
+    let isHandled = false;
+
+    await wrapPointerEvent(widget, () => {
         const targets = collectClickTargets(widget);
         const sites = targets.flatMap((target) => targetSites(widget, target));
         emitClickSequence(sites, nPress, state.modifierState);
         applyClickOutcomes(targets, nPress, state.modifierState);
+        isHandled = targets.some((target) => isHandlingTarget(target));
     });
+
+    return isHandled;
+};
 
 const tryActivate = async (widget: Gtk.Widget): Promise<boolean> => {
     if (widget.getAccessibleRole() === Gtk.AccessibleRole.LABEL) {
@@ -374,19 +391,19 @@ const tryActivate = async (widget: Gtk.Widget): Promise<boolean> => {
     return isActivated;
 };
 
-/** Activates or presses and releases a widget. */
-const click = async (state: UserEventState, widget: Gtk.Widget): Promise<void> => {
+/** Activates or presses and releases a widget, and returns whether anything is known to have handled the click. */
+const click = async (state: UserEventState, widget: Gtk.Widget): Promise<boolean> => {
     if (!isSelfClickTarget(widget) && (await tryActivate(widget))) {
-        return;
+        return true;
     }
 
-    await deliverClick(state, widget, 1);
+    return deliverClick(state, widget, 1);
 };
 
 /** Delivers a double-click gesture. */
-const dblClick = (state: UserEventState, widget: Gtk.Widget): Promise<void> => deliverClick(state, widget, 2);
+const dblClick = (state: UserEventState, widget: Gtk.Widget): Promise<boolean> => deliverClick(state, widget, 2);
 /** Delivers a triple-click gesture. */
-const tripleClick = (state: UserEventState, widget: Gtk.Widget): Promise<void> => deliverClick(state, widget, 3);
+const tripleClick = (state: UserEventState, widget: Gtk.Widget): Promise<boolean> => deliverClick(state, widget, 3);
 
 export { buttonSitesFor, directClickFor, emitSitePhase, click, dblClick, tripleClick };
 export type { ClickSite, DirectClick };

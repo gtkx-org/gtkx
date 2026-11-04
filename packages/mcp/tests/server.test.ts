@@ -101,6 +101,36 @@ describe("MCP server", () => {
         }
     });
 
+    it("says when nothing on the target handled a click or a key press", async () => {
+        await using session = await openServer();
+        const socket = createConnection(session.socketPath);
+        await once(socket, "connect");
+        const connection = ProtocolConnection.fromSocket(socket, {
+            onClose: () => undefined,
+            onError: () => undefined,
+        });
+        connection.fallbackRequestHandler = (request) => {
+            const isHandled = request.params?.widgetId === "button";
+            if (request.method === "widget.click") return Promise.resolve({ success: true, isHandled });
+            return Promise.resolve({ success: true, unhandledKeys: isHandled ? [] : ["{Space}", "a"] });
+        };
+        try {
+            await connection.send("app.register", { applicationId: "org.gtkx.test", pid: process.pid });
+            expect(await textResult(session.client, "gtkx_click", { widgetId: "button" })).toBe("Clicked");
+            expect(await textResult(session.client, "gtkx_press_keys", { widgetId: "button", keys: " " })).toBe(
+                "Pressed keys",
+            );
+            const click = await textResult(session.client, "gtkx_click", { widgetId: "swatch" });
+            expect(click).not.toBe("Clicked");
+            expect(click).toContain("gtkx_press_keys");
+            const keys = await textResult(session.client, "gtkx_press_keys", { widgetId: "label", keys: " a" });
+            expect(keys).not.toBe("Pressed keys");
+            expect(keys).toContain("{Space}, a");
+        } finally {
+            await connection.close();
+        }
+    });
+
     it("lists the project's app when it reconnects during the first call of a new session", async () => {
         await using session = await openServer();
         const socket = createConnection(session.socketPath);

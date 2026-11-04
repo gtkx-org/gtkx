@@ -8,21 +8,49 @@ import {
     GtkButton,
     GtkCallbackAction,
     GtkCheckButton,
+    GtkColorChooserWidget,
+    GtkComboBoxText,
     GtkEntry,
     GtkEventControllerKey,
+    GtkFileChooserWidget,
     GtkLabel,
     GtkMenuButton,
     GtkPopover,
+    GtkSearchBar,
+    GtkSearchEntry,
     GtkShortcut,
     GtkShortcutController,
     GtkStack,
     GtkStackPage,
     GtkTextView,
+    GtkTreeView,
 } from "@gtkx/jsx/gtk";
 import { GtkSourceView } from "@gtkx/jsx/gtksource";
+import { WebKitWebView } from "@gtkx/jsx/webkit";
 import { render, screen, userEvent } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
+
+const CRITICAL_DOMAINS = ["Gtk", "Gdk"];
+
+const collectCriticals = async (run: () => Promise<void>): Promise<string[]> => {
+    const criticals: string[] = [];
+    const handlers = CRITICAL_DOMAINS.map((domain) =>
+        GLib.logSetHandler(domain, GLib.LogLevelFlags.LEVEL_CRITICAL, (_domain, _level, message) => {
+            criticals.push(message);
+        }),
+    );
+
+    try {
+        await run();
+    } finally {
+        for (const [index, domain] of CRITICAL_DOMAINS.entries()) {
+            GLib.logRemoveHandler(domain, handlers[index] ?? 0);
+        }
+    }
+
+    return criticals;
+};
 
 describe("Unicode keyboard input", () => {
     it.each(["a", "é", "λ", "🚀", "Aλ🚀Z"])("delivers each character of %s once", async (input) => {
@@ -346,21 +374,106 @@ describe("keyboard focus movement", () => {
     });
 
     it("presses keys in a source view like a text view, without key controllers that need a real event", async () => {
-        const criticals: string[] = [];
-        const handlerId = GLib.logSetHandler("Gtk", GLib.LogLevelFlags.LEVEL_CRITICAL, (_domain, _level, message) => {
-            criticals.push(message);
-        });
-
-        try {
+        const criticals = await collectCriticals(async () => {
             await render(<GtkSourceView name="code" />);
             const code = screen.getByName("code", { as: GtkSource.View });
             await userEvent.click(code);
             await userEvent.keyboard(code, "{Tab}{Control>}{/Control}{Enter}");
             const buffer = code.getBuffer();
             expect(buffer.getText(buffer.getStartIter(), buffer.getEndIter(), true)).toBe("\t\n");
-        } finally {
-            GLib.logRemoveHandler("Gtk", handlerId);
-        }
+        });
+
+        expect(criticals).toEqual([]);
+    });
+});
+
+describe("keyboard on GTK's own widgets", () => {
+    it.each(["{Space}", "{Enter}"])("selects a color chooser swatch with %s", async (input) => {
+        await render(<GtkColorChooserWidget name="chooser" useAlpha={false} />);
+
+        const chooser = screen.getByName("chooser", { as: Gtk.ColorChooserWidget });
+        await userEvent.keyboard(screen.getByRole(Gtk.AccessibleRole.RADIO, { name: "Red" }), input);
+        expect(chooser.getRgba().toString()).toBe("rgb(224,27,36)");
+    });
+
+    it("keeps keys from a search entry's capture widget without a real event", async () => {
+        const criticals = await collectCriticals(async () => {
+            await render(
+                <GtkBox name="page" orientation={Gtk.Orientation.VERTICAL}>
+                    <GtkSearchEntry name="search" />
+                    <GtkButton name="other" label="Other" />
+                </GtkBox>,
+            );
+            screen
+                .getByName("search", { as: Gtk.SearchEntry })
+                .setKeyCaptureWidget(screen.getByName("page", { as: Gtk.Box }));
+            await userEvent.keyboard(screen.getByName("other"), "a");
+        });
+
+        expect(criticals).toEqual([]);
+    });
+
+    it("keeps keys from a search bar's capture widget without a real event", async () => {
+        const search = createRef<Gtk.SearchEntry>();
+        const criticals = await collectCriticals(async () => {
+            await render(
+                <GtkBox name="page" orientation={Gtk.Orientation.VERTICAL}>
+                    <GtkSearchBar name="bar">
+                        <GtkSearchEntry ref={search} />
+                    </GtkSearchBar>
+                    <GtkButton name="other" label="Other" />
+                </GtkBox>,
+            );
+            const bar = screen.getByName("bar", { as: Gtk.SearchBar });
+            expect(search.current).toBeInstanceOf(Gtk.SearchEntry);
+            if (search.current) bar.connectEntry(search.current);
+            bar.setKeyCaptureWidget(screen.getByName("page", { as: Gtk.Box }));
+            await userEvent.keyboard(screen.getByName("other"), "a");
+        });
+
+        expect(criticals).toEqual([]);
+    });
+
+    it("presses keys in a file chooser without its key forwarding", async () => {
+        const criticals = await collectCriticals(async () => {
+            await render(<GtkFileChooserWidget name="files" />);
+            await userEvent.keyboard(screen.getByName("files"), "a");
+        });
+
+        expect(criticals).toEqual([]);
+    });
+
+    it("presses keys in a combo box's popup without its key forwarding", async () => {
+        const criticals = await collectCriticals(async () => {
+            await render(<GtkComboBoxText name="size" />);
+            const size = screen.getByName("size", { as: Gtk.ComboBoxText });
+            size.appendText("Small");
+            size.appendText("Large");
+            size.popup();
+            const popup = size.getLastChild();
+            expect(popup).toBeInstanceOf(Gtk.Popover);
+            if (popup) await userEvent.keyboard(popup, "{ArrowUp}");
+        });
+
+        expect(criticals).toEqual([]);
+    });
+
+    it("presses keys in a web view without its key handling, which needs a real event", async () => {
+        const criticals = await collectCriticals(async () => {
+            await render(<WebKitWebView name="page" />);
+            await userEvent.keyboard(screen.getByName("page"), "a");
+        });
+
+        expect(criticals).toEqual([]);
+    });
+
+    it("presses keys in a tree view without its interactive search forwarding", async () => {
+        const criticals = await collectCriticals(async () => {
+            await render(<GtkTreeView name="tree" />);
+            const tree = screen.getByName("tree");
+            tree.grabFocus();
+            await userEvent.keyboard(tree, "a");
+        });
 
         expect(criticals).toEqual([]);
     });
