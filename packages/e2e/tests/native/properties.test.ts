@@ -6,7 +6,9 @@ import * as GObject from "@gtkx/gi/gobject";
 
 import * as Regress from "@gtkx/gi/regress";
 
-import { expect, test } from "vitest";
+import { toClosure, wrapHandle } from "@gtkx/runtime";
+
+import { expect, expectTypeOf, test } from "vitest";
 
 const intGvalue = (contents: number): GObject.Value => {
     const value = new GObject.Value();
@@ -557,4 +559,83 @@ test("TestObj property writes reject wrong types", () => {
         obj.float = "x";
     }).toThrow();
     expect(obj.int).toBe(0);
+});
+
+test("bindPropertyFull passes values through GJS-style transforms in both directions", () => {
+    const source = new GIMarshallingTests.PropertiesObject({ someInt: 3 });
+    const target = new GIMarshallingTests.PropertiesObject({});
+    const binding = source.bindPropertyFull(
+        "some-int",
+        target,
+        "some-string",
+        GObject.BindingFlags.SYNC_CREATE | GObject.BindingFlags.BIDIRECTIONAL,
+        (_binding, value) => {
+            expectTypeOf(value).toEqualTypeOf<number>();
+
+            return [true, `#${value}`];
+        },
+        (_binding, text) => {
+            expectTypeOf(text).toEqualTypeOf<string | null>();
+
+            return text?.startsWith("#") === true ? [true, Number(text.slice(1))] : [false, null];
+        },
+    );
+    expect(target.someString).toBe("#3");
+    source.someInt = 5;
+    expect(target.someString).toBe("#5");
+    target.someString = "#9";
+    expect(source.someInt).toBe(9);
+    target.someString = "nine";
+    expect(source.someInt).toBe(9);
+    binding.unbind();
+});
+
+test("bindPropertyFull and BindingGroup.bindFull convert by default when a transform is null", () => {
+    const source = new GIMarshallingTests.PropertiesObject({ someBoolean: true, someInt: 4 });
+    const target = new GIMarshallingTests.PropertiesObject({});
+    const binding = source.bindPropertyFull(
+        "some-boolean",
+        target,
+        "some-boolean",
+        GObject.BindingFlags.SYNC_CREATE | GObject.BindingFlags.INVERT_BOOLEAN,
+        null,
+        null,
+    );
+    expect(target.someBoolean).toBe(false);
+    const group = new GObject.BindingGroup();
+    group.bindFull("some-int", target, "some-double", GObject.BindingFlags.DEFAULT, null, null);
+    group.bindFull("some-int", target, "some-string", GObject.BindingFlags.DEFAULT, (_binding, value: number) => [
+        true,
+        `${value * 2}`,
+    ]);
+    group.setSource(source);
+    expect(target.someDouble).toBe(4);
+    expect(target.someString).toBe("8");
+    source.someInt = 6;
+    expect(target.someString).toBe("12");
+    group.setSource(null);
+    binding.unbind();
+});
+
+test("bindPropertyFull still runs a GObject.Closure with the native transform arguments", () => {
+    const source = new GIMarshallingTests.PropertiesObject({ someInt: 7 });
+    const target = new GIMarshallingTests.PropertiesObject({});
+    const closure = wrapHandle(
+        toClosure((_binding: GObject.Binding, from: GObject.Value, to: GObject.Value) => {
+            to.setString(`closure ${from.getInt()}`);
+
+            return true;
+        }),
+        GObject.Closure,
+    );
+    const binding = source.bindPropertyFull(
+        "some-int",
+        target,
+        "some-string",
+        GObject.BindingFlags.SYNC_CREATE,
+        closure,
+        null,
+    );
+    expect(target.someString).toBe("closure 7");
+    binding.unbind();
 });

@@ -70,6 +70,25 @@ Use `GObject.ParamSpec.override("property-name", Source)` when explicitly redecl
 
 Use the generated ParamSpec reference for its metadata and flags. Class-level inspection is available through generated class-struct wrappers, such as `GObject.ObjectClass.peek(TaggedScale)`.
 
+### Binding properties
+
+`bindProperty` keeps a property of one object in step with a property of another. `bindPropertyFull` and `BindingGroup.bindFull` also convert the value on the way, as in GJS: a transform receives the binding and the value read from one end, and returns whether the conversion succeeded with the value to write to the other end. Pass `null` for a direction that should use the default conversion.
+
+```ts
+import * as GObject from "@gtkx/gi/gobject";
+
+scale.bindPropertyFull(
+    "tag",
+    label,
+    "label",
+    GObject.BindingFlags.SYNC_CREATE | GObject.BindingFlags.BIDIRECTIONAL,
+    (_binding, tag) => [true, `#${tag}`],
+    (_binding, text) => (text.startsWith("#") ? [true, text.slice(1)] : [false, null]),
+);
+```
+
+The transform's value types come from the named properties when the objects declare them, so `tag` is a `string` here. A transform that returns `[false, value]` leaves the other end unchanged. A `GObject.Closure` passed in place of a function receives GLib's closure arguments: the binding and the two `GObject.Value`s, the second of which it fills in.
+
 ### Properties and the hooks
 
 Pass the instance to `useProperty(object, "tag")` to subscribe to a registered property. Inherited properties remain available. For an instance created by JSX, use a state setter as its callback ref:

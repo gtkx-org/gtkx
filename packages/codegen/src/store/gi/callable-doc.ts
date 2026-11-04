@@ -20,6 +20,7 @@ type CallableDocOptions = {
     excludedParameters?: ReadonlySet<GirParameter>;
     finishFn?: GirFunction | undefined;
     renames?: Map<string, string> | undefined;
+    paramDocs?: Map<string, string> | undefined;
 };
 
 const WHITESPACE_RUN_PATTERN = /\s+/g;
@@ -137,7 +138,7 @@ const callableSpec = (context: ModuleContext, callable: GirFunction, options: Ca
             options.excludedParameters?.has(parameter) === true ||
             (options.finishFn !== undefined && isCallbackParameter(context, parameter)),
         options.renames,
-    ),
+    ).map((param) => ({ ...param, doc: options.paramDocs?.get(param.name) ?? param.doc })),
     returns: returnsText(
         context,
         options.finishFn ?? callable,

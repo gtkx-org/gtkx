@@ -41,7 +41,15 @@ export { getParamSpecFlags, getParamSpecOwnerType, getParamSpecValueType } from 
 export { newParamSpecOverride, propertyValueType } from "./properties.js";
 export { propertyWriteComplete } from "./property-brand.js";
 export type { DescriptorFreePropertySpec } from "./property-brand.js";
-export type { Camelized, Dashed, ReadableProperties, WritableProperties } from "./property-types.js";
+export type {
+    BindingTransform,
+    Camelized,
+    Dashed,
+    ReadableProperties,
+    ReadablePropertyValue,
+    WritableProperties,
+    WritablePropertyValue,
+} from "./property-types.js";
 export { createRegexBindings } from "./regex.js";
 export { getExactWrapperClass, getVfuncRegistry, peekTypeClass, resolveWrapperClass } from "./registry.js";
 export type { SignalMethodReceiver };
@@ -62,7 +70,7 @@ export {
 } from "./signal.js";
 export { retainWrapperClasses };
 export { defineEnumType, defineStatics } from "./statics.js";
-export { fromValue, getBoxedValue, getValueType, setBoxedValue, toValue } from "./value.js";
+export { fromValue, getBoxedValue, getValueType, intoValue, setBoxedValue, toValue } from "./value.js";
 export { registerClassOption } from "./class-options.js";
 export {
     connectNativeSignal,

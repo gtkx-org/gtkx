@@ -1,13 +1,24 @@
 import {
     disconnectSignal,
+    getHandle,
     offSignal,
     onceSignal,
     onSignal,
     type SignalHandler,
     type SignalHandlerId,
+    t,
+    toClosure,
+    tryToClosure,
 } from "@gtkx/runtime";
-import type { SignalHandlerFor, SignalMethodReceiver, SignalName } from "@gtkx/runtime/internal";
-import { Object as GObject } from "../gobject.js";
+import {
+    type BindingTransform,
+    fromValue,
+    intoValue,
+    type SignalHandlerFor,
+    type SignalMethodReceiver,
+    type SignalName,
+} from "@gtkx/runtime/internal";
+import { Binding, BindingGroup, type Closure, Object as GObject, type Value } from "../gobject.js";
 
 declare module "../gobject.js" {
     interface Object {
@@ -66,6 +77,94 @@ declare module "../gobject.js" {
         ): TThis;
     }
 }
+
+type Transform<TFrom, TTo> = BindingTransform<Binding, TFrom, TTo> | Closure | null | undefined;
+
+const LIBRARY = "libgobject-2.0.so.0";
+const CLOSURE_ARG = {
+    type: t.boxed("GClosure", { ownership: "borrowed", sharedLibrary: LIBRARY, getTypeFnName: "g_closure_get_type" }),
+};
+const BINDING_ARGS = [
+    { type: t.string("borrowed"), isRequired: true },
+    { type: t.object("borrowed", undefined, "GObject"), isRequired: true },
+    { type: t.string("borrowed"), isRequired: true },
+    { type: t.flags(LIBRARY, "g_binding_flags_get_type", false), isRequired: true },
+    CLOSURE_ARG,
+    CLOSURE_ARG,
+];
+
+const bindPropertyWithClosures = t.fn(LIBRARY, "g_object_bind_property_with_closures", () => ({
+    args: [{ type: t.object("borrowed", undefined, "GObject") }, ...BINDING_ARGS],
+    returns: t.object("borrowed", () => Binding, "GBinding"),
+}));
+
+const bindingGroupBindWithClosures = t.fn(LIBRARY, "g_binding_group_bind_with_closures", () => ({
+    args: [{ type: t.object("borrowed", undefined, "GBindingGroup") }, ...BINDING_ARGS],
+    returns: t.void,
+}));
+
+const isTransformResult = (result: unknown): result is [boolean, unknown] =>
+    Array.isArray(result) && typeof result[0] === "boolean";
+
+const transformClosure = <TFrom, TTo>(transform: Transform<TFrom, TTo>): ReturnType<typeof tryToClosure> => {
+    if (typeof transform !== "function") {
+        return tryToClosure(transform);
+    }
+
+    return toClosure((binding: Binding, from: Value, to: Value): boolean => {
+        const result: unknown = transform(binding, fromValue(getHandle(from)) as TFrom);
+
+        if (!isTransformResult(result)) {
+            throw new TypeError("A binding transform function must return [success, value]");
+        }
+
+        const [succeeded, value] = result;
+
+        if (succeeded) {
+            intoValue(getHandle(to), value);
+        }
+
+        return succeeded;
+    });
+};
+
+GObject.prototype.bindPropertyFull = function (
+    sourceProperty,
+    target,
+    targetProperty,
+    flags,
+    transformTo,
+    transformFrom,
+): Binding {
+    return bindPropertyWithClosures(
+        getHandle(this),
+        sourceProperty,
+        getHandle(target),
+        targetProperty,
+        flags,
+        transformClosure(transformTo),
+        transformClosure(transformFrom),
+    ) as Binding;
+};
+
+BindingGroup.prototype.bindFull = function (
+    sourceProperty,
+    target,
+    targetProperty,
+    flags,
+    transformTo,
+    transformFrom,
+): void {
+    bindingGroupBindWithClosures(
+        getHandle(this),
+        sourceProperty,
+        getHandle(target),
+        targetProperty,
+        flags,
+        transformClosure(transformTo),
+        transformClosure(transformFrom),
+    );
+};
 
 GObject.prototype.disconnect = function (this: GObject, handlerId: SignalHandlerId): void {
     disconnectSignal(this, handlerId);
