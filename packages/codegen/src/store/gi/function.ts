@@ -32,6 +32,7 @@ type NamespaceFunctionOptions = {
 
 const DESCRIPTOR_FREE_PROPERTY_SPEC_FACTORIES: Set<string> = new Set([
     "g_param_spec_boolean",
+    "g_param_spec_boxed",
     "g_param_spec_char",
     "g_param_spec_double",
     "g_param_spec_enum",

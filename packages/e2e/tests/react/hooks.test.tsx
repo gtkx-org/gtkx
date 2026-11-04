@@ -1,9 +1,10 @@
 import type { ParamSpec } from "@gtkx/gi/gobject";
 import type { RenderHookResult } from "@gtkx/testing";
 import type { ComponentProps, ForwardedRef, ReactNode } from "react";
+import * as Gdk from "@gtkx/gi/gdk";
 import * as GLib from "@gtkx/gi/glib";
 import * as GObject from "@gtkx/gi/gobject";
-import { ParamFlags, paramSpecInt, paramSpecString } from "@gtkx/gi/gobject";
+import { ParamFlags, paramSpecBoxed, paramSpecInt, paramSpecString } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { useProperty, useSignal } from "@gtkx/react";
@@ -17,6 +18,7 @@ type Reading = InstanceType<typeof Reading>;
 type Gauge = InstanceType<typeof Gauge>;
 type Humidity = InstanceType<typeof Humidity>;
 type Annotated = InstanceType<typeof Annotated>;
+type Swatch = InstanceType<typeof Swatch>;
 type ReadingProperty = "celsius" | "dewPoint";
 type HumidityProperty = "dewPoint" | "heatIndex";
 type AddressableNames<T extends GObject.Object> = keyof NonNullable<T["__properties__"]> & keyof T;
@@ -91,6 +93,16 @@ const Annotated = registerClass(
     { typeName: uniqueName("GtkxUsePropertyAnnotated"), properties: ANNOTATED_PROPERTIES },
 );
 
+const Swatch = registerClass(
+    class Swatch extends GObject.Object {
+        declare color: Gdk.RGBA;
+    },
+    {
+        typeName: uniqueName("GtkxUsePropertySwatch"),
+        properties: { color: paramSpecBoxed("color", null, null, Gdk.RGBA, ParamFlags.READWRITE) },
+    },
+);
+
 const MemoTickProbe = memo(TickProbeImpl);
 const ImmediateTickProbe = memo(ImmediateTickProbeImpl);
 const ForwardedTickProbe = forwardRef<Gtk.Label | null, TickProbeProps>(ForwardedTickProbeImpl);
@@ -152,6 +164,7 @@ const renderLabelTarget = async (object: Gtk.Label | null | undefined): Promise<
 const useCelsius = (reading: Reading) => useProperty(reading, "celsius");
 const useInstalledCaption = (gauge: Gauge) => useProperty(gauge, "caption");
 const useInheritedLabel = (gauge: Gauge) => useProperty(gauge, "label");
+const useBoxedColor = (swatch: Swatch) => useProperty(swatch, "color");
 const useDashedKey = (humidity: Humidity) => useProperty(humidity, "dewPoint");
 const useUnderscoredKey = (humidity: Humidity) => useProperty(humidity, "heatIndex");
 const useOptionalCelsius = (reading: Reading | null) => useProperty(reading, "celsius");
@@ -408,6 +421,7 @@ describe("useProperty (addressable names)", () => {
         expectTypeOf(useCelsius).returns.toEqualTypeOf<number>();
         expectTypeOf(useInstalledCaption).returns.toEqualTypeOf<string>();
         expectTypeOf(useInheritedLabel).returns.toEqualTypeOf<string>();
+        expectTypeOf(useBoxedColor).returns.toEqualTypeOf<Gdk.RGBA>();
         expectTypeOf(useDashedKey).returns.toEqualTypeOf<number>();
         expectTypeOf(useUnderscoredKey).returns.toEqualTypeOf<number>();
     });

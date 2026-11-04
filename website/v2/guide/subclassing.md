@@ -60,7 +60,7 @@ Use `declare` for native properties. A JavaScript field initializer would shadow
 
 Property keys use camelCase; the ParamSpec uses the matching native spelling. For example, pair `displayName` with `paramSpecString("display-name", ...)`. Declare read-only and construct-only fields as `readonly`.
 
-Typed `GObject.getProperty` and `GObject.setProperty` calls infer keys from declared fields and compatible ParamSpecs. Use their descriptor-taking overloads when a spec cannot preserve that inference, such as a write-only property or a spec widened to plain `ParamSpec`.
+Typed `GObject.getProperty` and `GObject.setProperty` calls and `useProperty` infer keys from declared fields and compatible ParamSpecs. For object and boxed specs the declared field's type is trusted, so declare `color: Gdk.RGBA` for `paramSpecBoxed("color", null, null, Gdk.RGBA, ParamFlags.READWRITE)`; a field declared with another type typechecks but reads the boxed value. Use the descriptor-taking `getProperty` and `setProperty` overloads when a spec cannot preserve that inference, such as a write-only property, a `paramSpecPointer` or `paramSpecUnichar` spec, or a spec widened to plain `ParamSpec`.
 
 ### Overriding an inherited property
 
