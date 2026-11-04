@@ -112,6 +112,26 @@ await render(<App />, { container: rootElement });
 
 `rootElement` expects a tree that creates a toplevel window; omit `container` for components without their own window. An `AdwApplicationWindow` registers with its application, so render a window component on its own inside `AdwApplication`. Use the `wrapper` option for context providers. `rerender` updates the rendered component; `unmount` removes it. Animations are disabled by default, and automatic cleanup removes rendered trees between tests. For hooks, use `renderHook` and assert on `result.current`.
 
+### Module-level state
+
+The GTKX plugin loads GTKX's packages through Vitest's module graph, so `vi.resetModules()` resets them along with your modules. Importing the app again afterwards would evaluate a second copy of GTKX beside the one `@gtkx/testing` uses, and GTKX throws an error naming `vi.resetModules()` instead. To give each test fresh state, create it in a function and pass it in as a prop rather than holding it at module level:
+
+```tsx
+import { rootElement } from "@gtkx/react";
+import { render, screen } from "@gtkx/testing";
+import { expect, it } from "vitest";
+import { App } from "../src/app.js";
+import { loadState } from "../src/store.js";
+
+it("restores the saved feeds", async () => {
+    await render(<App state={loadState()} />, { container: rootElement });
+
+    expect(await screen.findByText("Planet GNOME")).toBeVisible();
+});
+```
+
+The entry point does the same with `createRoot().render(<App state={loadState()} />)`.
+
 ## Finding widgets
 
 Prefer `screen.getByRole` with a `Gtk.AccessibleRole` enum and an accessible name. `screen` searches open toplevel windows, including dialogs and popovers. Use `within(container)` to restrict a query to a subtree.

@@ -1,4 +1,5 @@
-import { afterAll, afterEach, beforeAll } from "vitest";
+import { quit } from "@gtkx/runtime";
+import { afterAll, afterEach } from "vitest";
 
 const collectGarbage = (): void => {
     if (globalThis.gc) {
@@ -6,13 +7,6 @@ const collectGarbage = (): void => {
     }
 };
 
-beforeAll(async () => {
-    await import("@gtkx/runtime");
-});
-
 afterEach(collectGarbage);
 
-afterAll(async () => {
-    const { quit } = await import("@gtkx/runtime");
-    quit();
-});
+afterAll(quit);
