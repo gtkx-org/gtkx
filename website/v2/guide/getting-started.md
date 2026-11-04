@@ -127,7 +127,15 @@ The CLI of 2.0.0-beta.12 and earlier releases has no `upgrade` command. Run the 
 - **Missing GIR file:** install the library's development package, then run `npx gtkx codegen` from the project. For libraries outside the standard directories, set [`girPath`](/v2/guide/configuration-and-codegen#the-config-file).
 - **Native versions are too old:** use a distribution or development container that meets the minimums. Installing newer TypeScript packages does not upgrade GTK or libadwaita.
 - **No display connection:** run from a desktop terminal or configure your container's display and session access. Tests have a separate [headless setup](/v2/guide/testing#setup).
-- **Dependency installation failed:** the generated files remain in the project directory, but the scaffolder stops before initializing Git. Resolve the package manager's error, rerun its install command there, and run `git init` if you want the project under version control. For pnpm release-age restrictions, see the [pnpm settings](https://pnpm.io/settings/dependency-resolution#minimumreleaseage). Yarn 4.18 quarantines packages published within its [`npmMinimalAgeGate`](https://yarnpkg.com/configuration/yarnrc#npmMinimalAgeGate), one day by default, so on the day of a GTKX release it reports that all versions of the `@gtkx` packages are quarantined. Add them to `npmPreapprovedPackages` in the project's `.yarnrc.yml`, or install again a day later:
+- **Dependency installation failed:** the generated files remain in the project directory, but the scaffolder stops before initializing Git. Resolve the package manager's error, rerun its install command there, and run `git init` if you want the project under version control.
+- **Release-age gates:** Yarn 4.15 and newer quarantine packages published within their [`npmMinimalAgeGate`](https://yarnpkg.com/configuration/yarnrc#npmMinimalAgeGate), one day by default, and pnpm's [`minimumReleaseAge`](https://pnpm.io/settings/dependency-resolution#minimumreleaseage) and npm's `min-release-age` hold back new versions the same way. The scaffolder exempts GTKX's own packages, `@gtkx/*` and `create-gtkx`, in the project configuration it writes, so a project created on the day of a GTKX release installs it while other dependencies keep the gate; inside a workspace it prints the entries for the root configuration instead. See [Scaffold Options](/v2/guide/scaffold-options#release-age-gates). The gate still applies to the scaffolder itself: on a release day, `yarn create gtkx` reports that all versions of `create-gtkx` are quarantined, and `pnpm create gtkx` with `minimumReleaseAge` set stops the same way. Start the project with `npm create gtkx` and choose your package manager, or exempt GTKX for that one command:
+
+  ```bash
+  YARN_NPM_PREAPPROVED_PACKAGES='@gtkx/*,create-gtkx' yarn create gtkx
+  pnpm_config_minimum_release_age_exclude='["@gtkx/*","create-gtkx"]' pnpm create gtkx
+  ```
+
+  A project created by an earlier scaffolder has no exemption. Add it to `.yarnrc.yml` before installing or upgrading on a release day, or install again a day later:
 
   ```yaml [.yarnrc.yml]
   npmPreapprovedPackages:
