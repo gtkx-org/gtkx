@@ -137,7 +137,7 @@ export default defineConfig({
 
 The gettext domain stays the production ID: `gtkx dev` registers `com.example.Tasks.Devel` but keeps using `po/com.example.Tasks.pot` and the same catalogs as tests, builds, and packages. A separate configuration selected with `--config` is a different project setup, so an application ID it changes also names its own template and domain.
 
-`gtkx build` compiles the catalogs into `dist/locale` beside the bundle. GTKX initializes localization before the application entry module runs and locates that directory automatically.
+`gtkx build` compiles the catalogs into `dist/locale` beside the bundle. When the entry's main thread loads GTKX code, GTKX initializes localization before the entry module runs and locates that directory automatically.
 
 Select the process locale before launch:
 

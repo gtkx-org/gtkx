@@ -305,6 +305,58 @@ describe("CLI commands", () => {
         expect(result.stdout).toMatch(/^Usage:\n {2}example \[/);
     });
 
+    it("sets the program name and locale before an app's modules run, but leaves a helper's main thread to its GTKX worker", async () => {
+        using project = createProject({ codegen: true, libraries: ["GLib-2.0"] });
+        project.write("po/LINGUAS", "fr\n");
+        project.write("po/fr.po", readFileSync(new URL("../../i18n/tests/fixtures/fr.po", import.meta.url), "utf8"));
+        project.write(
+            "src/probe.ts",
+            `import { dgettext, getPrgname } from "@gtkx/gi/glib";
+            import { t } from "@gtkx/i18n";
+            export const probe = [getPrgname(), dgettext("org.gtkx.example", "Hello, {{name}}!")];
+            export const translate = () => t("Hello, {{name}}!", { name: "Ada" });`,
+        );
+        project.write(
+            "src/index.ts",
+            `#!/usr/bin/env node
+            import { probe, translate } from "./probe.ts";
+            process.stdout.write(JSON.stringify([...probe, translate()]));`,
+        );
+        project.write(
+            "src/cli/owner.ts",
+            `import { pathGetBasename } from "@gtkx/gi/glib";
+            import { quit } from "@gtkx/runtime";
+            import { parentPort } from "node:worker_threads";
+            const name = pathGetBasename("/photos/beach.png");
+            quit();
+            parentPort?.postMessage(name);`,
+        );
+        project.write(
+            "src/cli/helper.ts",
+            `import { Worker } from "node:worker_threads";
+            const worker = new Worker(new URL("./owner.ts", import.meta.url));
+            worker.once("message", (name) => {
+                process.stdout.write(name);
+                void worker.terminate();
+            });`,
+        );
+        const run = (bundle: string) =>
+            promisify(execFile)(process.execPath, [join(project.root, bundle)], {
+                env: { ...process.env, LANG: "fr_FR.UTF-8", LC_ALL: "fr_FR.UTF-8", LANGUAGE: "fr" },
+                timeout: 30_000,
+            });
+
+        await invoke(["build", "--cwd", project.root]);
+        await invoke(["build", "src/cli/helper.ts", "--out", "dist-helper", "--cwd", project.root]);
+
+        expect(JSON.parse((await run("dist/bundle.mjs")).stdout)).toEqual([
+            "example",
+            "Bonjour, {{name}} !",
+            "Bonjour, Ada !",
+        ]);
+        expect((await run("dist-helper/bundle.mjs")).stdout).toBe("beach.png");
+    });
+
     it("warns once about a class a production bundle dropped, unless the app references it", async () => {
         const buildEnumRow = async (itemCheck: string) => {
             const project = createProject();

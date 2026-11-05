@@ -43,6 +43,18 @@ The import provides a real file path: the source file during `gtkx dev` and Vite
 
 A standalone worker can initialize GTKX when no other thread has done so. Conflicting initialization fails during bootstrap.
 
+A thread starts GTKX when it first loads GTKX code, such as `@gtkx/gi`, `@gtkx/react` or `@gtkx/i18n`. A helper whose main thread calls `t()` from `@gtkx/i18n` therefore owns GTKX on that thread, so keep `@gtkx/*` imports out of the main thread of a helper that hands GTKX to a worker, and post plain data between them. `gtkx build` sets the program name and the locale on an entry's main thread only when that thread loads GTKX code, so building such a helper leaves GTKX to its worker:
+
+```ts
+import { Worker } from "node:worker_threads";
+
+const [folder, output] = process.argv.slice(2);
+const worker = new Worker(new URL("./thumbnailer.ts", import.meta.url), { workerData: { folder, output } });
+worker.on("message", (message) => {
+    if (message === "cleanup-complete") void worker.terminate();
+});
+```
+
 Before terminating a worker that owns GTKX, finish its native operations or cancel them and await completion. Disconnect signal handlers and remove other native callback registrations while the worker can still run cleanup. Then call `quit()` from `@gtkx/runtime` and send a cleanup-complete message to the parent. The parent must wait for that message before calling `worker.terminate()`. Calling `quit()` alone does not cancel pending operations or await their callbacks; terminating a worker with live native work or registrations is unsupported.
 
 ## Callbacks from other threads

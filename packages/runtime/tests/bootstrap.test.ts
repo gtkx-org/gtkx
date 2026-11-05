@@ -22,7 +22,9 @@ test.each(["@gtkx/runtime", "@gtkx/runtime/internal", "leaf"])(
     async (target) => {
         expect(await importBeforeWorker(target)).toHaveProperty(
             "error",
-            expect.stringContaining("GTKX is already running on another thread"),
+            expect.stringContaining(
+                "GTKX is already running on another thread, and only the thread that started it can use it.",
+            ),
         );
     },
 );

@@ -356,7 +356,7 @@ pub fn install(env: &Env, dispatch_budget: Duration) -> napi::Result<()> {
 
     if unsafe { glib::ffi::g_main_context_acquire(ctx) } == 0 {
         let message = if context_owner().is_some() {
-            "GTKX is already running on another thread; worker threads cannot import @gtkx/* — post plain data back to the owning thread instead"
+            "GTKX is already running on another thread, and only the thread that started it can use it. A thread starts GTKX when it first loads GTKX code, such as @gtkx/gi, @gtkx/react or @gtkx/i18n. Load @gtkx/* on one thread and post plain data to it from the others"
         } else {
             "Failed to acquire the default GLib main context on the Node thread"
         };
