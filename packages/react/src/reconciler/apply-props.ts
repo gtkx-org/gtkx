@@ -465,4 +465,5 @@ export {
     applyElementProps,
     applyAdoptedProps,
     assertPropsCanChange,
+    propChangeError,
 };

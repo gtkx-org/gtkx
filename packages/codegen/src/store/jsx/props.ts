@@ -265,7 +265,7 @@ const isGObjectType = (library: Library, ref: TypeId | undefined): boolean => {
 };
 
 const isObjectProp = (library: Library, property: GirProperty): boolean => {
-    if (!property.writable || property.constructOnly) {
+    if (!property.writable) {
         return false;
     }
 

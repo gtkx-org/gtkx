@@ -1,6 +1,7 @@
 import type { ReactNode, Ref, RefObject } from "react";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
+import type * as WebKit from "@gtkx/gi/webkit";
 import {
     AdwActionRow,
     AdwButtonRow,
@@ -25,6 +26,7 @@ import {
     GtkPopover,
     GtkStack,
 } from "@gtkx/jsx/gtk";
+import { WebKitUserContentManager, WebKitWebView } from "@gtkx/jsx/webkit";
 import { createPortal, useApplication } from "@gtkx/react";
 import { act, render, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { createRef, useState } from "react";
@@ -506,6 +508,50 @@ describe("render - Slot", () => {
         expect(panedRef.current).toContainElement(endRef.current);
         expect(panedRef.current).toHaveObjectProperty("startChild", startRef.current);
         expect(panedRef.current).toHaveObjectProperty("endChild", endRef.current);
+    });
+
+    it("builds an element given to a construct-only prop before its parent and passes it at construction", async () => {
+        const webViewRef = createRef<WebKit.WebView>();
+        const managerRef = createRef<WebKit.UserContentManager>();
+        const messages: string[] = [];
+
+        await render(
+            <WebKitWebView
+                ref={webViewRef}
+                userContentManager={
+                    <WebKitUserContentManager
+                        ref={managerRef}
+                        onScriptMessageReceived={(value) => {
+                            messages.push(value.toString());
+                        }}
+                    />
+                }
+            />,
+        );
+
+        const manager = mountedRef(managerRef);
+        expect(mountedRef(webViewRef).getUserContentManager()).toBe(manager);
+
+        await act(() => {
+            manager.registerScriptMessageHandler("probe", null);
+            mountedRef(webViewRef).loadHtml(
+                "<script>window.webkit.messageHandlers.probe.postMessage('ready')</script>",
+                null,
+            );
+        });
+
+        await waitFor(() => {
+            expect(messages).toEqual(["ready"]);
+        });
+    });
+
+    it("rejects replacing the element of a construct-only prop after construction", async () => {
+        function App({ manager }: { manager: string }) {
+            return <WebKitWebView userContentManager={<WebKitUserContentManager key={manager} />} />;
+        }
+
+        const { rerender } = await render(<App manager="first" />);
+        await expect(rerender(<App manager="second" />)).rejects.toThrow();
     });
 });
 

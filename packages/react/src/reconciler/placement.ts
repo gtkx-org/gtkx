@@ -2,8 +2,8 @@ import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { getClassType } from "@gtkx/runtime";
 import { createLogger, drain, indexBeforeOrEnd, type Logger } from "@gtkx/utils";
-import type { DetachInfo, ElementBehavior, PlaceInfo } from "./registry.js";
-import { applyAdoptedProps, discardAccessible, placeDependingProps } from "./apply-props.js";
+import type { DetachInfo, ElementBehavior, PlaceInfo, Props } from "./registry.js";
+import { applyAdoptedProps, discardAccessible, placeDependingProps, propChangeError } from "./apply-props.js";
 import { claimingSlot, holdsOneChild, slotAccepting, slotAcceptsType } from "./behaviors.js";
 import { isKnownProp, propertiesAccepting, typeInfoFor } from "./metadata.js";
 import {
@@ -24,6 +24,7 @@ import { markTextDirty } from "./text.js";
 type AttachContext = { parent: ElementNode; entry: PlacedChild; index: number; sibling: GObject.Object | null };
 
 const pendingAdoptions: Set<LazyNode> = new Set();
+const constructedSlots: WeakMap<ElementNode, Props> = new WeakMap();
 const pendingSlotChecks: Set<ElementNode> = new Set();
 const log: Logger = createLogger("react");
 
@@ -199,8 +200,32 @@ const writeSlot = (parent: ElementNode, entry: PlacedChild, value: GObject.Objec
     });
 };
 
+/**
+ * Records the objects of routed prop children that `parent` received at construction, keyed by
+ * prop, so placing those children into their construct-only slots afterwards writes nothing.
+ */
+const recordConstructedSlots = (parent: ElementNode, objects: Props): void => {
+    if (Object.keys(objects).length > 0) {
+        constructedSlots.set(parent, objects);
+    }
+};
+
+const isConstructOnlySlot = (parent: ElementNode, slot: string): boolean =>
+    typeInfoFor(parent.typeName).constructOnly.has(slot);
+
+const assertConstructedWith = (parent: ElementNode, entry: PlacedChild): void => {
+    if (constructedSlots.get(parent)?.[entry.slot] !== entry.object) {
+        throw propChangeError(parent.typeName, entry.slot);
+    }
+};
+
 const setObjectSlot = (parent: ElementNode, entry: PlacedChild): void => {
-    writeSlot(parent, entry, entry.object);
+    if (isConstructOnlySlot(parent, entry.slot)) {
+        assertConstructedWith(parent, entry);
+    } else {
+        writeSlot(parent, entry, entry.object);
+    }
+
     wireBufferView(entry.node, parent);
     entry.behavior = null;
 };
@@ -306,6 +331,14 @@ const detachInfo = (
 
 const runDetach = (parent: ElementNode, entry: PlacedChild, info: DetachInfo): void => {
     const behavior = entry.behavior;
+
+    if (behavior === null && isConstructOnlySlot(parent, entry.slot)) {
+        if (!info.isParentRemoved) {
+            throw propChangeError(parent.typeName, entry.slot);
+        }
+
+        return;
+    }
 
     if (behavior === null) {
         writeSlot(parent, entry, info.remaining.at(-1) ?? null);
@@ -456,4 +489,4 @@ const teardownPlacements = (parent: ElementNode, isParentRemoved: boolean): void
     }
 };
 
-export { flushAdoptions, flushSlotChecks, placeChild, teardownPlacements, unplaceChild };
+export { flushAdoptions, flushSlotChecks, placeChild, recordConstructedSlots, teardownPlacements, unplaceChild };

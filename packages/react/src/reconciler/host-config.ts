@@ -6,7 +6,7 @@ import ReactReconciler from "react-reconciler";
 import { DefaultEventPriority, DiscreteEventPriority, NoEventPriority } from "react-reconciler/constants.js";
 import type { Props } from "./registry.js";
 import packageManifest from "../../package.json" with { type: "json" };
-import { Prop } from "../components/element.js";
+import { Prop, routedPropElements } from "../components/element.js";
 import {
     applyAdoptedProps,
     applyElementProps,
@@ -18,6 +18,7 @@ import {
 import { attachChild, detachChild } from "./child-routing.js";
 import { releaseFocus } from "./focus.js";
 import { resolveElementNode } from "./instance.js";
+import { typeInfoFor } from "./metadata.js";
 import {
     type AnyNode,
     createElementNode,
@@ -28,10 +29,12 @@ import {
     type Instance,
     LAZY_KIND,
     lazyTarget,
+    nodeObject,
+    type PropNode,
     TEXT_KIND,
     type TextNode,
 } from "./node.js";
-import { flushAdoptions, flushSlotChecks, teardownPlacements } from "./placement.js";
+import { flushAdoptions, flushSlotChecks, recordConstructedSlots, teardownPlacements } from "./placement.js";
 import { isRootElement, type RootElement } from "./root-element.js";
 import { disconnectAllHandlers, scheduleQueuedNotifies } from "./signals.js";
 import { flushStyles, releaseCssClasses, releaseStyle } from "./style.js";
@@ -56,6 +59,7 @@ type PriorityTracker = {
 const RENDERER_VERSION = packageManifest.version;
 const HOST_CONTEXT: Record<string, never> = {};
 const containerNodes: WeakMap<GObject.Object, ElementNode> = new WeakMap();
+const propNodes: WeakMap<Props, PropNode> = new WeakMap();
 const priority = createPriorityTracker();
 
 const hostConfig = {
@@ -317,15 +321,42 @@ const adoptContainer = (container: GObject.Object): ElementNode => {
 const getOrCreateContainerNode = (container: GObject.Object): ElementNode =>
     containerNodes.getOrInsertComputed(container, adoptContainer);
 
-const createNode = (type: string, props: Props): Instance => {
-    if (type === Prop) {
-        return createPropNode(props.propName as string);
+const routedObject = (node: PropNode | undefined): GObject.Object | null => {
+    const [child] = node?.children ?? [];
+
+    return child === undefined ? null : nodeObject(child);
+};
+
+const constructOnlyRoutedObjects = (type: string, props: Props): Props => {
+    const { constructOnly } = typeInfoFor(type);
+    const objects: Props = {};
+
+    for (const element of routedPropElements(props)) {
+        const { propName } = element.props;
+        const object = constructOnly.has(propName) ? routedObject(propNodes.get(element.props)) : null;
+
+        if (object !== null) {
+            objects[propName] = object;
+        }
     }
 
-    const node = resolveElementNode(type, props, priority.withDiscrete);
+    return objects;
+};
+
+const createNode = (type: string, props: Props): Instance => {
+    if (type === Prop) {
+        const propNode = createPropNode(props.propName as string);
+        propNodes.set(props, propNode);
+
+        return propNode;
+    }
+
+    const routedObjects = constructOnlyRoutedObjects(type, props);
+    const node = resolveElementNode(type, props, priority.withDiscrete, routedObjects);
 
     if (node.kind === ELEMENT_KIND) {
         containerNodes.set(node.object, node);
+        recordConstructedSlots(node, routedObjects);
         applyElementProps(node, {}, props, node.props);
     }
 

@@ -226,7 +226,7 @@ Generated elements follow the native API with GTKX naming conventions:
 - Properties use camelCase, such as `showTitleButtons`.
 - Signals use handler props, such as `onClicked`. GTKX passes the emitting object after the signal arguments.
 - Property notifications use `onNotifyX`, receiving the new value and the emitting object.
-- Object properties that accept elements can be expressed as JSX, with GTKX managing their lifetime.
+- Object properties that accept elements can be expressed as JSX, with GTKX managing their lifetime. This includes construct-only ones, such as `userContentManager={<WebKitUserContentManager onScriptMessageReceived={...} />}` on a `WebKitWebView`: GTKX builds the prop's element first and passes its object when it constructs the parent, so the element must stay the same while the parent is mounted.
 - Elements that show one child, such as `GtkScrolledWindow`, `AdwClamp`, window content or `AdwToolbarView` content, show the last one passed. Development builds warn when such an element holds more than one visible child; wrap them in a `GtkBox`.
 - Child slots that no property backs take their GtkBuilder child type, such as `start` and `end` on a header bar or `top` and `bottom` on a toolbar view.
 - Refs expose the corresponding GI instance for imperative APIs.

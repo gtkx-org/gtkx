@@ -74,7 +74,12 @@ const createObject = (typeName: string, type: bigint, input: Props): { object: G
         : { object: create(input), initialized: {} };
 };
 
-const resolveElementNode = (typeName: string, props: Props, dispatch: Dispatch): ElementNode | LazyNode => {
+const resolveElementNode = (
+    typeName: string,
+    props: Props,
+    dispatch: Dispatch,
+    routedObjects: Props,
+): ElementNode | LazyNode => {
     const info = typeInfoFor(typeName);
 
     if (info.isLazy) {
@@ -82,7 +87,7 @@ const resolveElementNode = (typeName: string, props: Props, dispatch: Dispatch):
     }
 
     const type = typeFromName(typeName);
-    const { object, initialized } = createObject(typeName, type, constructInput(info, props));
+    const { object, initialized } = createObject(typeName, type, constructInput(info, { ...props, ...routedObjects }));
     const node = createElementNode(typeName, object, dispatch, contentKindFor(type));
     node.props = initialized;
 
