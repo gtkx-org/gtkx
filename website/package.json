@@ -15,7 +15,7 @@
         "preview": "vitepress preview"
     },
     "devDependencies": {
-        "shiki": "^4.5.0",
+        "shiki": "^4.6.0",
         "typedoc": "^0.28.20",
         "typedoc-plugin-markdown": "^4.14.1",
         "typedoc-plugin-zod": "^1.4.3",
@@ -24,6 +24,6 @@
         "vite": "catalog:",
         "vitepress": "^2.0.0-alpha.21",
         "vue": "^3.5.44",
-        "vue-tsc": "^3.3.13"
+        "vue-tsc": "^3.3.14"
     }
 }
