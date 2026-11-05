@@ -10,7 +10,8 @@ import { applyTabViewClick, isTabViewTab } from "./tab-view-click.js";
 type NativeClick = (widget: Gtk.Widget, nPress: number, modifiers: Gdk.ModifierType) => void;
 
 const COLUMN_ROW_TYPE_NAME = "GtkColumnViewRowWidget";
-const ROW_TYPE_NAMES: Set<string> = new Set([COLUMN_ROW_TYPE_NAME, "GtkListItemWidget"]);
+const LIST_ITEM_TYPE_NAME = "GtkListItemWidget";
+const ROW_TYPE_NAMES: Set<string> = new Set([COLUMN_ROW_TYPE_NAME, LIST_ITEM_TYPE_NAME]);
 const CELL_TYPE_NAME = "GtkColumnViewCellWidget";
 const TITLE_TYPE_NAME = "GtkColumnViewTitle";
 const TOGGLE_EXPAND_ACTION = "listitem.toggle-expand";
@@ -18,8 +19,15 @@ const TOGGLE_EXPAND_ACTION = "listitem.toggle-expand";
 const isHeaderRow = (widget: Gtk.Widget): boolean =>
     getWidgetTypeName(widget) === COLUMN_ROW_TYPE_NAME && widget.getParent() instanceof Gtk.ColumnView;
 
+/**
+ * A list item widget outside a list view, such as the one showing a drop-down's selection, is neither selectable nor
+ * activatable, so GTK denies its click gesture and the press reaches its ancestors.
+ */
+const isDetachedListItem = (widget: Gtk.Widget): boolean =>
+    getWidgetTypeName(widget) === LIST_ITEM_TYPE_NAME && !(widget.getParent() instanceof Gtk.ListBase);
+
 const isClickTransparent = (widget: Gtk.Widget): boolean =>
-    getWidgetTypeName(widget) === CELL_TYPE_NAME || isHeaderRow(widget);
+    getWidgetTypeName(widget) === CELL_TYPE_NAME || isHeaderRow(widget) || isDetachedListItem(widget);
 
 const isExpanderToggling = (widget: Gtk.Widget): boolean =>
     widget instanceof Gtk.TreeExpander && widget.getListRow()?.isExpandable() === true && !widget.getHideExpander();

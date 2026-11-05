@@ -654,6 +654,14 @@ describe("userEvent.click", () => {
         expect(title.getRoot()).toBeInstanceOf(Gtk.Window);
     });
 
+    it("opens a drop-down when the selected item it displays is clicked", async () => {
+        const dropdown = await renderDropDown(["Option A", "Option B"]);
+
+        await userEvent.click(await screen.findByText("Option A"));
+        await userEvent.click(await screen.findByText("Option B"));
+        expect((dropdown as Gtk.DropDown).getSelected()).toBe(1);
+    });
+
     it("starts editing an editable label when its text is clicked or pointer-clicked", async () => {
         const label = createRef<Gtk.EditableLabel>();
         await render(<GtkEditableLabel ref={label} text="Draft" />);
