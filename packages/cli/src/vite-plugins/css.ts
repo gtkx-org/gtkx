@@ -8,7 +8,7 @@ import { createVirtualNamespace } from "./virtual-module.js";
 
 type CssResolveContext = Parameters<typeof resolveToVirtual>[0];
 type CssResolveRequest = Parameters<typeof resolveToVirtual>[1];
-type CssLoadContext = { addWatchFile: (file: string) => void };
+type CssLoadContext = { addWatchFile: (file: string) => void; warn: (message: string) => void };
 
 const CSS_RE = /\.css$/i;
 const INJECT_SUFFIX = ".js";
@@ -18,12 +18,14 @@ const INJECTED_CSS_ID_RE = new RegExp(`^${VIRTUAL_PREFIX}.*\\${INJECT_SUFFIX}$`)
 const CSS_URL_RE = /(?<=^|[^\w\-\u0080-\uffff])url\(\s*(?:"([^"]*)"|'([^']*)'|([^'")\s]+))\s*\)/g;
 const CSS_IMPORT_TARGET_RE = /^\s*(?:url\(\s*(?:"([^"]*)"|'([^']*)'|([^'")\s]+))\s*\)|"([^"]*)"|'([^']*)')\s*$/;
 const NON_RELATIVE_URL_RE = /^(?:[a-z][a-z\d+.-]*:|\/|#|$)/i;
+const ABSOLUTE_PATH_RE = /^\//;
 const URL_PLACEHOLDER_RE = /\0gtkx-css-url:(\d+)\0/;
 const { isVirtual, toVirtualId, fromVirtualId, resolveToVirtual } = createVirtualNamespace(VIRTUAL_PREFIX);
 
 type BundledStylesheet = {
     imports: string[];
     urls: string[];
+    absolutePaths: string[];
     css: string;
 };
 
@@ -58,8 +60,14 @@ const bundleStylesheet = (filePath: string, content: string): BundledStylesheet 
     const root = postcss.parse(content, { from: filePath });
     const imports: string[] = [];
     const urls: string[] = [];
-    const resolveTarget = (target: string): string | null =>
-        NON_RELATIVE_URL_RE.test(target) ? null : resolve(dirname(filePath), target);
+    const absolutePaths: string[] = [];
+    const resolveTarget = (target: string): string | null => {
+        if (ABSOLUTE_PATH_RE.test(target)) {
+            absolutePaths.push(target);
+        }
+
+        return NON_RELATIVE_URL_RE.test(target) ? null : resolve(dirname(filePath), target);
+    };
 
     root.walkAtRules("import", (rule) => {
         const match = CSS_IMPORT_TARGET_RE.exec(rule.params);
@@ -83,7 +91,7 @@ const bundleStylesheet = (filePath: string, content: string): BundledStylesheet 
         });
     });
 
-    return { imports, urls, css: root.toString() };
+    return { imports, urls, absolutePaths, css: root.toString() };
 };
 
 const injectedCssExpression = (css: string): string =>
@@ -100,8 +108,15 @@ const loadInjectedCss = (ctx: CssLoadContext, id: string): string | undefined =>
     }
 
     const filePath = fromVirtualId(id.slice(0, -INJECT_SUFFIX.length));
-    const { imports, urls, css } = bundleStylesheet(filePath, readFileSync(filePath, "utf8"));
+    const { imports, urls, absolutePaths, css } = bundleStylesheet(filePath, readFileSync(filePath, "utf8"));
     ctx.addWatchFile(filePath);
+
+    for (const path of absolutePaths) {
+        ctx.warn(
+            `${filePath} refers to "${path}", an absolute path GTK cannot load from an imported stylesheet. ` +
+                "Use a path relative to the stylesheet or a resource:// URI.",
+        );
+    }
 
     return [
         'import { injectGlobal } from "@gtkx/css";',

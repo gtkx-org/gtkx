@@ -561,7 +561,8 @@ describe("CLI commands", () => {
             "src/styles/theme.css",
             `@import url("./base.css");
             @define-color cli_css_probe rgb(3, 6, 9);
-            .cli-css-probe { color: @cli_css_probe; min-width: 231px; background-image: url("../../data/probe.png"); }`,
+            .cli-css-probe { color: @cli_css_probe; min-width: 231px; background-image: url("../../data/probe.png"); }
+            .cli-css-absolute { background-image: url("/org/gtkx/cssprobe/absolute.png"); }`,
         );
         project.write(
             "src/index.tsx",
@@ -606,7 +607,8 @@ describe("CLI commands", () => {
             await expect.poll(style, { timeout: 30_000 }).toEqual(expected);
         });
         rmSync(readyPath);
-        await invoke(["build", "--cwd", project.root]);
+        const output = await invoke(["build", "--cwd", project.root]);
+        expect(output.split("\n").filter((line) => line.includes("/org/gtkx/cssprobe/absolute.png"))).toHaveLength(1);
         const stopDisplay = await startHeadlessDisplay(resolveHeadlessOptions({ size: "640x480" }));
         try {
             await promisify(execFile)(process.execPath, [join(project.root, "dist/bundle.mjs")], { timeout: 30_000 });
