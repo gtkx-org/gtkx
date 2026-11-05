@@ -195,15 +195,15 @@ const formatWidget = (widget: Gtk.Widget, indentation: string, depth: number, ct
     const { config } = ctx;
     const tag = getTypeTag(widget);
     const attrs = formatAttrs(buildAttrs(widget, ctx.getId), config.colors);
-    const openTag = `${paint(config.colors.tag, "<" + tag)}${attrs}${paint(config.colors.tag, ">")}`;
-    const closeTag = paint(config.colors.tag, `</${tag}>`);
     const text = printableText(widget);
-    const openLine = `${indentation}${openTag}${config.spacingOuter}`;
 
     if (!text && !widget.getFirstChild()) {
-        return openLine;
+        return `${indentation}${paint(config.colors.tag, "<" + tag)}${attrs}${paint(config.colors.tag, " />")}${config.spacingOuter}`;
     }
 
+    const openTag = `${paint(config.colors.tag, "<" + tag)}${attrs}${paint(config.colors.tag, ">")}`;
+    const closeTag = paint(config.colors.tag, `</${tag}>`);
+    const openLine = `${indentation}${openTag}${config.spacingOuter}`;
     const textLine = text ? `${indentation}${config.indent}${text}${config.spacingOuter}` : "";
     const body = isPasswordWidget(widget) ? "" : formatBody(widget, indentation, depth, ctx);
 
