@@ -66,6 +66,8 @@ Typed `GObject.getProperty` and `GObject.setProperty` calls and `useProperty` in
 
 Use `GObject.ParamSpec.override("property-name", Source)` when explicitly redeclaring a property from a parent class or interface. `Source` can be its generated class, interface, or GType. Implemented interface properties are overridden automatically. Native reads and writes go through a getter and setter of the same camelCase name when the class defines them, as they do for declared properties.
 
+Some interface properties are read through a virtual function, such as `Gtk.Editable`'s `text`, which reads `vfuncGetText`. A write to such a property throws unless the class defines a getter and setter for it, because the virtual function would never see the written value.
+
 ### Inspecting a ParamSpec
 
 Use the generated ParamSpec reference for its metadata and flags. Class-level inspection is available through generated class-struct wrappers, such as `GObject.ObjectClass.peek(TaggedScale)`.
@@ -246,6 +248,53 @@ const LevelStore = registerClass(LevelStoreBase, {
 Write vfuncs as prototype methods, not arrow-function fields. Every slot of an `Impl` type is optional, so TypeScript rejects `implements` on a class that fills none of them, such as a `Gtk.Scrollable` widget that only overrides the interface's adjustment and scroll-policy properties; register that class with `implements: [Gtk.Scrollable]` and leave out the `implements` clause. The `Impl` type checks signatures; it does not establish that every required native operation has an implementation. Follow the interface's prerequisites and behavior contract. For this example, [Gio.ListModel](https://docs.gtk.org/gio/iface.ListModel.html) also requires change notifications when items change.
 
 Registration adds the interface's public members to instances. Inside the class, declare any added member you call, such as `declare itemsChanged: Gio.ListModel["itemsChanged"];`. Use a base class whose native state agrees with the implementation you provide.
+
+### Delegating `Gtk.Editable`
+
+GTK's [recipe for implementing `Gtk.Editable`](https://docs.gtk.org/gtk4/iface.Editable.html#implementing-gtkeditable) wraps an inner `Gtk.Text`: return it from `vfuncGetDelegate`, call `initDelegate()` once it exists and `finishDelegate()` in `vfuncDispose`. GTKX forwards the interface's properties (`text`, `cursorPosition`, `editable`, `widthChars`, `xalign` and the rest) to the delegate automatically, as `gtk_editable_delegate_set_property` and `gtk_editable_delegate_get_property` do in C, so skip that step of the recipe. Props such as `text` and `editable` on the class's element then reach the inner field:
+
+```ts
+import * as Gtk from "@gtkx/gi/gtk";
+import { callParent, registerClass } from "@gtkx/runtime";
+
+class SearchFieldBase extends Gtk.Widget implements Gtk.EditableImpl {
+    declare private delegate: Gtk.Text | null;
+    declare initDelegate: Gtk.Editable["initDelegate"];
+    declare finishDelegate: Gtk.Editable["finishDelegate"];
+
+    override vfuncConstructed(): void {
+        super.vfuncConstructed();
+        const text = new Gtk.Text({ hexpand: true });
+        text.setParent(this);
+        this.delegate = text;
+        this.initDelegate();
+    }
+
+    vfuncGetDelegate(): Gtk.Editable | null {
+        return this.delegate;
+    }
+
+    vfuncDispose(): void {
+        if (this.delegate !== null) {
+            this.finishDelegate();
+            this.delegate.unparent();
+            this.delegate = null;
+        }
+
+        callParent(SearchField, "vfuncDispose", this);
+    }
+}
+
+const SearchField = registerClass(SearchFieldBase, {
+    typeName: "ExampleSearchField",
+    implements: [Gtk.Editable],
+    classInit(klass: Gtk.WidgetClass) {
+        klass.setLayoutManagerType(Gtk.BoxLayout);
+    },
+});
+```
+
+Create the delegate in `vfuncConstructed`: reading or writing an editable property while `vfuncGetDelegate` returns `null` throws.
 
 ### Reporting a vfunc error
 

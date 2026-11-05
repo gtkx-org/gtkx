@@ -38,6 +38,7 @@ type ParamLayout = { flags: number; valueType: bigint; ownerType: bigint };
 
 const PARAM_READABLE = 1;
 const PARAM_WRITABLE = 2;
+const PARAM_CONSTRUCT = 4;
 const PARAM_CONSTRUCT_ONLY = 8;
 const PARAM_LAX_VALIDATION = 16;
 const PARAM_EXPLICIT_NOTIFY = 1 << 30;
@@ -149,6 +150,7 @@ const getParamSpecOwnerType = (spec: object): bigint => {
 const isParamWritable = (flags: number): boolean => (flags & PARAM_WRITABLE) !== 0;
 const isParamReadable = (flags: number): boolean => (flags & PARAM_READABLE) !== 0;
 const isParamConstructOnly = (flags: number): boolean => (flags & PARAM_CONSTRUCT_ONLY) !== 0;
+const isParamConstructed = (flags: number): boolean => (flags & (PARAM_CONSTRUCT | PARAM_CONSTRUCT_ONLY)) !== 0;
 const isParamLaxlyValidated = (flags: number): boolean => (flags & PARAM_LAX_VALIDATION) !== 0;
 const isParamExplicitlyNotified = (flags: number): boolean => (flags & PARAM_EXPLICIT_NOTIFY) !== 0;
 
@@ -294,6 +296,7 @@ export {
     INT32_MINIMUM,
     INT64_MAXIMUM,
     INT64_MINIMUM,
+    isParamConstructed,
     isParamConstructOnly,
     isParamReadable,
     isStringArray,

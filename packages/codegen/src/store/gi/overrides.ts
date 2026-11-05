@@ -46,6 +46,7 @@ const OVERRIDES: Record<string, Override[]> = {
     ],
     gtk: [
         { module: "application", exports: ["Application"], needsBootstrap: true },
+        { module: "editable", exports: [], needsBootstrap: true },
         { module: "widget-class", exports: ["WidgetClass"], needsBootstrap: true },
         { module: "text-view", exports: "*", needsBootstrap: true },
         { module: "window", exports: [], needsBootstrap: true },

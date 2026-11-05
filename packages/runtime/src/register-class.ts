@@ -519,7 +519,7 @@ function registerClass(klass: AnyClass, options: AnyRegisterClassOptions = {}): 
     const members = collectInstanceMembers(klass);
     const { methods, inheritedNames } = members;
     checkAsyncInitable(klass, adoptedTypes, methods);
-    const dispatch = buildPropertyDispatch({ klass, properties, adoptedTypes });
+    const dispatch = buildPropertyDispatch({ klass, properties, adoptedTypes, methods });
 
     const classVfuncs = [
         ...discoverClassVfuncs(klass, methods),
