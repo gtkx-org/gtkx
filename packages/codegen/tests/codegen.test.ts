@@ -729,6 +729,38 @@ describe("generated bindings", () => {
         expect(page).not.toContain("### `readAllAsync`");
     });
 
+    it("omits the D-Bus interface skeleton vtable slot that JavaScript cannot fill", async () => {
+        using directory = createProject();
+        const libraries = ["Gio-2.0"];
+        const girPath = resolveGirPath(undefined, directory.path);
+        const { gi } = resolveStore(directory.path);
+        await runCodegen({ libraries, girPath, gi });
+        const consumer = `import { DBusInterfaceSkeleton } from "@gtkx/gi/gio";
+            export class Skeleton extends DBusInterfaceSkeleton {
+                // @ts-expect-error GDBusInterfaceVTable cannot be constructed or filled
+                protected override vfuncGetVtable(): never {
+                    throw new Error("unreachable");
+                }
+            }
+            console.log(JSON.stringify({
+                getInfo: "vfuncGetInfo" in DBusInterfaceSkeleton.prototype,
+                getVtable: "vfuncGetVtable" in DBusInterfaceSkeleton.prototype,
+            }));`;
+        expect(diagnostics(directory.path, consumer)).toEqual([]);
+        const output = execFileSync(process.execPath, ["consumer.ts"], {
+            cwd: directory.path,
+            encoding: "utf8",
+            stdio: "pipe",
+            timeout: 20_000,
+        });
+        expect(JSON.parse(output)).toEqual({ getInfo: true, getVtable: false });
+        const reference = loadApiReference({ libraries, girPath, resolveFrom: directory.path });
+        const result = reference.lookup("Gio.DBusInterfaceSkeleton");
+        const page = result.outcome === "page" ? result.markdown : "";
+        expect(page).toContain("vfuncGetInfo");
+        expect(page).not.toContain("vfuncGetVtable");
+    });
+
     it("emits signals from flat GValue arrays without a length like GJS", async () => {
         using directory = createProject();
         const { gi } = resolveStore(directory.path);

@@ -132,6 +132,121 @@ Unpacking always reads the variant's actual runtime type. An explicit type param
 
 The generated promise is named `call` here; use the generated signature rather than deriving a name from the C function.
 
+### Consuming a service
+
+`Gio.DBusProxy.newForBus` returns a promise for a proxy to one interface of a remote object. The proxy emits `g-signal` for the service's signals, and `getCachedProperty` reads its properties, which `g-properties-changed` reports when they change. `Gio.DBusObjectManagerClient` lists the objects of a service that exports an object manager, with a proxy for each of their interfaces. `Gio.busWatchName` calls its handlers when a name gains or loses its owner, so a client can create its proxy once the service is running:
+
+```ts
+import * as Gio from "@gtkx/gi/gio";
+import { Variant } from "@gtkx/gi/glib";
+
+export const watchCounter = (onValue: (value: number | null) => void) => {
+    let proxy: Gio.DBusProxy | null = null;
+
+    const watcher = Gio.busWatchName(
+        Gio.BusType.SESSION,
+        "com.example.Counter",
+        Gio.BusNameWatcherFlags.NONE,
+        async (_connection: Gio.DBusConnection, name: string) => {
+            const current = await Gio.DBusProxy.newForBus(
+                Gio.BusType.SESSION,
+                Gio.DBusProxyFlags.NONE,
+                null,
+                name,
+                "/com/example/Counter",
+                "com.example.Counter",
+            );
+            current.connect("g-signal", (_sender, signalName, parameters) => {
+                if (signalName === "Changed") onValue(parameters.deepUnpack<"(u)">()[0]);
+            });
+            proxy = current;
+            onValue(current.getCachedProperty("Value")?.unpack<"u">() ?? null);
+        },
+        (_connection: Gio.DBusConnection | null, _name: string) => {
+            proxy = null;
+            onValue(null);
+        },
+    );
+
+    return {
+        increment: async (step: number) => {
+            if (!proxy) return;
+            const reply = await proxy.call("Increment", new Variant("(u)", [step]), Gio.DBusCallFlags.NONE, -1, null);
+            onValue(reply.deepUnpack<"(u)">()[0]);
+        },
+        stop: () => {
+            Gio.busUnwatchName(watcher);
+            proxy = null;
+        },
+    };
+};
+```
+
+GIR types these handlers only as `GObject.Closure`, so annotate their parameters with the types the C documentation gives them, as the example does. A production build may need a value reference to the classes they receive; see [Production bindings](/v2/guide/configuration-and-codegen#production-bindings).
+
+### Exporting an object
+
+`connection.registerObjectWithClosures2` exports an object at a path, given an interface description and three handlers. The method-call handler answers each call exactly once, through the `Gio.DBusMethodInvocation` it receives, with `returnValue` or `returnDbusError`, and may do so after asynchronous work. The property handlers read and write properties; pass `null` for one the interface does not need:
+
+```ts
+import * as Gio from "@gtkx/gi/gio";
+import { Variant } from "@gtkx/gi/glib";
+
+const COUNTER_XML = `<node>
+  <interface name="com.example.Counter">
+    <method name="Increment">
+      <arg type="u" name="step" direction="in"/>
+      <arg type="u" name="value" direction="out"/>
+    </method>
+    <property name="Value" type="u" access="read"/>
+    <signal name="Changed">
+      <arg type="u" name="value"/>
+    </signal>
+  </interface>
+</node>`;
+
+export const exportCounter = (connection: Gio.DBusConnection, objectPath: string): (() => void) => {
+    const info = Gio.DBusNodeInfo.newForXml(COUNTER_XML).lookupInterface("com.example.Counter");
+    if (!info) throw new Error("The interface description has no com.example.Counter");
+    let value = 0;
+
+    const registration = connection.registerObjectWithClosures2(
+        objectPath,
+        info,
+        (
+            _connection: Gio.DBusConnection,
+            _sender: string,
+            _path: string,
+            interfaceName: string,
+            method: string,
+            parameters: Variant,
+            invocation: Gio.DBusMethodInvocation,
+        ) => {
+            if (!(invocation instanceof Gio.DBusMethodInvocation)) throw new TypeError("Expected a D-Bus method invocation");
+            if (method !== "Increment") {
+                invocation.returnDbusError("org.freedesktop.DBus.Error.UnknownMethod", `Unknown method ${method}`);
+                return;
+            }
+            const [step] = parameters.deepUnpack<"(u)">();
+            value += step;
+            connection.emitSignal(null, objectPath, interfaceName, "Changed", new Variant("(u)", [value]));
+            invocation.returnValue(new Variant("(u)", [value]));
+        },
+        (_connection: Gio.DBusConnection, _sender: string, _path: string, _interfaceName: string, property: string) =>
+            property === "Value" ? new Variant("u", value) : null,
+        null,
+    );
+
+    return () => connection.unregisterObject(registration);
+};
+```
+
+Call it from an effect and return its cleanup. An application element registers the application on the session bus under its application ID, so `useApplication().getDbusConnection()` gives the connection to export on, and `getDbusObjectPath()` gives the application's object path, which can hold the object or a path below it. To export under another name, own it with `Gio.busOwnName` and export from its bus-acquired handler, which receives the connection.
+
+### GJS D-Bus wrappers
+
+GTKX has no equivalent of GJS's `Gio.DBusProxy.makeProxyWrapper` or `Gio.DBusExportedObject.wrapJSObject`. When porting, replace a proxy wrapper's methods with `proxy.call`, its signals with `g-signal` and its properties with `getCachedProperty`, and export a wrapped object with `registerObjectWithClosures2`. Exporting objects through `Gio.DBusObjectManagerServer` is not supported: it takes `Gio.DBusInterfaceSkeleton` implementations, and JavaScript cannot supply the method table a skeleton returns, so the bindings omit `vfuncGetVtable`.
+
 ## Ending work on unmount
 
 When the application quits, GTKX unmounts the tree, and the Node process exits once its event loop has no work left. A pending `fetch` or a running timer keeps the process alive after its window has closed. Abort requests and clear timers in the cleanup of the effect that started them, and start timers in effects rather than at module level:

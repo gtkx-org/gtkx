@@ -45,6 +45,7 @@ import {
 } from "../../analysis/type-shape.js";
 import { ancestorChain, type ResolvedAncestor, resolveInterfaces } from "../../gir/ancestry.js";
 import { callbackAsFunction, type GirCallback } from "../../gir/callback.js";
+import { HIDDEN_VTABLE_SLOTS } from "../../gir/hidden-symbols.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { renderBlock, renderBraced } from "../../writer/emit.js";
 import { handlerSpec, THROWS_TEXT } from "./doc-spec.js";
@@ -266,6 +267,10 @@ const collectVtableSlots = (
     const claimedNames: Set<string> = new Set();
 
     for (const { field, slot } of slots) {
+        if (HIDDEN_VTABLE_SLOTS.has(`${namespaceName}.${record.name}.${field.name}`)) {
+            continue;
+        }
+
         const entry = vtableSlotEntry(context, field, claimedNames);
 
         if (entry !== undefined) {

@@ -52,4 +52,6 @@ const HIDDEN_SYMBOLS: Set<string> = new Set([
     "hb_blob_get_data_writable",
 ]);
 
-export { HIDDEN_SYMBOLS };
+const HIDDEN_VTABLE_SLOTS: Set<string> = new Set(["Gio.DBusInterfaceSkeletonClass.get_vtable"]);
+
+export { HIDDEN_SYMBOLS, HIDDEN_VTABLE_SLOTS };
