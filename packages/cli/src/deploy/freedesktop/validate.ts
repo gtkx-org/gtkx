@@ -35,6 +35,7 @@ type ToolRequest = {
 const ERROR_SEVERITY = "error";
 const WARNING_SEVERITY = "warning";
 const INFO_SEVERITY = "info";
+const PEDANTIC_SEVERITY = "pedantic";
 const FATAL_WARNING_RULES: Set<string> = new Set(["unknown-tag"]);
 const DESKTOP_ERROR = /(?:^|:\s)error:/iu;
 
@@ -158,7 +159,9 @@ const validateMetainfo = (path: string, areWarningsFatal: boolean): void => {
     });
 
     const report = parse(stdout) as { Issues: Diagnostic[] } | null;
-    const diagnostics = report?.Issues ?? [];
+    const diagnostics = (report?.Issues ?? []).filter(
+        (diagnostic) => diagnostic.severity !== PEDANTIC_SEVERITY || FATAL_WARNING_RULES.has(diagnostic.tag),
+    );
     const errors = rulesIn(diagnostics, [ERROR_SEVERITY]);
     const warnings = rulesIn(diagnostics, [WARNING_SEVERITY]);
     const infos = rulesIn(diagnostics, [INFO_SEVERITY]);
