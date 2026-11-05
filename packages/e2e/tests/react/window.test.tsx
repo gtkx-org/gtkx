@@ -379,6 +379,27 @@ describe("render - Window", () => {
             expect(ref.current?.getApplication()?.getActiveWindow()).toBe(ref.current);
         });
 
+        it("keeps a window mounted with visible false hidden until it becomes visible", async () => {
+            const ref = createRef<Gtk.ApplicationWindow>();
+            const appId = uniqueAppId();
+
+            const Welcome = ({ isVisible }: { isVisible: boolean }) => (
+                <GtkApplicationWindow ref={ref} title="Welcome" visible={isVisible} hideOnClose />
+            );
+
+            const { rerender } = await renderInApplication(<Welcome isVisible={false} />, appId);
+            expect(ref.current?.getVisible()).toBe(false);
+            expect(screen.queryByRole(Gtk.AccessibleRole.WINDOW, { name: "Welcome" })).toBeNull();
+
+            await rerender(
+                <GtkApplication applicationId={appId} flags={APP_FLAGS}>
+                    <Welcome isVisible />
+                </GtkApplication>,
+            );
+
+            expect(await screen.findByRole(Gtk.AccessibleRole.WINDOW, { name: "Welcome" })).toBe(ref.current);
+        });
+
         it("destroys window on unmount", async () => {
             const ref = createRef<Gtk.ApplicationWindow>();
             const appId = uniqueAppId();

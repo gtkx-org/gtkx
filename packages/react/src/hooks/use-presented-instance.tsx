@@ -7,7 +7,7 @@ type PresentedProps<T> = {
 };
 
 type PresentedOptions<T> = {
-    usePresent: () => (instance: T) => void;
+    usePresent: (props: Props) => (instance: T) => void;
     dismiss: (instance: T) => void;
     wrap?: (element: ReactNode, instance: T | null) => ReactNode;
     useNativeProps?: (instance: T | null, props: Props) => Props;
@@ -45,7 +45,7 @@ const createPresentedComponent = <T,>(
     const useNativeProps = options.useNativeProps ?? useRenderedProps;
 
     return ({ ref, ...rest }: PresentedProps<T>): ReactNode => {
-        const present = options.usePresent();
+        const present = options.usePresent(rest);
         const [instance, mergedRef] = usePresentedInstance(ref, present, options.dismiss);
         const nativeProps = useNativeProps(instance, rest);
         const element = <Component ref={mergedRef} {...nativeProps} />;

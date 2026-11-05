@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { type ElementType, type ReactNode, use } from "react";
+import { type ElementType, type ReactNode, use, useCallback, useState } from "react";
 import { ApplicationContext } from "../hooks/use-application.js";
 import { useDismissalWatch } from "../hooks/use-dismissal.js";
 import { ParentWindowContext } from "../hooks/use-parent-window.js";
@@ -12,10 +12,6 @@ import { createPortaledComponent } from "./portaled.js";
 type WindowComponentProps = PresentedProps<Gtk.Window> & {
     application?: Gtk.Application | null | undefined;
     transientFor?: Gtk.Window | null | undefined;
-};
-
-const presentWindow = (window: Gtk.Window): void => {
-    window.present();
 };
 
 /**
@@ -31,7 +27,19 @@ const destroyWindow = (window: Gtk.Window): void => {
     });
 };
 
-const usePresentWindow = (): ((window: Gtk.Window) => void) => presentWindow;
+/** Presents the window on mount unless the app renders it with `visible={false}`, which keeps it hidden. */
+const usePresentWindow = (props: Props): ((window: Gtk.Window) => void) => {
+    const [isMountedHidden] = useState(props.visible === false);
+
+    return useCallback(
+        (window: Gtk.Window) => {
+            if (!isMountedHidden) {
+                window.present();
+            }
+        },
+        [isMountedHidden],
+    );
+};
 
 const toplevelWindows = (): Gtk.Window[] => {
     const toplevels = Gtk.Window.getToplevels();

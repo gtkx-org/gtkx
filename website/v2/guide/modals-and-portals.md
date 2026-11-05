@@ -65,6 +65,8 @@ const MirrorWindow = ({ open, onClose }: { open: boolean; onClose: () => void })
 
 Returning `true` keeps the window until React unmounts it.
 
+A window that should keep its state while hidden, such as one with `hideOnClose`, can stay mounted and pass `visible` instead. Mounted with `visible={false}`, it stays hidden until `visible` becomes `true`.
+
 `AdwApplicationWindow` registers with its nearest application element, normally `AdwApplication`; it requires that ancestor. To associate it with another window, pass `transientFor` explicitly.
 
 Plain `AdwWindow` and `GtkWindow` elements default `transientFor` to their nearest window ancestor. An explicit value selects another parent; `null` keeps the window independent.
