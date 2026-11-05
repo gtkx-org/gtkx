@@ -106,6 +106,33 @@ msgstr ""
         expect(statSync(path).mtimeMs).toBe(timestamp.getTime());
     });
 
+    it("adds non-ASCII messages to a template without a UTF-8 charset", async () => {
+        using project = createProject();
+        project.write("po/LINGUAS", "fr\n");
+        project.write("src/messages.ts", `${T_IMPORT}\nt("Open “{{name}}”…", { name: "notes" });`);
+        project.write(
+            "po/org.gtkx.example.pot",
+            `msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=CHARSET\\n"
+
+#: po/.gtkx-metadata/org.gtkx.example.template.desktop:1
+msgid "Metadata title"
+msgstr ""
+`,
+        );
+
+        await extract(project.root);
+
+        expect(readMessages(project.root).map((message) => message.msgid)).toEqual([
+            "Open “{{name}}”…",
+            "Metadata title",
+        ]);
+        expect(po.parse(readFileSync(join(project.root, "po/fr.po"))).translations[""]).toHaveProperty(
+            "Open “{{name}}”…",
+        );
+    });
+
     it("writes the same catalog template from codegen and deploy", async () => {
         using project = createProject({
             applicationIcon: "icon.svg",

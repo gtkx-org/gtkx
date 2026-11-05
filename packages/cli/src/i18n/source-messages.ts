@@ -2102,7 +2102,17 @@ const extractMetadataFragment = (project: CatalogProject, input: string, output:
 
     const fragment = po.parse(readFileSync(output));
     retainMetadataReferences(fragment.translations, metadataPaths);
-    writeFileSync(output, po.compile(fragment, { foldLength: 0 }));
+    writeFileSync(
+        output,
+        po.compile(
+            {
+                ...fragment,
+                charset: "utf-8",
+                headers: { ...fragment.headers, "Content-Type": "text/plain; charset=UTF-8" },
+            },
+            { foldLength: 0 },
+        ),
+    );
 };
 
 const joinMetadataFragment = (project: CatalogProject, output: string, fragment: string): void => {
