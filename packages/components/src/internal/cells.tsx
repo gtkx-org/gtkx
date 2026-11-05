@@ -107,6 +107,7 @@ type ItemIdentity = {
 type ItemCellProps = {
     entry: CellEntry<Gtk.ListItem>;
     render: ListItemRenderer<never>;
+    rowProps: ListRowPropsResolver<never> | null | undefined;
     state: RefObject<CollectionState>;
     hasExpander: boolean;
     expanderDescriptions: ExpanderDescriptions | null | undefined;
@@ -115,6 +116,7 @@ type ItemCellProps = {
 type ItemPortalsProps = {
     registry: CellRegistry<Gtk.ListItem>;
     render: ListItemRenderer<never>;
+    rowProps?: ListRowPropsResolver<never> | null | undefined;
     collection: Collection;
     hasExpander?: boolean | undefined;
     expandedIds?: string[] | null | undefined;
@@ -162,6 +164,7 @@ type NativeItemKeyStore = {
 type NativeItemCellProps<T extends GObject.Object> = {
     entry: CellEntry<Gtk.ListItem>;
     render: ListItemRenderer<T>;
+    rowProps: ListRowPropsResolver<T> | null | undefined;
     keys: NativeItemKeyStore;
     size: CellSize;
 };
@@ -169,6 +172,7 @@ type NativeItemCellProps<T extends GObject.Object> = {
 type NativeItemPortalsProps<T extends GObject.Object> = {
     registry: CellRegistry<Gtk.ListItem>;
     render: ListItemRenderer<T>;
+    rowProps: ListRowPropsResolver<T> | null | undefined;
     size: CellSize;
 };
 
@@ -192,6 +196,7 @@ const HEADER_OPTIONS: CellRegistryOptions<Gtk.ListHeader> = { isHost: isListHead
 const ROW_OPTIONS: CellRegistryOptions<Gtk.ColumnViewRow> = { isHost: isColumnViewRow };
 const NO_SIZE: CellSize = { width: -1, height: -1 };
 const NO_ROW_PROPS: ListRowProps = {};
+const DEFAULT_ROW_PROPS = resolveRowProps(NO_ROW_PROPS);
 const placeholders: WeakSet<Gtk.Widget> = new WeakSet();
 
 const placeholder = (size: CellSize): Gtk.Widget => {
@@ -464,6 +469,7 @@ function isSameItemCell(previous: ItemCellProps, next: ItemCellProps): boolean {
     return (
         previous.entry === next.entry &&
         previous.render === next.render &&
+        previous.rowProps === next.rowProps &&
         previous.hasExpander === next.hasExpander &&
         previous.expanderDescriptions === next.expanderDescriptions &&
         isSameItemIdentity(identity, next)
@@ -579,10 +585,7 @@ function rowFlag(value: boolean | undefined): boolean {
     return value ?? true;
 }
 
-function rowPropsFor(slot: ItemSlot | null, rowProps: ListRowPropsResolver<never>): ResolvedRowProps {
-    const resolve = rowProps as ListRowPropsResolver<unknown>;
-    const props = slot === null ? NO_ROW_PROPS : resolve(slot.args);
-
+function resolveRowProps(props: ListRowProps): ResolvedRowProps {
     return {
         accessibleLabel: rowText(props.accessibleLabel),
         accessibleDescription: rowText(props.accessibleDescription),
@@ -592,7 +595,13 @@ function rowPropsFor(slot: ItemSlot | null, rowProps: ListRowPropsResolver<never
     };
 }
 
-function applyRowProps(host: Gtk.ColumnViewRow, props: ResolvedRowProps, previous: ResolvedRowProps | null): void {
+function rowPropsFor(slot: ItemSlot | null, rowProps: ListRowPropsResolver<never>): ResolvedRowProps {
+    const resolve = rowProps as ListRowPropsResolver<unknown>;
+
+    return resolveRowProps(slot === null ? NO_ROW_PROPS : resolve(slot.args));
+}
+
+function applyRowProps(host: PositionedHost, props: ResolvedRowProps, previous: ResolvedRowProps | null): void {
     if (previous?.accessibleLabel !== props.accessibleLabel) {
         host.accessibleLabel = props.accessibleLabel;
     }
@@ -614,9 +623,24 @@ function applyRowProps(host: Gtk.ColumnViewRow, props: ResolvedRowProps, previou
     }
 }
 
+function useAppliedRowProps(host: PositionedHost, props: ResolvedRowProps | null): void {
+    const previous = useRef<ResolvedRowProps | null>(null);
+
+    useLayoutEffect(() => {
+        if (props === null && previous.current === null) {
+            return;
+        }
+
+        const next = props ?? DEFAULT_ROW_PROPS;
+        applyRowProps(host, next, previous.current);
+        previous.current = props === null ? null : next;
+    }, [host, props]);
+}
+
 function ItemCellImpl({
     entry,
     render,
+    rowProps,
     state,
     hasExpander,
     expanderDescriptions,
@@ -624,6 +648,7 @@ function ItemCellImpl({
 }: ItemCellProps): ReactNode {
     const slot = useItemSlot(entry, state, identity);
     useRememberIdentity(entry, slot);
+    useAppliedRowProps(entry.host, rowProps == null ? null : rowPropsFor(slot, rowProps));
     const body = itemBody(slot, render, hasExpander, expanderDescriptions);
 
     return createPortal(body, entry.host, entry.key);
@@ -632,13 +657,7 @@ function ItemCellImpl({
 function ItemRowImpl({ entry, rowProps, state, ...identity }: ItemRowProps): ReactNode {
     const slot = useItemSlot(entry, state, identity);
     useRememberIdentity(entry, slot);
-    const props = rowPropsFor(slot, rowProps);
-    const previous = useRef<ResolvedRowProps | null>(null);
-
-    useLayoutEffect(() => {
-        applyRowProps(entry.host, props, previous.current);
-        previous.current = props;
-    }, [entry.host, props]);
+    useAppliedRowProps(entry.host, rowPropsFor(slot, rowProps));
 
     return null;
 }
@@ -649,13 +668,24 @@ function HeaderCellImpl({ entry, render }: HeaderCellProps): ReactNode {
     return createPortal(headerBody(slotRefFor(item), render), entry.host, entry.key);
 }
 
-function NativeItemCell<T extends GObject.Object>({ entry, render, keys, size }: NativeItemCellProps<T>): ReactNode {
+function NativeItemCell<T extends GObject.Object>({
+    entry,
+    render,
+    rowProps,
+    keys,
+    size,
+}: NativeItemCellProps<T>): ReactNode {
     const position = useProperty(entry.host, "position");
     const item = useProperty(entry.host, "item") ?? null;
+    const args = item !== null && position !== undefined ? { item: item as T, index: position } : null;
+    useAppliedRowProps(
+        entry.host,
+        rowProps == null ? null : resolveRowProps(args === null ? NO_ROW_PROPS : rowProps(args)),
+    );
     let body: ReactNode = null;
 
-    if (item !== null && position !== undefined) {
-        const content = render({ item: item as T, index: position });
+    if (item !== null && args !== null) {
+        const content = render(args);
         const child =
             content == null || typeof content === "boolean" ? (
                 <GtkBox widthRequest={size.width} heightRequest={size.height} />
@@ -696,6 +726,7 @@ function useCollectionVersion(collection: Collection): number {
 function ItemCellListImpl({
     entries,
     render,
+    rowProps,
     collection,
     hasExpander,
     expandedIds,
@@ -708,6 +739,7 @@ function ItemCellListImpl({
             key={entry.key}
             entry={entry}
             render={render}
+            rowProps={rowProps}
             state={state}
             hasExpander={hasExpander ?? true}
             expanderDescriptions={expanderDescriptions}
@@ -751,12 +783,17 @@ const HeaderPortals = ({ registry, render, collection }: HeaderPortalsProps): Re
     return entries.map((entry) => <HeaderCell key={entry.key} entry={entry} render={render} version={version} />);
 };
 
-function NativeItemPortals<T extends GObject.Object>({ registry, render, size }: NativeItemPortalsProps<T>): ReactNode {
+function NativeItemPortals<T extends GObject.Object>({
+    registry,
+    render,
+    rowProps,
+    size,
+}: NativeItemPortalsProps<T>): ReactNode {
     const entries = usePortalEntries(registry);
     const [keys] = useState(createNativeItemKeyStore);
 
     return entries.map((entry) => (
-        <NativeItemCell key={entry.key} entry={entry} render={render} keys={keys} size={size} />
+        <NativeItemCell key={entry.key} entry={entry} render={render} rowProps={rowProps} keys={keys} size={size} />
     ));
 }
 

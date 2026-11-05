@@ -44,6 +44,16 @@ When every item is known to be a leaf, pass `isFlat` to `ListView` or `ColumnVie
 
 To group rows under headers, pass `sections` in place of `items`: each `ListSection` carries its own `data` array of items, and `renderHeader` draws the header above each group. `ColumnView` and `DropDown` accept the same pair.
 
+A row's content is not the row a screen reader announces: GTK names a list row only from its own accessible label. Pass `rowProps` to name or describe each row, or to make one unselectable, unactivatable or unfocusable. It receives the same arguments as `renderItem`; `GridView`, `ColumnView` and `ListItemFactory` accept it too.
+
+```tsx
+<ListView<Task>
+    items={tasks.map((task) => ({ id: task.id, value: task }))}
+    rowProps={({ item }) => ({ accessibleLabel: item.title, isSelectable: !item.isArchived })}
+    renderItem={({ item }) => <TaskRow task={item} />}
+/>
+```
+
 ### GridView
 
 `GridView<T>` renders a grid with the same `items`, `renderItem`, controlled selection, and size estimates as `ListView`. Use `minColumns` and `maxColumns` to size the grid, and `singleClickActivate` and `onActivate` for activation.
@@ -90,6 +100,26 @@ import { DropDown } from "@gtkx/components";
 The callback receives `null` when the model becomes empty.
 
 `ComboRow<T, S>` from `@gtkx/components` takes the same collection props and renders an `Adw.ComboRow` inside a preferences group. See the tutorial's [preferences chapter](/v2/tutorial/preferences-and-theming) for an example.
+
+### Native models
+
+When a native `Gio.ListModel` already holds the data, such as a `Gtk.StringList` behind a `Gtk.FilterListModel`, keep the model and use `ListItemFactory` as the view's factory. Its `renderItem` receives each model object:
+
+```tsx
+import { ListItemFactory } from "@gtkx/components";
+import type * as Gtk from "@gtkx/gi/gtk";
+import { GtkInscription, GtkListView, GtkNoSelection } from "@gtkx/jsx/gtk";
+
+<GtkListView
+    model={<GtkNoSelection model={words} />}
+    factory={
+        <ListItemFactory<Gtk.StringObject>
+            rowProps={({ item }) => ({ accessibleLabel: item.getString() })}
+            renderItem={({ item }) => <GtkInscription text={item.getString()} />}
+        />
+    }
+/>
+```
 
 ### GtkListBox
 

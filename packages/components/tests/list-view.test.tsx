@@ -1,6 +1,6 @@
 import type { ListItem, ListItemRenderer } from "@gtkx/components";
 import type { ReactNode } from "react";
-import { ListView } from "@gtkx/components";
+import { GridView, ListView } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
 import { act, render, screen, userEvent, waitFor } from "@gtkx/testing";
@@ -391,7 +391,45 @@ describe("ListView selection across many rows", () => {
     });
 });
 
+describe("ListView row properties", () => {
+    it("names rows and keeps a non-selectable row out of the selection", async () => {
+        const selections: string[][] = [];
+        const rowProps = ({ item }: { item: { name: string } }) => ({
+            accessibleLabel: `Task ${item.name}`,
+            isSelectable: item.name !== "Second",
+        });
+        const list = (items: ListItem<{ name: string }>[]) => (
+            <ListView
+                items={items}
+                onSelectionChanged={(ids) => selections.push(ids)}
+                rowProps={rowProps}
+                renderItem={({ item }) => <GtkLabel>{item.name}</GtkLabel>}
+            />
+        );
+        const { rerender } = await render(list(firstSecondItems));
+
+        expect(screen.getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Task First" })).toBeVisible();
+        await userEvent.click(screen.getByText("Second"));
+        expect(selections).not.toContainEqual(["2"]);
+
+        await rerender(list(firstSecondItems.with(0, { id: "1", value: { name: "Renamed" } })));
+        expect(screen.getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Task Renamed" })).toBeVisible();
+        expect(screen.queryByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Task First" })).toBeNull();
+    });
+});
+
 describe("GridView", () => {
+    it("names its cells through rowProps", async () => {
+        await render(
+            <GridView
+                items={firstSecondItems}
+                rowProps={({ item }) => ({ accessibleLabel: `Cell ${item.name}` })}
+                renderItem={({ item }) => <GtkLabel>{item.name}</GtkLabel>}
+            />,
+        );
+        expect(screen.getByRole(Gtk.AccessibleRole.GRID_CELL, { name: "Cell Second" })).toBeVisible();
+    });
+
     it("draws a cell per item and reorders them to match the items array", async () => {
         await expectReordering(gridViewView);
     });

@@ -14,6 +14,7 @@ const LIST_VIEW_PROPS = [
     "isFlat",
     "renderItem",
     "renderHeader",
+    "rowProps",
     "selectedIds",
     "onSelectionChanged",
     "selectionMode",
@@ -30,7 +31,7 @@ const LIST_VIEW_PROPS = [
  * controlled selection, controlled tree expansion, and estimated item sizing.
  */
 function ListView<T = unknown, S = unknown>(props: ListViewProps<T, S>): ReactNode {
-    const { renderItem, renderHeader, expandedIds, expanderDescriptions, ref } = props;
+    const { renderItem, renderHeader, rowProps, expandedIds, expanderDescriptions, ref } = props;
     const { estimatedItemHeight, estimatedItemWidth } = props;
     const rest = omit(props, LIST_VIEW_PROPS);
     const size = { width: estimatedItemWidth ?? -1, height: estimatedItemHeight ?? -1 };
@@ -51,6 +52,7 @@ function ListView<T = unknown, S = unknown>(props: ListViewProps<T, S>): ReactNo
             <ItemPortals
                 registry={itemCells}
                 render={renderItem}
+                rowProps={rowProps}
                 collection={collection}
                 expandedIds={expandedIds}
                 expanderDescriptions={expanderDescriptions}

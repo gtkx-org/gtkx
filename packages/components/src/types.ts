@@ -60,9 +60,10 @@ type ListItemRenderArgs<T> = {
 };
 
 /**
- * Properties applied to the row that carries one item's cells. A Gtk.ColumnViewRow is not a widget, so
- * these are the only handles it offers; anything omitted falls back to the row's own default, which
- * leaves the accessibility strings unset rather than setting them to an empty string.
+ * Properties applied to the row that carries one item: the Gtk.ListItem of a list or grid, or the
+ * Gtk.ColumnViewRow of a table. Neither is a widget, so these are the only handles they offer; anything
+ * omitted falls back to the row's own default, which leaves the accessibility strings unset rather than
+ * setting them to an empty string.
  */
 type ListRowProps = {
     /** Name a screen reader announces for the row, through `accessible-label`. */
@@ -98,8 +99,15 @@ type ItemSizeProps = {
     estimatedItemWidth?: number | undefined;
 };
 
-type ListItemFactoryProps<T extends GObject.Object> = ItemSizeProps & {
-    renderItem: ListItemRenderer<T>;
+type ListItemFactoryProps<T extends GObject.Object> = ItemSizeProps &
+    RowPropsProps<T> & {
+        renderItem: ListItemRenderer<T>;
+    };
+
+/** Per-row properties shared by the collection views and {@link ListItemFactory}. */
+type RowPropsProps<T> = {
+    /** Resolves the props of the row carrying one item, such as its screen-reader label. */
+    rowProps?: ListRowPropsResolver<T> | null | undefined;
 };
 
 /** The flat-collection hint shared by {@link ListView} and {@link ColumnView}. */
@@ -204,11 +212,10 @@ type ColumnViewOwnProps<T, S> = SelectionProps &
     SortProps &
     SourceProps<T, S> &
     FlatnessProps &
+    RowPropsProps<T> &
     Omit<ItemSizeProps, "estimatedItemWidth"> & {
         /** Columns to render, in order; each carries its own cell renderer. */
         columns: ColumnViewColumn<T>[];
-        /** Resolves the props of the row carrying one item's cells, such as its screen-reader label. */
-        rowProps?: ListRowPropsResolver<T> | null | undefined;
     };
 
 /**
@@ -247,7 +254,8 @@ type DropDownProps<T = unknown, S = unknown> = DropDownWidgetProps<GtkDropDownPr
 
 /** The declarative collection props {@link GridView} adds on top of Gtk.GridView's own. */
 type GridViewOwnProps<T> = ItemSizeProps &
-    SelectionProps & {
+    SelectionProps &
+    RowPropsProps<T> & {
         /** Items to render as cells; a grid is always flat, so `ListItem.children` is ignored. */
         items?: ListItem<T>[] | undefined;
         /** Renders the contents of one cell. */
@@ -265,7 +273,8 @@ type ListViewOwnProps<T, S> = ItemSizeProps &
     SelectionProps &
     ExpansionProps &
     SourceProps<T, S> &
-    FlatnessProps & {
+    FlatnessProps &
+    RowPropsProps<T> & {
         /** Renders the contents of one row. */
         renderItem: ListItemRenderer<T>;
     };

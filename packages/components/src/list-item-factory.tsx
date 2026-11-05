@@ -10,6 +10,7 @@ import { NativeItemPortals, useItemCells } from "./internal/cells.js";
  */
 function ListItemFactory<T extends GObject.Object>({
     renderItem,
+    rowProps,
     estimatedItemHeight = -1,
     estimatedItemWidth = -1,
 }: ListItemFactoryProps<T>): ReactNode {
@@ -19,7 +20,7 @@ function ListItemFactory<T extends GObject.Object>({
     return (
         <>
             <GtkSignalListItemFactory {...cells.handlers} />
-            <NativeItemPortals registry={cells} render={renderItem} size={size} />
+            <NativeItemPortals registry={cells} render={renderItem} rowProps={rowProps} size={size} />
         </>
     );
 }
