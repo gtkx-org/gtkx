@@ -99,12 +99,13 @@ type ItemSizeProps = {
     estimatedItemWidth?: number | undefined;
 };
 
-type ListItemFactoryProps<T extends GObject.Object> = ItemSizeProps &
-    RowPropsProps<T> & {
-        renderItem: ListItemRenderer<T>;
-    };
+type ListItemFactoryProps<T extends GObject.Object> = ItemSizeProps & {
+    renderItem: ListItemRenderer<T>;
+    /** Resolves the props of the row carrying one model object, such as its screen-reader label. */
+    rowProps?: ListRowPropsResolver<T> | null | undefined;
+};
 
-/** Per-row properties shared by the collection views and {@link ListItemFactory}. */
+/** Per-row properties shared by the collection views. */
 type RowPropsProps<T> = {
     /** Resolves the props of the row carrying one item, such as its screen-reader label. */
     rowProps?: ListRowPropsResolver<T> | null | undefined;
