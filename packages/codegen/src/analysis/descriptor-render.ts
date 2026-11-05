@@ -894,7 +894,8 @@ const arrayExpression = (
     if (hasUnknownArrayLength(ref)) {
         const item = elementExpression(context, ref, transfer, options);
         const bytes = isByteSequence(context.library, ref);
-        return `t.array(${item}, "input", "${transferOwnership(transfer)}", { isBytes: ${String(bytes)} })`;
+        const size = layout.elementSize === undefined ? "" : `elementSize: ${String(layout.elementSize)}, `;
+        return `t.array(${item}, "input", "${transferOwnership(transfer)}", { ${size}isBytes: ${String(bytes)} })`;
     }
 
     const ownership = transferOwnership(transfer);

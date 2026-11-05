@@ -688,6 +688,38 @@ describe("generated bindings", () => {
         expect(JSON.parse(output)).toEqual({ lines: ["a", "", "b", null], empty: {} });
     });
 
+    it("emits signals from flat GValue arrays without a length like GJS", async () => {
+        using directory = createProject();
+        const { gi } = resolveStore(directory.path);
+        await runCodegen({ libraries: ["Gio-2.0"], girPath: resolveGirPath(undefined, directory.path), gi });
+        const consumer = `import { SimpleAction } from "@gtkx/gi/gio";
+            import { Variant, VariantType } from "@gtkx/gi/glib";
+            import { signalEmitv, signalLookup, typeFromName, Value } from "@gtkx/gi/gobject";
+            const action = new SimpleAction({ name: "pick", parameterType: new VariantType("s") });
+            const picked: string[] = [];
+            action.on("activate", (parameter) => {
+                picked.push(String(parameter?.unpack()));
+            });
+            const id = signalLookup("activate", typeFromName("GSimpleAction"));
+            const instance = new Value();
+            instance.init(typeFromName("GSimpleAction"));
+            instance.setObject(action);
+            const parameter = new Value();
+            parameter.init(typeFromName("GVariant"));
+            parameter.setVariant(new Variant("s", "from a value"));
+            signalEmitv([instance, parameter], id, 0);
+            signalEmitv([action, new Variant("s", "from JavaScript")], id, 0);
+            console.log(JSON.stringify(picked));`;
+        expect(diagnostics(directory.path, consumer)).toEqual([]);
+        const output = execFileSync(process.execPath, ["consumer.ts"], {
+            cwd: directory.path,
+            encoding: "utf8",
+            stdio: "pipe",
+            timeout: 20_000,
+        });
+        expect(JSON.parse(output)).toEqual(["from a value", "from JavaScript"]);
+    });
+
     it("reads embedded records that hold pointers as read-only views like GJS", async () => {
         using directory = createProject();
         const libraries = ["PangoCairo-1.0"];

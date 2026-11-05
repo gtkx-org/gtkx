@@ -27,7 +27,7 @@ import {
 import { renderParameterTsType, renderTsType } from "../../analysis/ts-type.js";
 import { primitiveCategoryFor } from "../../analysis/type-shape.js";
 import { type GirParameter, isCallerAllocatedOut, isInoutParameter, isOutParameter } from "../../gir/parameter.js";
-import { hasUnknownArrayLength, type TypeId } from "../../gir/type-id.js";
+import type { TypeId } from "../../gir/type-id.js";
 import { areClosuresInvoked } from "./closure-invocation.js";
 import { itemComparatorArgDescriptors, itemComparatorTsType } from "./item-comparators.js";
 import {
@@ -1054,7 +1054,7 @@ const collectionArgument = (options: MarshalledArgumentOptions & { type: GirType
 
 const mappableElement = (context: ModuleContext, type: GirType | undefined): TypeId | undefined => {
     if (type?.kind === "carray") {
-        return hasUnknownArrayLength(type) ? undefined : mappableRef(context, type.element);
+        return mappableRef(context, type.element);
     }
 
     return type?.kind === "list" ? mappableRef(context, type.element) : undefined;
