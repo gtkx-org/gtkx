@@ -77,12 +77,14 @@ The [finished configuration](https://github.com/gtkx-org/gtkx/blob/main/tutorial
 
 ## Build and preview
 
-The dev server can stay open while you build:
+The dev server can stay open while you build. Stop it before you start the bundle:
 
 ```bash
 npm run build
 node dist/bundle.mjs
 ```
+
+Both runs use the same application ID, so a bundle started while the development app is open only brings that window to the front and exits.
 
 Keep the whole `dist/` directory together. The bundle loads its native addon, compiled settings, and other assets from that directory. Running it directly still requires a compatible Node.js version, native libraries, and CPU architecture; the package command below supplies Node.js.
 
