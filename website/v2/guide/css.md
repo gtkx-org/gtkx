@@ -119,7 +119,16 @@ injectGlobal`
 `;
 ```
 
-A plain `.css` import also works: the GTKX CLI turns it into an `injectGlobal` call. Global rules remain installed for the application's lifetime. Relative `url()` references in the file, such as `background-image: url("../data/paper.png")`, are bundled as [`?resource`](/v2/guide/assets#import-project-data) files, and a relative `@import` loads that stylesheet before the file's own rules. In `css` and `style`, interpolate a `?resource` import instead: `url("resource://${paperPath}")`. During `gtkx dev`, editing a stylesheet replaces the rules that file installed, so removed rules stop applying, and the app keeps its state. Editing a module's `injectGlobal` rules re-runs the module, which adds the edited rules after the earlier ones, as Emotion does: a changed value takes effect, but a removed rule or a selector you moved keeps applying until the app restarts.
+A plain `.css` import also works: the GTKX CLI turns it into an `injectGlobal` call. Global rules remain installed for the application's lifetime. Relative `url()` references in the file, such as `background-image: url("../data/paper.png")`, are bundled as [`?resource`](/v2/guide/assets#import-project-data) files, and a relative `@import` loads that stylesheet before the file's own rules. Other `url()` values reach GTK unchanged: a `resource://` or `file://` URI loads, but an absolute path such as `url("/com/example/Tasks/paper.png")` draws nothing, because the installed stylesheet has no location to resolve it against. In `css` and `style`, interpolate a `?resource` import instead: `url("resource://${paperPath}")`. During `gtkx dev`, editing a stylesheet replaces the rules that file installed, so removed rules stop applying, and the app keeps its state. Editing a module's `injectGlobal` rules re-runs the module, which adds the edited rules after the earlier ones, as Emotion does: a changed value takes effect, but a removed rule or a selector you moved keeps applying until the app restarts.
+
+A stylesheet imported with [`?resource`](/v2/guide/assets#import-project-data) is bundled unchanged rather than installed. Use this for the `style.css` that [Adwaita loads](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/class.Application.html#automatic-resources) from the application's resource base path, as in a ported GNOME application:
+
+```ts
+import "../data/style.css?resource=/com/example/Tasks/style.css";
+import "../data/paper.png?resource=/com/example/Tasks/paper.png";
+```
+
+GTK resolves `url()` values in that file against its resource path, so `url("paper.png")` and `url("/com/example/Tasks/paper.png")` both load the image imported beside it. Import each image the stylesheet references at its matching path, since GTKX bundles only imported files.
 
 ## Follow appearance preferences
 
