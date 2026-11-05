@@ -420,6 +420,20 @@ describe("CLI commands", () => {
         );
     });
 
+    it("points a project that reuses a binding store at the project generating it for a missing library", async () => {
+        using project = createProject({ libraries: ["Gst-1.0"] });
+        linkWorkspaceBindings(project.root);
+        project.write("src/index.ts", 'import { init } from "@gtkx/gi/gst";\ninit();');
+
+        const message = await invoke(["build", "--cwd", project.root]).then(
+            () => "",
+            (error: unknown) => (error instanceof Error ? error.message : String(error)),
+        );
+
+        expect(message).toContain('Add "Gst-1.0" to `libraries` in the project that generates the binding store');
+        expect(message).not.toContain("in gtkx.config.ts, then run");
+    });
+
     it("names the package that loads a native addon a build cannot bundle, but emits addons imported with ?url", async () => {
         using project = createProject();
         const addon = "node_modules/@studio/hash-linux-x64-gnu/hash.linux-x64-gnu.node";

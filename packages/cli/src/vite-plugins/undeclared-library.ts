@@ -7,10 +7,15 @@ import { createConfigLoader, viteProjectRoot } from "@gtkx/config/internal";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
+type ProjectSettings = {
+    girPath: string[];
+    isCodegenDisabled: boolean;
+};
+
 type PluginState = {
     root: string;
     loadConfig: ConfigLoader;
-    girPath: string[] | null;
+    settings: ProjectSettings | null;
 };
 
 type GeneratedModule = {
@@ -23,13 +28,16 @@ type GeneratedModule = {
 const GENERATED_MODULE_PATTERN = /^@gtkx\/(gi|jsx)\/([a-z0-9]+)$/;
 const DEFAULT_LIBRARY_NAMESPACES: Set<string> = new Set(["adw", "gtk"]);
 
-const girSearchPaths = async (state: PluginState): Promise<string[]> => {
-    if (state.girPath === null) {
+const loadProjectSettings = async (state: PluginState): Promise<ProjectSettings> => {
+    if (state.settings === null) {
         const { config } = await state.loadConfig.load(state.root);
-        state.girPath = resolveGirPath(config.girPath, state.root);
+        state.settings = {
+            girPath: resolveGirPath(config.girPath, state.root),
+            isCodegenDisabled: config.codegen === false,
+        };
     }
 
-    return state.girPath;
+    return state.settings;
 };
 
 const getNamespace = (identifier: string): string => identifier.slice(0, identifier.indexOf("-")).toLowerCase();
@@ -107,6 +115,19 @@ const undeclaredLibraryError = (source: string, namespace: string, girPath: stri
     );
 };
 
+const reusedStoreError = (source: string, namespace: string, girPath: string[]): Error => {
+    const identifier = findGirIdentifier(girPath, namespace) ?? namespace;
+    const remedy = DEFAULT_LIBRARY_NAMESPACES.has(namespace)
+        ? "Run gtkx codegen in the project that generates the binding store"
+        : `Add "${identifier}" to \`libraries\` in the project that generates the binding store and run gtkx codegen there`;
+
+    return new Error(
+        `Cannot resolve "${source}": the installed binding store has no "${identifier}" bindings, and this ` +
+            "project reuses that store without generating bindings (`codegen: false`), so its own `libraries` " +
+            `are not generated. ${remedy}, or remove \`codegen: false\` from gtkx.config.ts.`,
+    );
+};
+
 const unsharedLibraryError = (source: string, namespace: string, girPath: string[]): Error => {
     const identifier = findGirIdentifier(girPath, namespace) ?? namespace;
 
@@ -133,11 +154,17 @@ const unresolvedModuleError = async (
     const exportKey = `./${generated.namespace}`;
 
     if (options === null || !hasStoreModule(options.storeDir, exportKey)) {
-        return undeclaredLibraryError(generated.source, generated.namespace, await girSearchPaths(state));
+        const { girPath, isCodegenDisabled } = await loadProjectSettings(state);
+
+        return isCodegenDisabled
+            ? reusedStoreError(generated.source, generated.namespace, girPath)
+            : undeclaredLibraryError(generated.source, generated.namespace, girPath);
     }
 
     if (isOutsideView(state.root, options, generated.namespace)) {
-        return unsharedLibraryError(generated.source, generated.namespace, await girSearchPaths(state));
+        const { girPath } = await loadProjectSettings(state);
+
+        return unsharedLibraryError(generated.source, generated.namespace, girPath);
     }
 
     return resolverError ?? unreachableStoreError(generated, options);
@@ -147,7 +174,7 @@ function gtkxUndeclaredLibrary(loadConfig: ConfigLoader = createConfigLoader()):
     const state: PluginState = {
         root: "",
         loadConfig,
-        girPath: null,
+        settings: null,
     };
 
     return {
