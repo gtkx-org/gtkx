@@ -2,7 +2,15 @@ import type { SignalHandler } from "@gtkx/runtime";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { coerceObjectProperty, getInstanceType, signalForHandlerName, TYPE_INVALID } from "@gtkx/runtime";
-import { camelCase, drain, isDeepEqual, kebabCase, lowerFirst, unsanitizeIdentifier } from "@gtkx/utils";
+import {
+    camelCase,
+    CONSTRUCT_ONLY_PROP_CHANGE,
+    drain,
+    isDeepEqual,
+    kebabCase,
+    lowerFirst,
+    unsanitizeIdentifier,
+} from "@gtkx/utils";
 import { closestMatch } from "leven";
 import type { ElementBehavior, Props } from "./registry.js";
 import { applyAccessibleProps, isAccessibleProp } from "../utils/accessible-props.js";
@@ -216,10 +224,13 @@ const eachChangedName = (prev: Props, next: Props, visit: (name: string) => void
 };
 
 const propChangeError = (typeName: string, name: string): Error =>
-    new Error(
-        `Cannot change the construct-only prop '${name}' of <${typeName}> after it is created. ` +
-            "It is only accepted while the element is being built, so give the element a key that " +
-            `changes with '${name}' and React will build a new one.`,
+    Object.assign(
+        new Error(
+            `Cannot change the construct-only prop '${name}' of <${typeName}> after it is created. ` +
+                "It is only accepted while the element is being built, so give the element a key that " +
+                `changes with '${name}' and React will build a new one.`,
+        ),
+        { code: CONSTRUCT_ONLY_PROP_CHANGE },
     );
 
 const hasAppliedValue = (value: unknown): boolean => (Array.isArray(value) ? value.length > 0 : value !== undefined);

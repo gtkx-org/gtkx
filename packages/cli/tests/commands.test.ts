@@ -1008,6 +1008,45 @@ describe("CLI commands", () => {
         });
     });
 
+    it("restarts the application when a saved edit changes a construct-only prop", async () => {
+        using project = createProject({ codegen: true });
+        const readyPath = join(project.root, "probe.json");
+        const app = (strings: string[]) => `
+            import { AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
+            import { GtkDropDown, GtkStringList } from "@gtkx/jsx/gtk";
+            import { writeFileSync } from "node:fs";
+            export function App() {
+                return (
+                    <AdwApplication applicationId="org.gtkx.example">
+                        <AdwApplicationWindow>
+                            <GtkDropDown
+                                model={<GtkStringList strings={${JSON.stringify(strings)}} />}
+                                onMap={(dropDown) => writeFileSync(${JSON.stringify(readyPath)}, JSON.stringify({
+                                    pid: process.pid,
+                                    first: dropDown.getModel()?.getString(0),
+                                }))}
+                            />
+                        </AdwApplicationWindow>
+                    </AdwApplication>
+                );
+            }`;
+        project.write("src/app.tsx", app(["first"]));
+        project.write(
+            "src/index.tsx",
+            `import { createRoot } from "@gtkx/react";
+            import { App } from "./app.tsx";
+            createRoot().render(<App />);`,
+        );
+        const observation = () => JSON.parse(readFileSync(readyPath, "utf8")) as { pid: number; first: string };
+        await withSession("dev", project.root, readyPath, async () => {
+            const initial = observation();
+            expect(initial.first).toBe("first");
+            project.write("src/app.tsx", app(["edited"]));
+            await expect.poll(() => observation().first, { timeout: 30_000 }).toBe("edited");
+            expect(observation().pid).not.toBe(initial.pid);
+        });
+    });
+
     it("renders elements from an installed package built against @gtkx/react in development and tests", async () => {
         using project = createProject({ codegen: true });
         const readyPath = join(project.root, "kit.txt");

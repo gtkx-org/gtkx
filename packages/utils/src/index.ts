@@ -1,6 +1,12 @@
 export { indexBeforeOrEnd, remove, sortStrings, sortStringsBy, uniqBy } from "./array/index.ts";
 export { type AnyClass, getParentClass, walkClassChain } from "./class/index.ts";
-export { errorCode, errorMessage, formatChildProcessError, normalizeError } from "./error/index.ts";
+export {
+    CONSTRUCT_ONLY_PROP_CHANGE,
+    errorCode,
+    errorMessage,
+    formatChildProcessError,
+    normalizeError,
+} from "./error/index.ts";
 export { createLogger, error, info, logger, Logger, warn } from "./log/index.ts";
 export { type DistributedOmit, omit, pickBy } from "./object/index.ts";
 export { isPathInside, isPathWithin, toPosixPath } from "./path.ts";

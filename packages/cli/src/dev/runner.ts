@@ -1,5 +1,5 @@
 import type { InlineConfig, ModuleNode, Plugin, ViteDevServer } from "vite";
-import { error, warn } from "@gtkx/utils";
+import { CONSTRUCT_ONLY_PROP_CHANGE, error, errorCode, warn } from "@gtkx/utils";
 import { isCatalogSource } from "../i18n/catalogs.js";
 import { loadModuleExclusively, withExclusiveLoad } from "../internal/module-loads.js";
 import { parseRuntimeImportsIn, sourceLanguage } from "../internal/source-imports.js";
@@ -136,7 +136,34 @@ const announceFailure = (server: ViteDevServer, cause: unknown, keepsApplication
     error(keepsApplicationOnError ? KEPT_FAILURE : STOPPED_FAILURE, unreportedDetail(server, cause));
 };
 
+const requestRestart = async (session: DevSession): Promise<never> => {
+    session.controller.beginRestart();
+    session.deps.log("Full restart (process restart)");
+
+    try {
+        await session.server.close();
+    } catch (error_) {
+        error("Error closing server before the restart:", error_);
+    }
+
+    return session.deps.exit(RESTART_EXIT_CODE);
+};
+
+const isRefreshOfConstructOnlyProp = (session: DevSession, cause: unknown): boolean =>
+    session.refreshTracker.isRefreshing() && errorCode(cause) === CONSTRUCT_ONLY_PROP_CHANGE;
+
 const stopFailedApplication = (session: DevSession, cause: unknown): void => {
+    if (session.controller.isRestarting()) {
+        return;
+    }
+
+    if (isRefreshOfConstructOnlyProp(session, cause)) {
+        warn(`${DROPPED_REFRESH}: the edit changed a construct-only prop, which only a newly built element accepts`);
+        void requestRestart(session);
+
+        return;
+    }
+
     if (session.keepsApplicationOnError) {
         session.failure.report(cause);
 
@@ -154,19 +181,6 @@ const parkSession = (session: DevSession): void => {
 
     session.isParked = true;
     session.deps.log("Waiting for a change to restart the application...");
-};
-
-const requestRestart = async (session: DevSession): Promise<never> => {
-    session.controller.beginRestart();
-    session.deps.log("Full restart (process restart)");
-
-    try {
-        await session.server.close();
-    } catch (error_) {
-        error("Error closing server before the restart:", error_);
-    }
-
-    return session.deps.exit(RESTART_EXIT_CODE);
 };
 
 const registersComponents = (session: DevSession, module: ModuleNode, rejected: ReadonlySet<ModuleNode>): boolean =>
@@ -797,7 +811,7 @@ const closeAndExit = async (session: DevSession, code = 0): Promise<never> =>
     session.deps.exit((await closeSession(session)) ? code : 1);
 
 const isSessionInactive = (session: DevSession): boolean => {
-    if (session.controller.isShuttingDown()) {
+    if (session.controller.isShuttingDown() || session.controller.isRestarting()) {
         return true;
     }
 
