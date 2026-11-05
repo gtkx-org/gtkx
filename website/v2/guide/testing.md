@@ -71,7 +71,20 @@ afterAll(() => {
 
 List it under `test.setupFiles` in `vitest.config.ts`, and clear the app's files in `beforeEach` when tests must not see each other's data.
 
-Headless development uses the same environment:
+GSettings does not use those directories in tests: GTKX runs them with GLib's in-memory settings backend, so tests never read or change the user's settings. Each test file starts from the schema defaults, and a value one test writes stays for the following tests in the same file. Reset the keys in `beforeEach` when each test should start from the defaults:
+
+```ts
+import * as Gio from "@gtkx/gi/gio";
+import { beforeEach } from "vitest";
+import schema from "../data/com.example.MyApp.gschema.xml";
+
+beforeEach(() => {
+    const settings = Gio.Settings.new(schema.id);
+    for (const key of Object.keys(schema.keys)) settings.reset(key);
+});
+```
+
+Headless development uses the same environment, so settings changed in a headless session are gone when it stops:
 
 ```bash
 gtkx dev --headless --size 1280x720
