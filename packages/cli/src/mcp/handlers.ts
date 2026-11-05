@@ -345,8 +345,9 @@ function runNameQuery(testing: TestingModule, params: QueryParams): WindowQuery 
 
 const emptyQueryHint = (params: QueryParams): string =>
     `Nothing matched by:"${params.by}" value:"${String(params.value)}", which compared ${SEARCHED_BY[params.by]}. ` +
-    'Call gtkx_get_widget_tree to see what is mounted; by:"name" is the widest match, and by:"role" accepts ' +
-    "options.name to match the accessible name of a known role.";
+    'Call gtkx_get_widget_tree to see what is mounted; by:"name" is the widest match, by:"role" accepts ' +
+    "options.name to match the accessible name of a known role, and options.exact: false matches part of the " +
+    "text in any case.";
 
 async function handleQuery({ registry, loadTesting }: HandlerContext, params: QueryParams): Promise<Result> {
     const testing = await loadTesting();

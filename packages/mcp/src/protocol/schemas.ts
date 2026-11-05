@@ -73,9 +73,15 @@ const queryOptionsSchema: z.ZodObject<
     },
     z.core.$strict
 > = z.strictObject({
-    name: z.string().optional(),
-    exact: z.boolean().optional(),
-    timeout: z.number().optional(),
+    name: z.string().optional().describe('With by:"role", the accessible name the widget must also have.'),
+    exact: z
+        .boolean()
+        .optional()
+        .describe(
+            "When true (the default), the value and name must match whole and case-sensitively; when false, " +
+                "they match case-insensitively as substrings.",
+        ),
+    timeout: z.number().optional().describe("Milliseconds to keep retrying while nothing matches (default: 1000)."),
 });
 
 const queryParams: z.ZodObject<{
