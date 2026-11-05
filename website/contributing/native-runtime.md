@@ -68,6 +68,8 @@ Fundamental wrappers use a separate runtime weak cache. Native supplies a live i
 
 Some callback arguments borrow memory valid only for the current invocation. A borrow scope records their handles; leaving the invocation invalidates those handles, including on an error path. Field views inherit their owner's invalidation. Holding the JavaScript wrapper after that point does not extend the native borrow.
 
+An API that frees a value before collection, such as Cairo's `Context.$dispose()`, goes through `releaseHandle`. Native frees an owned boxed value at once, or ends a borrow early, and later uses of the handle and its field views throw. A value that a running call or a pending asynchronous operation holds a lease on is refused, so C never sees freed memory.
+
 Generated accessors read a record or union embedded by value in another record as a field view, as GJS does for nested boxed values. The view keeps its parent's handle, and therefore its memory, alive. When the embedded record holds pointers, the generated field has no setter: copying the record would alias pointers its parent owns.
 
 Executable targets also use opaque handles. Library symbols remain available with their library, call-scoped callbacks expire when their enclosing call ends, and one-shot callback handles expire before invocation. The runtime passes those handles directly to the native binding API.
@@ -133,6 +135,7 @@ The native package is an implementation detail. Its interface keeps JavaScript b
 | `compileDescriptor`, `bindFunction`, `createFunction`                    | Compile value codecs and signatures, and create native callback pointers or GClosures. Runtime supplies normalized descriptors and handlers.          |
 | `alloc`, `readField`, `writeField`, `call`                               | Allocate storage, validate bounds and leases, invoke native functions, and settle ownership transfers.                                                |
 | `reportExternalMemory`                                                   | Count native memory a handle keeps alive, such as an image surface's pixels, toward garbage collection until the handle is released.                  |
+| `releaseHandle`                                                          | Free an owned boxed value, or end a borrow, before collection when an API such as `Context.$dispose()` asks; refuse while an operation still uses it. |
 | `openLibrary`, `resolveSymbol`                                           | Open one library and resolve a symbol. Runtime chooses candidates and caches targets.                                                                 |
 | `getType`, `getTypeClass`, `registerClass`                               | Validate native types, own class and interface references, register GTypes, and retain callbacks. Runtime supplies class policy and metadata.         |
 | `getWrapper`, `setWrapper`, `setWrapperBorrow`                           | Coordinate GObject references, JavaScript wrapper reachability, dependent borrows, and cleanup ordering.                                              |

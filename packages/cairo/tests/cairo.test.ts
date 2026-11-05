@@ -730,6 +730,32 @@ describe("Context — status", () => {
     });
 });
 
+describe("Context — $dispose", () => {
+    it("drops the context's references to its target at once", () => {
+        const surface = createTestSurface();
+        const unused = surface.getReferenceCount();
+        const ctx = Context.create(surface);
+        expect(surface.getReferenceCount()).toBeGreaterThan(unused);
+        ctx.$dispose();
+        expect(surface.getReferenceCount()).toBe(unused);
+    });
+
+    it("rejects drawing through a disposed context", () => {
+        const ctx = createTestContext();
+        ctx.$dispose();
+        expect(() => ctx.paint()).toThrow(/released/);
+    });
+
+    it("ignores a second $dispose", () => {
+        const surface = createTestSurface();
+        const unused = surface.getReferenceCount();
+        const ctx = Context.create(surface);
+        ctx.$dispose();
+        ctx.$dispose();
+        expect(surface.getReferenceCount()).toBe(unused);
+    });
+});
+
 describe("Pattern — createLinear", () => {
     it("reports its linear points", () => {
         const pattern = Pattern.createLinear(1, 2, 30, 40);

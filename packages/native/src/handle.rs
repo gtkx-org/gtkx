@@ -24,6 +24,9 @@ const STRUCT_SIZE_HINT: usize = 256;
 
 pub const INVALIDATED_HANDLE: &str = "the instance a dispose or finalize override receives is only valid until the override returns, and memory a C caller lends to a callback only until that callback returns";
 
+pub const RELEASED_HANDLE: &str =
+    "the value was released early, such as by `$dispose()`, so nothing remains to reach through it";
+
 pub const NULL_HANDLE: &str =
     "the handle points at nothing, so there is no memory to reach through it";
 
@@ -199,6 +202,8 @@ struct HandleInner {
     fields: FieldStore,
     pointer_storage: RefCell<Option<(Handle, bool)>>,
     invalidated: Cell<bool>,
+    released: Cell<bool>,
+    record_leases: Cell<usize>,
     allocated_bytes: Cell<Option<usize>>,
     external_memory: ExternalMemory,
 }
@@ -241,6 +246,8 @@ impl From<HandleKind> for Handle {
                 fields: FieldStore::default(),
                 pointer_storage: RefCell::new(None),
                 invalidated: Cell::new(false),
+                released: Cell::new(false),
+                record_leases: Cell::new(0),
                 allocated_bytes: Cell::new(None),
                 external_memory: ExternalMemory::default(),
             }),
@@ -307,7 +314,7 @@ impl Handle {
 
     pub fn function_ptr(&self) -> anyhow::Result<*mut c_void> {
         self.retain_lease()?;
-        anyhow::ensure!(!self.is_invalidated(), "{INVALIDATED_HANDLE}");
+        anyhow::ensure!(!self.is_invalidated(), "{}", self.ended_reason());
         let HandleKind::Function { ptr, .. } = self.inner.kind else {
             anyhow::bail!("The handle does not reference a native function");
         };
@@ -351,7 +358,7 @@ impl Handle {
     }
 
     pub fn retain_owned(&self) -> anyhow::Result<Self> {
-        anyhow::ensure!(!self.is_invalidated(), "{INVALIDATED_HANDLE}");
+        anyhow::ensure!(!self.is_invalidated(), "{}", self.ended_reason());
         let retained = match &self.inner.kind {
             HandleKind::Object { lent: false, .. } => Self::decoded_gobject(
                 self.acquire_lease()?
@@ -566,9 +573,57 @@ impl Handle {
         }
     }
 
+    /// Ends the handle now instead of when JavaScript collects it. An owned boxed value is freed
+    /// through its free function and a borrowed value's borrow ends; either way every later use
+    /// through the handle, or through a field aliasing it, is rejected. Ending a handle that has
+    /// already ended is harmless. A value an operation still in progress is using is refused, as
+    /// is any other kind of handle, whose lifetime stays with the garbage collector.
+    pub fn release(&self) -> anyhow::Result<()> {
+        if self.is_invalidated() {
+            return Ok(());
+        }
+
+        anyhow::ensure!(
+            self.inner.record_leases.get() == 0,
+            "A value that a native operation still in progress is using cannot be released"
+        );
+
+        match &self.inner.kind {
+            HandleKind::Boxed(boxed) => {
+                self.inner.released.set(true);
+                boxed.free();
+            }
+            HandleKind::Borrowed(_) => self.inner.released.set(true),
+            _ => anyhow::bail!(
+                "Only a boxed or borrowed value can be released early; this handle is released when it is collected"
+            ),
+        }
+
+        self.inner.external_memory.release();
+
+        Ok(())
+    }
+
+    /// Why an ended handle can no longer be used: released early on request, or its borrow over.
+    #[must_use]
+    pub fn ended_reason(&self) -> &'static str {
+        if self.inner.released.get() {
+            return RELEASED_HANDLE;
+        }
+
+        match &self.inner.kind {
+            HandleKind::Field { owner, .. }
+            | HandleKind::Pointer { owner, .. }
+            | HandleKind::Function {
+                owner: Some(owner), ..
+            } => owner.ended_reason(),
+            _ => INVALIDATED_HANDLE,
+        }
+    }
+
     #[must_use]
     pub fn is_invalidated(&self) -> bool {
-        if self.inner.invalidated.get() {
+        if self.inner.invalidated.get() || self.inner.released.get() {
             return true;
         }
 
@@ -698,7 +753,7 @@ impl Handle {
     }
 
     pub(crate) fn acquire_lease(&self) -> anyhow::Result<Option<glib::Object>> {
-        anyhow::ensure!(!self.is_invalidated(), "{INVALIDATED_HANDLE}");
+        anyhow::ensure!(!self.is_invalidated(), "{}", self.ended_reason());
         match &self.inner.kind {
             HandleKind::Object { lent: true, .. } => Ok(None),
             HandleKind::Object {
@@ -748,9 +803,9 @@ impl Handle {
     }
 
     pub(crate) fn acquire_record_lease(&self) -> anyhow::Result<Option<RecordLease>> {
-        anyhow::ensure!(!self.is_invalidated(), "{INVALIDATED_HANDLE}");
+        anyhow::ensure!(!self.is_invalidated(), "{}", self.ended_reason());
         match &self.inner.kind {
-            HandleKind::Struct { .. } => Ok(Some(RecordLease::new(self))),
+            HandleKind::Struct { .. } | HandleKind::Boxed(_) => Ok(Some(RecordLease::new(self))),
             HandleKind::Field { owner, .. }
             | HandleKind::Pointer { owner, .. }
             | HandleKind::Function {

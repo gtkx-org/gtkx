@@ -207,6 +207,31 @@ Output parameters become return values, grouped into a tuple when there are seve
 
 Return whole numbers where the slot takes an integer, as `vfuncMeasure` does. GJS truncates a fractional result silently; GTKX rejects it with an error that names the vfunc, such as `TypeError: PaddedLabel.vfuncMeasure returned a value its native caller cannot take: Value 99.5 is not an integer, int32 expects a whole number`. Round sizes computed from fractional values, such as Pango units divided by `Pango.SCALE`, with `Math.round`, `Math.floor` or `Math.ceil` before returning them. See [Passing integers](/v2/guide/native-values#passing-integers).
 
+### Draw with Cairo in `vfuncSnapshot`
+
+A widget that draws with Cairo from its own `vfuncSnapshot`, as many C widgets and gtk4-demo's Paint do, gets a context from `snapshot.appendCairo(bounds)`. Call `cr.$dispose()` once it has drawn, where C calls `cairo_destroy`:
+
+```ts
+import { type ImageSurface } from "@gtkx/cairo";
+import * as Graphene from "@gtkx/gi/graphene";
+import * as Gtk from "@gtkx/gi/gtk";
+
+class CanvasBase extends Gtk.Widget {
+    surface: ImageSurface | null = null;
+
+    override vfuncSnapshot(snapshot: Gtk.Snapshot): void {
+        const cr = snapshot.appendCairo(new Graphene.Rect().init(0, 0, this.getWidth(), this.getHeight()));
+        if (this.surface) {
+            cr.setSourceSurface(this.surface, 0, 0);
+            cr.paint();
+        }
+        cr.$dispose();
+    }
+}
+```
+
+The snapshot keeps what the context drew; `$dispose()` only drops the context. Without it, each frame's context stays alive until garbage collection, and Cairo keeps a copy of `surface` for every frame in which the app draws into it afterwards, so memory grows with every stroke. A `GtkDrawingArea` `drawFunc` needs no call. See [Release contexts you create](/v2/guide/cairo#release-contexts-you-create).
+
 ### Slots with no generated member
 
 Use [`callParent`](/v2/reference/@gtkx/runtime/functions/callParent) when the virtual function has no generated member, including `vfuncDispose`. Pass the class whose override is running, the vfunc name, the instance, and its arguments. The same helper can chain interface slots that TypeScript cannot resolve through `super`.

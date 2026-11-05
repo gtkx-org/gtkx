@@ -62,6 +62,16 @@ describe("cairo values crossing the GI boundary", () => {
         expect(target).toBeInstanceOf(CONCRETE_SURFACE_CLASSES[target.getType()] ?? Surface);
     });
 
+    it("releases a snapshot's drawing context and its hold on the recording surface with $dispose", () => {
+        const snapshot = new Gtk.Snapshot();
+        const cr = snapshot.appendCairo(new Graphene.Rect().init(0, 0, 8, 8));
+        const target = cr.getTarget();
+        const before = target.getReferenceCount();
+        cr.$dispose();
+        expect(target.getReferenceCount()).toBeLessThan(before);
+        expect(snapshot.toNode()).toBeInstanceOf(Gsk.CairoNode);
+    });
+
     it("wraps a region Gdk computes from a surface as Region", () => {
         const region = Gdk.cairoRegionCreateFromSurface(new ImageSurface(Format.ARGB32, 4, 4));
         expect(region).toBeInstanceOf(Region);
@@ -136,6 +146,32 @@ describe("PangoCairo text layout", () => {
         layout.setText("", -1);
         PangoCairo.showLayout(cr, layout);
         expect(surface.getData()).toEqual(before);
+    });
+
+    it("refuses to dispose a context that a running call is still drawing with", () => {
+        const surface = new ImageSurface(Format.ARGB32, 32, 16);
+        const cr = Context.create(surface);
+        const layout = PangoCairo.createLayout(cr);
+        const extent = new Pango.Rectangle({ x: 0, y: 0, width: 8 * Pango.SCALE, height: 8 * Pango.SCALE });
+        const shape = Pango.attrShapeNew(extent, extent);
+        shape.endIndex = 1;
+        const attributes = new Pango.AttrList();
+        attributes.insert(shape);
+        layout.setText("x", -1);
+        layout.setAttributes(attributes);
+        const failures: string[] = [];
+        PangoCairo.contextSetShapeRenderer(layout.getContext(), () => {
+            try {
+                cr.$dispose();
+            } catch (error) {
+                failures.push(String(error));
+            }
+        });
+        PangoCairo.showLayout(cr, layout);
+        expect(failures).toHaveLength(1);
+        expect(failures[0]).toContain("still in progress");
+        cr.$dispose();
+        expect(() => cr.paint()).toThrow(/released/);
     });
 });
 

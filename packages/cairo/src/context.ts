@@ -9,6 +9,7 @@ import {
     t,
     wrapHandle,
 } from "@gtkx/runtime";
+import { releaseHandle } from "@gtkx/runtime/internal";
 import type {
     Antialias,
     Content,
@@ -317,6 +318,22 @@ class Context {
         const handle = cairoCreate(getHandle(target)) as ExternalObject<Handle>;
         checkStatus(cairoStatus(handle) as Status, "context");
         setHandle(this, handle);
+    }
+
+    /**
+     * Drops this context's reference to its `cairo_t` now instead of when the garbage collector
+     * reclaims the wrapper, as `cairo_destroy` does in C and `$dispose()` does in GJS. Call it once
+     * drawing is done on a context the app obtains itself, such as one from
+     * `Gtk.Snapshot.appendCairo` or `Context.create` on a long-lived surface: until then the context
+     * keeps its target alive, and Cairo copies a backing surface into each recording that still
+     * holds it when the app draws into it again.
+     *
+     * Every later call on the context throws. Calling `$dispose()` again does nothing, and on the
+     * context a draw callback receives it only ends that context early, because GTKX releases it
+     * when the callback returns anyway.
+     */
+    $dispose(): void {
+        releaseHandle(getHandle(this));
     }
 
     /** Begins a new sub-path at `(x, y)`, which becomes the current point. */

@@ -16,11 +16,9 @@ impl ExternalMemory {
 
         Ok(())
     }
-}
 
-impl Drop for ExternalMemory {
-    fn drop(&mut self) {
-        let bytes = self.bytes.get();
+    pub(super) fn release(&self) {
+        let bytes = self.bytes.replace(0);
 
         if bytes == 0 {
             return;
@@ -29,5 +27,11 @@ impl Drop for ExternalMemory {
         if let Some(env) = node_env::try_env() {
             let _ = env.adjust_external_memory(-bytes);
         }
+    }
+}
+
+impl Drop for ExternalMemory {
+    fn drop(&mut self) {
+        self.release();
     }
 }

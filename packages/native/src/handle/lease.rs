@@ -7,14 +7,23 @@ enum Lease {
 
 #[derive(Debug)]
 pub(crate) struct RecordLease {
-    _owner: super::Handle,
+    owner: super::Handle,
 }
 
 impl RecordLease {
     pub(super) fn new(record: &super::Handle) -> Self {
+        let leases = &record.inner.record_leases;
+        leases.set(leases.get() + 1);
         Self {
-            _owner: record.clone(),
+            owner: record.clone(),
         }
+    }
+}
+
+impl Drop for RecordLease {
+    fn drop(&mut self) {
+        let leases = &self.owner.inner.record_leases;
+        leases.set(leases.get() - 1);
     }
 }
 

@@ -1,6 +1,6 @@
 use std::ffi::c_void;
 
-use crate::handle::{Handle, INVALIDATED_HANDLE, NULL_HANDLE};
+use crate::handle::{Handle, NULL_HANDLE};
 
 pub mod alloc;
 pub mod bind;
@@ -19,6 +19,7 @@ pub mod quit;
 pub mod read;
 pub mod reference;
 pub mod register_class;
+pub mod release;
 pub mod set_wrapper;
 pub mod set_wrapper_borrow;
 pub mod signal;
@@ -80,7 +81,10 @@ pub(crate) fn handle_memory_ptr(handle: &Handle, label: &str) -> napi::Result<*m
     if handle.is_invalidated() {
         return Err(napi::Error::new(
             napi::Status::InvalidArg,
-            format!("{label}: the handle refers to nothing, {INVALIDATED_HANDLE}"),
+            format!(
+                "{label}: the handle refers to nothing, {}",
+                handle.ended_reason()
+            ),
         ));
     }
 
