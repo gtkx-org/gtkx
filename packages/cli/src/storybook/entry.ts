@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 
@@ -20,15 +20,23 @@ const assertStorybookInstalled = (root: string): void => {
 
 const createStorybookEntry = (root: string): string => {
     const path = resolve(root, ".gtkx/storybook-entry.ts");
+    const selectionPath = resolve(root, ".gtkx/storybook-selection");
     const source = [
+        'import { existsSync, readFileSync, writeFileSync } from "node:fs";',
         'import { startStorybook } from "@gtkx/storybook/explorer";',
         'import { applicationId } from "virtual:gtkx-config";',
-        `const explorer = startStorybook({ applicationId: applicationId + ${JSON.stringify(STORYBOOK_APPLICATION_ID_SUFFIX)} });`,
+        `const selectionPath = ${JSON.stringify(selectionPath)};`,
+        "const explorer = startStorybook({",
+        `    applicationId: applicationId + ${JSON.stringify(STORYBOOK_APPLICATION_ID_SUFFIX)},`,
+        '    initialStoryId: existsSync(selectionPath) ? readFileSync(selectionPath, "utf8") : undefined,',
+        "    onStorySelected: (id) => writeFileSync(selectionPath, id),",
+        "});",
         "export const updateStories = explorer.updateStories;",
         "export const reportStorybookError = explorer.reportStorybookError;",
         "",
     ].join("\n");
     mkdirSync(dirname(path), { recursive: true });
+    rmSync(selectionPath, { force: true });
     writeFileSync(path, source);
 
     return path;

@@ -3079,6 +3079,48 @@ describe("CLI commands", () => {
         });
     });
 
+    it("reopens the selected story when the storybook runner restarts", async () => {
+        using project = createProject();
+        linkWorkspaceBindings(project.root);
+        const readyPath = join(project.root, "ready.txt");
+        const shownPath = join(project.root, "shown.txt");
+        project.write(".storybook/main.mts", 'export default { stories: ["stories/**/*.stories.tsx"] };');
+        const badge = (text: string) => `
+            import { Label } from "@gtkx/gi/gtk";
+            import { registerClass } from "@gtkx/runtime";
+            class BadgeBase extends Label {}
+            export const Badge = registerClass(BadgeBase, { typeName: "SelectionBadge" });
+            export const badgeText = ${JSON.stringify(text)};
+        `;
+        project.write("stories/badge.ts", badge("one"));
+        project.write(
+            "stories/example.stories.tsx",
+            `import { writeFileSync } from "node:fs";
+            import { badgeText } from "./badge.ts";
+            writeFileSync(${JSON.stringify(readyPath)}, badgeText);
+            const shown = (name) => () => { writeFileSync(${JSON.stringify(shownPath)}, name + ":" + badgeText); return null; };
+            export default { title: "Example" };
+            export const First = { render: shown("first") };
+            export const Second = { render: shown("second") };`,
+        );
+        const shown = () => existsSync(shownPath) && readFileSync(shownPath, "utf8");
+        await withMcpClient(project.root, async (client) => {
+            await withSession("storybook", project.root, readyPath, async () => {
+                await expect.poll(shown, { timeout: 30_000 }).toBe("first:one");
+                const [second] = await queryWidgets(client, {
+                    by: "role",
+                    value: "list_item",
+                    options: { name: "Second" },
+                });
+                await callTool(client, "gtkx_click", { widgetId: second?.id });
+                await expect.poll(shown, { timeout: 30_000 }).toBe("second:one");
+
+                project.write("stories/badge.ts", badge("two"));
+                await expect.poll(shown, { timeout: 30_000 }).toBe("second:two");
+            });
+        });
+    });
+
     it("skips MDX files matched by storybook patterns with a warning", async () => {
         using project = createProject({ codegen: true });
         const readyPath = join(project.root, "ready.txt");

@@ -145,6 +145,29 @@ describe("native story explorer", () => {
         expect(screen.getByText("0 stories")).toBeVisible();
     });
 
+    it("opens a restarted explorer on its previous story and reports each selection", async () => {
+        const catalog = new StoryCatalog();
+        const selections: string[] = [];
+        await render(
+            <Storybook
+                catalog={catalog}
+                initialStoryId="components-counter--with-step"
+                onStorySelected={(id) => selections.push(id)}
+            />,
+            { container: rootElement },
+        );
+
+        await act(() =>
+            catalog.load([
+                { id: "counter.stories.tsx", title: "Counter", load: () => Promise.resolve(counterStories) },
+            ]),
+        );
+        expect(screen.getByName("story-context")).toHaveTextContent(/^components-counter--with-step\|/);
+        await userEvent.click(screen.getByName("storybook-story-components-counter--default"));
+        expect(screen.getByName("story-context")).toHaveTextContent(/^components-counter--default\|/);
+        expect(selections).toEqual(["components-counter--with-step", "components-counter--default"]);
+    });
+
     it("recomposes the selected story after metadata replacement", async () => {
         const catalog = await loadCounter();
         await showExplorer(catalog);
