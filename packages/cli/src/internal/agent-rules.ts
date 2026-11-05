@@ -1,6 +1,7 @@
 import { errorCode } from "@gtkx/utils";
 import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { markdownTable } from "markdown-table";
 import { findDepPkgJsonPath } from "vitefu";
 import { REFERENCE_PATH } from "../codegen/reference.js";
 
@@ -24,7 +25,7 @@ const referenceRules = [
     "",
 ];
 
-const projectCommands = async (root: string, hasReference: boolean): Promise<string[]> => {
+const projectCommands = async (root: string, hasReference: boolean): Promise<string[][]> => {
     const commands = [
         { command: "gtkx dev", description: "Run the app with fast refresh" },
         {
@@ -46,10 +47,10 @@ const projectCommands = async (root: string, hasReference: boolean): Promise<str
 
     return commands
         .filter((_, index) => isAvailable[index])
-        .map(({ command, description }) => `| \`${command}\` | ${description} |`);
+        .map(({ command, description }) => [`\`${command}\``, description]);
 };
 
-const rulesBody = (heading: string, hasReference: boolean, commands: string[]): string[] => [
+const rulesBody = (heading: string, hasReference: boolean, commands: string[][]): string[] => [
     `${heading} GTKX`,
     "",
     "GTKX applications are Adwaita-first, with GTK4 underneath. Most GNOME UI code in your training data is C, " +
@@ -68,9 +69,7 @@ const rulesBody = (heading: string, hasReference: boolean, commands: string[]): 
         "so they match the GIR libraries this project declares.",
     "",
     ...(hasReference ? referenceRules : []),
-    "| Command | What it does |",
-    "| --- | --- |",
-    ...commands,
+    markdownTable([["Command", "What it does"], ...commands]),
     "",
     "Never call UI work done without looking at the running app. With `gtkx dev` up, the gtkx MCP server " +
         "exposes the live widget tree, queries, clicks and screenshots; use them to confirm the change landed.",
@@ -79,7 +78,7 @@ const rulesBody = (heading: string, hasReference: boolean, commands: string[]): 
         "committing the block with your work keeps the tree clean.",
 ];
 
-const renderBlock = (heading: string, hasReference: boolean, commands: string[]): string =>
+const renderBlock = (heading: string, hasReference: boolean, commands: string[][]): string =>
     [BEGIN_MARKER, "", ...rulesBody(heading, hasReference, commands), "", END_MARKER].join("\n");
 
 const headingFor = (contents: string): string => (TOP_LEVEL_HEADING.test(contents) ? "##" : "#");
@@ -103,7 +102,7 @@ const replaceBlock = (contents: string, block: string): string => {
     return contents.slice(0, match.index) + block + contents.slice(match.index + match[0].length);
 };
 
-const nextContents = (contents: string, hasReference: boolean, commands: string[]): string => {
+const nextContents = (contents: string, hasReference: boolean, commands: string[][]): string => {
     const heading = headingFor(contents.replace(BLOCK_PATTERN, ""));
 
     return replaceBlock(contents, renderBlock(heading, hasReference, commands));

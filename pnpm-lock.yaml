@@ -597,6 +597,9 @@ importers:
       i18next-cli:
         specifier: 1.80.5
         version: 1.80.5(@types/node@26.5.1)(react@19.3.1)(typescript@6.0.3)
+      markdown-table:
+        specifier: ^3.1.0
+        version: 3.1.0
       mrmime:
         specifier: ^2.0.1
         version: 2.0.1
@@ -664,6 +667,9 @@ importers:
       '@types/test-console':
         specifier: ^2.0.3
         version: 2.0.3
+      oxfmt:
+        specifier: 0.75.0
+        version: 0.75.0
       test-console:
         specifier: ^2.0.0
         version: 2.0.0
@@ -6340,6 +6346,9 @@ packages:
   markdown-it@14.3.2:
     resolution: {integrity: sha512-sHHjZ5fJKlgrG4qns2YwVcdNep35h5fERrfkD2YNsb9UFk0UIHarbiTaHKVMlPuWAoiilyK8Fv/jAm11slsY7Q==}
     hasBin: true
+
+  markdown-table@3.1.0:
+    resolution: {integrity: sha512-xpeSCdM+B+6P3ncfgaB7FoDbtJ30xAe6Z18TGT7AgXJsHqCElCICZovQqdRMm7kHgpTyYv36EupqewoFFSB8vw==}
 
   math-intrinsics@1.1.0:
     resolution: {integrity: sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==}
@@ -12998,6 +13007,8 @@ snapshots:
       mdurl: 2.1.0
       punycode.js: 2.3.1
       uc.micro: 2.1.0
+
+  markdown-table@3.1.0: {}
 
   math-intrinsics@1.1.0: {}
 

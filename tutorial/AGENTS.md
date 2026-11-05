@@ -13,14 +13,14 @@ GTKX applications are Adwaita-first, with GTK4 underneath. Most GNOME UI code in
 
 Read `.gtkx/reference/index.md` before writing widget code. It is generated from this project's own GIR libraries and is the authority on which props, signals and methods exist. Do not infer a prop from another toolkit, from a C function name, or from a similar element.
 
-| Command | What it does |
-| --- | --- |
-| `gtkx dev` | Run the app with fast refresh |
-| `gtkx storybook` | Explore native component stories with controls and actions |
-| `gtkx codegen` | Regenerate bindings and this reference |
-| `gtkx cleanup` | Remove stale headless runtime and compile cache directories |
-| `tsc --noEmit` | Typecheck |
-| `vitest run` | Run the tests |
+| Command          | What it does                                                |
+| ---------------- | ----------------------------------------------------------- |
+| `gtkx dev`       | Run the app with fast refresh                               |
+| `gtkx storybook` | Explore native component stories with controls and actions  |
+| `gtkx codegen`   | Regenerate bindings and this reference                      |
+| `gtkx cleanup`   | Remove stale headless runtime and compile cache directories |
+| `tsc --noEmit`   | Typecheck                                                   |
+| `vitest run`     | Run the tests                                               |
 
 Never call UI work done without looking at the running app. With `gtkx dev` up, the gtkx MCP server exposes the live widget tree, queries, clicks and screenshots; use them to confirm the change landed.
 

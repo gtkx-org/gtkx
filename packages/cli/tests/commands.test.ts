@@ -25,6 +25,7 @@ import { join, relative } from "node:path";
 import { setTimeout } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
+import { format } from "oxfmt";
 import { stdout, stderr } from "test-console";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createVitest } from "vitest/node";
@@ -1523,6 +1524,13 @@ describe("CLI commands", () => {
         await invoke(["codegen", "--cwd", project.root]);
         expect(rules()).not.toContain(".gtkx/reference");
         expect(existsSync(join(project.root, ".gtkx/reference"))).toBe(false);
+    });
+
+    it("writes agent rules that a Markdown formatter leaves unchanged", async () => {
+        using project = createProject({ codegen: true, libraries: ["Gio-2.0"], agents: { rules: true } });
+        await invoke(["codegen", "--cwd", project.root]);
+        const rules = readFileSync(join(project.root, "AGENTS.md"), "utf8");
+        expect((await format("AGENTS.md", rules)).code).toBe(rules);
     });
 
     it("lists only the commands that the project's packages provide in the agent rules", async () => {
