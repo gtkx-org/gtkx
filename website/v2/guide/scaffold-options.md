@@ -11,7 +11,7 @@ For an interactive first project, follow [Getting Started](/v2/guide/getting-sta
 npm create gtkx@beta -- my-app --yes --application-id com.example.MyApp --display-name "My App"
 ```
 
-Without `--display-name`, noninteractive scaffolding derives a name from the project directory, so `my-app` becomes `My App`. `--skip-install` writes the project without installing dependencies; run your package manager's install command in that directory afterward.
+Without `--display-name`, noninteractive scaffolding derives a name from the project directory, so `my-app` becomes `My App`. It also derives the package name when the directory's name is not a valid one, lowercasing it, removing accents and replacing other characters with hyphens, so `Unit Converter` becomes `unit-converter` and `café` becomes `cafe`. `--skip-install` writes the project without installing dependencies; run your package manager's install command in that directory afterward.
 
 When Yarn 2 or newer runs the scaffold, as `corepack yarn@4 create gtkx` does, and Yarn is the chosen package manager, the new `package.json` pins that release in its `packageManager` field, as `yarn init -2` does, so Corepack runs the same Yarn for the install and every later command instead of its default. An app inside a Yarn workspace gets no pin; the workspace root owns it.
 

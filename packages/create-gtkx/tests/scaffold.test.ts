@@ -15,20 +15,17 @@ afterEach(() => {
     vi.unstubAllEnvs();
 });
 
-const create = async (target: string, args: string[] = []) => {
+const create = async (
+    target: string,
+    args: string[] = [],
+    defaults: string[] = ["--application-id", "org.gtkx.example"],
+) => {
     process.exitCode = 0;
     let output: readonly string[] = [];
     await stderr.inspectAsync(async () => {
         output = await stdout.inspectAsync(async () => {
             await runCommand(scaffoldCommand, {
-                rawArgs: [
-                    target,
-                    "--no-interactive",
-                    "--skip-install",
-                    "--application-id",
-                    "org.gtkx.example",
-                    ...args,
-                ],
+                rawArgs: [target, "--no-interactive", "--skip-install", ...defaults, ...args],
             });
         });
     });
@@ -443,15 +440,36 @@ describe("scaffold command", () => {
     });
 
     it.each([
-        { directory: "Unit Converter", suggestion: "unit-converter" },
-        { directory: "Café_Notes", suggestion: "cafe-notes" },
-    ])("names the directory it rejects as $directory and a valid one", async ({ directory, suggestion }) => {
+        {
+            directory: "Unit Converter",
+            name: "unit-converter",
+            displayName: "Unit Converter",
+            id: "com.UnitConverter.app",
+        },
+        { directory: "café", name: "cafe", displayName: "Café", id: "com.cafe.app" },
+        {
+            directory: "unit_converter",
+            name: "unit_converter",
+            displayName: "Unit Converter",
+            id: "com.unit_converter.app",
+        },
+    ])("names the project after the directory $directory", async ({ directory, name, displayName, id }) => {
         using parent = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-dirname-"));
-        const result = await create(join(parent.path, directory));
+        const target = join(parent.path, directory);
+        expect((await create(target, [], [])).status).toBe(0);
+        expect(JSON.parse(read(target, "package.json"))).toHaveProperty("name", name);
+        expect(read(target, "gtkx.config.ts")).toContain(`applicationId: "${id}"`);
+        expect(read(target, "gtkx.config.ts")).toContain(`name: "${displayName}"`);
+        expect(read(target, "src/app.tsx")).toContain(`title={"${displayName}"}`);
+    });
+
+    it("refuses a directory name it cannot derive a package name from", async () => {
+        using parent = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-dirname-"));
+        const target = join(parent.path, "日本語");
+        const result = await create(target);
         expect(result.status).toBe(1);
-        expect(result.output).toContain(`Directory name "${directory}"`);
-        expect(result.output).toContain(`"${suggestion}"`);
-        expect(result.output).not.toContain("Project name");
+        expect(result.output).toContain(`Directory name "日本語" has no Latin letters or numbers`);
+        expect(existsSync(target)).toBe(false);
     });
 
     it("refuses to scaffold through a symlink to another directory", async () => {

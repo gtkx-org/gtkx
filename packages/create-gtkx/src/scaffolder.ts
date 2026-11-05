@@ -23,7 +23,7 @@ import {
     PACKAGE_MANAGERS,
     type PackageManager,
 } from "./package-managers.js";
-import { isValidProjectName } from "./project-name.js";
+import { isValidPackageName, packageNameFromDirectory, withoutAccents } from "./project-name.js";
 import { listTemplates, renderFile, type TemplateContext } from "./templates.js";
 import { addWorkspaceMcpServer } from "./workspace-mcp.js";
 
@@ -115,15 +115,17 @@ const TESTING_TEMPLATES = new Set(["vitest.config.ts", "tests/app.test.tsx"]);
 const TYPESCRIPT_TEMPLATES = new Set(["tsconfig.json", "src/gtkx-env.d.ts"]);
 
 const APPLICATION_ID_FORMAT_ERROR = "Application ID must be reverse domain notation (e.g., com.example.myapp)";
+const PACKAGE_NAME_FORMAT_ERROR = "Package name must be a valid npm package name: lowercase, no spaces (e.g., my-app)";
 const APPLICATION_ID_PREFIX = "com.";
 const APPLICATION_ID_SUFFIX = ".app";
 
 const APPLICATION_ID_SEGMENT_LIMIT =
     APPLICATION_ID_MAX_LENGTH - APPLICATION_ID_PREFIX.length - APPLICATION_ID_SUFFIX.length;
 
-const displayNameFromProjectName = (name: string): string =>
-    name
-        .split("-")
+const displayNameFromDirectory = (directoryName: string): string =>
+    directoryName
+        .split(/[\s._-]+/)
+        .filter((part) => part.length > 0)
         .map((part) => upperFirst(part))
         .join(" ");
 
@@ -141,21 +143,23 @@ const gitConfigValue = (key: string): string | null => {
     }
 };
 
-const applicationIdSegment = (name: string): string => {
-    const compact = name.replaceAll("-", "");
+const compactIdentifier = (name: string): string => withoutAccents(name).replaceAll(/[^A-Za-z0-9_]/g, "");
+
+const applicationIdSegment = (directoryName: string, name: string): string => {
+    const compact = compactIdentifier(directoryName) || compactIdentifier(name);
     const segment = /^[A-Za-z_]/.test(compact) ? compact : `_${compact}`;
 
     return segment.slice(0, APPLICATION_ID_SEGMENT_LIMIT);
 };
 
-const suggestApplicationId = (name: string): string =>
-    `${APPLICATION_ID_PREFIX}${applicationIdSegment(name)}${APPLICATION_ID_SUFFIX}`;
+const suggestApplicationId = (directoryName: string, name: string): string =>
+    `${APPLICATION_ID_PREFIX}${applicationIdSegment(directoryName, name)}${APPLICATION_ID_SUFFIX}`;
 
 const HOME_PREFIX = /^~(?=$|\/)/;
 
 const expandHome = (target: string): string => target.replace(HOME_PREFIX, () => homedir());
 
-const deriveProjectName = (target: string): string => basename(resolve(process.cwd(), target));
+const directoryNameOf = (target: string): string => basename(resolve(process.cwd(), target));
 
 const isDirEmpty = (dir: string): boolean => {
     const entries = readdirSync(dir);
@@ -197,24 +201,14 @@ const guardCancellation = <T>(value: T | typeof p.CANCEL_SYMBOL): T => {
     return value;
 };
 
-const suggestDirectoryName = (name: string): string =>
-    name
-        .normalize("NFKD")
-        .replaceAll(/\p{M}/gu, "")
-        .toLowerCase()
-        .replaceAll(/[^a-z0-9]+/g, "-")
-        .replaceAll(/^-+|-+$/g, "");
+const validatePackageNameFormat = (value: string): string | undefined =>
+    isValidPackageName(value) ? undefined : PACKAGE_NAME_FORMAT_ERROR;
 
-const validateDirectoryName = (name: string): string | undefined => {
-    if (isValidProjectName(name)) {
-        return undefined;
-    }
+const validatePackageNameInput = (value: string | undefined): string | undefined =>
+    value ? validatePackageNameFormat(value) : "Package name is required";
 
-    const suggestion = suggestDirectoryName(name);
-    const rule = `Directory name "${name}" becomes the package name, so use only lowercase letters, numbers, and hyphens`;
-
-    return suggestion ? `${rule}, such as "${suggestion}"` : rule;
-};
+const validatePackageNameAnswer = (value: string | undefined): string | undefined =>
+    value ? validatePackageNameFormat(value) : undefined;
 
 const validateApplicationIdFormat = (value: string): string | undefined =>
     isValidApplicationId(value) ? undefined : APPLICATION_ID_FORMAT_ERROR;
@@ -253,13 +247,8 @@ const requestedPackageManager = (value: string | undefined): PackageManager | un
     return value;
 };
 
-const validateTargetDir = (target: string): string | undefined => {
-    if (!target) {
-        return "Project directory is required";
-    }
-
-    return validateDirectoryName(deriveProjectName(target));
-};
+const validateTargetDir = (target: string): string | undefined =>
+    target ? undefined : "Project directory is required";
 
 const validateTargetAnswer = (value: string | undefined): string | undefined =>
     validateTargetDir(expandHome(value ?? ""));
@@ -273,8 +262,17 @@ const promptTarget = async (): Promise<string> =>
         }),
     );
 
-const promptApplicationId = async (name: string): Promise<string> => {
-    const defaultApplicationId = suggestApplicationId(name);
+const promptPackageName = async (derived: string): Promise<string> =>
+    guardCancellation(
+        await p.text({
+            message: "Package name",
+            ...(derived === "" ? {} : { placeholder: derived, defaultValue: derived }),
+            validate: derived === "" ? validatePackageNameInput : validatePackageNameAnswer,
+        }),
+    );
+
+const promptApplicationId = async (directoryName: string, name: string): Promise<string> => {
+    const defaultApplicationId = suggestApplicationId(directoryName, name);
 
     return guardCancellation(
         await p.text({
@@ -286,8 +284,8 @@ const promptApplicationId = async (name: string): Promise<string> => {
     );
 };
 
-const promptDisplayName = async (name: string): Promise<string> => {
-    const defaultDisplayName = displayNameFromProjectName(name);
+const promptDisplayName = async (directoryName: string): Promise<string> => {
+    const defaultDisplayName = displayNameFromDirectory(directoryName);
 
     return guardCancellation(
         await p.text({
@@ -441,19 +439,41 @@ const resolveTarget = async (options: CreateOptions): Promise<string> => {
     return error === undefined ? target : fail(error);
 };
 
-const resolveApplicationId = async (options: CreateOptions, name: string): Promise<string> => {
+const resolvePackageName = async (options: CreateOptions, directoryName: string): Promise<string> => {
+    const derived = packageNameFromDirectory(directoryName);
+
+    if (derived === directoryName) {
+        return derived;
+    }
+
+    if (options.isInteractive) {
+        return promptPackageName(derived);
+    }
+
+    return derived === ""
+        ? fail(
+              `Directory name "${directoryName}" has no Latin letters or numbers to derive a package name from. ` +
+                  "Rename it, or run interactively to enter a package name",
+          )
+        : derived;
+};
+
+const resolveApplicationId = async (options: CreateOptions, directoryName: string, name: string): Promise<string> => {
     const applicationId =
-        options.applicationId ?? (options.isInteractive ? await promptApplicationId(name) : suggestApplicationId(name));
+        options.applicationId ??
+        (options.isInteractive
+            ? await promptApplicationId(directoryName, name)
+            : suggestApplicationId(directoryName, name));
 
     const error = validateApplicationIdInput(applicationId);
 
     return error === undefined ? applicationId : fail(error);
 };
 
-const resolveDisplayName = async (options: CreateOptions, name: string): Promise<string> => {
+const resolveDisplayName = async (options: CreateOptions, directoryName: string): Promise<string> => {
     const value =
         options.displayName ??
-        (options.isInteractive ? await promptDisplayName(name) : displayNameFromProjectName(name));
+        (options.isInteractive ? await promptDisplayName(directoryName) : displayNameFromDirectory(directoryName));
     const error = validateDisplayName(value);
 
     return error === undefined ? value.trim() : fail(error);
@@ -477,9 +497,10 @@ const resolvePackageManager = async (
 const resolveOptions = async (options: CreateOptions): Promise<ResolvedOptions> => {
     const requested = requestedPackageManager(options.packageManager);
     const target = await resolveTarget(options);
-    const name = deriveProjectName(target);
-    const displayName = await resolveDisplayName(options, name);
-    const applicationId = await resolveApplicationId(options, name);
+    const directoryName = directoryNameOf(target);
+    const name = await resolvePackageName(options, directoryName);
+    const displayName = await resolveDisplayName(options, directoryName);
+    const applicationId = await resolveApplicationId(options, directoryName, name);
     const root = resolve(process.cwd(), target);
     const shouldInitialize = shouldInitializeGit(root);
     const packageManager = await resolvePackageManager(requested, options);
