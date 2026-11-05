@@ -2037,7 +2037,8 @@ describe("CLI commands", () => {
     });
 
     it("preserves arguments, configuration, translations and MCP across headless dev restarts", async () => {
-        using project = createProject({ codegen: true });
+        using project = createProject();
+        linkWorkspaceBindings(project.root);
         const readyPath = join(project.root, "ready.txt");
         const argumentsPath = join(project.root, "arguments.json");
         const resourcesPath = join(project.root, "resources.json");
@@ -2073,7 +2074,7 @@ describe("CLI commands", () => {
         try {
             await server.start();
             await client.connect(clientTransport);
-            await withSession(
+            const output = await withSession(
                 "dev",
                 project.root,
                 readyPath,
@@ -2109,6 +2110,8 @@ describe("CLI commands", () => {
                 ["--config", "custom.config.ts"],
                 applicationArgs,
             );
+            expect(output).toContain("custom.config.ts changed");
+            expect(output).not.toContain("regenerating bindings");
         } finally {
             await client.close();
             await server.stop();
@@ -2909,7 +2912,7 @@ describe("CLI commands", () => {
             writeFileSync(${JSON.stringify(readyPath)}, typeof Probe.hostName);`,
         );
 
-        await withSession("dev", project.root, readyPath, async () => {
+        const output = await withSession("dev", project.root, readyPath, async () => {
             expect(readFileSync(readyPath, "utf8")).toBe("undefined");
             project.write("gir/Probe-1.0.gir", gir(["user_name", "host_name"]));
             await expect.poll(() => readFileSync(readyPath, "utf8"), { timeout: 30_000 }).toBe("function");
@@ -2927,6 +2930,7 @@ describe("CLI commands", () => {
             project.write("gir/Extra-1.0.gir", gir(["user_name", "host_name"], "Extra"));
             await expect.poll(() => readFileSync(launchesPath, "utf8"), { timeout: 30_000 }).toBe("xxxx");
         });
+        expect(output).toContain("regenerating bindings");
 
         project.write("gir/Probe-1.0.gir", gir(["user_name", "host_name", "real_name"]));
         expect(await invoke(["build", "--cwd", project.root])).toContain("generated bindings out of date");

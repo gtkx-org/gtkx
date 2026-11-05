@@ -308,7 +308,7 @@ const restart = async (state: SupervisorState): Promise<void> => {
     }
 
     state.isRestarting = true;
-    info(`${consumeChangedPaths(state)} changed; regenerating bindings...`);
+    info(`${consumeChangedPaths(state)} changed`);
     await reconcileConfigWatchers(state, watch.resolvePaths());
 
     try {

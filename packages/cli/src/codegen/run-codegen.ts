@@ -236,7 +236,7 @@ const resolveConfigWatch = async (
         resolveInputs,
         regenerate: async () => {
             const loaded = await reload();
-            await runCodegen({ cwd, resolved: loaded });
+            await runCodegen({ cwd, resolved: loaded, onRegenerate: () => info("regenerating bindings...") });
 
             return resolvePaths();
         },
