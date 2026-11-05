@@ -166,7 +166,10 @@ const fileAssociationSchema = z.strictObject({
 type DeployDesktopActionOptions = {
     /** Action label shown in the desktop launcher menu. */
     name: string;
-    /** Arguments passed to the application when the action is activated. */
+    /**
+     * Arguments appended to the launch command when the action is chosen. Launchers activate the `app.<id>`
+     * application action of a D-Bus-activatable application instead of running this command.
+     */
     args?: string[] | undefined;
     /** Icon theme name used for the action. */
     icon?: string | undefined;
@@ -607,7 +610,10 @@ type DeployOptions = {
     fileAssociations?: DeployFileAssociationOptions[] | undefined;
     /** URL schemes handled by the application, registered as `x-scheme-handler` MIME types. */
     protocols?: string[] | undefined;
-    /** Desktop launcher actions keyed by action ID. */
+    /**
+     * Desktop launcher actions keyed by action ID. With `isDbusActivatable`, the application must register an
+     * `app.<id>` action for each one.
+     */
     desktopActions?: Record<string, DeployDesktopActionOptions> | undefined;
     /**
      * Additional desktop entry keys, overriding non-reserved generated values.

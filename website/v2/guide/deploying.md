@@ -226,6 +226,44 @@ see [DeployExtraFileOptions](/v2/reference/@gtkx/config/index/type-aliases/Deplo
 file modes. Generated desktop, AppStream, and MIME metadata take precedence over extra files targeting the
 same destination.
 
+### Desktop actions
+
+`deploy.desktopActions` adds entries to the application's launcher menu. Choosing one runs the application with
+the entry's `args`:
+
+```ts
+deploy: {
+    isDbusActivatable: true,
+    desktopActions: { today: { name: "Today", args: ["tasks://today"] } },
+},
+```
+
+With `isDbusActivatable: true`, launchers ignore `args`. They start the application if needed and activate its
+`app.<id>` action, so register an application action under each ID. An action launch does not emit `activate`,
+so the windows render only after the handler calls `activate()`:
+
+```tsx
+import type * as Adw from "@gtkx/gi/adw";
+import { AdwApplication } from "@gtkx/jsx/adw";
+import { GSimpleAction } from "@gtkx/jsx/gio";
+import { useRef } from "react";
+
+export const App = () => {
+    const application = useRef<Adw.Application | null>(null);
+
+    const showToday = () => {
+        selectView("today");
+        application.current?.activate();
+    };
+
+    return (
+        <AdwApplication ref={application} actions={<GSimpleAction name="today" onActivate={showToday} />}>
+            <MainWindow />
+        </AdwApplication>
+    );
+};
+```
+
 ## Source Flatpak builds {#publishing-on-flathub}
 
 The default Flatpak mode packages the local build. Set `deploy.flatpak.mode` to `"source"` to generate a
