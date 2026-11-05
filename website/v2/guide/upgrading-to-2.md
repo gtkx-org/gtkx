@@ -90,7 +90,7 @@ Adwaita is part of the core packages. `ComboRow`, `ToastProvider`, and `useToast
 import { ComboRow, ToastProvider, useToast } from "@gtkx/components";
 ```
 
-`DropDown` and `ComboRow` now call `onSelectionChanged` with `null` when their items become empty. Check for `null` before storing the ID.
+`DropDown` and `ComboRow` now call `onSelectionChanged` with `null` when their items become empty. Check for `null` before storing the ID. `selectedId` no longer accepts `null`; pass `undefined` when no item is chosen.
 
 Use `useToast().dismissAll()` in place of `useToastOverlay().dismissAll()`. `show()` returns the native `Adw.Toast`; call its `dismiss()` method to dismiss that toast. The forwarding `useToast().dismiss(toast)` method and `ToastOverlayController` type are removed.
 
@@ -140,7 +140,7 @@ A form `ComboRow` now controls a non-nullable string field. Replace `null` or `u
 
 ## Update internationalization
 
-GTKX now delegates extraction and resource typing to `i18next-cli`. Keep catalog declarations in ESM files and use the exact names `t`, `useTranslation`, `Trans`, or `TransWithoutContext`; replace imported aliases, `i18n.t` member calls, dynamic keys, and CommonJS declarations with those static forms.
+GTKX now delegates extraction and resource typing to `i18next-cli`. Keep catalog declarations in ESM files and use the exact names `t`, `useTranslation`, `Trans`, or `TransWithoutContext`; replace imported aliases, `i18n.t` member calls, dynamic keys, and CommonJS declarations with those static forms. Extraction also no longer follows a `t` received through `withTranslation`, the `Translation` render prop or a function parameter, as 1.6 did: codegen leaves those messages out without an error and keeps their translations as obsolete PO entries, and `tsc` then rejects their keys. Import `t` from `@gtkx/i18n` or call `useTranslation()` in those modules; the next codegen run restores the obsolete translations.
 
 Replace the removed positional plural overload:
 

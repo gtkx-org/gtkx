@@ -80,7 +80,7 @@ A form `ComboRow` now controls a non-nullable string field. Replace `null` or `u
 
 ## Update internationalization
 
-GTKX 2 delegates extraction and resource typing to `i18next-cli`. Keep translation calls in ESM files and use the exact names `t`, `useTranslation`, `Trans`, or `TransWithoutContext`. Replace aliases, `i18n.t(...)` calls, dynamic keys, CommonJS declarations, and ICU components with those static forms.
+GTKX 2 delegates extraction and resource typing to `i18next-cli`. Keep translation calls in ESM files and use the exact names `t`, `useTranslation`, `Trans`, or `TransWithoutContext`. Replace aliases, `i18n.t(...)` calls, dynamic keys, CommonJS declarations, and ICU components with those static forms. A `t` received through `withTranslation`, the `Translation` render prop or a function parameter is no longer extracted; import `t` from `@gtkx/i18n` or call `useTranslation()` there instead.
 
 Replace the removed positional plural overload with `count`, `defaultValue_one`, and `defaultValue_other` options. Run codegen after migrating. Generated declarations now use i18next's `CustomTypeOptions`, so remove uses of GTKX's `TranslationRegistry` and import shared types from `i18next` or `react-i18next`.
 
