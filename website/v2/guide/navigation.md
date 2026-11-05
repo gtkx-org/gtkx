@@ -47,6 +47,52 @@ The container's default theme follows Adwaita's current dark and high-contrast s
 
 State restoration and navigation outside the tree use React Navigation's [container API](https://reactnavigation.org/docs/navigation-container/).
 
+### Opening links
+
+`NavigationContainer` has no `linking` prop: React Navigation's linking reads URLs through React Native, while a desktop application receives them from `GApplication`. Register the scheme with `deploy.protocols` in `gtkx.config.ts`, set `Gio.ApplicationFlags.HANDLES_OPEN`, and turn each URI into a navigation state with `getStateFromPath`.
+
+A launch with a URI emits `open` before the window renders, so pass that state to `initialState`. A URI forwarded from a second launch reaches the running container, which `resetRoot` updates:
+
+```tsx
+import * as Gio from "@gtkx/gi/gio";
+import { AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
+import { createNavigationContainerRef, getStateFromPath, type InitialState, NavigationContainer } from "@gtkx/navigation";
+import { quit } from "@gtkx/react";
+import { useState } from "react";
+
+type NotesParams = { List: undefined; Note: { id: string } };
+
+const navigationRef = createNavigationContainerRef<NotesParams>();
+
+const linking = { initialRouteName: "List", screens: { List: "", Note: "note/:id" } } as const;
+
+const stateFromUri = (uri: string) => getStateFromPath<NotesParams>(uri.replace(/^notes:\/\//, ""), linking);
+
+export const App = () => {
+    const [initialState, setInitialState] = useState<InitialState>();
+
+    const open = (files: Gio.File[]) => {
+        const uri = files.at(-1)?.getUri();
+        const state = uri === undefined ? undefined : stateFromUri(uri);
+        if (state === undefined) return;
+        if (navigationRef.isReady()) navigationRef.resetRoot(state);
+        else setInitialState(state);
+    };
+
+    return (
+        <AdwApplication flags={Gio.ApplicationFlags.HANDLES_OPEN} onOpen={open}>
+            <AdwApplicationWindow title="Notes" defaultWidth={800} defaultHeight={600} onCloseRequest={quit}>
+                <NavigationContainer ref={navigationRef} initialState={initialState}>
+                    <Notes />
+                </NavigationContainer>
+            </AdwApplicationWindow>
+        </AdwApplication>
+    );
+};
+```
+
+`initialRouteName` keeps the list beneath a linked note, so Back returns to it. `getPathFromState(state, linking)` turns a state back into a path, for example to copy a link to the visible page. During development, pass a URI after `--`, as in `pnpm dev -- notes://note/42`; see [command-line apps](/v2/guide/async-operations#command-line-apps).
+
 ## Stack navigator
 
 `createStackNavigator` renders an `AdwNavigationView`. Define the route parameters to typecheck screens, `navigate` calls, and `route.params`:
