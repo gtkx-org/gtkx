@@ -1992,6 +1992,48 @@ describe("CLI commands", () => {
         ).toBe(true);
     });
 
+    it("stops a source Flatpak whose pinned commit lacks the lockfile it installs from", async () => {
+        using project = createProject({
+            applicationIcon: "icon.svg",
+            deploy: {
+                name: "CLI Example",
+                summary: "Exercises the source Flatpak manifest",
+                categories: ["Utility"],
+                description: ["An example application used to exercise a Flathub source manifest."],
+                developer: { id: "dev.gtkx", name: "GTKX", email: "hello@gtkx.dev" },
+                license: "MIT",
+                homepage: "https://gtkx.dev",
+                releases: [{ version: "1.0.0", date: "2026-11-05" }],
+                contentRating: {},
+                flatpak: { mode: "source", source: { url: "https://example.org/cli-example.git" } },
+            },
+        });
+        project.write("LICENSE", "MIT License\nCopyright GTKX\nPermission is hereby granted, free of charge.\n");
+        project.write("pnpm-lock.yaml", "lockfileVersion: '9.0'\n\nimporters:\n\n  .: {}\n");
+        project.write(".gitignore", "node_modules/\nbuild/\ndist/\npnpm-lock.yaml\n");
+        project.write(
+            "icon.svg",
+            '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="blue"/></svg>',
+        );
+        const git = (...args: string[]) =>
+            promisify(execFile)(
+                "git",
+                ["-c", "user.name=GTKX", "-c", "user.email=hello@gtkx.dev", "-c", "commit.gpgSign=false", ...args],
+                { cwd: project.root },
+            );
+        await git("init", "--quiet");
+        await git("add", "--all");
+        await git("commit", "--quiet", "--message", "Release without the lockfile");
+        const preview = () => invoke(["deploy", "--cwd", project.root, "--print-manifests", "--target", "flatpak"]);
+        await expect(preview()).rejects.toThrow();
+        await git("add", "--force", "pnpm-lock.yaml");
+        await git("commit", "--quiet", "--message", "Commit the lockfile");
+        await preview();
+        expect(existsSync(join(project.root, "build", process.arch, "targets/flatpak/generated-sources.json"))).toBe(
+            true,
+        );
+    });
+
     it("renders a source Flatpak that installs a Yarn 4 project with its pinned Yarn release", async () => {
         const digest =
             "b2e1e7524f654f2749d32b4ebcb4622473cb5bcbc485df2007e12a154e50162a4d795526768bc5f5b8f81717bfd79deb" +

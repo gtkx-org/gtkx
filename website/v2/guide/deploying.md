@@ -303,7 +303,9 @@ flatpak-node-generator's recipe for these lockfiles: its Yarn plugin turns the v
 Yarn's cache before `yarn install --immutable`.
 
 Keep the generated Flatpak manifest and `generated-sources.json` together, and regenerate them after dependency
-changes.
+changes. When the pinned commit is in the local checkout, `generated-sources.json` comes from the lockfile
+committed there, so commit dependency changes before regenerating. Deployment stops with an error, including
+previews, when that commit has no lockfile.
 
 Source mode rebuilds the application bundle; native npm dependencies still use their packaged binaries.
 Review those dependencies against [Flathub's source-build requirements](https://docs.flathub.org/docs/for-app-authors/requirements#building-from-source)
