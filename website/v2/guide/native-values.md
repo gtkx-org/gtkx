@@ -55,6 +55,8 @@ Returned byte sequences use `Uint8Array`; byte inputs accept `Uint8Array` or `nu
 
 Promisified operations omit a redundant leading success boolean from multi-value finish results; boolean-only results remain booleans. Inout records and boxed values are updated in place without being repeated in the return value. See [Async Operations](/v2/guide/async-operations) for promise usage.
 
+A record that a signal handler or callback receives stays valid until the handler returns. Reference-counted records, such as `WebKit.ScriptMessageReply`, are the exception: the handler may keep one and use it later, for example to answer once an asynchronous operation finishes.
+
 ## Passing integers
 
 Integer parameters, properties and vfunc results take whole numbers within their native type's range. GTKX throws a `RangeError` for any other number, such as `Value 10922.4 is not an integer, int32 expects a whole number`, where GJS truncates a fractional number silently. Ported GJS code that computes sizes or positions with fractional arithmetic must round each value before passing it, choosing the rounding the code needs:

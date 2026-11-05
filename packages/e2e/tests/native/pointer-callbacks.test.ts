@@ -951,6 +951,33 @@ test("a self-clearing callback remains alive until its outermost native invocati
     expect(object.invoke(1)).toBe(-1);
 });
 
+test("a reference-counted boxed lent to a callback stays shared with its lender after the callback returns", async () => {
+    const box = t.boxed("GtkxSharedBox", {
+        sharedLibrary: library,
+        getTypeFnName: "gtkx_shared_box_get_type",
+        isRefCounted: true,
+    });
+    const lend = t.bind(
+        library,
+        "gtkx_shared_box_lend",
+        [t.callback([box], t.void, { scope: "call" }), t.int32],
+        t.int32,
+    );
+    const readValue = t.bind(library, "gtkx_shared_box_value", [box], t.int32);
+    const alive = t.bind(library, "gtkx_shared_boxes_alive", [], t.uint32);
+    const holder: { box: unknown } = { box: null };
+
+    expect(
+        lend((lent: unknown) => {
+            holder.box = lent;
+        }, 7),
+    ).toBe(1);
+    expect(readValue(holder.box)).toBe(-7);
+
+    holder.box = null;
+    expect(await didSettle(() => alive() === 0)).toBe(true);
+});
+
 test("pointer-valued signals deliver both nonnull addresses and null", () => {
     const annotation = new Regress.AnnotationObject({});
     const pointers: (bigint | null)[] = [];

@@ -237,3 +237,53 @@ gint gtkx_callback_object_invoke_held(gint value)
 {
     return held == NULL ? -1 : gtkx_callback_object_invoke(held, value);
 }
+
+typedef struct {
+    gint ref_count;
+    gint value;
+} GtkxSharedBox;
+
+typedef void (*GtkxSharedBoxCallback)(GtkxSharedBox *box);
+
+static guint shared_boxes_alive;
+
+static GtkxSharedBox *gtkx_shared_box_ref(GtkxSharedBox *self)
+{
+    g_atomic_int_inc(&self->ref_count);
+    return self;
+}
+
+static void gtkx_shared_box_unref(GtkxSharedBox *self)
+{
+    if (g_atomic_int_dec_and_test(&self->ref_count)) {
+        shared_boxes_alive--;
+        g_free(self);
+    }
+}
+
+G_DEFINE_BOXED_TYPE(GtkxSharedBox, gtkx_shared_box, gtkx_shared_box_ref, gtkx_shared_box_unref)
+
+gint gtkx_shared_box_lend(GtkxSharedBoxCallback callback, gint value)
+{
+    GtkxSharedBox *box = g_new0(GtkxSharedBox, 1);
+    gint kept;
+
+    box->ref_count = 1;
+    box->value = value;
+    shared_boxes_alive++;
+    callback(box);
+    kept = box->ref_count - 1;
+    box->value = -value;
+    gtkx_shared_box_unref(box);
+    return kept;
+}
+
+gint gtkx_shared_box_value(GtkxSharedBox *box)
+{
+    return box->value;
+}
+
+guint gtkx_shared_boxes_alive(void)
+{
+    return shared_boxes_alive;
+}

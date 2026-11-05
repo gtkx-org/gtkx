@@ -713,6 +713,7 @@ const boxedRecordExpression = (options: {
         isCallerAllocated,
         isInline,
         isValueSafe,
+        isRefCounted: record.methods.some((method) => method.name === "ref"),
         size: size > 0 ? size : undefined,
         fallbackClass: fallbackClassThunk(context, resolved.namespace.name, record.name, options.isReceived),
     });
