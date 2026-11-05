@@ -48,6 +48,9 @@ beforeAll(() => {
     );
 });
 
+const isOptionalPeer = (manifest: Manifest, peer: string): boolean =>
+    manifest.peerDependenciesMeta?.[peer]?.optional === true;
+
 const siblingRanges = (manifest: Manifest): [string, string][] =>
     [...Object.entries(manifest.dependencies ?? {}), ...Object.entries(manifest.peerDependencies ?? {})].filter(
         ([name]) => published.has(name),
@@ -90,7 +93,7 @@ test("published packages accept later GTKX releases of the same major only", () 
     expect(mismatched).toEqual([]);
 });
 
-test("published packages forward the peers their GTKX dependencies require", () => {
+test("published packages forward the peers their GTKX dependencies require, without making them optional", () => {
     const missing = [...published.values()].flatMap((manifest) =>
         Object.keys(manifest.dependencies ?? {}).flatMap((dependency) => {
             const required = published.get(dependency);
@@ -100,9 +103,9 @@ test("published packages forward the peers their GTKX dependencies require", () 
             }
 
             return Object.keys(required.peerDependencies ?? {})
-                .filter((peer) => required.peerDependenciesMeta?.[peer]?.optional !== true)
+                .filter((peer) => !isOptionalPeer(required, peer))
                 .filter((peer) => manifest.dependencies?.[peer] === undefined)
-                .filter((peer) => manifest.peerDependencies?.[peer] === undefined)
+                .filter((peer) => manifest.peerDependencies?.[peer] === undefined || isOptionalPeer(manifest, peer))
                 .map((peer) => `${manifest.name} -> ${dependency} needs ${peer}`);
         }),
     );

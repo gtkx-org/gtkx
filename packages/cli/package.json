@@ -121,9 +121,6 @@
         "@gtkx/react": {
             "optional": true
         },
-        "@types/react": {
-            "optional": true
-        },
         "vitest": {
             "optional": true
         }
