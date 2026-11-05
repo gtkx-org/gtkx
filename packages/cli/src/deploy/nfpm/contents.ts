@@ -19,23 +19,33 @@ const FILESYSTEM_OWNED_PREFIXES = new Set([
     "/usr/libexec",
     "/usr/share",
     "/usr/share/applications",
+    "/usr/share/bash-completion",
+    "/usr/share/bash-completion/completions",
     "/usr/share/dbus-1",
     "/usr/share/dbus-1/services",
     "/usr/share/dbus-1/system-services",
     "/usr/share/dbus-1/system.d",
     "/usr/share/doc",
+    "/usr/share/fish",
+    "/usr/share/fish/vendor_completions.d",
     "/usr/share/glib-2.0",
     "/usr/share/glib-2.0/schemas",
+    "/usr/share/help",
     "/usr/share/icons",
     "/usr/share/licenses",
+    "/usr/share/locale",
+    "/usr/share/man",
     "/usr/share/metainfo",
     "/usr/share/mime",
     "/usr/share/mime/packages",
+    "/usr/share/pixmaps",
     "/usr/share/polkit-1",
     "/usr/share/polkit-1/actions",
+    "/usr/share/zsh",
+    "/usr/share/zsh/site-functions",
 ]);
 
-const ICON_THEME_PREFIX = "/usr/share/icons/";
+const FILESYSTEM_OWNED_TREES = ["/usr/share/icons/", "/usr/share/locale/", "/usr/share/man/"];
 
 const contentFor = (prefix: string, file: StagedFile): NfpmContent => ({
     src: file.abs,
@@ -44,7 +54,7 @@ const contentFor = (prefix: string, file: StagedFile): NfpmContent => ({
 });
 
 const isFilesystemOwned = (directory: string): boolean =>
-    FILESYSTEM_OWNED_PREFIXES.has(directory) || directory.startsWith(ICON_THEME_PREFIX);
+    FILESYSTEM_OWNED_PREFIXES.has(directory) || FILESYSTEM_OWNED_TREES.some((tree) => directory.startsWith(tree));
 
 const parentDirectories = (destination: string): string[] => {
     const parts = destination.split("/").slice(1, -1);

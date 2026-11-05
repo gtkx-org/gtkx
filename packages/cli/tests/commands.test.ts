@@ -1645,9 +1645,17 @@ describe("CLI commands", () => {
                 license: "MIT",
                 homepage: "https://gtkx.dev",
                 node: { source: "path", path: "tools/node", shouldStrip: false },
+                extraFiles: {
+                    "share/man/man1/cli-example.1": "packaging/cli-example.1",
+                    "share/bash-completion/completions/cli-example": "packaging/cli-example.bash",
+                    "share/cli-example/presets/default.json": "packaging/default.json",
+                },
             },
         });
         project.write("LICENSE", "MIT License\nCopyright GTKX\nPermission is hereby granted, free of charge.\n");
+        project.write("packaging/cli-example.1", ".TH CLI-EXAMPLE 1\n");
+        project.write("packaging/cli-example.bash", "complete -W --help cli-example\n");
+        project.write("packaging/default.json", "{}\n");
         const nodeLicense = "Node.js is licensed for use as follows: vendored runtime license";
         project.write("vendor/node/LICENSE", nodeLicense);
         mkdirSync(join(project.root, "vendor/node/bin"));
@@ -1675,16 +1683,22 @@ describe("CLI commands", () => {
         project.write("src/index.ts", 'export { default } from "../data/org.gtkx.example.gschema.xml";');
         await invoke(["deploy", "--cwd", project.root, "--print-manifests", "--target", "appimage,deb,flatpak,rpm"]);
         const build = join(project.root, "build", process.arch);
-        const packaged = (packager: string) =>
+        const contents = (packager: string) =>
             (
                 parse(readFileSync(join(build, "targets", packager, "nfpm.yaml"), "utf8")) as {
-                    contents: { dst: string }[];
+                    contents: { dst: string; type?: string }[];
                 }
-            ).contents.map((content) => content.dst);
+            ).contents;
+        const packaged = (packager: string) => contents(packager).map((content) => content.dst);
         for (const packager of ["deb", "rpm"]) {
             expect(packaged(packager)).toContain("/usr/share/glib-2.0/schemas/org.gtkx.example.gschema.xml");
             expect(packaged(packager).filter((path) => path.endsWith("gschemas.compiled"))).toEqual([]);
         }
+        expect(
+            contents("rpm")
+                .filter((content) => content.type === "dir" && content.dst.startsWith("/usr/share"))
+                .map((content) => content.dst),
+        ).toEqual(["/usr/share/cli-example", "/usr/share/cli-example/presets", "/usr/share/licenses/cli-example"]);
         const flatpak = parse(readFileSync(join(build, "targets/flatpak/org.gtkx.example.yml"), "utf8")) as {
             modules: { "post-install": string[] }[];
         };
