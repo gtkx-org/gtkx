@@ -144,6 +144,7 @@ type DeploySettings = {
     arch: DeployArch;
     paths: DeployPaths;
     libraries: string[];
+    sharedLibraries: Record<string, string[]>;
     minimumLibraryVersions: Record<string, string>;
     deploy: DeployConfig;
 };

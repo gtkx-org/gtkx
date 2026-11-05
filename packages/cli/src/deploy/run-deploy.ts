@@ -26,6 +26,7 @@ import {
 import { extractSourceCatalogTo } from "../i18n/source-messages.js";
 import { prepareBuildOutDir, resolveBuildOutDir } from "../internal/build-output.js";
 import { discoverSourceFiles } from "../internal/source-imports.js";
+import { uncoveredDebLibraries } from "./depends.js";
 import { renderDesktopEntry } from "./freedesktop/desktop-entry.js";
 import { extractMetadataMessages, localizeMetadata } from "./freedesktop/localize.js";
 import { renderMetainfo } from "./freedesktop/metainfo.js";
@@ -122,6 +123,7 @@ const BYTES_PER_MIB = 1024 * 1024;
 const WEBKIT_LIBRARY = "WebKit-6.0";
 const NETWORK_ARG = "--share=network";
 const APPIMAGE_TARGET = "appimage";
+const DEB_TARGET = "deb";
 const FLATPAK_TARGET = "flatpak";
 
 const displayPath = (settings: DeploySettings, path: string): string => relative(settings.paths.root, path);
@@ -224,6 +226,22 @@ const warnUnusedMinimums = (settings: DeploySettings): void => {
     warn(
         `\`deploy.minimumLibraryVersions\` names ${unused.join(", ")}, which this project generates no bindings for, ` +
             "so those minimums change nothing.",
+    );
+};
+
+const warnUncoveredDebLibraries = (targets: DeployTarget[], settings: DeploySettings): void => {
+    const uncovered = uncoveredDebLibraries(settings);
+
+    if (uncovered.length === 0 || targets.every((target) => target.name !== DEB_TARGET)) {
+        return;
+    }
+
+    const listed = uncovered
+        .map(({ library, sharedLibraries }) => `${library} (${sharedLibraries.join(", ")})`)
+        .join(", ");
+    warn(
+        `The deb package depends on no package that provides ${listed}, so ${settings.name} fails to start ` +
+            "where those shared libraries are missing. List the Debian packages that ship them in `deploy.depends.deb`.",
     );
 };
 
@@ -609,6 +627,7 @@ const runDeploy = async (options: DeployOptions): Promise<void> => {
 
     const plan = await regenerate(options, planned);
     const settings = settingsFor(plan, options, plan.arches[0]);
+    warnUncoveredDebLibraries(plan.targets, settings);
     const buildOutDir = options.shouldSkipBuild
         ? null
         : resolveBuildOutDir(settings.paths.root, settings.paths.dist, settings.paths.outDir);

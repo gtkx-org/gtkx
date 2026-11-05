@@ -141,7 +141,12 @@ bindings call those libraries directly; the installed app does not need GIR file
 compatible native libraries on the host.
 
 Debian and RPM dependencies include GTK, libadwaita, and runtime requirements detected from staged binaries.
-Declare additional system packages through `deploy.depends`. The opening example explicitly sets the GTKX
+RPM packages also require the shared library of every library in `libraries`, such as
+`libgtksourceview-5.so.0()(64bit)` for `GtkSource-5`, which RPM resolves to the right package on any distribution.
+Debian has no such relation, so list the Debian packages that ship those shared libraries in `deploy.depends.deb`,
+for example `["libgtksourceview-5-0"]`; while `deploy.depends.deb` is empty, a deb deployment warns and names
+the shared libraries it must cover. Otherwise the package installs on a system without the library and the app fails
+to start. Declare other system packages through `deploy.depends` as well. The opening example explicitly sets the GTKX
 baseline in `deploy.minimumLibraryVersions`; raise it when your app uses newer APIs, for example
 `{ "Gtk-4.0": "4.22", "Adw-1": "1.8" }`. GTKX writes these minimums into Debian and RPM package dependencies;
 it does not infer the minimum API version from your code. Publish the same requirements alongside an

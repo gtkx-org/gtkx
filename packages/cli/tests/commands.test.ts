@@ -1629,6 +1629,54 @@ describe("CLI commands", () => {
         expect(notices).toContain(nodeLicense);
     });
 
+    it("requires the shared libraries of configured GIR libraries in system packages", async () => {
+        const deploy = {
+            name: "CLI Example",
+            summary: "Exercises the deployment command",
+            categories: ["Utility"],
+            description: ["An example application used to exercise real deployment output."],
+            developer: { name: "GTKX", email: "hello@gtkx.dev" },
+            license: "MIT",
+        };
+        const config = { codegen: true, applicationIcon: "icon.svg", libraries: ["GtkSource-5"] };
+        using project = createProject({ ...config, deploy });
+        project.write("LICENSE", "MIT License\nCopyright GTKX\nPermission is hereby granted, free of charge.\n");
+        project.write(
+            "icon.svg",
+            '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="blue"/></svg>',
+        );
+        const depends = (packager: string) =>
+            (
+                parse(
+                    readFileSync(join(project.root, "build", process.arch, "targets", packager, "nfpm.yaml"), "utf8"),
+                ) as {
+                    depends: string[];
+                }
+            ).depends;
+        const output = await invoke(["deploy", "--cwd", project.root, "--print-manifests", "--target", "deb,rpm"]);
+        expect(depends("rpm")).toEqual(
+            expect.arrayContaining([
+                "libgtk-4.so.1()(64bit)",
+                "libadwaita-1.so.0()(64bit)",
+                "libgtksourceview-5.so.0()(64bit)",
+            ]),
+        );
+        expect(output).toContain("GtkSource-5 (libgtksourceview-5.so.0)");
+        expect(output).toContain("`deploy.depends.deb`");
+        project.write(
+            "gtkx.config.ts",
+            `export default ${JSON.stringify({
+                applicationId: "org.gtkx.example",
+                agents: { reference: false, rules: false },
+                ...config,
+                deploy: { ...deploy, depends: { deb: ["libgtksourceview-5-0"] } },
+            })};`,
+        );
+        const covered = await invoke(["deploy", "--cwd", project.root, "--print-manifests", "--target", "deb"]);
+        expect(depends("deb")).toContain("libgtksourceview-5-0");
+        expect(covered).not.toContain("`deploy.depends.deb`");
+    });
+
     it("renders a source Flatpak that installs with pnpm 12's native binary and keeps workers and translations", async () => {
         using project = createProject({
             applicationIcon: "icon.svg",
