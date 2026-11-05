@@ -105,7 +105,7 @@ const PreviewContent = ({ story: Story, args }: { story: ComposedStory; args: Ar
     const align = Story.parameters.layout === "centered" ? Gtk.Align.CENTER : Gtk.Align.FILL;
 
     return (
-        <GtkScrolledWindow hexpand vexpand>
+        <GtkScrolledWindow hexpand vexpand propagateNaturalWidth propagateNaturalHeight>
             <GtkBox
                 name="storybook-canvas"
                 orientation={Gtk.Orientation.VERTICAL}
