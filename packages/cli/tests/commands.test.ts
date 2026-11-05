@@ -2132,6 +2132,11 @@ describe("CLI commands", () => {
                         timeout: 30_000,
                     })
                     .toContain("Rendering the preview failed");
+                const listed = await callTool(client, "gtkx_list_apps");
+                const [app] = JSON.parse(listed.text) as { applicationId: string; windows?: unknown; error?: string }[];
+                expect(app).toMatchObject({ applicationId: "org.gtkx.example" });
+                expect(app?.windows).toBeUndefined();
+                expect(app?.error).toContain("Rendering the preview failed");
             });
         });
     });

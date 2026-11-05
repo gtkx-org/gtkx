@@ -7,7 +7,7 @@ import {
     type McpSettings,
     resolveMcpSettings,
 } from "@gtkx/config/internal";
-import { createLogger, installGracefulShutdown, type Logger } from "@gtkx/utils";
+import { createLogger, errorMessage, installGracefulShutdown, type Logger } from "@gtkx/utils";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { existsSync } from "node:fs";
@@ -84,7 +84,7 @@ type ServerLifecycle = {
 };
 
 type AppWindow = { id: string; title: string | null };
-type AppWithWindows = AppInfo & { windows?: AppWindow[] };
+type AppWithWindows = AppInfo & { windows?: AppWindow[]; error?: string };
 
 const { version } = packageManifest;
 const log: Logger = createLogger("mcp");
@@ -167,9 +167,11 @@ const listAppsShape = {
 const queryWidgetsShape = {
     ...applicationIdShape,
     ...describeParams(queryParams.shape, {
-        by: "Query type",
-        value: "Value to search for",
-        options: "Additional query options",
+        by:
+            'What to compare value with: "role" the accessible role (such as "button" or "checkbox"), "text" ' +
+            'the text the widget renders, "labelText" its label, and "name" all of these plus the widget name.',
+        value: "Value to search for, matched whole unless options.exact is false",
+        options: "Query options",
     }),
 };
 
@@ -284,8 +286,8 @@ const appWithWindows = async (appRouter: AppRouter, app: AppInfo): Promise<AppWi
         const result = await appRouter.sendToApp<{ windows: AppWindow[] }>(app.applicationId, "app.getWindows", {});
 
         return { ...app, windows: result.windows };
-    } catch {
-        return app;
+    } catch (error) {
+        return { ...app, error: errorMessage(error) };
     }
 };
 
@@ -295,7 +297,8 @@ const listAppsTool = (appRouter: AppRouter): Tool =>
         title: "List apps",
         kind: "readOnly",
         description:
-            "List connected GTKX applications and their open windows. " +
+            "List connected GTKX applications and their open windows. An app whose windows cannot be read, " +
+            "such as one an error stopped under `gtkx dev`, has `error` in place of `windows`. " +
             "Returns the current snapshot unless waitForApps is true; only the first seconds of a new server " +
             "session wait for running apps to reconnect.",
         inputSchema: listAppsShape,
