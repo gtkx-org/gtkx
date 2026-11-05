@@ -115,4 +115,4 @@ const withVersionSkewCheck = <T extends ArgsDef>(command: CommandDef<T>): Comman
     },
 });
 
-export { installedGtkxPackages, withVersionSkewCheck };
+export { installedDirectory, installedGtkxPackages, withVersionSkewCheck };

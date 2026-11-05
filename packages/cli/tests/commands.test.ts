@@ -18,6 +18,7 @@ import {
     renameSync,
     rmSync,
     symlinkSync,
+    unlinkSync,
     writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -2940,6 +2941,46 @@ describe("CLI commands", () => {
             lock(2);
             await expect.poll(() => readFileSync(launchesPath, "utf8"), { timeout: 30_000 }).toBe("xx");
         });
+    });
+
+    it("stops when an install points the project at another @gtkx/cli", async () => {
+        using project = createProject({ codegen: true });
+        const readyPath = join(project.root, "ready.txt");
+        const cli = join(project.root, "node_modules/@gtkx/cli");
+        const lock = (step: number) =>
+            project.write("package-lock.json", JSON.stringify({ lockfileVersion: 3, packages: {}, step }));
+        lock(0);
+        project.write(
+            "src/index.ts",
+            `import { Application } from "@gtkx/gi/gio";
+            import { writeFileSync } from "node:fs";
+            export const application = new Application({ applicationId: "org.gtkx.example" });
+            application.setDefault();
+            application.register(null);
+            application.hold();
+            writeFileSync(${JSON.stringify(readyPath)}, String(process.pid));`,
+        );
+        const isRunning = (pid: number) => {
+            try {
+                process.kill(pid, 0);
+                return true;
+            } catch {
+                return false;
+            }
+        };
+
+        const output = await withSession("dev", project.root, readyPath, async () => {
+            const pid = Number(readFileSync(readyPath, "utf8"));
+            unlinkSync(cli);
+            project.write(
+                "node_modules/@gtkx/cli/package.json",
+                JSON.stringify({ name: "@gtkx/cli", version: "9.9.9" }),
+            );
+            lock(1);
+            await expect.poll(() => isRunning(pid), { timeout: 30_000 }).toBe(false);
+        });
+
+        expect(output).toContain("was replaced by 9.9.9 while it was running");
     });
 
     it("starts a real storybook session and stops its application", async () => {

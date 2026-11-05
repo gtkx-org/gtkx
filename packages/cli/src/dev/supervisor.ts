@@ -2,10 +2,11 @@ import { error, exitCodeForSignal, info, installGracefulShutdown, isPathWithin }
 import { type FSWatcher, watch as watchFs } from "chokidar";
 import { type ChildProcess, fork as nodeFork } from "node:child_process";
 import { existsSync, readFileSync, statSync } from "node:fs";
-import { basename, dirname, relative, sep } from "node:path";
+import { basename, dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import packageManifest from "../../package.json" with { type: "json" };
 import { WORKER_PRELOAD_ARGS } from "../internal/worker-preload-args.js";
+import { installedDirectory } from "../upgrade/version-skew.js";
 import { DEV_RUNNER_READY, type DevRunnerBootstrap } from "./bootstrap.js";
 
 type DevWatch = {
@@ -25,6 +26,7 @@ type SupervisorState = {
     storybookConfig: string | undefined;
     mcpSocketPath: string | undefined;
     cwd: string;
+    projectCli: string | null;
     args: string[];
     watch: DevWatch | undefined;
     watchers: Map<string, FSWatcher>;
@@ -244,18 +246,39 @@ const consumeChangedPaths = (state: SupervisorState): string => {
     return changed.length === 0 ? basename(state.configFile) : changed.join(", ");
 };
 
-const installedCliVersion = (): string | null => {
-    if (!existsSync(CLI_MANIFEST_PATH)) {
+const manifestVersion = (path: string): string | null => {
+    if (!existsSync(path)) {
         return null;
     }
 
-    const manifest = JSON.parse(readFileSync(CLI_MANIFEST_PATH, "utf8")) as { version?: string };
+    const manifest = JSON.parse(readFileSync(path, "utf8")) as { version?: string };
 
     return manifest.version ?? null;
 };
 
-const stopForReinstalledCli = (state: SupervisorState, installed: string | null): void => {
-    const change = installed === null ? "was moved or removed" : `was replaced by ${installed}`;
+const describeCliChange = (state: SupervisorState): string | null => {
+    const installed = manifestVersion(CLI_MANIFEST_PATH);
+
+    if (installed !== packageManifest.version) {
+        return installed === null ? "was moved or removed" : `was replaced by ${installed}`;
+    }
+
+    const projectCli = installedDirectory(state.cwd, "@gtkx/cli");
+
+    if (projectCli === state.projectCli) {
+        return null;
+    }
+
+    const resolved = projectCli === null ? null : manifestVersion(join(projectCli, "package.json"));
+
+    if (resolved === null) {
+        return "was moved or removed";
+    }
+
+    return resolved === packageManifest.version ? "was replaced by another copy" : `was replaced by ${resolved}`;
+};
+
+const stopForReinstalledCli = (state: SupervisorState, change: string): void => {
     error(
         `The @gtkx/cli ${packageManifest.version} this gtkx dev runs from ${change} while it was running, ` +
             "so it cannot reload the application or regenerate its bindings. Start gtkx dev again.",
@@ -276,10 +299,10 @@ const restart = async (state: SupervisorState): Promise<void> => {
         return;
     }
 
-    const installed = installedCliVersion();
+    const cliChange = describeCliChange(state);
 
-    if (installed !== packageManifest.version) {
-        stopForReinstalledCli(state, installed);
+    if (cliChange !== null) {
+        stopForReinstalledCli(state, cliChange);
 
         return;
     }
@@ -415,6 +438,7 @@ const runDevSupervisor = async (options: DevSupervisorOptions): Promise<number> 
         storybookConfig,
         mcpSocketPath,
         cwd,
+        projectCli: installedDirectory(cwd, "@gtkx/cli"),
         args,
         watch,
         watchers: new Map(),
