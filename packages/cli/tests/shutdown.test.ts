@@ -109,6 +109,38 @@ describe("development process shutdown", () => {
         );
     });
 
+    it("reports a shutdown only when stopped, not when restarting for a configuration change", async () => {
+        using project = createProject();
+        const readyPath = join(project.root, "ready.txt");
+        const launchesPath = join(project.root, "launches.txt");
+        project.write(
+            "src/index.ts",
+            `import { appendFileSync, writeFileSync } from "node:fs";
+            appendFileSync(${JSON.stringify(launchesPath)}, "x");
+            writeFileSync(${JSON.stringify(readyPath)}, String(process.pid));`,
+        );
+        const stopDisplay = await startHeadlessDisplay(resolveHeadlessOptions({ size: "640x480" }));
+        try {
+            const running = observeChild(
+                spawn(process.execPath, [cliPath, "dev", "--cwd", project.root], { stdio: "pipe" }),
+            );
+            try {
+                await running.waitForFile(readyPath);
+                project.write("gtkx.config.ts", `${readFileSync(join(project.root, "gtkx.config.ts"), "utf8")}\n`);
+                await expect.poll(() => readFileSync(launchesPath, "utf8"), { timeout: 30_000 }).toBe("xx");
+                expect(running.output()).toContain("Restarting dev runner");
+                expect(running.output()).not.toContain("Received shutdown signal");
+                expect(running.child.kill("SIGTERM")).toBe(true);
+                expect(await running.waitForExit()).toEqual({ code: 0, signal: null });
+                expect(running.output().match(/Received shutdown signal/g)).toHaveLength(1);
+            } finally {
+                await running.stop(undefined);
+            }
+        } finally {
+            stopDisplay();
+        }
+    });
+
     it("stops without a module error when interrupted while the entry is still loading", async () => {
         using project = createProject();
         const readyPath = join(project.root, "ready.txt");

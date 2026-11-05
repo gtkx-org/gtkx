@@ -391,7 +391,11 @@ const shutdownOnSignal = async (state: SupervisorState, signal: NodeJS.Signals):
 
 const installShutdown = (state: SupervisorState): (() => void) => {
     return installGracefulShutdown({
-        onSignal: (signal) => shutdownOnSignal(state, signal),
+        onSignal: (signal) => {
+            info("Received shutdown signal - stopping dev runner...");
+
+            return shutdownOnSignal(state, signal);
+        },
         onForce: () => state.child?.kill("SIGKILL"),
         forceKillAfterMs: FORCE_KILL_TIMEOUT_MS,
         exitCode: (signal, graceful) => state.capturedChildExit ?? (graceful ? 0 : exitCodeForSignal(signal)),

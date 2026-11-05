@@ -729,8 +729,6 @@ const onShutdownSignal =
             return;
         }
 
-        session.deps.log("Received shutdown signal - stopping dev runner...");
-
         await session.controller.shutdown(() => {
             session.deps.quitDefaultApplication();
         });
