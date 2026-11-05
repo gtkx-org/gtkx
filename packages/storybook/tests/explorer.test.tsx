@@ -261,6 +261,35 @@ describe("native story explorer", () => {
         expect(screen.queryByRole(Gtk.AccessibleRole.WINDOW, { name: "Story window" })).toBeNull();
     });
 
+    it("scrolls content stories larger than the explorer window", async () => {
+        const catalog = new StoryCatalog();
+        await catalog.load([
+            {
+                id: "large.stories.tsx",
+                title: "Large",
+                load: () =>
+                    Promise.resolve({
+                        default: { title: "Large" },
+                        Form: {
+                            render: () => (
+                                <GtkBox orientation={Gtk.Orientation.VERTICAL} widthRequest={4000} heightRequest={4000}>
+                                    <GtkButton label="Save" vexpand valign={Gtk.Align.END} />
+                                </GtkBox>
+                            ),
+                        },
+                    }),
+            },
+        ]);
+        await showExplorer(catalog);
+        const explorer = screen.getByRole(Gtk.AccessibleRole.WINDOW, { name: "GTKX Storybook" });
+        const [minimumWidth] = explorer.measure(Gtk.Orientation.HORIZONTAL, -1);
+        const [minimumHeight] = explorer.measure(Gtk.Orientation.VERTICAL, -1);
+
+        expect(minimumWidth).toBeLessThan(4000);
+        expect(minimumHeight).toBeLessThan(4000);
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Save" }));
+    });
+
     it("keeps navigation usable after a selected story throws during rendering", async () => {
         const catalog = new StoryCatalog();
         await catalog.load([
