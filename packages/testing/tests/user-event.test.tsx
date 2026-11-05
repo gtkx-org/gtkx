@@ -1042,6 +1042,20 @@ describe("userEvent.selectOptions", () => {
         await expect(userEvent.selectOptions(dropdown, [0, 1])).rejects.toThrow();
         await expect(userEvent.deselectOptions(dropdown, 0)).rejects.toThrow();
     });
+
+    it("rejects option labels and positions past the last item without changing the selection", async () => {
+        const dropdown = await renderDropDown(["Option A", "Option B", "Option C"]);
+        await expect(userEvent.selectOptions(dropdown, 3)).rejects.toThrow("positions 0 to 2");
+        await expect(Reflect.apply(userEvent.selectOptions, userEvent, [dropdown, "Option B"])).rejects.toThrow(
+            'got "Option B"',
+        );
+        expect((dropdown as Gtk.DropDown).getSelected()).toBe(0);
+        const list = await renderTwoItemListBox(Gtk.SelectionMode.MULTIPLE);
+        const selectedRows = (list as Gtk.ListBox).getSelectedRows();
+        await expect(userEvent.selectOptions(list, [0, 2])).rejects.toThrow("positions 0 to 1");
+        await expect(userEvent.deselectOptions(list, -1)).rejects.toThrow("positions 0 to 1");
+        expect((list as Gtk.ListBox).getSelectedRows()).toEqual(selectedRows);
+    });
 });
 
 describe("userEvent gestures", () => {

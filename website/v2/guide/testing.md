@@ -190,7 +190,7 @@ A few key handlers need a real key event, which `keyboard` cannot create, and do
 
 `pointer` takes Testing Library's button tokens. `[MouseLeft]` clicks the widget as `click` does, and `[MouseRight]` and `[MouseMiddle]` press and release the other buttons for the click gestures on the widget and its ancestors that listen for them, so `pointer(cell, "[MouseRight]")` opens a context menu that a `GtkGestureClick` with `button={Gdk.BUTTON_SECONDARY}` shows. Add `>` to only press a button, as in `[MouseRight>]`, and a leading `/` to release it.
 
-`selectOptions` and `deselectOptions` take positions rather than option values or labels, because GTK drop-downs, lists and grids have no option values: `selectOptions(dropDown, 2)` selects the third item, and an array selects several positions in a multiple-selection list.
+`selectOptions` and `deselectOptions` take positions rather than option values or labels, because GTK drop-downs, lists and grids have no option values: `selectOptions(dropDown, 2)` selects the third item, and an array selects several positions in a multiple-selection list. A position past the last item, or an option label, rejects with the range of valid positions and leaves the selection unchanged.
 
 Use `slide(range, value)` for a slider. `drag` drives application-defined drag gestures and cannot drive a range's native slider. The [interaction reference](/v2/reference/@gtkx/testing/) covers the available helpers.
 
