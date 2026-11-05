@@ -159,6 +159,16 @@ Queries exclude widgets that are not mapped, including content on inactive stack
 
 A text button's child label takes precedence over its `accessibleLabel` prop. Query the visible label and use `within` when several buttons share it.
 
+Some Adwaita rows expose their inner control under the row's title as well, as they do to assistive technologies. An `AdwEntryRow` and its text field both carry the title as their label, so `getByLabelText("Message")` finds two widgets; `getByRole(Gtk.AccessibleRole.TEXT_BOX, { name: "Message" })` finds the field. An `AdwSwitchRow` and its switch both have the `switch` role and the row's title as their name. Pass the `as` option to keep one widget class, which also types the result:
+
+```ts
+import * as Adw from "@gtkx/gi/adw";
+
+const row = screen.getByRole(Gtk.AccessibleRole.SWITCH, { name: "Reimbursable", as: Adw.SwitchRow });
+await userEvent.click(row);
+expect(row).toBeChecked();
+```
+
 GTK ignores `accessibleLabel` on widgets whose accessible role takes no name, such as the `generic` role of a plain `GtkBox` or a `GtkDrawingArea`, so neither assistive technologies nor queries see it. Give such a widget a role that is named, as in `<GtkDrawingArea accessibleRole={Gtk.AccessibleRole.IMG} accessibleLabel="Usage chart" />` for a chart or `Gtk.AccessibleRole.GROUP` for a box of related controls.
 
 ## Interacting and waiting
