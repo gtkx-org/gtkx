@@ -159,7 +159,7 @@ impl ResolvedVfunc {
                 .cast::<u8>()
                 .add(byte_offset)
                 .cast::<*mut c_void>();
-            state.data_ref().set_native_parent(slot.read());
+            state.data_ref().set_vfunc_parent(slot.read());
             slot.write(state.code_ptr);
         }
         state

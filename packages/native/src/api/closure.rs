@@ -9,7 +9,7 @@ use napi_derive::napi;
 use crate::api::bind::FunctionSignature;
 use crate::api::native_result;
 use crate::ffi::Stash;
-use crate::ffi::closure::ClosureState;
+use crate::ffi::closure::{CallbackRole, ClosureState};
 use crate::ffi::codec::{
     CallbackCodec, CallbackReleasePolicy, CallbackScope, Codec, DestroyNotifyKind, Encoder as _,
 };
@@ -124,6 +124,11 @@ fn create_closure(
     let data = encoded
         .closure_data()
         .ok_or_else(|| Error::from_reason("A GClosure requires a non-null callback"))?;
+    data.set_role(if generic_marshal {
+        CallbackRole::ClosureCallback
+    } else {
+        CallbackRole::ClosureMarshal
+    });
     let function = encoded.function_pointer();
     let callback_fn =
         unsafe { std::mem::transmute::<*mut c_void, unsafe extern "C" fn()>(function) };
