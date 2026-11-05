@@ -2141,6 +2141,58 @@ describe("CLI commands", () => {
         });
     });
 
+    it("ends the application like Node when a native callback throws, unless the app handles it", async () => {
+        using project = createProject();
+        const readyPath = join(project.root, "ready.txt");
+        const failPath = join(project.root, ".gtkx", "fail");
+        const handledPath = join(project.root, "handled.txt");
+        const content = (setup: string) =>
+            `import * as GLib from "@gtkx/gi/glib";
+            import { existsSync, rmSync, writeFileSync } from "node:fs";
+            import { useEffect } from "react";
+            ${setup}
+            export const Content = () => {
+                useEffect(() => {
+                    const source = GLib.timeoutAdd(GLib.PRIORITY_DEFAULT, 50, () => {
+                        if (existsSync(${JSON.stringify(failPath)})) {
+                            rmSync(${JSON.stringify(failPath)});
+                            throw new Error("Saving the draft failed");
+                        }
+                        return GLib.SOURCE_CONTINUE;
+                    });
+                    return () => GLib.sourceRemove(source);
+                }, []);
+                return null;
+            };`;
+        const listedApp = async (client: Client) =>
+            (
+                JSON.parse((await callTool(client, "gtkx_list_apps")).text) as {
+                    windows?: unknown;
+                    error?: string;
+                }[]
+            )[0];
+        writeWidgetApp(project, readyPath, content(""));
+        await withMcpClient(project.root, async (client) => {
+            await withSession("dev", project.root, readyPath, async () => {
+                project.write(".gtkx/fail", "fail");
+                await expect
+                    .poll(async () => (await listedApp(client))?.error, { timeout: 30_000 })
+                    .toContain("Saving the draft failed");
+                rmSync(readyPath);
+                project.write(
+                    "src/content.tsx",
+                    content(
+                        `process.on("uncaughtException", (error) => writeFileSync(${JSON.stringify(handledPath)}, String(error)));`,
+                    ),
+                );
+                await expect.poll(() => existsSync(readyPath), { timeout: 30_000 }).toBe(true);
+                project.write(".gtkx/fail", "fail");
+                await expect.poll(() => existsSync(handledPath), { timeout: 30_000 }).toBe(true);
+                expect((await listedApp(client))?.windows).toBeDefined();
+            });
+        });
+    });
+
     it("summarizes widgets by their accessible name and reads boxed properties as text", async () => {
         using project = createProject();
         const readyPath = join(project.root, "ready.txt");

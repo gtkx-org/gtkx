@@ -87,6 +87,16 @@ const waitForApplicationId = async (timeoutMs: number, shouldKeepWaiting: () => 
 
 const readFileRevision = (path: string): Promise<string> => readFile(path, "utf8");
 
+const hasApplicationErrorHandler = (): boolean => process.listenerCount("uncaughtException") > 1;
+
+const watchUncaughtErrors = (onUncaughtError: (cause: unknown) => void): void => {
+    process.on("uncaughtException", (cause) => {
+        if (!hasApplicationErrorHandler()) {
+            onUncaughtError(cause);
+        }
+    });
+};
+
 const devPlugins =
     (configFile: string, catalogWrites: CatalogWrites, options: DevRunnerDepsOptions): DevRunnerDeps["plugins"] =>
     (entryPath) => [
@@ -177,10 +187,8 @@ const createDevRunnerDeps = (
     stopMcpClient,
     reportApplicationError: reportMcpApplicationError,
     watchApplicationShutdown,
-    watchUncaughtErrors: (onUncaughtError) => {
-        process.on("uncaughtException", onUncaughtError);
-        process.on("unhandledRejection", onUncaughtError);
-    },
+    watchUncaughtErrors,
+    hasApplicationErrorHandler,
     watchWorkerSources: (onSource) => {
         openWorkerSources().onmessage = (event) => {
             onSource(String(event.data));

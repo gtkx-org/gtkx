@@ -1,6 +1,6 @@
 ---
 title: "Error Handling"
-description: "Match native errors by domain and code, and see how GLib criticals and addon panics surface."
+description: "Match native errors by domain and code, and see how GLib criticals, uncaught exceptions and addon panics surface."
 ---
 
 # Error Handling
@@ -46,6 +46,14 @@ const reportMissingNote = (callback: Gio.AsyncReadyCallback) => {
 Some native functions report misuse by logging a `CRITICAL` or `WARNING` instead of returning a `GError`. GTKX leaves these messages to GLib, as C and GJS applications do: GLib prints them to standard error, the binding call returns normally, and the application keeps running. A critical usually points at a programming error, such as an invalid argument, so fix the code that triggered it.
 
 GLib's [`G_DEBUG`](https://docs.gtk.org/glib/running.html) environment variable can make criticals or warnings abort the process while you debug them. GLib `ERROR` messages always abort.
+
+## Uncaught exceptions
+
+GTKX keeps Node's contract for exceptions no JavaScript code catches. A function that native code calls, such as a signal handler, a draw function or a `GLib.timeoutAdd` callback, has no JavaScript caller to catch what it throws, so its exception becomes an uncaught exception. So does a render error no [error boundary](#react-error-boundaries) catches, and a promise rejection nothing handles. Node prints the error with its stack and ends the process with exit status 1, which closes the application and loses unsaved work. GJS logs such exceptions and keeps running; GTKX does not, so catch errors inside callbacks the application should survive, and show the failure through application state.
+
+Use Node's [`uncaughtExceptionMonitor`](https://nodejs.org/api/process.html#event-uncaughtexceptionmonitor) to report crashes without changing that exit. An application that registers its own `uncaughtException` listener replaces the exit and keeps running, as any Node program does, although Node advises against resuming normal work after an uncaught exception.
+
+`gtkx dev` behaves like the built application: it prints the error with a stack that points at your source, ends the application and keeps the dev server running, then starts the application again on the next save. Until then, [MCP](/v2/guide/mcp) tools answer with the error that stopped it. An application's own `uncaughtException` listener keeps it running under `gtkx dev` as well. `gtkx storybook` prints the error and keeps the explorer open.
 
 ## Addon panics
 

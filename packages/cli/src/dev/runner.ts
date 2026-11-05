@@ -42,6 +42,7 @@ type DevRunnerDeps = {
     reportApplicationError(cause: unknown): void;
     watchApplicationShutdown(onShutdown: () => void): void;
     watchUncaughtErrors(onUncaughtError: (cause: unknown) => void): void;
+    hasApplicationErrorHandler(): boolean;
     watchWorkerSources(onSource: (path: string) => void): void;
     getApplicationRegistrationState(): ApplicationState;
     hasStoreChanged(): boolean;
@@ -86,6 +87,7 @@ type DevSession = {
     workerSources: Set<string>;
     hasPendingSchemaChange: boolean;
     isParked: boolean;
+    keepsApplicationOnError: boolean;
     storybook: StorybookSession | undefined;
 };
 
@@ -119,15 +121,26 @@ const NONE_REJECTED: ReadonlySet<ModuleNode> = new Set();
 const unreportedDetail = (server: ViteDevServer, cause: unknown): unknown =>
     cause instanceof Error && server.config.logger.hasErrorLogged(cause) ? cause.message.split("\n", 1)[0] : cause;
 
-const announceFailure = (server: ViteDevServer, cause: unknown): void => {
+const STOPPED_FAILURE = "Application error; stopped the application. Fix the error and save again to restart it.";
+const KEPT_FAILURE = "Application error; keeping the dev server up. Fix the error and save again.";
+
+const announceFailure = (server: ViteDevServer, cause: unknown, keepsApplicationOnError: boolean): void => {
     if (cause instanceof Error) {
         server.ssrFixStacktrace(cause);
     }
 
-    error(
-        "Application error; keeping the dev server up. Fix the error and save again.",
-        unreportedDetail(server, cause),
-    );
+    error(keepsApplicationOnError ? KEPT_FAILURE : STOPPED_FAILURE, unreportedDetail(server, cause));
+};
+
+const stopFailedApplication = (session: DevSession, cause: unknown): void => {
+    if (session.keepsApplicationOnError) {
+        session.failure.report(cause);
+
+        return;
+    }
+
+    session.failure.fail(cause);
+    session.deps.quitDefaultApplication();
 };
 
 const parkSession = (session: DevSession): void => {
@@ -814,7 +827,9 @@ const startMcpClient = async (session: DevSession): Promise<void> => {
         deps.mcpApplicationId,
         (id) => loadModuleExclusively(server, id),
         (cause) => {
-            session.failure.report(cause);
+            if (!deps.hasApplicationErrorHandler()) {
+                stopFailedApplication(session, cause);
+            }
         },
     );
 };
@@ -960,8 +975,8 @@ const createSession = (
     server: ViteDevServer,
     logger: DevLogger,
     deps: DevRunnerDeps,
-    imports: Map<string, Set<string>>,
-    registrations: Set<string>,
+    tracked: { imports: Map<string, Set<string>>; registrations: Set<string> },
+    keepsApplicationOnError: boolean,
 ): DevSession => {
     const refreshTracker = createRefreshTracker(deps.performRefresh);
 
@@ -971,16 +986,17 @@ const createSession = (
         controller: createShutdownController(server, deps, logger),
         refreshTracker,
         failure: createFailureTracker((cause) => {
-            announceFailure(server, cause);
+            announceFailure(server, cause, keepsApplicationOnError);
             deps.reportApplicationError(cause);
         }, refreshTracker.isRefreshing),
         pendingSaves: new Map(),
-        imports,
-        registrations,
+        imports: tracked.imports,
+        registrations: tracked.registrations,
         schemaFiles: new Set(projectSchemaFiles(server.config.root).files),
         workerSources: new Set(),
         hasPendingSchemaChange: false,
         isParked: false,
+        keepsApplicationOnError,
         storybook: undefined,
     };
 };
@@ -998,11 +1014,17 @@ const createDevRunner = (deps: DevRunnerDeps, options: DevRunnerOptions = {}): D
                 logger.logger,
             ),
         );
-        const session = createSession(server, logger, deps, imports, registrations);
+        const session = createSession(
+            server,
+            logger,
+            deps,
+            { imports, registrations },
+            options.storybookConfig !== undefined,
+        );
         deps.installShutdownHandlers(onShutdownSignal(session));
 
         deps.watchUncaughtErrors((cause) => {
-            session.failure.report(cause);
+            stopFailedApplication(session, cause);
         });
 
         deps.watchWorkerSources((path) => {
