@@ -50,6 +50,7 @@ type DevRunnerDeps = {
     quitDefaultApplication(): void;
     performRefresh: () => void;
     isRefreshBoundary(module: Record<string, unknown>): boolean;
+    incompatibleExportName(module: Record<string, unknown>): string | null;
     staleExportName(previous: Record<string, unknown>, current: Record<string, unknown>): string | null;
     readFileRevision(path: string): Promise<string>;
     hasWrittenCatalog(path: string): boolean;
@@ -331,6 +332,23 @@ const unpatchedExportReason = (
 const rejectedBoundaries = (session: DevSession, loaded: Map<ModuleNode, Record<string, unknown>>): ModuleNode[] =>
     [...loaded].filter(([, moduleExports]) => !session.deps.isRefreshBoundary(moduleExports)).map(([module]) => module);
 
+const incompatibleExportReason = (
+    session: DevSession,
+    loaded: Map<ModuleNode, Record<string, unknown>>,
+    rejected: readonly ModuleNode[],
+): string | null => {
+    for (const module of rejected) {
+        const moduleExports = loaded.get(module);
+        const name = moduleExports ? session.deps.incompatibleExportName(moduleExports) : null;
+
+        if (name !== null) {
+            return `${module.file ?? module.url} exports ${name}, which is not a component; move it to another module to refresh in place`;
+        }
+    }
+
+    return null;
+};
+
 const completeRefresh = async (session: DevSession, changedPath: string, unpatched: string | null): Promise<void> => {
     if (unpatched !== null) {
         warn(`${DROPPED_REFRESH}: ${changedPath} ${unpatched}`);
@@ -352,6 +370,7 @@ const refreshChangedModule = async (
     previous: Record<string, unknown> | null,
 ): Promise<void> => {
     const rejected: Set<ModuleNode> = new Set();
+    let blocker: string | null = null;
     let plan = planChange(session, changedModule);
 
     while (plan !== null) {
@@ -383,7 +402,12 @@ const refreshChangedModule = async (
             rejected.add(module);
         }
 
+        blocker ??= incompatibleExportReason(session, loaded, rejectedNow);
         plan = planPropagation(session, rejectedNow, rejected);
+    }
+
+    if (blocker !== null) {
+        warn(`${DROPPED_REFRESH}: ${blocker}`);
     }
 
     await requestRestart(session);

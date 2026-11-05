@@ -23,14 +23,14 @@ function createModuleRegistration(moduleId: string): {
 const isComponentExport = (key: string, value: unknown): boolean =>
     key === "__esModule" || RefreshRuntime.isLikelyComponentType(value);
 
-const areAllExportsComponents = (moduleExports: Record<string, unknown>): boolean => {
+const incompatibleExportName = (moduleExports: Record<string, unknown>): string | null => {
     for (const key in moduleExports) {
         if (!isComponentExport(key, moduleExports[key])) {
-            return false;
+            return key;
         }
     }
 
-    return true;
+    return null;
 };
 
 function isRefreshBoundary(moduleExports: Record<string, unknown>): boolean {
@@ -38,7 +38,7 @@ function isRefreshBoundary(moduleExports: Record<string, unknown>): boolean {
         return true;
     }
 
-    if (!areAllExportsComponents(moduleExports)) {
+    if (incompatibleExportName(moduleExports) !== null) {
         return false;
     }
 
@@ -90,4 +90,4 @@ function performRefresh(): void {
     RefreshRuntime.performReactRefresh();
 }
 
-export { createModuleRegistration, isRefreshBoundary, performRefresh, staleExportName };
+export { createModuleRegistration, incompatibleExportName, isRefreshBoundary, performRefresh, staleExportName };

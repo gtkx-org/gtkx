@@ -16,7 +16,7 @@ import {
     type TestingInternalModule,
     type TestingPublicModule,
 } from "../mcp/testing-loader.js";
-import { isRefreshBoundary, performRefresh, staleExportName } from "../refresh-runtime.js";
+import { incompatibleExportName, isRefreshBoundary, performRefresh, staleExportName } from "../refresh-runtime.js";
 import { gtkxFastRefresh } from "../vite-plugins/fast-refresh/swc-refresh.js";
 import { gtkxGlobalStyles } from "../vite-plugins/global-styles.js";
 import { gtkxVitePlugins } from "../vite-plugins/index.js";
@@ -208,6 +208,7 @@ const createDevRunnerDeps = (
     },
     performRefresh,
     isRefreshBoundary,
+    incompatibleExportName,
     staleExportName,
     readFileRevision,
     hasWrittenCatalog: catalogWrites.hasWritten,
