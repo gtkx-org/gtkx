@@ -1,5 +1,6 @@
 import type { ComboRowProps } from "@gtkx/components";
 import type * as Adw from "@gtkx/gi/adw";
+import * as Pango from "@gtkx/gi/pango";
 import { ComboRow } from "@gtkx/components";
 import { GtkLabel, GtkListBox } from "@gtkx/jsx/gtk";
 import { render, screen, userEvent, waitFor } from "@gtkx/testing";
@@ -81,6 +82,11 @@ describe("render - ComboRow", () => {
             expect(screen.getAllByText("By date")).toHaveLength(2);
             expect(screen.getAllByText("By size")).toHaveLength(1);
         });
+        for (const label of screen.getAllByText(/^By /)) {
+            expect(label).toHaveObjectProperty("ellipsize", Pango.EllipsizeMode.END);
+            expect(label).toHaveObjectProperty("maxWidthChars", 20);
+            expect(label).toHaveObjectProperty("widthChars", 1);
+        }
     });
 
     it("updates the row display when selectedId changes", async () => {

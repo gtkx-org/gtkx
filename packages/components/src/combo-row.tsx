@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import * as Pango from "@gtkx/gi/pango";
 import { AdwComboRow } from "@gtkx/jsx/adw";
 import type { DropDownBaseProps } from "./internal/drop-down.js";
 import type { ComboRowProps } from "./types.js";
@@ -14,8 +15,10 @@ type ComboRowComponent = <T = unknown, S = unknown>(props: ComboRowProps<T, S>) 
  */
 const ComboRow: ComboRowComponent = ComboRowImpl as ComboRowComponent;
 
+const ITEM_LABEL = { ellipsize: Pango.EllipsizeMode.END, maxWidthChars: 20, widthChars: 1 };
+
 function ComboRowImpl(props: DropDownBaseProps): ReactNode {
-    return <DropDownBase {...props} component={AdwComboRow} />;
+    return <DropDownBase {...props} component={AdwComboRow} itemLabel={ITEM_LABEL} />;
 }
 
 export { ComboRow };

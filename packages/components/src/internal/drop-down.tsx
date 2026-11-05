@@ -2,12 +2,13 @@ import type * as Adw from "@gtkx/gi/adw";
 import type { ElementType, ReactNode, Ref } from "react";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
+import type * as Pango from "@gtkx/gi/pango";
 import { GtkBox, GtkImage, GtkLabel, GtkSignalListItemFactory } from "@gtkx/jsx/gtk";
 import { useProperty } from "@gtkx/react";
 import { useLatestRef } from "@gtkx/react/internal";
 import { omit, type Primitive } from "@gtkx/utils";
 import { useRef, useState } from "react";
-import type { DropDownOwnProps, ListItemRenderArgs, ListItemRenderer } from "../types.js";
+import type { DropDownOwnProps, ListItemRenderer } from "../types.js";
 import { ItemPortals, useItemCells, useSectionHeader } from "./cells.js";
 import { slotRefFor } from "./collection-model.js";
 import { type Collection, isCollectionIdle } from "./collection.js";
@@ -17,6 +18,13 @@ import { useCollectionData } from "./use-collection.js";
 import { useWidgetRef } from "./use-widget-ref.js";
 
 type SelectableWidget = Gtk.DropDown | Adw.ComboRow;
+
+/** Label settings of the widget's own default item factory, kept by the default renderers. */
+type ItemLabelProps = {
+    ellipsize?: Pango.EllipsizeMode;
+    maxWidthChars?: number;
+    widthChars?: number;
+};
 
 type DropDownBaseProps = DropDownOwnProps<unknown, unknown> & {
     onNotifySelected?: ((value: number | null, self: SelectableWidget) => void) | null | undefined;
@@ -46,6 +54,7 @@ type KnownSelection = {
 
 const DROP_DOWN_PROPS: string[] = [
     "component",
+    "itemLabel",
     "items",
     "sections",
     "selectedId",
@@ -61,15 +70,20 @@ function newApplyState(): ApplyState {
     return { isApplying: false, isReady: false };
 }
 
-const defaultRenderItem = ({ item }: ListItemRenderArgs<Primitive>): ReactNode =>
-    item == null ? null : <GtkLabel>{String(item)}</GtkLabel>;
-const faceRenderer = (props: DropDownBaseProps): ListItemRenderer<never> => props.renderItem ?? defaultRenderItem;
+const defaultRenderer =
+    (itemLabel: ItemLabelProps): ListItemRenderer<Primitive> =>
+    ({ item }) =>
+        item == null ? null : <GtkLabel {...itemLabel}>{String(item)}</GtkLabel>;
+const faceRenderer = (props: DropDownBaseProps, itemLabel: ItemLabelProps): ListItemRenderer<never> =>
+    props.renderItem ?? defaultRenderer(itemLabel);
 
 const selectionMarkedRenderer =
-    (selected: number | undefined): ListItemRenderer<Primitive> =>
+    (selected: number | undefined, itemLabel: ItemLabelProps): ListItemRenderer<Primitive> =>
     ({ item, index }) => (
         <GtkBox>
-            <GtkLabel xalign={0}>{item == null ? "" : String(item)}</GtkLabel>
+            <GtkLabel xalign={0} {...itemLabel}>
+                {item == null ? "" : String(item)}
+            </GtkLabel>
             <GtkImage
                 iconName="object-select-symbolic"
                 accessibleRole={Gtk.AccessibleRole.PRESENTATION}
@@ -78,8 +92,12 @@ const selectionMarkedRenderer =
         </GtkBox>
     );
 
-const popupRenderer = (props: DropDownBaseProps, selected: number | undefined): ListItemRenderer<never> | null =>
-    props.renderListItem ?? (props.renderItem == null ? selectionMarkedRenderer(selected) : null);
+const popupRenderer = (
+    props: DropDownBaseProps,
+    selected: number | undefined,
+    itemLabel: ItemLabelProps,
+): ListItemRenderer<never> | null =>
+    props.renderListItem ?? (props.renderItem == null ? selectionMarkedRenderer(selected, itemLabel) : null);
 
 const textOf = (value: unknown): string => {
     switch (typeof value) {
@@ -228,8 +246,8 @@ const useDropDownSelection = (options: SelectionOptions): NotifySelectedHandler 
     };
 };
 
-function DropDownBase(props: DropDownBaseProps & { component: ElementType }): ReactNode {
-    const { component: Component, items, sections, renderHeader, ref } = props;
+function DropDownBase(props: DropDownBaseProps & { component: ElementType; itemLabel?: ItemLabelProps }): ReactNode {
+    const { component: Component, itemLabel = {}, items, sections, renderHeader, ref } = props;
     const rest = omit(props, DROP_DOWN_PROPS);
     const [widget, refCallback] = useWidgetRef<SelectableWidget>(ref);
     const { collection, model } = useCollectionData({
@@ -242,7 +260,7 @@ function DropDownBase(props: DropDownBaseProps & { component: ElementType }): Re
     const listCells = useItemCells({ width: -1, height: -1 });
     const header = useSectionHeader(renderHeader, collection, { width: -1, height: -1 });
     const handleNotifySelected = useDropDownSelection({ widget, collection, props });
-    const renderListItem = popupRenderer(props, useProperty(widget, "selected"));
+    const renderListItem = popupRenderer(props, useProperty(widget, "selected"), itemLabel);
     const expression = useItemTextExpression(collection);
 
     return (
@@ -259,7 +277,7 @@ function DropDownBase(props: DropDownBaseProps & { component: ElementType }): Re
                 {...rest}
                 onNotifySelected={handleNotifySelected}
             />
-            <ItemPortals registry={faceCells} render={faceRenderer(props)} collection={collection} />
+            <ItemPortals registry={faceCells} render={faceRenderer(props, itemLabel)} collection={collection} />
             {renderListItem !== null && (
                 <ItemPortals registry={listCells} render={renderListItem} collection={collection} />
             )}
