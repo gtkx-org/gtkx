@@ -688,6 +688,47 @@ describe("generated bindings", () => {
         expect(JSON.parse(output)).toEqual({ lines: ["a", "", "b", null], empty: {} });
     });
 
+    it("omits asynchronous reads into caller-allocated buffers like GJS", async () => {
+        using directory = createProject();
+        const libraries = ["Gio-2.0"];
+        const girPath = resolveGirPath(undefined, directory.path);
+        const { gi } = resolveStore(directory.path);
+        await runCodegen({ libraries, girPath, gi });
+        const consumer = `import { type InputStream, MemoryInputStream } from "@gtkx/gi/gio";
+            import { Bytes } from "@gtkx/gi/glib";
+            const stream: InputStream = MemoryInputStream.newFromBytes(Bytes.new(new TextEncoder().encode("GTKX")));
+            // @ts-expect-error the buffer is filled after the call returns
+            void stream.readAsync;
+            // @ts-expect-error the buffer is filled after the call returns
+            void stream.readAllAsync;
+            const [count, buffer] = stream.read(4, null);
+            console.log(JSON.stringify({
+                readAsync: "readAsync" in stream,
+                readAllAsync: "readAllAsync" in stream,
+                readBytesAsync: typeof stream.readBytesAsync,
+                read: new TextDecoder().decode(buffer.subarray(0, count)),
+            }));`;
+        expect(diagnostics(directory.path, consumer)).toEqual([]);
+        const output = execFileSync(process.execPath, ["consumer.ts"], {
+            cwd: directory.path,
+            encoding: "utf8",
+            stdio: "pipe",
+            timeout: 20_000,
+        });
+        expect(JSON.parse(output)).toEqual({
+            readAsync: false,
+            readAllAsync: false,
+            readBytesAsync: "function",
+            read: "GTKX",
+        });
+        const reference = loadApiReference({ libraries, girPath, resolveFrom: directory.path });
+        const result = reference.lookup("Gio.InputStream");
+        const page = result.outcome === "page" ? result.markdown : "";
+        expect(page).toContain("### `readBytesAsync`");
+        expect(page).not.toContain("### `readAsync`");
+        expect(page).not.toContain("### `readAllAsync`");
+    });
+
     it("emits signals from flat GValue arrays without a length like GJS", async () => {
         using directory = createProject();
         const { gi } = resolveStore(directory.path);
