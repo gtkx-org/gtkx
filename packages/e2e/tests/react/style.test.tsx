@@ -93,6 +93,16 @@ describe("style prop", () => {
         expect(getMinWidth(styled)).toBeGreaterThanOrEqual(WIDE);
     });
 
+    it("applies the per-side and font longhands GTK accepts", async () => {
+        const { plain, styled } = await renderPair({
+            borderLeftStyle: "solid",
+            borderLeftWidth: WIDE,
+            borderTopLeftRadius: 4,
+            fontVariantNumeric: "tabular-nums",
+        });
+        expect(getMinWidth(styled)).toBeGreaterThanOrEqual(getMinWidth(plain) + WIDE);
+    });
+
     it("resolves a GTK named color", async () => {
         const { plain, styled } = await renderPair({ color: "alpha(@theme_fg_color, 0.4)" });
         expect(getAlpha(styled)).toBeCloseTo(getAlpha(plain) * NAMED_ALPHA, 2);
