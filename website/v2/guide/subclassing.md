@@ -192,6 +192,9 @@ GTKX retains these callbacks for the layout's lifetime, including when GTK owns 
 Implement the generated `vfunc` method with its declared signature. Use `super` to chain to the parent implementation:
 
 ```ts
+import * as Gtk from "@gtkx/gi/gtk";
+import { registerClass } from "@gtkx/runtime";
+
 class PaddedLabel extends Gtk.Label {
     override vfuncMeasure(orientation: Gtk.Orientation, forSize: number): [number, number, number, number] {
         const [minimum, natural, minimumBaseline, naturalBaseline] = super.vfuncMeasure(orientation, forSize);
@@ -247,6 +250,7 @@ List the generated interface value in `implements` and implement its required vf
 ```ts
 import * as Gio from "@gtkx/gi/gio";
 import { Object, TYPE_OBJECT } from "@gtkx/gi/gobject";
+import { registerClass } from "@gtkx/runtime";
 
 class LevelStoreBase extends Object implements Gio.ListModelImpl {
     rows: Object[] = [];
