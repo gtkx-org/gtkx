@@ -396,6 +396,31 @@ describe("keyboard focus movement", () => {
         expect(activated).toEqual(["search"]);
     });
 
+    it("opens a menu button that passes its focus to its button when Enter is pressed on it", async () => {
+        const activated: string[] = [];
+
+        await render(
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                <GtkButton name="other" label="Other" onClicked={() => activated.push("other")} />
+                <GtkMenuButton
+                    name="due"
+                    label="Set date"
+                    popover={
+                        <GtkPopover>
+                            <GtkLabel label="Calendar" />
+                        </GtkPopover>
+                    }
+                />
+            </GtkBox>,
+        );
+
+        screen.getByName("other").grabFocus();
+        const due = screen.getByName("due", { as: Gtk.MenuButton });
+        await userEvent.keyboard(due, "{Enter}");
+        expect(due.getActive()).toBe(true);
+        expect(activated).toEqual([]);
+    });
+
     it("keeps a text view's Tab and Return as text instead of moving focus", async () => {
         await render(
             <GtkBox orientation={Gtk.Orientation.VERTICAL}>

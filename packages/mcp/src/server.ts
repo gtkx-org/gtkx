@@ -188,8 +188,8 @@ const pressKeysShape = {
     ...applicationIdShape,
     ...describeParams(pressKeysParams.shape, {
         widgetId:
-            `${WIDGET_ID_DESCRIPTION} A widget that can take focus is focused first, as a user would before ` +
-            "typing. One that cannot, such as the switch inside a switch row, leaves the window's focus where it " +
+            `${WIDGET_ID_DESCRIPTION} A widget that can take focus, or passes it to a child as a menu button ` +
+            "does to its button, is focused first, as a user would before typing. One that cannot, such as the switch inside a switch row, leaves the window's focus where it " +
             "is, and the result names its nearest ancestor that can take focus to press the keys on instead. Omit " +
             "it to press the keys on the focused widget of the active window, or of the first window when none is " +
             "active.",

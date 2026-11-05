@@ -686,9 +686,10 @@ const keyLabel = (keyval: number): string => {
 const canTakeFocus = (widget: Gtk.Widget): boolean => widget.getFocusable() && widget.getCanFocus();
 
 /**
- * Focuses a focusable target whose window has its focus elsewhere, as a user does before typing, so the window's
- * own bindings such as {Space} and {Enter} activating the focus widget act on the target. An entry that delegates
- * its focus to its text, such as a search entry, takes it there without selecting the text, as a click does.
+ * Focuses a target whose window has its focus elsewhere, as a user does before typing, so the window's own bindings
+ * such as {Space} and {Enter} activating the focus widget act on the target. An entry that delegates its focus to its
+ * text, such as a search entry, takes it there without selecting the text, as a click does. A widget that passes its
+ * focus to a child, such as a menu button to its button, focuses that child.
  */
 const focusKeyTarget = (widget: Gtk.Widget): void => {
     if (focusWithin(widget) !== null) {
@@ -699,7 +700,7 @@ const focusKeyTarget = (widget: Gtk.Widget): void => {
 
     if (delegate instanceof Gtk.Text && canTakeFocus(delegate)) {
         delegate.grabFocusWithoutSelecting();
-    } else if (canTakeFocus(widget)) {
+    } else {
         widget.grabFocus();
     }
 };

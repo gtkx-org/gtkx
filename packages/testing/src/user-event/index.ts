@@ -125,7 +125,8 @@ type UserEvent = {
     ) => Promise<void>;
     /**
      * Sends a key sequence through GTK's propagation chain, to the given widget or, without one, to the focused widget
-     * of the active window. A given widget that can take focus is focused first unless the focus is already inside it.
+     * of the active window. A given widget that can take focus, or passes it to a child as a menu button does to its
+     * button, is focused first unless the focus is already inside it.
      */
     keyboard: {
         (input: string): Promise<void>;

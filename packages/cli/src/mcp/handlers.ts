@@ -217,13 +217,14 @@ const focusableAncestor = (widget: Gtk.Widget): Gtk.Widget | null => {
  * Finds the window's focus widget that keys sent to a widget which cannot take focus reach instead, through the
  * window's bindings such as {Space} and {Enter} activating its focus widget, together with the widget's nearest
  * ancestor that can take focus. Returns null when the widget can take focus, holds the focus, or its focusable
- * ancestor already does.
+ * ancestor already does. A widget that passes its focus to a child, such as a menu button to its button, takes it
+ * here, as the keyboard input would before pressing the keys.
  */
 const misdirectedKeys = (widget: Gtk.Widget): { focus: Gtk.Widget; ancestor: Gtk.Widget | null } | null => {
     const root = widget.getRoot();
     const focus = root instanceof Gtk.Window ? root.getFocus() : null;
 
-    if (canTakeFocus(widget) || focus === null || focus === widget || focus.isAncestor(widget)) {
+    if (canTakeFocus(widget) || focus === null || focus === widget || focus.isAncestor(widget) || widget.grabFocus()) {
         return null;
     }
 

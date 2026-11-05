@@ -2616,12 +2616,16 @@ describe("CLI commands", () => {
         writeWidgetApp(
             project,
             readyPath,
-            `import { AdwEntryRow, AdwPreferencesGroup, AdwSwitchRow } from "@gtkx/jsx/adw";
-            import { GtkSearchEntry } from "@gtkx/jsx/gtk";
+            `import { AdwActionRow, AdwEntryRow, AdwPreferencesGroup, AdwSwitchRow } from "@gtkx/jsx/adw";
+            import { GtkLabel, GtkMenuButton, GtkPopover, GtkSearchEntry } from "@gtkx/jsx/gtk";
             export const Content = () => (
                 <AdwPreferencesGroup headerSuffix={<GtkSearchEntry />}>
                     <AdwEntryRow title="Greeting" />
                     <AdwSwitchRow title="Show counter" />
+                    <AdwActionRow
+                        title="Due"
+                        suffix={<GtkMenuButton label="Set date" popover={<GtkPopover><GtkLabel label="Calendar" /></GtkPopover>} />}
+                    />
                 </AdwPreferencesGroup>
             );`,
         );
@@ -2654,6 +2658,23 @@ describe("CLI commands", () => {
                 expect(
                     (await callTool(client, "gtkx_press_keys", { widgetId: search?.id, keys: "{Enter}" })).text,
                 ).toBe("Pressed keys");
+                const menus = await queryWidgets(client, {
+                    by: "role",
+                    value: "button",
+                    options: { name: "Set date" },
+                });
+                const menu = menus.find((widget) => widget.type === "MenuButton");
+                expect((await callTool(client, "gtkx_press_keys", { widgetId: menu?.id, keys: "{Enter}" })).text).toBe(
+                    "Pressed keys",
+                );
+                const { text } = await callTool(client, "gtkx_get_widget_props", {
+                    widgetId: menu?.id,
+                    properties: ["active"],
+                    maxDepth: 0,
+                });
+                expect(
+                    (JSON.parse(text) as { properties: { active: { value: boolean } } }).properties.active.value,
+                ).toBe(true);
             });
         });
     });
