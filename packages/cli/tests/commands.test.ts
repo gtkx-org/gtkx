@@ -509,6 +509,43 @@ describe("CLI commands", () => {
         expect(await typecheck()).toMatch(/^src\/logo\.ts\(1,25\): error TS2307: [^\n]*\n$/);
     });
 
+    it("bundles stylesheets imported with ?resource while a slower Vite plugin resolves another import", async () => {
+        using project = createProject();
+        linkWorkspaceBindings(project.root);
+        for (const name of ["base", "style", "dark"]) {
+            project.write(`data/${name}.css`, `.${name} { color: red; }`);
+        }
+        project.write(
+            "vite.config.ts",
+            `export default {
+                plugins: [{
+                    name: "slow-resolve",
+                    enforce: "pre",
+                    async resolveId(source) {
+                        if (source.includes("/style.css") && !source.includes("?resource")) {
+                            await new Promise((resolve) => setTimeout(resolve, 500));
+                        }
+                        return null;
+                    },
+                }],
+            };`,
+        );
+        project.write("src/dark.ts", 'export { default } from "../data/dark.css?resource";');
+        project.write(
+            "src/index.ts",
+            `import base from "../data/base.css?resource";
+            import style from "../data/style.css?resource";
+            import dark from "./dark.ts";
+            export const paths = [base, style, dark];`,
+        );
+
+        await invoke(["build", "--cwd", project.root]);
+
+        expect(readFileSync(join(project.root, "dist/bundle.mjs"), "utf8")).toContain(
+            "/org/gtkx/example/data/style.css",
+        );
+    });
+
     it("applies imported CSS with its relative imports and images in development and production", async () => {
         using project = createProject({ codegen: true });
         const readyPath = join(project.root, "style.json");

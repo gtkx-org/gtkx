@@ -104,6 +104,11 @@ const DEV_STAGING_PREFIX = "resources-dev";
 const MANIFEST_FILENAME = "package.json";
 const DATA_PREFIX = "#data/";
 const BUNDLED_QUERY_MENTION_RE = /[?&](?:icon|resource)(?:[=&]|$)/;
+/* TODO: Drop this query once Vite's Rolldown keeps the `custom` options of overlapping resolves apart. Until then a
+ * resource stylesheet can lose RESOURCE_RESOLVE_OPTION and become an injected `gtkx:css` module, whose filter
+ * excludes queried sources. https://github.com/rolldown/rolldown/issues/11180
+ */
+const ASSET_SOURCE_QUERY = "?gtkx-asset-source";
 const ICON_EXTENSIONS: Set<string> = new Set([".png", ".svg", ".xpm"]);
 
 const ICON_CONTEXTS: Set<string> = new Set([
@@ -442,7 +447,7 @@ const resolveAssetSource = async (
     ctx: ResolveContext,
     request: { assetSource: string; importer: string | undefined; options: Record<string, unknown> | undefined },
 ): Promise<string> => {
-    const resolved = await ctx.resolve(request.assetSource, request.importer, {
+    const resolved = await ctx.resolve(request.assetSource + ASSET_SOURCE_QUERY, request.importer, {
         ...request.options,
         custom: { ...resolveCustomOptions(request.options), [RESOURCE_RESOLVE_OPTION]: true },
         skipSelf: true,
