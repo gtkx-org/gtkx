@@ -5,11 +5,13 @@ import * as Adw from "@gtkx/gi/adw";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
+import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
 import { GMenu, GMenuItem, GSimpleAction } from "@gtkx/jsx/gio";
 import { GtkApplication, GtkApplicationWindow, GtkBox, GtkEntry, GtkLabel } from "@gtkx/jsx/gtk";
 import { createRoot, quit, rootElement, useApplication } from "@gtkx/react";
+import { getInstanceType } from "@gtkx/runtime";
 import { act, render, userEvent } from "@gtkx/testing";
 import process from "node:process";
 import { createRef, StrictMode, useEffect } from "react";
@@ -436,6 +438,20 @@ describe("render - Application configured identity", () => {
         const application = requireWidget(ref.current, "Application");
         expect(application.getApplicationId()).toBe("org.gtkx.e2e");
         expect(application.getResourceBasePath()).toBe("/org/gtkx/custom");
+    });
+
+    it("registers one managed type directly below the application class", async () => {
+        const ref = createRef<Adw.Application>();
+
+        await render(
+            <AdwApplication ref={ref} flags={APP_FLAGS}>
+                <AdwApplicationWindow defaultWidth={200} defaultHeight={100} />
+            </AdwApplication>,
+            { container: rootElement },
+        );
+
+        const application = requireWidget(ref.current, "Application");
+        expect(GObject.typeParent(getInstanceType(application))).toBe(GObject.typeFromName("AdwApplication"));
     });
 });
 
