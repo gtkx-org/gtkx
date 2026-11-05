@@ -119,7 +119,7 @@ injectGlobal`
 `;
 ```
 
-A plain `.css` import also works: the GTKX CLI turns it into an `injectGlobal` call. Global rules remain installed for the application's lifetime. During `gtkx dev`, editing a stylesheet replaces the rules that file installed, so removed rules stop applying, and the app keeps its state. Editing a module's `injectGlobal` rules re-runs the module, which adds the edited rules after the earlier ones, as Emotion does: a changed value takes effect, but a removed rule or a selector you moved keeps applying until the app restarts.
+A plain `.css` import also works: the GTKX CLI turns it into an `injectGlobal` call. Global rules remain installed for the application's lifetime. Relative `url()` references in the file, such as `background-image: url("../data/paper.png")`, are bundled as [`?resource`](/v2/guide/assets#import-project-data) files, and a relative `@import` loads that stylesheet before the file's own rules. In `css` and `style`, interpolate a `?resource` import instead: `url("resource://${paperPath}")`. During `gtkx dev`, editing a stylesheet replaces the rules that file installed, so removed rules stop applying, and the app keeps its state. Editing a module's `injectGlobal` rules re-runs the module, which adds the edited rules after the earlier ones, as Emotion does: a changed value takes effect, but a removed rule or a selector you moved keeps applying until the app restarts.
 
 ## Follow appearance preferences
 

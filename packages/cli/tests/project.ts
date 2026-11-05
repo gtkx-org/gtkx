@@ -20,7 +20,7 @@ const workspace = fileURLToPath(new URL("../../..", import.meta.url));
 const createProject = (config: Record<string, unknown> = {}) => {
     const directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-cli-test-"));
     const root = directory.path;
-    const write = (path: string, content: string) => {
+    const write = (path: string, content: string | Buffer) => {
         const target = join(root, path);
         mkdirSync(dirname(target), { recursive: true });
         writeFileSync(target, content);

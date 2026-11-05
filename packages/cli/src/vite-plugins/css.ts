@@ -1,6 +1,8 @@
 import type { Plugin } from "vite";
 import { isRecord } from "@gtkx/utils";
 import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import postcss from "postcss";
 import { RESOURCE_RESOLVE_OPTION } from "./resource-shared.js";
 import { createVirtualNamespace } from "./virtual-module.js";
 
@@ -13,7 +15,17 @@ const INJECT_SUFFIX = ".js";
 const VIRTUAL_PREFIX = "\0gtkx-css:";
 const VIRTUAL_ID_RE = new RegExp(`^${VIRTUAL_PREFIX}`);
 const INJECTED_CSS_ID_RE = new RegExp(`^${VIRTUAL_PREFIX}.*\\${INJECT_SUFFIX}$`);
+const CSS_URL_RE = /(?<=^|[^\w\-\u0080-\uffff])url\(\s*(?:"([^"]*)"|'([^']*)'|([^'")\s]+))\s*\)/g;
+const CSS_IMPORT_TARGET_RE = /^\s*(?:url\(\s*(?:"([^"]*)"|'([^']*)'|([^'")\s]+))\s*\)|"([^"]*)"|'([^']*)')\s*$/;
+const NON_RELATIVE_URL_RE = /^(?:[a-z][a-z\d+.-]*:|\/|#|$)/i;
+const URL_PLACEHOLDER_RE = /\0gtkx-css-url:(\d+)\0/;
 const { isVirtual, toVirtualId, fromVirtualId, resolveToVirtual } = createVirtualNamespace(VIRTUAL_PREFIX);
+
+type BundledStylesheet = {
+    imports: string[];
+    urls: string[];
+    css: string;
+};
 
 const injectedCssId = (filePath: string): string => toVirtualId(filePath) + INJECT_SUFFIX;
 
@@ -40,16 +52,65 @@ const resolveCssId = async (
     return { id: injectedCssId(fromVirtualId(virtualId)), moduleSideEffects: true };
 };
 
+const quotedTarget = (groups: (string | undefined)[]): string => groups.find((group) => group !== undefined) ?? "";
+
+const bundleStylesheet = (filePath: string, content: string): BundledStylesheet => {
+    const root = postcss.parse(content, { from: filePath });
+    const imports: string[] = [];
+    const urls: string[] = [];
+    const resolveTarget = (target: string): string | null =>
+        NON_RELATIVE_URL_RE.test(target) ? null : resolve(dirname(filePath), target);
+
+    root.walkAtRules("import", (rule) => {
+        const match = CSS_IMPORT_TARGET_RE.exec(rule.params);
+        const target = match === null ? null : resolveTarget(quotedTarget(match.slice(1)));
+
+        if (target !== null) {
+            imports.push(target);
+            rule.remove();
+        }
+    });
+
+    root.walkDecls((decl) => {
+        decl.value = decl.value.replace(CSS_URL_RE, (url: string, ...groups: (string | undefined)[]) => {
+            const target = resolveTarget(quotedTarget(groups.slice(0, 3)));
+
+            if (target === null) {
+                return url;
+            }
+
+            return `url(\0gtkx-css-url:${String(urls.push(target) - 1)}\0)`;
+        });
+    });
+
+    return { imports, urls, css: root.toString() };
+};
+
+const injectedCssExpression = (css: string): string =>
+    css
+        .split(URL_PLACEHOLDER_RE)
+        .map((part, index) =>
+            index % 2 === 0 ? JSON.stringify(part) : `JSON.stringify("resource://" + stylesheetUrl${part})`,
+        )
+        .join(" + ");
+
 const loadInjectedCss = (ctx: CssLoadContext, id: string): string | undefined => {
     if (!isVirtual(id) || !id.endsWith(INJECT_SUFFIX)) {
         return;
     }
 
     const filePath = fromVirtualId(id.slice(0, -INJECT_SUFFIX.length));
-    const content = readFileSync(filePath, "utf8");
+    const { imports, urls, css } = bundleStylesheet(filePath, readFileSync(filePath, "utf8"));
     ctx.addWatchFile(filePath);
 
-    return ['import { injectGlobal } from "@gtkx/css";', `injectGlobal(${JSON.stringify(content)});`].join("\n");
+    return [
+        'import { injectGlobal } from "@gtkx/css";',
+        ...imports.map((target) => `import ${JSON.stringify(target)};`),
+        ...urls.map(
+            (target, index) => `import stylesheetUrl${String(index)} from ${JSON.stringify(`${target}?resource`)};`,
+        ),
+        `injectGlobal(${injectedCssExpression(css)});`,
+    ].join("\n");
 };
 
 function gtkxCss(): Plugin {

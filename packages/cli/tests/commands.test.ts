@@ -441,28 +441,53 @@ describe("CLI commands", () => {
         expect(await typecheck()).toMatch(/^src\/logo\.ts\(1,25\): error TS2307: [^\n]*\n$/);
     });
 
-    it("applies imported CSS in development and production", async () => {
+    it("applies imported CSS with its relative imports and images in development and production", async () => {
         using project = createProject({ codegen: true });
-        const readyPath = join(project.root, "style.txt");
+        const readyPath = join(project.root, "style.json");
         project.write(
-            "src/theme.css",
-            "@define-color cli_css_probe rgb(3, 6, 9); .cli-css-probe { color: @cli_css_probe; min-width: 231px; }",
+            "data/probe.png",
+            Buffer.from(
+                "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAABmJLR0QA/wD/AP+gvaeTAAAAFklEQVQImWPkOiHHwMDAxMDAwMDAAAALVgD0RY0W+wAAAABJRU5ErkJggg==",
+                "base64",
+            ),
+        );
+        project.write("src/styles/base.css", ".cli-css-base { min-height: 47px; }");
+        project.write(
+            "src/styles/theme.css",
+            `@import url("./base.css");
+            @define-color cli_css_probe rgb(3, 6, 9);
+            .cli-css-probe { color: @cli_css_probe; min-width: 231px; background-image: url("../../data/probe.png"); }`,
         );
         project.write(
             "src/index.tsx",
-            `import "./theme.css";
+            `import "./styles/theme.css";
+            import * as Gdk from "@gtkx/gi/gdk";
+            import * as Graphene from "@gtkx/gi/graphene";
+            import * as Gsk from "@gtkx/gi/gsk";
             import * as Gtk from "@gtkx/gi/gtk";
             import { AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
             import { GtkLabel } from "@gtkx/jsx/gtk";
             import { createRoot } from "@gtkx/react";
             import { writeFileSync } from "node:fs";
+            const cornerPixel = (label: Gtk.Label) => {
+                const snapshot = new Gtk.Snapshot();
+                new Gtk.WidgetPaintable({ widget: label }).snapshot(snapshot, label.getWidth(), label.getHeight());
+                const renderer = new Gsk.CairoRenderer();
+                renderer.realizeForDisplay(label.getDisplay());
+                const texture = renderer.renderTexture(snapshot.toNode(), Graphene.Rect.alloc().init(0, 0, 2, 2));
+                renderer.unrealize();
+                const downloader = Gdk.TextureDownloader.new(texture);
+                downloader.setFormat(Gdk.MemoryFormat.R8G8B8A8);
+                return [...(downloader.downloadBytes()[0].getData() ?? []).slice(0, 4)];
+            };
             createRoot().render(
                 <AdwApplication applicationId="org.gtkx.cssprobe">
                     <AdwApplicationWindow>
-                        <GtkLabel label="Probe" cssClasses={["cli-css-probe"]} onMap={(label) => {
+                        <GtkLabel label="Probe" valign={Gtk.Align.START} cssClasses={["cli-css-probe", "cli-css-base"]} onMap={(label) => {
                             setTimeout(() => {
                                 const [width] = label.measure(Gtk.Orientation.HORIZONTAL, -1);
-                                writeFileSync(${JSON.stringify(readyPath)}, String(width));
+                                const [height] = label.measure(Gtk.Orientation.VERTICAL, -1);
+                                writeFileSync(${JSON.stringify(readyPath)}, JSON.stringify({ width, height, pixel: cornerPixel(label) }));
                                 if (process.env.NODE_ENV === "production") process.exit(0);
                             }, 100);
                         }} />
@@ -470,16 +495,17 @@ describe("CLI commands", () => {
                 </AdwApplication>
             );`,
         );
-        const width = () => Number(readFileSync(readyPath, "utf8"));
+        const style = () => JSON.parse(readFileSync(readyPath, "utf8")) as unknown;
+        const expected = { width: 231, height: 47, pixel: [10, 200, 30, 255] };
         await withSession("dev", project.root, readyPath, async () => {
-            await expect.poll(width, { timeout: 30_000 }).toBe(231);
+            await expect.poll(style, { timeout: 30_000 }).toEqual(expected);
         });
         rmSync(readyPath);
         await invoke(["build", "--cwd", project.root]);
         const stopDisplay = await startHeadlessDisplay(resolveHeadlessOptions({ size: "640x480" }));
         try {
             await promisify(execFile)(process.execPath, [join(project.root, "dist/bundle.mjs")], { timeout: 30_000 });
-            expect(width()).toBe(231);
+            expect(style()).toEqual(expected);
             expect(
                 readdirSync(join(project.root, "dist"), { recursive: true }).some((file) =>
                     String(file).endsWith(".css"),
