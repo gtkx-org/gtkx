@@ -40,6 +40,7 @@ type DevRunnerDeps = {
     ): Promise<unknown>;
     stopMcpClient(): void;
     reportApplicationError(cause: unknown): void;
+    watchApplicationRegistration(): void;
     watchApplicationShutdown(onShutdown: () => void): void;
     watchUncaughtErrors(onUncaughtError: (cause: unknown) => void): void;
     hasApplicationErrorHandler(): boolean;
@@ -1065,6 +1066,7 @@ const createDevRunner = (deps: DevRunnerDeps, options: DevRunnerOptions = {}): D
             server.watcher.add(path);
         });
 
+        deps.watchApplicationRegistration();
         deps.watchApplicationShutdown(onApplicationShutdown(session));
         watchProjectFiles(session);
         await loadEntry(session, entryPath, options.storybookConfig);

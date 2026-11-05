@@ -290,6 +290,52 @@ describe("development process shutdown", () => {
         }
     });
 
+    it("stops with status 1 when another process already owns the application ID", async () => {
+        using project = createProject();
+        const readyPath = join(project.root, "ready.txt");
+        linkWorkspaceBindings(project.root);
+        project.write(
+            "src/index.tsx",
+            `import { AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
+            import { createRoot } from "@gtkx/react";
+            import { writeFileSync } from "node:fs";
+            import { useEffect } from "react";
+            const MarkShown = () => {
+                useEffect(() => {
+                    writeFileSync(${JSON.stringify(readyPath)}, String(process.pid));
+                }, []);
+                return null;
+            };
+            createRoot().render(
+                <AdwApplication applicationId="org.gtkx.example">
+                    <AdwApplicationWindow><MarkShown /></AdwApplicationWindow>
+                </AdwApplication>
+            );`,
+        );
+        const stopDisplay = await startHeadlessDisplay(resolveHeadlessOptions({ size: "640x480" }));
+        try {
+            const primary = observeChild(
+                spawn(process.execPath, [cliPath, "dev", "--cwd", project.root], { stdio: "pipe" }),
+            );
+            try {
+                await primary.waitForFile(readyPath);
+                const second = observeChild(
+                    spawn(process.execPath, [cliPath, "dev", "--cwd", project.root], { stdio: "pipe" }),
+                );
+                try {
+                    expect(await second.waitForExit()).toEqual({ code: 1, signal: null });
+                    expect(second.output()).not.toContain("Entry did not mount an application");
+                } finally {
+                    await second.stop(undefined);
+                }
+            } finally {
+                await primary.stop(undefined);
+            }
+        } finally {
+            stopDisplay();
+        }
+    });
+
     it("cleans up the application when the runner's IPC connection closes", async () => {
         await withDevProcess(
             (root) => {

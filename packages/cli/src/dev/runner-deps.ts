@@ -37,14 +37,15 @@ const DEV_MODE = "development";
 const APPLICATION_POLL_INTERVAL_MS = 50;
 const PENDING_WORK_GRACE_MS = 3000;
 const registeredApplications: WeakSet<object> = new WeakSet();
+let remoteApplicationId: string | null = null;
 
-const currentApplicationId = (): string | null => Gio.Application.getDefault()?.applicationId ?? null;
+const currentApplicationId = (): string | null => Gio.Application.getDefault()?.applicationId ?? remoteApplicationId;
 
 const currentApplicationRegistrationState = (): ApplicationState => {
     const application = Gio.Application.getDefault();
 
     if (application === null) {
-        return "unregistered";
+        return remoteApplicationId === null ? "unregistered" : "remote";
     }
 
     if (!application.getIsRegistered()) {
@@ -54,6 +55,28 @@ const currentApplicationRegistrationState = (): ApplicationState => {
     registeredApplications.add(application);
 
     return application.getIsRemote() ? "remote" : "primary";
+};
+
+const watchApplicationRegistration = (): void => {
+    GObject.ObjectClass.peek(Gio.Application);
+    const signalId = GObject.signalLookup("handle-local-options", Gio.Application);
+    const hookId = GObject.signalAddEmissionHook(signalId, 0, (_hint, values) => {
+        const application = values[0]?.getObject();
+
+        if (application instanceof Gio.Application) {
+            const handlerId = application.connect("notify::is-registered", () => {
+                application.disconnect(handlerId);
+
+                if (application.getIsRegistered() && application.getIsRemote()) {
+                    remoteApplicationId = application.applicationId;
+                }
+            });
+        }
+
+        return true;
+    });
+
+    onExit(() => GObject.signalRemoveEmissionHook(signalId, hookId));
 };
 
 const watchApplicationShutdown = (onShutdown: () => void): void => {
@@ -186,6 +209,7 @@ const createDevRunnerDeps = (
     },
     stopMcpClient,
     reportApplicationError: reportMcpApplicationError,
+    watchApplicationRegistration,
     watchApplicationShutdown,
     watchUncaughtErrors,
     hasApplicationErrorHandler,
