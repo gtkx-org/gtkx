@@ -427,6 +427,33 @@ describe("scaffold command", () => {
         expect(parse(read(target, "pnpm-workspace.yaml"))).toMatchObject({ packages: ["."] });
     });
 
+    it("creates a target written from the home directory there", async () => {
+        using home = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-home-"));
+        using work = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-cwd-"));
+        vi.stubEnv("HOME", home.path);
+        const cwd = process.cwd();
+        process.chdir(work.path);
+        try {
+            expect((await create("~/Projects/example")).status).toBe(0);
+        } finally {
+            process.chdir(cwd);
+        }
+        expect(JSON.parse(read(home.path, "Projects/example/package.json"))).toHaveProperty("name", "example");
+        expect(existsSync(join(work.path, "~"))).toBe(false);
+    });
+
+    it.each([
+        { directory: "Unit Converter", suggestion: "unit-converter" },
+        { directory: "Café_Notes", suggestion: "cafe-notes" },
+    ])("names the directory it rejects as $directory and a valid one", async ({ directory, suggestion }) => {
+        using parent = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-dirname-"));
+        const result = await create(join(parent.path, directory));
+        expect(result.status).toBe(1);
+        expect(result.output).toContain(`Directory name "${directory}"`);
+        expect(result.output).toContain(`"${suggestion}"`);
+        expect(result.output).not.toContain("Project name");
+    });
+
     it("refuses to scaffold through a symlink to another directory", async () => {
         using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-links-"));
         const target = join(directory.path, "example");

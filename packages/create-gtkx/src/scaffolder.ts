@@ -3,6 +3,7 @@ import { APPLICATION_ID_MAX_LENGTH, isValidApplicationId } from "@gtkx/config/in
 import { errorMessage, HEADLESS_DISPLAY_TOOLS, missingToolLines, tryResolveExecutable, upperFirst } from "@gtkx/utils";
 import { execFileSync } from "node:child_process";
 import { lstatSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { addDependency, detectPackageManager as nypmDetectPackageManager } from "nypm";
 import { x } from "tinyexec";
@@ -150,6 +151,10 @@ const applicationIdSegment = (name: string): string => {
 const suggestApplicationId = (name: string): string =>
     `${APPLICATION_ID_PREFIX}${applicationIdSegment(name)}${APPLICATION_ID_SUFFIX}`;
 
+const HOME_PREFIX = /^~(?=$|\/)/;
+
+const expandHome = (target: string): string => target.replace(HOME_PREFIX, () => homedir());
+
 const deriveProjectName = (target: string): string => basename(resolve(process.cwd(), target));
 
 const isDirEmpty = (dir: string): boolean => {
@@ -192,16 +197,23 @@ const guardCancellation = <T>(value: T | typeof p.CANCEL_SYMBOL): T => {
     return value;
 };
 
-const validateProjectName = (value: string | undefined): string | undefined => {
-    if (!value) {
-        return "Project name is required";
+const suggestDirectoryName = (name: string): string =>
+    name
+        .normalize("NFKD")
+        .replaceAll(/\p{M}/gu, "")
+        .toLowerCase()
+        .replaceAll(/[^a-z0-9]+/g, "-")
+        .replaceAll(/^-+|-+$/g, "");
+
+const validateDirectoryName = (name: string): string | undefined => {
+    if (isValidProjectName(name)) {
+        return undefined;
     }
 
-    if (!isValidProjectName(value)) {
-        return "Project name must be lowercase letters, numbers, and hyphens only";
-    }
+    const suggestion = suggestDirectoryName(name);
+    const rule = `Directory name "${name}" becomes the package name, so use only lowercase letters, numbers, and hyphens`;
 
-    return undefined;
+    return suggestion ? `${rule}, such as "${suggestion}"` : rule;
 };
 
 const validateApplicationIdFormat = (value: string): string | undefined =>
@@ -246,10 +258,11 @@ const validateTargetDir = (target: string): string | undefined => {
         return "Project directory is required";
     }
 
-    return validateProjectName(deriveProjectName(target));
+    return validateDirectoryName(deriveProjectName(target));
 };
 
-const validateTargetAnswer = (value: string | undefined): string | undefined => validateTargetDir(value ?? "");
+const validateTargetAnswer = (value: string | undefined): string | undefined =>
+    validateTargetDir(expandHome(value ?? ""));
 
 const promptTarget = async (): Promise<string> =>
     guardCancellation(
@@ -419,10 +432,10 @@ const validateTargetAvailability = async (
 
 const resolveTarget = async (options: CreateOptions): Promise<string> => {
     if (options.name === undefined && options.isInteractive) {
-        return promptTarget();
+        return expandHome(await promptTarget());
     }
 
-    const target = options.name ?? "";
+    const target = expandHome(options.name ?? "");
     const error = validateTargetDir(target);
 
     return error === undefined ? target : fail(error);
