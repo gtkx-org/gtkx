@@ -1,8 +1,9 @@
 import type { Application } from "@gtkx/gi/gio";
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { getClassType, getInstanceType, TYPE_INVALID, typeIsA, typeParent } from "@gtkx/runtime";
-import { isDeepEqual } from "@gtkx/utils";
+import { getClassType, getInstanceType, TYPE_INVALID, typeIsA, typeName, typeParent } from "@gtkx/runtime";
+import { isDeepEqual, pickBy } from "@gtkx/utils";
+import { typeInfoFor } from "./metadata.js";
 import type { DetachInfo, ElementBehavior, PlaceInfo, Props } from "./registry.js";
 import { applyWrite } from "./signals.js";
 import { hasSameText } from "./text.js";
@@ -413,7 +414,11 @@ const rowSlot = <P extends Gtk.Widget & IndexedChildHost<Gtk.Widget>>(): Element
     });
 
 const applicationCreator = <P extends Application, C extends Props>(base: new (props: C) => P): ElementBehavior<P> => ({
-    create: (props) => new base(props as C),
+    create: (props) => {
+        const info = typeInfoFor(typeName(getClassType(base)) ?? "");
+
+        return new base(pickBy(props, (_value, name) => info.construct.has(name)) as C);
+    },
 });
 
 export {

@@ -1,5 +1,7 @@
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
 
+import * as Gio from "@gtkx/gi/gio";
+
 import * as GLib from "@gtkx/gi/glib";
 
 import * as GObject from "@gtkx/gi/gobject";
@@ -330,6 +332,17 @@ test("construct-time property values reject wrong types", () => {
     );
     // @ts-expect-error a string is not an int property value
     expect(() => new Regress.TestObj({ int: "x" })).toThrow();
+});
+
+test("construction rejects keys that name no property", () => {
+    const untitled = () => new Gio.Notification({ title: "Done" });
+    expect(untitled).toThrow(TypeError);
+    expect(untitled).toThrow("No property title on GNotification");
+    // @ts-expect-error someInteger is not a PropertiesObject property
+    expect(() => new GIMarshallingTests.PropertiesObject({ someInteger: 1 })).toThrow(
+        "No property someInteger on GIMarshallingTestsPropertiesObject",
+    );
+    expect(new GIMarshallingTests.PropertiesObject({ someInt: 3, someBoolean: true }).someInt).toBe(3);
 });
 
 test("PropertiesAccessorsObject accessor methods round trip scalar properties", () => {

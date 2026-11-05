@@ -564,7 +564,11 @@ function constructPropertyFor(
     const klass = getTypeClass(gtype);
     const pspec = findPropertySpec(klass, name);
 
-    return pspec === null ? undefined : constructValueFor(wrapper, checkFor(pspec, name), value);
+    if (pspec === null) {
+        throw new TypeError(`No property ${name} on ${typeLabel(gtype)}`);
+    }
+
+    return value === undefined ? undefined : constructValueFor(wrapper, checkFor(pspec, name), value);
 }
 
 function readStored(instance: Record<symbol, unknown>, accessor: PropertyAccessor): unknown {

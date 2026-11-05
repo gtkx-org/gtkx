@@ -109,14 +109,14 @@ function constructPropertyForEntry(
     name: string,
     value: unknown,
 ): ConstructProperty | undefined {
-    if (value === undefined) {
-        return undefined;
-    }
-
     const binding = source.bindings[name];
 
     if (binding === undefined) {
         return constructPropertyFor(source.gtype, name, value, source.wrapper);
+    }
+
+    if (value === undefined) {
+        return undefined;
     }
 
     const gValue = convertPropertyValue(source.wrapper, source.gtype, binding[0], value, () =>
@@ -136,8 +136,8 @@ function constructPropertyForEntry(
  *
  * @remarks
  * Properties declared through `registerConstructProperties` use their descriptors. Other
- * properties use the type's `GObject.ParamSpec`, accepting dashed or camelCased names. Unknown
- * properties and `undefined` values are skipped.
+ * properties use the type's `GObject.ParamSpec`, accepting dashed or camelCased names.
+ * `undefined` values are skipped.
  *
  * For types created with `registerClass`, the wrapper is bound before `constructed` runs. If
  * construction has already exposed the object to JavaScript, its existing wrapper is reused
@@ -147,7 +147,8 @@ function constructPropertyForEntry(
  * @param props Construct property names and values.
  * @param wrapper Wrapper to bind unless the object already has one.
  * @returns The supplied wrapper or the object's existing wrapper.
- * @throws {TypeError} When a ParamSpec-backed property is read-only or cannot hold the value's type.
+ * @throws {TypeError} When a name is neither a declared construct property nor a property the type
+ * installs, or when a ParamSpec-backed property is read-only or cannot hold the value's type.
  * @throws {RangeError} When a ParamSpec rejects the value.
  */
 function newObjectWithProperties<T extends object>(gtype: bigint, props: object, wrapper: T): T {
