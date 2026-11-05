@@ -173,9 +173,7 @@ const dispatchWhenActionable = async (
 ): Promise<void> => {
     await runWithActEnvironment(false, () => waitForActionable(widget, findFailure));
 
-    await runInAct(async () => {
-        await body();
-    });
+    await runInAct(body);
 };
 
 const wrapEvent = (widget: Gtk.Widget, body: () => void | PromiseLike<void>): Promise<void> =>

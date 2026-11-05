@@ -127,7 +127,9 @@ function withGlobalActEnvironment(actImplementation: ActImplementation): ActImpl
 }
 
 const runInAct = async (callback: () => unknown): Promise<void> => {
-    await act(() => callback());
+    await act(async () => {
+        await callback();
+    });
 };
 
 export { act, getIsReactActEnvironment, isUncaughtError, runWithActEnvironment, runInAct, setIsReactActEnvironment };
