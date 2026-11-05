@@ -25,6 +25,8 @@ import settings from "../data/com.example.Tasks.gschema.xml";
 
 `?font` bundles a font and returns its family name. GTKX makes bundled fonts available automatically. Import a font for its side effect when it only supplies fallback characters; see [CSS](/v2/guide/css) for choosing a family in styles.
 
+The scaffold's `src/gtkx-env.d.ts` types these queries, `?raw` for a file's text, `?inline` for content inlined into the bundle, and stylesheet imports. It types only what GTKX builds, so an asset imported without a query, or with another Vite query such as `?worker`, fails `tsc` as well as `gtkx build`.
+
 GTKX derives resource paths from the configured application ID: `com.example.Tasks` becomes `/com/example/Tasks`. Overriding an application's `applicationId` prop alone does not move bundled resources; supply a matching `resourceBasePath` when using another resource tree.
 
 Production builds load their `gtkx.gresource` file automatically.

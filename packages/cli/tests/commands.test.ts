@@ -394,6 +394,53 @@ describe("CLI commands", () => {
         );
     });
 
+    it("types the asset imports a build accepts under a full library check", async () => {
+        using project = createProject();
+        project.write(
+            "tsconfig.json",
+            JSON.stringify({
+                compilerOptions: {
+                    module: "NodeNext",
+                    strict: true,
+                    skipLibCheck: false,
+                    lib: ["esnext"],
+                    types: ["node"],
+                    noEmit: true,
+                },
+                include: ["src"],
+            }),
+        );
+        project.write("src/gtkx-env.d.ts", '/// <reference types="@gtkx/cli/env" />');
+        project.write(
+            "src/index.ts",
+            `import "./theme.css";
+            import iconName from "../data/app.svg?icon";
+            import fontFamily from "../data/display.ttf?font";
+            import resourcePath from "../data/app.svg?resource";
+            import templatePath from "../data/template.txt?url";
+            import template from "../data/template.txt?raw";
+            import iconData from "../data/app.svg?inline";
+            import stylesheetPath from "./theme.css?url";
+            const values: string[] = [iconName, fontFamily, resourcePath, templatePath, template, iconData, stylesheetPath];
+            export const summary = [...values, import.meta.env.MODE, String(import.meta.hot === undefined)].join();`,
+        );
+        const tsc = fileURLToPath(new URL("../../../node_modules/.bin/tsc", import.meta.url));
+        const typecheck = async () => {
+            try {
+                await promisify(execFile)(tsc, ["-p", ".", "--pretty", "false"], {
+                    cwd: project.root,
+                    timeout: 180_000,
+                });
+                return "";
+            } catch (error) {
+                return String((error as { stdout?: unknown }).stdout);
+            }
+        };
+        expect(await typecheck()).toBe("");
+        project.write("src/logo.ts", 'export { default } from "../data/app.svg";');
+        expect(await typecheck()).toMatch(/^src\/logo\.ts\(1,25\): error TS2307: [^\n]*\n$/);
+    });
+
     it("applies imported CSS in development and production", async () => {
         using project = createProject({ codegen: true });
         const readyPath = join(project.root, "style.txt");
