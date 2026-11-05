@@ -2295,12 +2295,13 @@ describe("CLI commands", () => {
             project,
             readyPath,
             `import * as Gdk from "@gtkx/gi/gdk";
-            import { GtkBox, GtkButton, GtkColorDialog, GtkColorDialogButton } from "@gtkx/jsx/gtk";
+            import { GtkBox, GtkButton, GtkColorDialog, GtkColorDialogButton, GtkLabel } from "@gtkx/jsx/gtk";
             const accent = new Gdk.RGBA({ red: 1, green: 0.5, blue: 0, alpha: 1 });
             export const Content = () => (
                 <GtkBox>
                     <GtkButton iconName="list-add-symbolic" tooltipText="New Note" />
                     <GtkColorDialogButton tooltipText="Accent" rgba={accent} dialog={<GtkColorDialog />} />
+                    <GtkLabel label="0.3048" accessibleLabel="Result value" />
                 </GtkBox>
             );`,
         );
@@ -2308,6 +2309,9 @@ describe("CLI commands", () => {
             await withSession("dev", project.root, readyPath, async () => {
                 expect(await queryWidgets(client, { by: "name", value: "New Note" })).toEqual([
                     expect.objectContaining({ type: "Button", name: "New Note" }),
+                ]);
+                expect(await queryWidgets(client, { by: "name", value: "Result value" })).toEqual([
+                    expect.objectContaining({ type: "Label", text: "0.3048" }),
                 ]);
                 const [swatch] = await queryWidgets(client, { by: "name", value: "Accent" });
                 const props = await callTool(client, "gtkx_get_widget_props", {

@@ -324,9 +324,10 @@ function runAccessibleNameQuery(testing: TestingModule, params: QueryParams): Wi
     return (root) => {
         const widgets = [...testing.getRoles(root).values()].flat();
         const roles = new Set(widgets.map((widget) => widget.getAccessibleRole()));
-        roles.delete(Gtk.AccessibleRole.LABEL);
+        const hasLabels = roles.delete(Gtk.AccessibleRole.LABEL);
+        const ordered = hasLabels ? [...roles, Gtk.AccessibleRole.LABEL] : [...roles];
 
-        return [...roles].flatMap((role) => testing.queryAllByRole(root, role, options));
+        return ordered.flatMap((role) => testing.queryAllByRole(root, role, options));
     };
 }
 
