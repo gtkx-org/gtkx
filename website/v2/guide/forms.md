@@ -71,6 +71,28 @@ import { useWatch } from "@gtkx/forms";
 const theme = useWatch({ control: form.control, name: "theme" });
 ```
 
+React Hook Form also updates nested entries of `formState.errors` in place, and the compiler caches what a component renders from them. A message read below a field array or a nested object, such as `errors.stops?.root?.message`, can stay hidden when the error joins one already reported beside it, for example a field array `validate` rule failing on submit after an empty row was reported. Add the `"use no memo"` directive at the top of a component that renders such messages, so React re-renders it from the current errors:
+
+```tsx
+import { useFieldArray, useForm } from "@gtkx/forms";
+import { GtkLabel } from "@gtkx/jsx/gtk";
+
+type Trip = { stops: { city: string; nights: number }[] };
+
+const StopsError = () => {
+    "use no memo";
+    const form = useForm<Trip>({ defaultValues: { stops: [] } });
+    useFieldArray({
+        control: form.control,
+        name: "stops",
+        rules: { validate: (stops) => stops.length <= 6 || "Plan at most six stops" },
+    });
+    const message = form.formState.errors.stops?.root?.message;
+
+    return message ? <GtkLabel cssClasses={["error"]} label={message} /> : null;
+};
+```
+
 ## Choose a row
 
 | Row                            | Stored value |
