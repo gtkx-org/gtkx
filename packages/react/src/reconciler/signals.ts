@@ -11,11 +11,13 @@ type PendingWrite = string | null | typeof CHILD_PLACEMENT;
 
 const NOTIFY_SIGNAL = "notify";
 const NOTIFY_DETAIL_PREFIX = "notify::";
+const SHUTDOWN_SIGNAL = "shutdown";
 const CHILD_PLACEMENT = Symbol("child placement");
 const pendingWrites: PendingWrite[] = [];
 const queuedNotifies: Map<HandlerRecord, Map<string, () => unknown>> = new Map();
 const valuesBeforePlacement: Map<HandlerRecord, unknown> = new Map();
 const canonicalNames: Map<string, string> = new Map();
+const retainedShutdownHandlers: Set<HandlerRecord> = new Set();
 let isFlushScheduled = false;
 
 const isApplyingWrite = (): boolean => pendingWrites.length > 0;
@@ -238,10 +240,32 @@ const disconnectHandler = (target: SignalTarget, prop: string): void => {
     target.handlers.delete(prop);
 };
 
-const disconnectAllHandlers = (target: SignalTarget): void => {
-    for (const record of target.handlers.values()) {
+const retainUntilShutdown = (record: HandlerRecord): void => {
+    const release = (): undefined => {
         offSignal(record.object, record.signal, record.wrapped);
+        offSignal(record.object, SHUTDOWN_SIGNAL, release);
+        retainedShutdownHandlers.delete(record);
+
+        return undefined;
+    };
+
+    retainedShutdownHandlers.add(record);
+    onSignal(record.object, SHUTDOWN_SIGNAL, release);
+};
+
+/**
+ * Disconnects every handler `target` holds. With `isShuttingDown`, a `shutdown` handler stays connected until the
+ * object emits `shutdown` once, so an application unmounted by `quit()` still runs it when GLib shuts it down.
+ */
+const disconnectAllHandlers = (target: SignalTarget, isShuttingDown = false): void => {
+    for (const record of target.handlers.values()) {
         queuedNotifies.delete(record);
+
+        if (isShuttingDown && getSignalBaseName(record.signal) === SHUTDOWN_SIGNAL) {
+            retainUntilShutdown(record);
+        } else {
+            offSignal(record.object, record.signal, record.wrapped);
+        }
     }
 
     target.handlers.clear();

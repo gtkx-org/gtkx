@@ -1,3 +1,4 @@
+import * as Gio from "@gtkx/gi/gio";
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { type AnyClass, getClassType, typeName } from "@gtkx/runtime";
@@ -202,8 +203,11 @@ function createPriorityTracker(): PriorityTracker {
     };
 }
 
+const isRunningApplication = (object: GObject.Object): boolean =>
+    object instanceof Gio.Application && object.getIsRegistered() && !object.getIsRemote();
+
 const detachElement = (instance: ElementNode): void => {
-    disconnectAllHandlers(instance);
+    disconnectAllHandlers(instance, isRunningApplication(instance.object));
     discardAccessible(instance);
     releaseTextResource(instance);
 

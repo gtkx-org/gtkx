@@ -13,7 +13,7 @@ import { createRoot, quit, rootElement, useApplication } from "@gtkx/react";
 import { act, render, userEvent } from "@gtkx/testing";
 import process from "node:process";
 import { createRef, StrictMode, useEffect } from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { startApplicationOwner, stopApplicationOwners } from "../helpers/application-owner.js";
 import { createApplicationRenderer } from "../helpers/application-render.js";
 import { createAppIdFactory } from "../helpers/unique-name.js";
@@ -664,6 +664,30 @@ describe("render - Application lifecycle", () => {
         expect(shutdowns).toBe(1);
         expect(cleanups).toBe(1);
         expect(Gio.Application.getDefault()).toBeNull();
+    });
+
+    it("runs its shutdown handler when quit closes its last window", async () => {
+        const windowRef = createRef<Adw.ApplicationWindow>();
+        let shutdowns = 0;
+
+        await render(
+            <AdwApplication
+                applicationId={uniqueAppId()}
+                flags={APP_FLAGS}
+                onShutdown={() => {
+                    shutdowns += 1;
+                }}
+            >
+                <AdwApplicationWindow ref={windowRef} onCloseRequest={quit} />
+            </AdwApplication>,
+            { container: rootElement },
+        );
+        const window = requireWidget(windowRef.current, "Application window");
+
+        await act(() => window.close());
+        await vi.waitFor(() => expect(Gio.Application.getDefault()).toBeNull());
+
+        expect(shutdowns).toBe(1);
     });
 
     it("keeps a windowless application alive for work started by an effect", async () => {
