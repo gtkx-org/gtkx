@@ -186,6 +186,11 @@ import x64Addon from "@node-rs/xxhash-linux-x64-gnu/xxhash.linux-x64-gnu.node?ur
 const addon = require(process.arch === "arm64" ? arm64Addon : x64Addon) as { xxh64(input: string): bigint };
 ```
 
+Package managers treat a prebuild package for another CPU differently. pnpm installs it. Yarn skips it unless
+`supportedArchitectures` in `.yarnrc.yml` lists that CPU. npm rejects it with `EBADPLATFORM`, also when a
+[source Flatpak](#publishing-on-flathub) runs `npm ci` on another architecture, so npm projects copy each
+prebuild into the project and import it by path, as in the first example.
+
 ## Third-party notices
 
 Packages contain the application bundle, Node.js, GTKX's native addon, and the imported resources, schemas,
