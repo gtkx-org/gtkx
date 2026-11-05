@@ -1,5 +1,13 @@
 import { runCommand } from "citty";
-import { existsSync, mkdirSync, mkdtempDisposableSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+    existsSync,
+    mkdirSync,
+    mkdtempDisposableSync,
+    readFileSync,
+    rmSync,
+    symlinkSync,
+    writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { stdout, stderr } from "test-console";
@@ -462,6 +470,40 @@ describe("GTKX version skew", () => {
         const output = await invoke(["build", "--cwd", project.root]);
 
         expect(output).toContain("@gtkx/i18n");
+        expect(output).toContain("gtkx upgrade");
+    });
+
+    it("warns when a workspace package the project depends on resolves other GTKX versions", async () => {
+        using project = createProject();
+        project.write(
+            "package.json",
+            JSON.stringify({
+                name: "cli-example",
+                version: "1.0.0",
+                type: "module",
+                dependencies: { "@example/charts": "*", "@gtkx/cli": "^2.0.0", "@gtkx/react": "^2.0.0" },
+            }),
+        );
+        project.write(
+            "packages/charts/package.json",
+            JSON.stringify({
+                name: "@example/charts",
+                version: "0.0.1",
+                peerDependencies: { "@gtkx/cairo": "^2.0.0" },
+            }),
+        );
+        mkdirSync(join(project.root, "node_modules/@example"));
+        symlinkSync("../../packages/charts", join(project.root, "node_modules/@example/charts"), "dir");
+
+        expect(await invoke(["build", "--cwd", project.root])).not.toContain("gtkx upgrade");
+
+        project.write(
+            "packages/charts/node_modules/@gtkx/cairo/package.json",
+            JSON.stringify({ name: "@gtkx/cairo", version: "2.0.0-beta.11" }),
+        );
+        const output = await invoke(["build", "--cwd", project.root]);
+
+        expect(output).toContain("@gtkx/cairo 2.0.0-beta.11");
         expect(output).toContain("gtkx upgrade");
     });
 });
