@@ -172,6 +172,42 @@ describe("development process shutdown", () => {
         }
     });
 
+    it("restarts without a module error when a file changes while the entry is still loading", async () => {
+        using project = createProject();
+        const readyPath = join(project.root, "ready.txt");
+        const launchesPath = join(project.root, "launches.txt");
+        project.write("src/later.ts", 'export const later = "loaded";');
+        project.write(
+            "src/index.ts",
+            `import { appendFileSync, writeFileSync } from "node:fs";
+            appendFileSync(${JSON.stringify(launchesPath)}, "x");
+            writeFileSync(${JSON.stringify(readyPath)}, String(process.pid));
+            for (let round = 0; ; round++) {
+                const specifier = "./later.js?round=" + String(round);
+                await import(/* @vite-ignore */ specifier);
+            }`,
+        );
+        const stopDisplay = await startHeadlessDisplay(resolveHeadlessOptions({ size: "640x480" }));
+        try {
+            const running = observeChild(
+                spawn(process.execPath, [cliPath, "dev", "--cwd", project.root], { stdio: "pipe" }),
+            );
+            try {
+                await running.waitForFile(readyPath);
+                project.write("src/later.ts", 'export const later = "edited";');
+                await expect.poll(() => readFileSync(launchesPath, "utf8"), { timeout: 30_000 }).toBe("xx");
+                expect(running.output()).not.toContain("Error when evaluating");
+                expect(running.output()).not.toContain("Application error");
+                expect(running.child.kill("SIGTERM")).toBe(true);
+                expect(await running.waitForExit()).toEqual({ code: 0, signal: null });
+            } finally {
+                await running.stop(undefined);
+            }
+        } finally {
+            stopDisplay();
+        }
+    });
+
     it("keeps the session bus available during cleanup after a terminal interrupt", async () => {
         using project = createProject({ codegen: true, libraries: ["Gio-2.0"] });
         const readyPath = join(project.root, "ready.txt");

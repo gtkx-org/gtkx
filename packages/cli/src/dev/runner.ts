@@ -72,6 +72,8 @@ type DevRunnerOptions = {
 
 type ShutdownController = {
     isShuttingDown: () => boolean;
+    isRestarting: () => boolean;
+    beginRestart: () => void;
     shutdown: (requestQuit: () => void | Promise<void>) => Promise<void>;
 };
 
@@ -154,6 +156,7 @@ const parkSession = (session: DevSession): void => {
 };
 
 const requestRestart = async (session: DevSession): Promise<never> => {
+    session.controller.beginRestart();
     session.deps.log("Full restart (process restart)");
 
     try {
@@ -535,9 +538,15 @@ const createShutdownController = (
     logger: DevLogger,
 ): ShutdownController => {
     let isShuttingDown = false;
+    let isRestarting = false;
 
     return {
         isShuttingDown: () => isShuttingDown,
+        isRestarting: () => isRestarting,
+        beginRestart: () => {
+            isRestarting = true;
+            logger.silenceErrors();
+        },
         shutdown: async (requestQuit: () => void | Promise<void>): Promise<void> => {
             if (isShuttingDown) {
                 return;
@@ -939,7 +948,7 @@ const loadEntry = async (
             await session.storybook.initialize();
         }
     } catch (error_) {
-        if (session.controller.isShuttingDown()) {
+        if (session.controller.isShuttingDown() || session.controller.isRestarting()) {
             session.failure.fail();
 
             return;
