@@ -1,6 +1,7 @@
 import { missingToolLines, tryResolveExecutable, warn } from "@gtkx/utils";
 import { spawnSync } from "node:child_process";
 import type { DeployTool } from "./types.js";
+import { configuredNfpm } from "./vendored/nfpm.js";
 
 type ToolReport = {
     missingRequired: DeployTool[];
@@ -102,6 +103,13 @@ const TAR: DeployTool = {
     isOptional: false,
 };
 
+const configuredNfpmTool = (root: string, override: string): DeployTool => ({
+    command: override,
+    purpose: "packages Debian and RPM targets, as set by deploy.tools.nfpm",
+    isOptional: false,
+    isPresent: () => tryResolveExecutable(configuredNfpm(root, override)) !== undefined,
+});
+
 const isFlatpakRefInstalled = (ref: string): boolean => {
     const flatpak = tryResolveExecutable(FLATPAK.command);
 
@@ -166,6 +174,7 @@ export {
     FLATPAK_NODE_GENERATOR_PNPM,
     GENERATOR_PNPM_OPTION,
     assertTools,
+    configuredNfpmTool,
     DESKTOP_FILE_VALIDATE,
     FILE_TOOL,
     FLATPAK,

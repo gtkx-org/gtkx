@@ -47,6 +47,7 @@ import { assertStandaloneProject, detectPackageManager } from "./targets/flatpak
 import {
     APPSTREAMCLI,
     assertTools,
+    configuredNfpmTool,
     DESKTOP_FILE_VALIDATE,
     FLATPAK_NODE_GENERATOR,
     FLATPAK_NODE_GENERATOR_PNPM,
@@ -253,6 +254,18 @@ const sourceModeTools = (targets: DeployTarget[], settings: DeploySettings): Dep
     return detectPackageManager(settings) === "pnpm" ? [FLATPAK_NODE_GENERATOR_PNPM] : [FLATPAK_NODE_GENERATOR];
 };
 
+const NFPM_TARGETS = new Set(["deb", "rpm"]);
+
+const packagingToolsFor = (targets: DeployTarget[], settings: DeploySettings): DeployTool[] => {
+    const nfpm = settings.deploy.tools?.nfpm;
+
+    if (nfpm === undefined || targets.every((target) => !NFPM_TARGETS.has(target.name))) {
+        return [];
+    }
+
+    return [configuredNfpmTool(settings.paths.root, nfpm)];
+};
+
 const isNodeRequired = (targets: DeployTarget[], settings: DeploySettings): boolean =>
     !(settings.deploy.flatpak?.mode === "source" && targets.every((target) => target.name === FLATPAK_TARGET));
 
@@ -307,7 +320,11 @@ const preflight = ({ plan, settings, shouldPrintManifests, shouldSkipBuild }: Pr
 
     const packagerTools = shouldPrintManifests
         ? []
-        : [...runtimeToolsFor(targets, settings, arches), ...targets.flatMap((target) => target.tools)];
+        : [
+              ...runtimeToolsFor(targets, settings, arches),
+              ...targets.flatMap((target) => target.tools),
+              ...packagingToolsFor(targets, settings),
+          ];
 
     const required = [
         DESKTOP_FILE_VALIDATE,
