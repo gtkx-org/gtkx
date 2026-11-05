@@ -380,8 +380,9 @@ const pluralMessage = (
 
     if (singular === plural && !variants.some((variant) => variant.locations.some(isWrittenOutPlural))) {
         throw new Error(
-            `Both plural forms of "${msgid}" are "${singular}". Pass defaultValue_one and defaultValue_other options, ` +
-                "even when they read the same; GTKX 2 removed the t(singular, plural, options) overload.",
+            `Both plural forms of "${msgid}" are "${singular}". Pass defaultValue_one and defaultValue_other options ` +
+                "(through tOptions on Trans), even when they read the same; GTKX 2 removed the " +
+                "t(singular, plural, options) overload.",
         );
     }
 
@@ -1044,13 +1045,18 @@ const registerEntryLocation = (
     references.entryLocations.set(key, locations);
 };
 
-const writesOutPluralForms = (call: types.CallExpression): boolean => {
-    const options = babelObjectExpression(call.arguments[1]);
+const writesOutPluralForms = (options: types.ObjectExpression | null): boolean =>
+    babelNamedProperty(options, "defaultValue_one") !== null &&
+    babelNamedProperty(options, "defaultValue_other") !== null;
 
-    return (
-        babelNamedProperty(options, "defaultValue_one") !== null &&
-        babelNamedProperty(options, "defaultValue_other") !== null
-    );
+const registerWrittenOutPlural = (
+    point: SourcePoint | null,
+    options: types.ObjectExpression | null,
+    references: TranslationReferences,
+): void => {
+    if (point !== null && writesOutPluralForms(options)) {
+        references.writtenPluralLocations.add(sourceLocationKey(point.line, point.column));
+    }
 };
 
 const registerCallReference = (
@@ -1062,10 +1068,7 @@ const registerCallReference = (
     const point = registerSourceLocation(firstArgument ?? callPath.node, references);
 
     registerEntryLocation(extractedEntryKey(callPath.node, keyPrefix), point, references);
-
-    if (point !== null && writesOutPluralForms(callPath.node)) {
-        references.writtenPluralLocations.add(sourceLocationKey(point.line, point.column));
-    }
+    registerWrittenOutPlural(point, babelObjectExpression(callPath.node.arguments[1]), references);
 };
 
 const parserPlugins = (lang: ReturnType<typeof sourceLanguage>): ("decorators" | "jsx" | "typescript")[] => [
@@ -1204,7 +1207,8 @@ const registerTranslationElement = (
     }
 
     if (kind === "canonical") {
-        registerSourceLocation(elementPath.node, references);
+        const point = registerSourceLocation(elementPath.node, references);
+        registerWrittenOutPlural(point, transOptions(elementPath.node), references);
 
         return true;
     } else if (TRANS_ELEMENTS.has(name.node.name)) {
@@ -1411,6 +1415,20 @@ const assertSupportedTranslationOptions = (
 
 const isNamedJsxAttribute = (attribute: types.JSXAttribute, name: string): boolean =>
     attribute.name.type === "JSXIdentifier" && attribute.name.name === name;
+
+const transOptions = (node: types.JSXOpeningElement): types.ObjectExpression | null => {
+    for (const attribute of node.attributes) {
+        if (
+            types.isJSXAttribute(attribute) &&
+            isNamedJsxAttribute(attribute, "tOptions") &&
+            types.isJSXExpressionContainer(attribute.value)
+        ) {
+            return babelObjectExpression(attribute.value.expression);
+        }
+    }
+
+    return null;
+};
 
 const assertSupportedTransKey = (attribute: types.JSXAttribute): void => {
     if (!isNamedJsxAttribute(attribute, "i18nKey")) {

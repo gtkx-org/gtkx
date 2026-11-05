@@ -447,11 +447,16 @@ function Local(t, Trans) {
             "src/messages.ts",
             `${T_IMPORT}\nt("{{count}} installed", { count, defaultValue_one: "{{count}} installed", defaultValue_other: "{{count}} installed" });`,
         );
+        project.write(
+            "src/selection.tsx",
+            `${TRANS_IMPORT}\nexport const Selection = ({ count }) => <Trans i18nKey="{{count}} selected" count={count} tOptions={{ defaultValue_one: "{{count}} selected", defaultValue_other: "{{count}} selected" }} />;`,
+        );
 
         await extract(project.root);
 
         expect(readMessages(project.root).map((message) => [message.msgid, message.msgid_plural])).toEqual([
             ["{{count}} installed", "{{count}} installed"],
+            ["{{count}} selected", "{{count}} selected"],
         ]);
         const italian = po.parse(readFileSync(join(project.root, "po/it.po")));
         expect(italian.headers["Plural-Forms"]).toMatch(/nplurals=2/);
