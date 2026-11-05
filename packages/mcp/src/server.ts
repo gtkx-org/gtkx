@@ -498,8 +498,10 @@ function buildInteractionTools(appRouter: AppRouter): Tool[] {
             kind: "action",
             description:
                 "Type text into an editable widget like Entry or TextView. A newline is typed as text and does " +
-                "not submit; use `gtkx_press_keys` with {Enter} to activate an entry. A widget behind an open " +
-                "dialog is refused with an error naming the dialog.",
+                "not submit; use `gtkx_press_keys` with {Enter} to activate an entry. Typing replaces text that " +
+                "is already selected, as it does for a user: GTK selects an entry's whole text when focus moves " +
+                "into it, such as when a dialog opens on it. Pass `clear` with the full text to set a value. A " +
+                "widget behind an open dialog is refused with an error naming the dialog.",
             inputSchema: typeShape,
             handler: async ({ applicationId, appTimeout, ...params }) => {
                 await appRouter.sendToApp(applicationId, "widget.type", params, appTimeout);
