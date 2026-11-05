@@ -396,46 +396,82 @@ const pluralMessage = (
     };
 };
 
-const pluralMessages = (root: string, entries: ExtractedKey[], isWrittenOutPlural: LocationTest): SourceMessage[] =>
-    groupedPlurals(root, entries).map((group) =>
-        atExtractedLocation(
-            root,
-            group.variants.flatMap((variant) => variant.locations),
-            () => pluralMessage(group, isWrittenOutPlural),
-        ),
-    );
+const collectAtExtractedLocation = <T>(
+    errors: SourceExtractionError[],
+    root: string,
+    locations: SourceLocation[],
+    operation: () => T,
+): T | undefined => {
+    try {
+        return atExtractedLocation(root, locations, operation);
+    } catch (error) {
+        errors.push(
+            error instanceof SourceExtractionError
+                ? error
+                : new SourceExtractionError(sourceErrorMessage(error), { cause: error }),
+        );
 
-const assertCardinal = (entry: ExtractedKey): void => {
-    if (entry.isOrdinal === true) {
-        throw new Error("GNU gettext catalogs do not support i18next ordinal plurals");
+        return undefined;
     }
 };
 
+const pluralMessages = (
+    errors: SourceExtractionError[],
+    root: string,
+    entries: ExtractedKey[],
+    isWrittenOutPlural: LocationTest,
+): SourceMessage[] =>
+    groupedPlurals(root, entries).flatMap(
+        (group) =>
+            collectAtExtractedLocation(
+                errors,
+                root,
+                group.variants.flatMap((variant) => variant.locations),
+                () => pluralMessage(group, isWrittenOutPlural),
+            ) ?? [],
+    );
+
+const entryKind = (entry: ExtractedKey): "plural" | "point" => {
+    if (entry.isOrdinal === true) {
+        throw new Error("GNU gettext catalogs do not support i18next ordinal plurals");
+    }
+
+    if (entry.isExpandedPlural === true) {
+        return "plural";
+    }
+
+    if (entry.hasCount === true) {
+        throw new Error("Count-based translations require an explicit plural source string");
+    }
+
+    return "point";
+};
+
 const sourceMessages = (root: string, entries: ExtractedKey[], isWrittenOutPlural: LocationTest): SourceMessage[] => {
+    const errors: SourceExtractionError[] = [];
     const points: ExtractedKey[] = [];
     const plurals: ExtractedKey[] = [];
 
     for (const entry of entries) {
-        atExtractedLocation(root, entry.locations ?? [], () => {
-            assertCardinal(entry);
-        });
+        const kind = collectAtExtractedLocation(errors, root, entry.locations ?? [], () => entryKind(entry));
 
-        if (entry.isExpandedPlural === true) {
+        if (kind === "plural") {
             plurals.push(entry);
-            continue;
+        } else if (kind === "point") {
+            points.push(entry);
         }
-
-        if (entry.hasCount === true) {
-            throw new Error("Count-based translations require an explicit plural source string");
-        }
-
-        points.push(entry);
     }
 
-    return [
-        ...points.map((entry) => atExtractedLocation(root, entry.locations ?? [], () => pointMessage(entry))),
-        ...pluralMessages(root, plurals, isWrittenOutPlural),
+    const messages = [
+        ...points.flatMap(
+            (entry) => collectAtExtractedLocation(errors, root, entry.locations ?? [], () => pointMessage(entry)) ?? [],
+        ),
+        ...pluralMessages(errors, root, plurals, isWrittenOutPlural),
     ];
+
+    throwCollectedErrors(errors);
+
+    return messages;
 };
 
 const compareMessages = (left: SourceMessage, right: SourceMessage): number =>

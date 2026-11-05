@@ -440,6 +440,22 @@ function Local(t, Trans) {
         await expect(failure).rejects.toThrow("src/window.tsx:2:3: Translation keys must be string literals");
     });
 
+    it("reports every message without a catalog entry shape in one run", async () => {
+        using project = createProject();
+        project.write("po/LINGUAS", "");
+        project.write(
+            "src/strings.ts",
+            `${T_IMPORT}\nt("{{count}} expense", "{{count}} expenses", { count });\nt("{{count}} member", "{{count}} members", { count });`,
+        );
+        project.write("src/window.tsx", `${T_IMPORT}\nt("{{count}} installed", { count });`);
+
+        const failure = extract(project.root);
+
+        await expect(failure).rejects.toThrow('src/strings.ts:2:3: Both plural forms of "{{count}} expense"');
+        await expect(failure).rejects.toThrow('src/strings.ts:3:3: Both plural forms of "{{count}} member"');
+        await expect(failure).rejects.toThrow('src/window.tsx:2:3: Both plural forms of "{{count}} installed"');
+    });
+
     it("keeps written-out plural forms that read the same in English for languages that need two", async () => {
         using project = createProject();
         project.write("po/LINGUAS", "it\n");
