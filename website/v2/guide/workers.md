@@ -20,7 +20,7 @@ worker.on("message", (rows) => setRows(rows));
 
 For `gtkx build` to emit the worker, its URL must appear directly inside `new Worker(...)` and name the source file through a relative path.
 
-During `gtkx dev` and Vitest, Node loads the worker's source directly, and `gtkx dev` restarts the app when a file the worker loaded changes. Its relative imports must name source files or [`?url` and `?raw` assets](#importing-files-in-a-worker), and its syntax must work with [Node's type stripping](https://nodejs.org/api/typescript.html#type-stripping). For TypeScript imports, add `"allowImportingTsExtensions": true` to the scaffold's `compilerOptions`; it already uses `NodeNext` and `noEmit`. Exercise workers in tests as well as builds, since the production bundle can accept syntax that direct loading cannot.
+During `gtkx dev` and Vitest, Node loads the worker's source directly, and `gtkx dev` restarts the app when a file the worker loaded changes. Its relative imports must name source files or [`?url`, `?raw` and `?inline` assets](#importing-files-in-a-worker), and its syntax must work with [Node's type stripping](https://nodejs.org/api/typescript.html#type-stripping). For TypeScript imports, add `"allowImportingTsExtensions": true` to the scaffold's `compilerOptions`; it already uses `NodeNext` and `noEmit`. Exercise workers in tests as well as builds, since the production bundle can accept syntax that direct loading cannot.
 
 To have `tsc` report that syntax, add `"erasableSyntaxOnly": true` to `compilerOptions` as well. `tsc` then rejects parameter properties such as `constructor(private readonly path: string)`, enums, namespaces with code and other TypeScript that Node cannot strip, which would otherwise typecheck and build and only fail with a `SyntaxError` when the worker starts in `gtkx dev` or Vitest. The option applies to the whole project, including code that only Vite compiles.
 
@@ -37,7 +37,7 @@ import captionsPath from "../../data/captions.txt?url";
 const captions = readFileSync(captionsPath, "utf8");
 ```
 
-The import provides a real file path: the source file during `gtkx dev` and Vitest, and the copy in `dist/` after `gtkx build`. A `?raw` import provides the file's text instead, read from the source file during `gtkx dev` and Vitest and inlined by `gtkx build`. During `gtkx dev` and Vitest, a worker started with its own `execArgv` must include `process.execArgv` to keep this support. `?resource`, `?icon` and `?font` make assets available to GTK, so import them from the main thread. See [Assets](/v2/guide/assets#import-project-data).
+The import provides a real file path: the source file during `gtkx dev` and Vitest, and the copy in `dist/` after `gtkx build`. A `?raw` import provides the file's text instead, and an `?inline` import a `data:` URL of its contents, such as an image to embed in a generated HTML or SVG file. Both read the source file during `gtkx dev` and Vitest and are inlined by `gtkx build`. During `gtkx dev` and Vitest, a worker started with its own `execArgv` must include `process.execArgv` to keep this support. `?resource`, `?icon` and `?font` make assets available to GTK, so import them from the main thread. See [Assets](/v2/guide/assets#import-project-data).
 
 ## Standalone workers that own GTKX
 

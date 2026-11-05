@@ -501,7 +501,8 @@ describe("CLI commands", () => {
             import { label } from "@example/shared";
             import notesPath from "../../data/notes.txt?url";
             import notes from "../../data/notes.txt?raw";
-            parentPort?.postMessage({ path: notesPath, text: readFileSync(notesPath, "utf8"), raw: notes, label });`;
+            import notesData from "../../data/notes.txt?inline";
+            parentPort?.postMessage({ path: notesPath, text: readFileSync(notesPath, "utf8"), raw: notes, inline: notesData, label });`;
         writeFileSync(
             join(shared.path, "package.json"),
             JSON.stringify({ name: "@example/shared", type: "module", exports: "./index.ts" }),
@@ -534,6 +535,7 @@ describe("CLI commands", () => {
                     path: fileURLToPath(new URL("../data/notes.txt", import.meta.url)),
                     text: "worker asset",
                     raw: "worker asset",
+                    inline: "data:text/plain;base64,d29ya2VyIGFzc2V0",
                     label: "shared",
                 });
             });`,
@@ -550,6 +552,7 @@ describe("CLI commands", () => {
                 path: sourcePath,
                 text: "worker asset",
                 raw: "worker asset",
+                inline: "data:text/plain;base64,d29ya2VyIGFzc2V0",
                 label: "shared",
             });
             project.write("data/notes.txt", "edited asset");
@@ -557,6 +560,7 @@ describe("CLI commands", () => {
                 path: sourcePath,
                 text: "edited asset",
                 raw: "edited asset",
+                inline: "data:text/plain;base64,ZWRpdGVkIGFzc2V0",
                 label: "shared",
             });
             project.write("data/notes.txt", "worker asset");
@@ -586,6 +590,7 @@ describe("CLI commands", () => {
         await promisify(execFile)(process.execPath, [join(project.root, "dist/bundle.mjs")], { timeout: 30_000 });
         expect(result().text).toBe("worker asset");
         expect(result().raw).toBe("worker asset");
+        expect(result().inline).toBe("data:text/plain;base64,d29ya2VyIGFzc2V0");
         expect(result().label).toBe("shared");
         expect(result().path).toMatch(new RegExp(`^${RegExp.escape(join(project.root, "dist"))}/`));
     });

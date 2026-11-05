@@ -597,6 +597,9 @@ importers:
       i18next-cli:
         specifier: 1.80.5
         version: 1.80.5(@types/node@26.5.1)(react@19.3.1)(typescript@6.0.3)
+      mrmime:
+        specifier: ^2.0.1
+        version: 2.0.1
       nypm:
         specifier: ^0.6.12
         version: 0.6.12
@@ -6455,6 +6458,10 @@ packages:
     resolution: {integrity: sha512-vVqVZQyf3WLx2Shd0qJ9xuvqgAyKPLAiqITEtqW0oIUjzo3PePDd6fW9iFz30ef7Ysp/oiWqbhszeGWW2T6Gzw==}
     engines: {node: '>=10'}
     hasBin: true
+
+  mrmime@2.0.1:
+    resolution: {integrity: sha512-Y3wQdFg2Va6etvQ5I82yUhGdsKrcYox6p7FfL1LbK2J4V01F9TGlepTIhnK24t7koZibmg82KGglhA1XK5IsLQ==}
+    engines: {node: '>=10'}
 
   ms@2.0.0:
     resolution: {integrity: sha512-Tpp60P6IUJDTuOq/5Z8cdskzJujfwqfOTkrwIwj7IRISpnkJnT6SyJ4PCPnGMoFjC9ddhal5KVIYtAt97ix05A==}
@@ -13091,6 +13098,8 @@ snapshots:
 
   mkdirp@1.0.4:
     optional: true
+
+  mrmime@2.0.1: {}
 
   ms@2.0.0:
     optional: true
