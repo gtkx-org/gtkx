@@ -87,7 +87,7 @@ const renderApplication = createApplicationRenderer("org.gtkx.useapplicationtest
 const uniqueAppId4 = createAppIdFactory("org.gtkx.remoteapp");
 const mounted: Root[] = [];
 
-const TEARDOWNS: Teardown[] = [
+const ROOT_TEARDOWNS: Teardown[] = [
     {
         name: "unmount",
         tearDown: (root) => {
@@ -100,6 +100,10 @@ const TEARDOWNS: Teardown[] = [
             root.render(null);
         },
     },
+];
+
+const TEARDOWNS: Teardown[] = [
+    ...ROOT_TEARDOWNS,
     {
         name: "a previous quit",
         tearDown: () => {
@@ -690,6 +694,31 @@ describe("render - Application lifecycle", () => {
         expect(shutdowns).toBe(1);
     });
 
+    it("ends a run its startup handler holds when quit unmounts it", async () => {
+        const windowRef = createRef<Adw.ApplicationWindow>();
+        let shutdowns = 0;
+
+        await render(
+            <AdwApplication
+                applicationId={uniqueAppId()}
+                flags={APP_FLAGS}
+                onStartup={(application) => application.hold()}
+                onShutdown={() => {
+                    shutdowns += 1;
+                }}
+            >
+                <AdwApplicationWindow ref={windowRef} onCloseRequest={quit} />
+            </AdwApplication>,
+            { container: rootElement },
+        );
+        const window = requireWidget(windowRef.current, "Application window");
+
+        await act(() => window.close());
+        await vi.waitFor(() => expect(Gio.Application.getDefault()).toBeNull());
+
+        expect(shutdowns).toBe(1);
+    });
+
     it("keeps a windowless application alive for work started by an effect", async () => {
         const appRef = createRef<Adw.Application>();
         const root = createRoot({ ...rootElement });
@@ -727,7 +756,7 @@ describe("render - Application lifecycle", () => {
         expect(Gio.Application.getDefault()).toBeNull();
     });
 
-    it.each(TEARDOWNS)("preserves a background hold after $name", async ({ tearDown }) => {
+    it.each(ROOT_TEARDOWNS)("preserves a background hold after $name", async ({ tearDown }) => {
         const appRef = createRef<Adw.Application>();
         const root = createRoot({ ...rootElement });
         mounted.push(root);

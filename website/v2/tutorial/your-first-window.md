@@ -74,7 +74,7 @@ export function App() {
 
 Generated JSX elements use their GObject type names: `AdwApplicationWindow`, `GtkListBox`, and so on. The available elements come from your project's configured GIR libraries. Use the [generated element reference](/v2/guide/configuration-and-codegen#generating-element-reference-docs) for their props and signals.
 
-GObject properties become camelCase props, such as `widthRequest`. Signals become handlers such as `onCloseRequest`; here, closing the window calls `quit()` to unmount the application.
+GObject properties become camelCase props, such as `widthRequest`. Signals become handlers such as `onCloseRequest`; here, closing the window calls `quit()` to unmount the application and quit it.
 
 After `quit()`, the process exits once nothing else keeps Node's event loop busy, as with any Node program. A request still in flight or an interval still running keeps the process alive without a window, so abort requests and clear timers when the component that started them unmounts, and avoid timers at module level. `gtkx dev` warns, naming the kinds of pending work, when the process is still running a few seconds after the application quits; see [Async Operations](/v2/guide/async-operations#ending-work-on-unmount).
 

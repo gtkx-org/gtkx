@@ -118,7 +118,7 @@ An active run finishes automatically when it has no application windows or outst
 
 GTKX tracks JavaScript holds and application windows; it cannot observe arbitrary holds acquired directly by native C code. Explicit holds survive forced shutdown and must still be balanced with `release()`; an unmatched release throws `RangeError`. Full native shutdown can run only once per instance; restarted applications and those already quit by native code may retain registration until finalization. Create another application when another complete lifecycle is needed.
 
-React holds an application until its first activated tree commits. React's `quit()`, `root.unmount()`, and `root.render(null)` remove the UI while allowing explicit background holds to keep the application running. Release those holds when the work finishes. If initial asynchronous rendering or Suspense commits without a window, hold the application until that work can create one.
+React holds an application until its first activated tree commits. `root.unmount()` and `root.render(null)` remove the UI while allowing explicit background holds to keep the application running. Release those holds when the work finishes. React's `quit()` also calls `quit()` on each application element it unmounts, so it ends the run even while the application holds itself, as `application.quit()` does. If initial asynchronous rendering or Suspense commits without a window, hold the application until that work can create one.
 
 ## Update Variant values
 

@@ -9,6 +9,7 @@ import {
 import { ApplicationContext } from "../hooks/use-application.js";
 import { useMergedRef } from "../hooks/use-merged-refs.js";
 import { reconciler } from "../reconciler/host-config.js";
+import { onQuit } from "../reconciler/root.js";
 import { programName } from "../utils/program-name.js";
 import { createPortaledComponent } from "./portaled.js";
 
@@ -27,6 +28,7 @@ type ApplicationLifecycle = {
     generation: number;
     hasCommitted: boolean;
     isMounted: boolean;
+    isQuitting: boolean;
     settled: boolean;
     releaseStartup: (() => void) | null;
 };
@@ -108,6 +110,7 @@ const useApplicationLifecycle = (
                       generation: 0,
                       hasCommitted: false,
                       isMounted: true,
+                      isQuitting: false,
                       settled: false,
                       releaseStartup: null,
                   };
@@ -134,6 +137,9 @@ const useApplicationLifecycle = (
         application.on("activate", onActivate);
         application.on("open", onActivate);
         application.on("shutdown", onShutdown);
+        const stopWatchingQuit = onQuit(() => {
+            lifecycle.isQuitting = true;
+        });
 
         if (lifecycle === previous) {
             if (lifecycle.activated) {
@@ -171,9 +177,10 @@ const useApplicationLifecycle = (
             application.off("activate", onActivate);
             application.off("open", onActivate);
             application.off("shutdown", onShutdown);
+            stopWatchingQuit();
             lifecycle.releaseStartup?.();
 
-            if (lifecycle.settled) {
+            if (lifecycle.settled || lifecycle.isQuitting) {
                 application.quit();
             }
 
