@@ -243,6 +243,15 @@ describe("ListView sections", () => {
         await expectRowTexts(ref, ["H:Two:Two", "Solo 2", "Parent 2", "H:One:One", "Parent 1", "Solo 1"]);
     });
 
+    it("keeps a section's header when the section's first row is removed", async () => {
+        const { ref, to } = await renderFixture({ groups: sections, expandedIds: [] });
+        await expectRowTexts(ref, collapsedRows);
+        await to({ groups: [firstSection, { ...secondSection, data: secondSection.data.slice(1) }], expandedIds: [] });
+        await expectRowTexts(ref, ["H:One", "Parent 1", "Solo 1", "H:Two", "Parent 2"]);
+        await to({ groups: [{ ...firstSection, data: firstSection.data.slice(1) }, secondSection], expandedIds: [] });
+        await expectRowTexts(ref, ["H:One", "Solo 1", "H:Two", "Solo 2", "Parent 2"]);
+    });
+
     it("selects the row named by selectedIds once a section arrives", async () => {
         const from = { groups: firstSectionOnly, expandedIds: ["p1"], selectedIds: ["x2"] };
         const { ref, to } = await renderFixture(from);

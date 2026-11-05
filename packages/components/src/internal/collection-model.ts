@@ -122,16 +122,20 @@ function registeredRootClass(): unknown {
     return CollectionRootStore;
 }
 
-function slotRefFor(value: GObject.Object | null): SlotRef | null {
+function anySlotRefFor(value: GObject.Object | null): SlotRef | null {
     const item = value instanceof Gtk.TreeListRow ? value.getItem() : value;
 
-    if (item === null) {
-        return null;
-    }
+    return item === null ? null : (sharedSlots().get(item) ?? null);
+}
 
-    const ref = sharedSlots().get(item);
+function slotRefFor(value: GObject.Object | null): SlotRef | null {
+    const ref = anySlotRefFor(value);
 
-    return ref === undefined || ref.slot === -1 ? null : ref;
+    return ref === null || ref.slot === -1 ? null : ref;
+}
+
+function levelStoreFor(value: GObject.Object | null): LazyLevelStore | null {
+    return anySlotRefFor(value)?.store ?? null;
 }
 
 function slotPathAt(store: LazyLevelStore, slot: number): string {
@@ -595,9 +599,11 @@ const CollectionRoot: (props: CollectionRootProps) => ReactNode = createElementC
 export {
     CollectionRoot,
     createCollectionModel,
+    levelStoreFor,
     slotPathAt,
     slotRefFor,
     type CollectionModel,
     type CollectionRootStore,
+    type LazyLevelStore,
     type SlotRef,
 };

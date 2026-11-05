@@ -15,7 +15,7 @@ import type {
     ListSectionRenderer,
 } from "../types.js";
 import type { Collection } from "./collection.js";
-import { type SlotRef, slotRefFor } from "./collection-model.js";
+import { type LazyLevelStore, levelStoreFor, slotRefFor } from "./collection-model.js";
 import { joinParts } from "./keys.js";
 
 type CellSize = {
@@ -665,7 +665,7 @@ function ItemRowImpl({ entry, rowProps, state, ...identity }: ItemRowProps): Rea
 function HeaderCellImpl({ entry, render }: HeaderCellProps): ReactNode {
     const item = useProperty(entry.host, "item") ?? null;
 
-    return createPortal(headerBody(slotRefFor(item), render), entry.host, entry.key);
+    return createPortal(headerBody(levelStoreFor(item), render), entry.host, entry.key);
 }
 
 function NativeItemCell<T extends GObject.Object>({
@@ -698,19 +698,15 @@ function NativeItemCell<T extends GObject.Object>({
     return createPortal(body, entry.host, entry.key);
 }
 
-function headerBody(ref: SlotRef | null, render: ListSectionRenderer<never>): ReactNode {
-    if (ref === null) {
-        return null;
-    }
+function headerBody(store: LazyLevelStore | null, render: ListSectionRenderer<never>): ReactNode {
+    const section = store?.level.section;
 
-    const section = ref.store.level.section;
-
-    if (section === undefined) {
+    if (store === null || section === undefined) {
         return null;
     }
 
     const renderHeader = render as ListSectionRenderer<unknown>;
-    const key = joinParts([ref.store.key, section.id]);
+    const key = joinParts([store.key, section.id]);
 
     return <Fragment key={key}>{renderHeader({ section: section.value })}</Fragment>;
 }
