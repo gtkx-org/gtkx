@@ -302,6 +302,14 @@ describe("scaffold command", () => {
         );
     });
 
+    it("declares the generated project types without a triple-slash path reference", async () => {
+        using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-env-"));
+        const target = join(directory.path, "example");
+        expect((await create(target, ["--typescript"])).status).toBe(0);
+        expect(JSON.parse(read(target, "tsconfig.json"))).toHaveProperty("files", ["node_modules/.gtkx/env.d.ts"]);
+        expect(read(target, "src/gtkx-env.d.ts")).not.toContain("reference path");
+    });
+
     it.each([
         {
             userAgent: "yarn/4.18.1 npm/? node/v26.7.0 linux x64",

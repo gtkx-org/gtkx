@@ -8,7 +8,7 @@ You have a project that runs. Replace its contents with the first piece of Tasks
 
 ## What the scaffolder made
 
-`gtkx.config.ts` configures the application and generated bindings. `src/index.tsx` mounts the component tree, and `src/app.tsx` contains the counter you will replace. `src/gtkx-env.d.ts` connects TypeScript to the generated declarations.
+`gtkx.config.ts` configures the application and generated bindings. `src/index.tsx` mounts the component tree, and `src/app.tsx` contains the counter you will replace. `src/gtkx-env.d.ts` types asset imports and `import.meta.env`, and `tsconfig.json` resolves the generated bindings and declarations.
 
 `gtkx.config.ts`:
 
