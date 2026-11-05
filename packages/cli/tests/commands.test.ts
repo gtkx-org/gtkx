@@ -1620,6 +1620,45 @@ describe("CLI commands", () => {
         await expect(invoke(["mcp", "init", "--cwd", project.root, "--client", "missing"])).rejects.toThrow();
     });
 
+    it("writes the Codex server into the project's .codex/config.toml and preserves other servers", async () => {
+        using project = createProject();
+        const path = join(project.root, ".codex/config.toml");
+        const table = '[mcp_servers.gtkx]\ncommand = "npx"\nargs = ["--no","gtkx","mcp"]\n';
+        const other = '[mcp_servers.other]\ncommand = "other"\n';
+        const init = () => invoke(["mcp", "init", "--cwd", project.root, "--client", "codex"]);
+
+        await init();
+        expect(readFileSync(path, "utf8")).toBe(table);
+        await init();
+        expect(readFileSync(path, "utf8")).toBe(table);
+
+        project.write(".codex/config.toml", `model = "o3"\n\n${other}`);
+        await init();
+        expect(readFileSync(path, "utf8")).toBe(`model = "o3"\n\n${other}\n${table}`);
+
+        project.write(".codex/config.toml", `[mcp_servers.gtkx]\ncommand = "npx"\nargs = ["gtkx", "mcp"]\n\n${other}`);
+        await init();
+        expect(readFileSync(path, "utf8")).toBe(`${table}\n${other}`);
+    });
+
+    it("prints the Codex server when .codex/config.toml declares it in a form it cannot edit", async () => {
+        using project = createProject();
+        const path = join(project.root, ".codex/config.toml");
+        const sources = [
+            '[mcp_servers]\ngtkx = { command = "gtkx-mcp" }\n',
+            '[mcp_servers.gtkx]\ncommand = "npx"\nargs = [\n    "gtkx",\n    "mcp",\n]\n',
+            '[mcp_servers.gtkx.env]\nNODE_ENV = "development"\n',
+            'mcp_servers = { other = { command = "other" } }\n',
+        ];
+
+        for (const source of sources) {
+            project.write(".codex/config.toml", source);
+            const output = await invoke(["mcp", "init", "--cwd", project.root, "--client", "codex"]);
+            expect(readFileSync(path, "utf8")).toBe(source);
+            expect(output).toContain('args = ["--no","gtkx","mcp"]');
+        }
+    });
+
     it("runs an MCP server with parsed tool restrictions", async () => {
         using project = createProject();
         const controller = new AbortController();
