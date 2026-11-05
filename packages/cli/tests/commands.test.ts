@@ -3040,6 +3040,44 @@ describe("CLI commands", () => {
         expect(output).toContain("was replaced by 9.9.9 while it was running");
     });
 
+    it("restarts from the new copy when an install moves the project's @gtkx/cli without changing its version", async () => {
+        using project = createProject({ codegen: true });
+        const readyPath = join(project.root, "ready.txt");
+        const launchesPath = join(project.root, "launches.txt");
+        const cli = join(project.root, "node_modules/@gtkx/cli");
+        const copy = join(project.root, "node_modules/.pnpm/cli-copy");
+        const lock = (step: number) =>
+            project.write("package-lock.json", JSON.stringify({ lockfileVersion: 3, packages: {}, step }));
+        lock(0);
+        project.write(
+            "src/index.ts",
+            `import { Application } from "@gtkx/gi/gio";
+            import { appendFileSync, writeFileSync } from "node:fs";
+            export const application = new Application({ applicationId: "org.gtkx.example" });
+            application.setDefault();
+            application.register(null);
+            application.hold();
+            appendFileSync(${JSON.stringify(launchesPath)}, process.argv[1] + "\\n");
+            writeFileSync(${JSON.stringify(readyPath)}, "ready");`,
+        );
+
+        const output = await withSession("dev", project.root, readyPath, async () => {
+            const original = realpathSync(cli);
+            mkdirSync(copy, { recursive: true });
+            for (const entry of readdirSync(original)) {
+                symlinkSync(join(original, entry), join(copy, entry));
+            }
+            unlinkSync(cli);
+            symlinkSync(copy, cli, "dir");
+            lock(1);
+            await expect
+                .poll(() => readFileSync(launchesPath, "utf8").trim().split("\n"), { timeout: 30_000 })
+                .toEqual([expect.not.stringContaining(copy), expect.stringContaining(copy)]);
+        });
+
+        expect(output).not.toContain("while it was running");
+    });
+
     it("starts a real storybook session and stops its application", async () => {
         using project = createProject({ codegen: true });
         const readyPath = join(project.root, "ready.txt");

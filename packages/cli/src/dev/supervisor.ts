@@ -52,7 +52,8 @@ type DevSupervisorOptions = {
 
 type DebounceTimer = { handle: NodeJS.Timeout | null };
 
-const DEV_RUNNER_URL = new URL("../../bin/gtkx-dev-runner.js", import.meta.url);
+const DEV_RUNNER_PATH = "bin/gtkx-dev-runner.js";
+const DEV_RUNNER_URL = new URL(`../../${DEV_RUNNER_PATH}`, import.meta.url);
 const CLI_MANIFEST_PATH = fileURLToPath(new URL("../../package.json", import.meta.url));
 const FORCE_KILL_TIMEOUT_MS = 5000;
 const CONFIG_DEBOUNCE_MS = 150;
@@ -256,7 +257,7 @@ const manifestVersion = (path: string): string | null => {
     return manifest.version ?? null;
 };
 
-const describeCliChange = (state: SupervisorState): string | null => {
+const followProjectCli = (state: SupervisorState): string | null => {
     const installed = manifestVersion(CLI_MANIFEST_PATH);
 
     if (installed !== packageManifest.version) {
@@ -271,11 +272,18 @@ const describeCliChange = (state: SupervisorState): string | null => {
 
     const resolved = projectCli === null ? null : manifestVersion(join(projectCli, "package.json"));
 
-    if (resolved === null) {
+    if (projectCli === null || resolved === null) {
         return "was moved or removed";
     }
 
-    return resolved === packageManifest.version ? "was replaced by another copy" : `was replaced by ${resolved}`;
+    if (resolved !== packageManifest.version) {
+        return `was replaced by ${resolved}`;
+    }
+
+    state.projectCli = projectCli;
+    state.runnerPath = join(projectCli, DEV_RUNNER_PATH);
+
+    return null;
 };
 
 const stopForReinstalledCli = (state: SupervisorState, change: string): void => {
@@ -299,7 +307,7 @@ const restart = async (state: SupervisorState): Promise<void> => {
         return;
     }
 
-    const cliChange = describeCliChange(state);
+    const cliChange = followProjectCli(state);
 
     if (cliChange !== null) {
         stopForReinstalledCli(state, cliChange);
