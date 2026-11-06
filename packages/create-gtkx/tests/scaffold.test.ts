@@ -40,6 +40,15 @@ const create = async (
     return { status: process.exitCode, output: stripVTControlCharacters(output.join("")) };
 };
 const read = (root: string, path: string) => readFileSync(join(root, path), "utf8");
+const writeInstallStub = (bin: string, manager: string, script: string) => {
+    for (const name of ["corepack", manager]) {
+        writeFileSync(
+            join(bin, name),
+            `#!${process.execPath}\nconst args = process.argv.slice(process.argv[2] === ${JSON.stringify(manager)} ? 3 : 2);\n${script}`,
+            { mode: 0o755 },
+        );
+    }
+};
 const npmReleaseAgeExcludes = (root: string) =>
     read(root, ".npmrc")
         .split("\n")
@@ -263,10 +272,10 @@ describe("scaffold command", () => {
             const bin = join(directory.path, "node_modules/.bin");
             const workspaceFile = join(directory.path, "pnpm-workspace.yaml");
             mkdirSync(bin, { recursive: true });
-            writeFileSync(
-                join(bin, "corepack"),
-                `#!${process.execPath}\nimport { appendFileSync, readFileSync, writeFileSync } from "node:fs";\nif (process.argv[2] === "--version") process.exit(0);\nappendFileSync(${JSON.stringify(join(directory.path, "install.log"))}, process.argv.slice(3).join(" ") + "\\n");\nconst catalog = ["react", "vitest"];\nconst manifest = JSON.parse(readFileSync("package.json", "utf8"));\nconst field = process.argv.includes("-D") ? "devDependencies" : "dependencies";\nmanifest[field] ??= {};\nfor (const spec of process.argv.slice(4).filter((arg) => !arg.startsWith("-"))) {\n    const at = spec.lastIndexOf("@");\n    const name = at > 0 ? spec.slice(0, at) : spec;\n    const range = spec.slice(at + 1);\n    manifest[field][name] = at < 1 ? (catalog.includes(spec) ? "catalog:" : "^1.0.0") : range === "latest" ? "^1.0.0" : range;\n}\nwriteFileSync("package.json", JSON.stringify(manifest));\nif (process.env.pnpm_config_strict_dep_builds !== "false") process.exit(1);\nconst settings = readFileSync(${JSON.stringify(workspaceFile)}, "utf8");\nconst placeholder = "  '@swc/core': set this to true or false\\n";\nif (!settings.includes(placeholder)) writeFileSync(${JSON.stringify(workspaceFile)}, settings.includes("allowBuilds:\\n") ? settings.replace("allowBuilds:\\n", "allowBuilds:\\n" + placeholder) : settings + "allowBuilds:\\n" + placeholder);\n`,
-                { mode: 0o755 },
+            writeInstallStub(
+                bin,
+                "pnpm",
+                `import { appendFileSync, readFileSync, writeFileSync } from "node:fs";\nappendFileSync(${JSON.stringify(join(directory.path, "install.log"))}, args.join(" ") + "\\n");\nconst catalog = ["react", "vitest"];\nconst manifest = JSON.parse(readFileSync("package.json", "utf8"));\nconst field = args.includes("-D") ? "devDependencies" : "dependencies";\nmanifest[field] ??= {};\nfor (const spec of args.slice(1).filter((arg) => !arg.startsWith("-"))) {\n    const at = spec.lastIndexOf("@");\n    const name = at > 0 ? spec.slice(0, at) : spec;\n    const range = spec.slice(at + 1);\n    manifest[field][name] = at < 1 ? (catalog.includes(spec) ? "catalog:" : "^1.0.0") : range === "latest" ? "^1.0.0" : range;\n}\nwriteFileSync("package.json", JSON.stringify(manifest));\nif (process.env.pnpm_config_strict_dep_builds !== "false") process.exit(1);\nconst settings = readFileSync(${JSON.stringify(workspaceFile)}, "utf8");\nconst placeholder = "  '@swc/core': set this to true or false\\n";\nif (!settings.includes(placeholder)) writeFileSync(${JSON.stringify(workspaceFile)}, settings.includes("allowBuilds:\\n") ? settings.replace("allowBuilds:\\n", "allowBuilds:\\n" + placeholder) : settings + "allowBuilds:\\n" + placeholder);\n`,
             );
             writeFileSync(
                 workspaceFile,
@@ -427,11 +436,7 @@ describe("scaffold command", () => {
         using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-yarn-gate-"));
         const bin = join(directory.path, "node_modules/.bin");
         mkdirSync(bin, { recursive: true });
-        writeFileSync(
-            join(bin, "corepack"),
-            `#!${process.execPath}\nprocess.exit(process.argv[2] === "--version" ? 0 : 1);\n`,
-            { mode: 0o755 },
-        );
+        writeInstallStub(bin, "yarn", "process.exit(1);\n");
         writeFileSync(
             join(directory.path, "package.json"),
             JSON.stringify({ name: "kitchen", workspaces: ["apps/*"] }),
@@ -578,10 +583,10 @@ describe("scaffold command", () => {
         using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-ranges-"));
         const bin = join(directory.path, "node_modules/.bin");
         mkdirSync(bin, { recursive: true });
-        writeFileSync(
-            join(bin, "corepack"),
-            `#!${process.execPath}\nimport { readFileSync, writeFileSync } from "node:fs";\nif (process.argv[2] === "--version") process.exit(0);\nconst args = process.argv.slice(4);\nconst manifest = JSON.parse(readFileSync("package.json", "utf8"));\nconst field = args.includes("--save-dev") ? "devDependencies" : "dependencies";\nmanifest[field] ??= {};\nfor (const spec of args.filter((arg) => !arg.startsWith("-"))) {\n    const at = spec.lastIndexOf("@");\n    const [name, range] = at > 0 ? [spec.slice(0, at), spec.slice(at + 1).replace("^", "").replace("latest", "^1.0.0")] : [spec, "^1.0.0"];\n    manifest[field][name] ??= range;\n}\nwriteFileSync("package.json", JSON.stringify(manifest));\n`,
-            { mode: 0o755 },
+        writeInstallStub(
+            bin,
+            "pnpm",
+            `import { readFileSync, writeFileSync } from "node:fs";\nconst manifest = JSON.parse(readFileSync("package.json", "utf8"));\nconst field = args.includes("--save-dev") ? "devDependencies" : "dependencies";\nmanifest[field] ??= {};\nfor (const spec of args.slice(1).filter((arg) => !arg.startsWith("-"))) {\n    const at = spec.lastIndexOf("@");\n    const [name, range] = at > 0 ? [spec.slice(0, at), spec.slice(at + 1).replace("^", "").replace("latest", "^1.0.0")] : [spec, "^1.0.0"];\n    manifest[field][name] ??= range;\n}\nwriteFileSync("package.json", JSON.stringify(manifest));\n`,
         );
         const target = join(directory.path, "example");
         const { status } = await create(target, ["--no-skip-install", "--package-manager", "pnpm"]);
