@@ -72,7 +72,12 @@ const launchable = (applicationId: string): XmlNode => ({
     text: `${applicationId}${DESKTOP_SUFFIX}`,
 });
 
-const metainfoRoot = (settings: DeploySettings): XmlNode =>
+const translationSection = (translationDomain: string | null): XmlNode[] =>
+    translationDomain === null
+        ? []
+        : [{ tag: "translation", attributes: { type: "gettext" }, text: translationDomain }];
+
+const metainfoRoot = (settings: DeploySettings, translationDomain: string | null): XmlNode =>
     element("component", { type: COMPONENT_TYPE }, [
         text("id", settings.applicationId),
         text("name", settings.name),
@@ -82,6 +87,7 @@ const metainfoRoot = (settings: DeploySettings): XmlNode =>
         ...developerSection(settings),
         ...descriptionSection(settings),
         launchable(settings.applicationId),
+        ...translationSection(translationDomain),
         ...providesSection(settings),
         ...listSection("categories", "category", settings.categories),
         ...listSection("keywords", "keyword", settings.keywords),
@@ -92,8 +98,8 @@ const metainfoRoot = (settings: DeploySettings): XmlNode =>
         ...brandingSection(settings),
     ]);
 
-const renderMetainfo = (settings: DeploySettings): string => {
-    const document = renderDocument(metainfoRoot(settings));
+const renderMetainfo = (settings: DeploySettings, translationDomain: string | null): string => {
+    const document = renderDocument(metainfoRoot(settings, translationDomain));
 
     return appendExtraFragments(document, settings.deploy.metainfoExtra ?? []);
 };

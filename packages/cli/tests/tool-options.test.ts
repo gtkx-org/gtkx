@@ -1,7 +1,7 @@
 import { resolveStore } from "@gtkx/codegen";
 import { runCommand } from "citty";
 import { execFileSync } from "node:child_process";
-import { chmodSync, closeSync, constants, mkdirSync, openSync, readFileSync, readdirSync } from "node:fs";
+import { chmodSync, closeSync, constants, existsSync, mkdirSync, openSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, extname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createCommand } from "../dist/command.js";
@@ -24,6 +24,33 @@ describe("CLI tool options", () => {
         } finally {
             closeSync(lockFd);
         }
+    });
+
+    it("rejects a missing configured nFPM executable before building", async () => {
+        using project = createProject({
+            applicationIcon: "icon.svg",
+            deploy: {
+                name: "Tool Example",
+                summary: "Exercises the configured packaging tool",
+                categories: ["Utility"],
+                description: [
+                    "An application used to exercise configured packaging tools for Debian and RPM deployment targets.",
+                ],
+                developer: { name: "GTKX", email: "hello@gtkx.dev" },
+                license: "MIT",
+                homepage: "https://gtkx.dev",
+                node: { source: "host", shouldStrip: false },
+                tools: { nfpm: "./tools/missing-nfpm" },
+            },
+        });
+        project.write("LICENSE", "MIT License\nCopyright GTKX\nPermission is hereby granted, free of charge.\n");
+        project.write(
+            "icon.svg",
+            '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="blue"/></svg>',
+        );
+
+        await expect(invoke(["deploy", "--cwd", project.root, "--target", "rpm"])).rejects.toThrow();
+        expect(existsSync(join(project.root, "dist"))).toBe(false);
     });
 
     it("packages Debian and RPM targets using the configured nFPM executable", async () => {

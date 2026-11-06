@@ -1,5 +1,7 @@
-import type { DeploySettings } from "../types.js";
+import type { DeployArch, DeploySettings } from "../types.js";
 import type { FlatpakModule } from "./flatpak-prebuilt.js";
+import { DEFAULT_REGISTRY, publishedTarball } from "../npm-registry.js";
+import { supportedArches } from "../settings/arch.js";
 import { readPackageManifest } from "../settings/package-manifest.js";
 
 type PnpmPin = {
@@ -18,9 +20,12 @@ const PNPM_SHA512 =
     "8e72d47fef0616070644d7bffc973a6a57f5090a6d7c368b07c9";
 
 const PNPM_DIR = "flatpak-pnpm";
+const NATIVE_PNPM_DIR = "flatpak-pnpm-native";
 const PNPM_COMMAND = "pnpm";
 const PNPM_PREFIX = "pnpm@";
-const PNPM_TARBALL_URL = "https://registry.npmjs.org/pnpm/-/pnpm-";
+const PNPM_TARBALL_URL = `${DEFAULT_REGISTRY}/pnpm/-/pnpm-`;
+const NATIVE_PNPM_PACKAGE = "@pnpm/exe.linux-";
+const NATIVE_PNPM_MAJOR = 12;
 const PNPM_INSTALL = "pnpm install --offline --frozen-lockfile";
 const TRUST_LOCKFILE = "--trust-lockfile";
 const STORE_V10 = "v10";
@@ -92,19 +97,59 @@ const resolvePnpmPin = (settings: DeploySettings): PnpmPin => {
 
 const pnpmPathFor = (moduleDir: string): string => `${moduleDir}/${PNPM_DIR}`;
 
-const pnpmSources = (pin: PnpmPin, moduleDir: string): FlatpakModule[] => [
+const hasNativeBinary = (pin: PnpmPin): boolean => pin.major >= NATIVE_PNPM_MAJOR;
+
+const nativeBinarySource = async (pin: PnpmPin, arch: DeployArch): Promise<FlatpakModule> => {
+    const name = `${NATIVE_PNPM_PACKAGE}${arch.node}`;
+    const tarball = await publishedTarball({
+        registry: DEFAULT_REGISTRY,
+        name,
+        version: pin.version,
+        remedy: 'Pin "packageManager" to a pnpm release published on the npm registry.',
+    });
+
+    return {
+        type: "archive",
+        url: tarball.url,
+        sha512: tarball.digest,
+        dest: NATIVE_PNPM_DIR,
+        "only-arches": [arch.flatpak],
+    };
+};
+
+const nodeLauncherSource = (moduleDir: string): FlatpakModule => ({
+    type: "script",
+    dest: PNPM_DIR,
+    "dest-filename": PNPM_COMMAND,
+    commands: [`exec node ${pnpmPathFor(moduleDir)}/bin/pnpm.cjs "$@"`],
+});
+
+const pnpmSources = async (pin: PnpmPin, moduleDir: string): Promise<FlatpakModule[]> => [
     { type: "archive", url: `${PNPM_TARBALL_URL}${pin.version}.tgz`, sha512: pin.sha512, dest: PNPM_DIR },
-    {
-        type: "script",
-        dest: PNPM_DIR,
-        "dest-filename": PNPM_COMMAND,
-        commands: [`exec node ${pnpmPathFor(moduleDir)}/bin/pnpm.cjs "$@"`],
-    },
+    ...(hasNativeBinary(pin)
+        ? await Promise.all(supportedArches().map((arch) => nativeBinarySource(pin, arch)))
+        : [nodeLauncherSource(moduleDir)]),
 ];
+
+/**
+ * pnpm 12's own `pnpm` file is a placeholder that its install script replaces with the native binary, which then
+ * finds the node-gyp it ships in the `dist` directory beside it. The offline build runs no install scripts, so this
+ * puts the vendored binary in its place.
+ */
+const pnpmSetupCommands = (pin: PnpmPin): string[] =>
+    hasNativeBinary(pin) ? [`install -m755 ${NATIVE_PNPM_DIR}/${PNPM_COMMAND} ${PNPM_DIR}/${PNPM_COMMAND}`] : [];
 
 const pnpmInstallCommand = (pin: PnpmPin): string =>
     pin.major >= STORE_V11_MAJOR ? `${PNPM_INSTALL} ${TRUST_LOCKFILE}` : PNPM_INSTALL;
 
 const pnpmStoreVersionFor = (pin: PnpmPin): string => (pin.major === STORE_V10_MAJOR ? STORE_V10 : STORE_V11);
 
-export { pnpmInstallCommand, pnpmPathFor, type PnpmPin, pnpmSources, pnpmStoreVersionFor, resolvePnpmPin };
+export {
+    pnpmInstallCommand,
+    pnpmPathFor,
+    type PnpmPin,
+    pnpmSetupCommands,
+    pnpmSources,
+    pnpmStoreVersionFor,
+    resolvePnpmPin,
+};

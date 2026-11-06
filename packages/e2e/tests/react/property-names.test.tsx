@@ -61,3 +61,18 @@ describe("property notify values", () => {
         });
     });
 });
+
+describe("unknown props", () => {
+    it.each([
+        { name: "a typo", props: { lable: "Typo" } },
+        { name: "a C-style property name", props: { margin_top: 6 } },
+        { name: "a prop from another toolkit", props: { className: "title" } },
+    ])("rejects $name that the element does not have", async ({ props }) => {
+        await expect(render(<GtkLabel label="Known" {...props} />)).rejects.toThrow();
+    });
+
+    it("rejects an unknown prop added on a later render", async () => {
+        const { rerender } = await render(<GtkLabel label="Known" />);
+        await expect(rerender(<GtkLabel label="Known" {...{ wrapp: true }} />)).rejects.toThrow();
+    });
+});

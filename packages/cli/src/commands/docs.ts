@@ -1,7 +1,13 @@
 import { mergeOmittedProps, resolveGirPath, resolveLibraries } from "@gtkx/codegen";
 import { readBuiltinElementsForDocs, writeDocs } from "@gtkx/codegen/internal";
 import { loadConfig } from "@gtkx/config";
-import { resolveAcceptedChildTypes, resolveElementProps, resolveOmittedProps } from "@gtkx/config/internal";
+import {
+    LIBRARY_APPLICATION_ID,
+    resolveAcceptedChildTypes,
+    resolveElementProps,
+    resolveLazyElements,
+    resolveOmittedProps,
+} from "@gtkx/config/internal";
 import { info, isPathInside } from "@gtkx/utils";
 import { defineCommand } from "citty";
 import { resolve } from "node:path";
@@ -37,7 +43,7 @@ const docs = defineCommand({
     },
     async run({ args }) {
         const cwd = resolveCwd(args);
-        const { config } = await loadConfig(cwd);
+        const { config } = await loadConfig(cwd, { defaultApplicationId: LIBRARY_APPLICATION_ID });
 
         if (config.codegen === false) {
             throw new Error(
@@ -67,9 +73,10 @@ const docs = defineCommand({
             outDir,
             resolveFrom: cwd,
             basePath: args["base-path"],
-            props: { ...builtin.props, ...resolveElementProps(config.elements) },
+            props: { ...builtin.props, ...resolveElementProps(config.elements, cwd) },
             acceptedChildTypes: { ...builtin.acceptedChildTypes, ...resolveAcceptedChildTypes(config.elements) },
             omittedProps: mergeOmittedProps(builtin.omittedProps, resolveOmittedProps(config.elements)),
+            lazyElements: [...builtin.lazyElements, ...resolveLazyElements(config.elements)],
             isForced: args.force,
         });
 

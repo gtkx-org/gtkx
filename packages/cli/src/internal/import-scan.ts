@@ -7,9 +7,9 @@ import { moduleHash } from "./module-hash.js";
 import {
     discoverSourceFiles,
     importSourcesIn,
+    projectSourceDirs,
     readSource,
     sortSourceImports,
-    sourceDirFor,
     type SourceImport,
 } from "./source-imports.js";
 import { isStagingOwnerRunning, STAGING_SUFFIX, writeAtomically } from "./staging-file.js";
@@ -127,14 +127,25 @@ const toSourceImports = (index: ScanIndex): SourceImport[] =>
     );
 
 const discoverProjectImports = (root: string): ProjectImports => {
-    const dir = sourceDirFor(root);
     const path = scanCachePath(root);
     const cache = readCache(path);
-    const previous = cache.dirs[dir];
-    const { index, isComplete } = scanSourceDir(dir, previous ?? {});
+    const index: ScanIndex = {};
+    let isComplete = true;
+    let isChanged = false;
 
-    if (isComplete && JSON.stringify(previous) !== JSON.stringify(index)) {
-        cache.dirs[dir] = index;
+    for (const dir of projectSourceDirs(root)) {
+        const previous = cache.dirs[dir];
+        const scanned = scanSourceDir(dir, previous ?? {});
+        Object.assign(index, scanned.index);
+        isComplete &&= scanned.isComplete;
+
+        if (scanned.isComplete && JSON.stringify(previous) !== JSON.stringify(scanned.index)) {
+            cache.dirs[dir] = scanned.index;
+            isChanged = true;
+        }
+    }
+
+    if (isChanged) {
         writeCache(path, cache);
     }
 

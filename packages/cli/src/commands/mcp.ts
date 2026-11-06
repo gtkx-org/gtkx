@@ -70,19 +70,33 @@ const splitPatterns = (value: string): string[] =>
         .map((pattern) => pattern.trim())
         .filter((pattern) => pattern.length > 0);
 
+const printSnippet = (snippet: string): void => {
+    for (const line of snippet.split("\n")) {
+        info(`mcp:   ${line}`);
+    }
+};
+
 const report = (name: ClientName, result: ClientResult): void => {
     if (result.kind === "manual") {
-        info(`mcp: ${name} keeps its servers in ${result.path}, which is outside this project. Add:`);
+        info(`mcp: ${result.path} already declares the gtkx server in a form this command cannot edit. Make it read:`);
+        printSnippet(result.snippet);
 
-        for (const line of result.snippet.split("\n")) {
-            info(`mcp:   ${line}`);
-        }
+        return;
+    }
+
+    if (result.kind === "unreadable") {
+        info(`mcp: left ${result.path} unchanged: ${result.reason}. Add this entry to its "${result.key}" object:`);
+        printSnippet(result.snippet);
 
         return;
     }
 
     info(`mcp: ${result.isCreated ? "created" : "updated"} ${result.path} for ${name}`);
     info("mcp: restart the editor for it to pick the server up");
+
+    if (name === "codex") {
+        info("mcp: codex reads a project's .codex/config.toml only once you trust the project");
+    }
 };
 
 export { createMcpCommand };

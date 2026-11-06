@@ -6,7 +6,7 @@ import type { BuildManifestCollector } from "../internal/build-manifest.js";
 import type { AssetEmitter } from "./asset-emitter.js";
 import { outputRootUrlExpression, prependBanner } from "../internal/banner.js";
 import { createRetainedStagingDir, type RetainedStagingDir, withStagingDir } from "../internal/staging-dir.js";
-import { compileSchemas } from "../settings/compile.js";
+import { COMPILED_SCHEMAS_FILENAME, compileSchemas } from "../settings/compile.js";
 import { renderRuntimeModule } from "../settings/render.js";
 import {
     assertUniqueSchemaBasenames,
@@ -139,7 +139,7 @@ const compileBuildSchemas = (schemaFiles: string[]): Buffer =>
 
         compileSchemas(dir);
 
-        return readFileSync(join(dir, "gschemas.compiled"));
+        return readFileSync(join(dir, COMPILED_SCHEMAS_FILENAME));
     });
 
 const rejectLegacySchemaSpecifier = (source: string): void => {
@@ -198,9 +198,13 @@ const emitBuildSchemas = (
 
     ctx.emitFile({
         type: "asset",
-        fileName: "gschemas.compiled",
+        fileName: COMPILED_SCHEMAS_FILENAME,
         source: compiled,
     });
+
+    for (const filePath of schemaFiles) {
+        ctx.emitFile({ type: "asset", fileName: basename(filePath), source: readFileSync(filePath) });
+    }
 
     info(`Compiled ${String(schemaFiles.length)} GSettings schema(s)`);
 };

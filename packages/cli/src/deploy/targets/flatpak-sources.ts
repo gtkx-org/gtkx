@@ -1,12 +1,14 @@
-import { copyFileSync, existsSync, mkdirSync } from "node:fs";
-import { basename, dirname, join, resolve } from "node:path";
+import { copyFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { basename, dirname, join, relative, resolve } from "node:path";
 import type { DeploySettings } from "../types.js";
 import { runCliTool } from "../../internal/run-cli-tool.js";
 import { withStagingDir } from "../../internal/staging-dir.js";
 import { gitRemoteUrl, runGit } from "../git.js";
+import { memberWorkspaceRoot } from "../../upgrade/workspace.js";
 import { optional } from "../nfpm/optional.js";
 import { FLATPAK_NODE_GENERATOR, GENERATOR_PNPM_OPTION } from "../tools.js";
 import { pnpmInstallCommand, type PnpmPin, pnpmStoreVersionFor, resolvePnpmPin } from "./flatpak-pnpm.js";
+import { BERRY_INSTALL, isBerryLockfile, resolveYarnPin, type YarnPin } from "./flatpak-yarn.js";
 
 type PackageManager = "npm" | "pnpm" | "yarn";
 type VendoredManager = Exclude<PackageManager, "pnpm">;
@@ -41,6 +43,21 @@ const INSTALL_COMMAND: Record<VendoredManager, string> = {
     yarn: "yarn install --offline",
 };
 
+const assertStandaloneProject = (settings: DeploySettings): void => {
+    const workspaceRoot = memberWorkspaceRoot(settings.paths.root);
+
+    if (workspaceRoot === null) {
+        return;
+    }
+
+    throw new Error(
+        `Cannot build a source-mode Flatpak of ${settings.paths.root}: it is a member of the workspace at ` +
+            `${workspaceRoot}, and a source-mode manifest installs dependencies from the lockfile and package ` +
+            "manager in the project's own directory, so it needs a standalone project. Move the app into its own " +
+            'repository, or drop `deploy.flatpak.mode: "source"` to package the local build as a prebuilt Flatpak.',
+    );
+};
+
 const detectPackageManager = (settings: DeploySettings): PackageManager => {
     const configured = settings.deploy.flatpak?.packageManager;
 
@@ -62,11 +79,24 @@ const detectPackageManager = (settings: DeploySettings): PackageManager => {
     return found;
 };
 
+const lockfileFor = (settings: DeploySettings, manager: PackageManager): string =>
+    settings.deploy.flatpak?.lockfile ?? LOCKFILE_BY_MANAGER[manager];
+
 const pnpmPinFor = (settings: DeploySettings, manager: PackageManager): PnpmPin | null =>
     manager === "pnpm" ? resolvePnpmPin(settings) : null;
 
-const installCommandFor = (settings: DeploySettings, manager: PackageManager): string =>
-    manager === "pnpm" ? pnpmInstallCommand(resolvePnpmPin(settings)) : INSTALL_COMMAND[manager];
+const yarnPinFor = (settings: DeploySettings, manager: PackageManager): YarnPin | null =>
+    manager === "yarn" && isBerryLockfile(resolve(settings.paths.root, lockfileFor(settings, manager)))
+        ? resolveYarnPin(settings)
+        : null;
+
+const installCommandFor = (settings: DeploySettings, manager: PackageManager): string => {
+    if (manager === "pnpm") {
+        return pnpmInstallCommand(resolvePnpmPin(settings));
+    }
+
+    return yarnPinFor(settings, manager) === null ? INSTALL_COMMAND[manager] : BERRY_INSTALL;
+};
 
 const nodeExtensionFor = (settings: DeploySettings): string =>
     settings.deploy.flatpak?.nodeExtension ?? DEFAULT_NODE_EXTENSION;
@@ -96,9 +126,9 @@ const resolveSourceUrl = (settings: DeploySettings): string => {
 
     if (!FETCHABLE_URL.test(url)) {
         throw new Error(
-            `Cannot build a Flathub-ready manifest from "${url}": Flathub's builders clone over HTTPS and have no ` +
-                "credentials, so an SSH remote never resolves there. Set `deploy.flatpak.source.url` to the " +
-                "repository's https:// URL.",
+            `Cannot build a Flathub-ready manifest from "${url}": Flathub's builders clone over HTTPS without ` +
+                "credentials or access to your machine, so SSH remotes and local paths never resolve there. Set " +
+                "`deploy.flatpak.source.url` to the repository's https:// URL.",
         );
     }
 
@@ -150,7 +180,34 @@ const resolveGitSource = (settings: DeploySettings): GitSource => ({
 const generatedSourcesPath = (settings: DeploySettings): string =>
     join(settings.paths.targets, "flatpak", GENERATED_SOURCES);
 
-const stageLockfile = (root: string, lockfile: string, dir: string): string => {
+const isLocalCommit = (root: string, commit: string): boolean =>
+    runGit(root, ["cat-file", "-e", `${commit}${COMMIT_PEEL}`]) !== null;
+
+const stageCommittedLockfile = (settings: DeploySettings, source: string, staged: string): void => {
+    const root = settings.paths.root;
+    const lockfile = relative(root, source);
+    const commit = resolveGitSource(settings).commit;
+
+    if (commit === undefined || !isLocalCommit(root, commit)) {
+        copyFileSync(source, staged);
+        return;
+    }
+
+    const committed = runGit(root, ["show", `${commit}:./${lockfile}`]);
+
+    if (committed === null) {
+        throw new Error(
+            `Cannot build a Flathub-ready manifest from commit ${commit}: ${lockfile} is not committed there, so ` +
+                "the sandbox checks out a tree without the lockfile its offline install needs. Commit the lockfile " +
+                "(check that .gitignore does not exclude it), then generate the manifest again.",
+        );
+    }
+
+    writeFileSync(staged, `${committed}\n`);
+};
+
+const stageLockfile = (settings: DeploySettings, lockfile: string, dir: string): string => {
+    const root = settings.paths.root;
     const source = resolve(root, lockfile);
 
     if (!existsSync(source)) {
@@ -160,7 +217,7 @@ const stageLockfile = (root: string, lockfile: string, dir: string): string => {
     const manifest = join(dirname(source), "package.json");
     const staged = join(dir, basename(lockfile));
     copyFileSync(existsSync(manifest) ? manifest : join(root, "package.json"), join(dir, "package.json"));
-    copyFileSync(source, staged);
+    stageCommittedLockfile(settings, source, staged);
 
     return staged;
 };
@@ -169,12 +226,12 @@ const storeVersionArgs = (pin: PnpmPin | null): string[] =>
     pin === null ? [] : [GENERATOR_PNPM_OPTION, pnpmStoreVersionFor(pin)];
 
 const generateNodeSources = (settings: DeploySettings, manager: PackageManager, pin: PnpmPin | null): void => {
-    const lockfile = settings.deploy.flatpak?.lockfile ?? LOCKFILE_BY_MANAGER[manager];
+    const lockfile = lockfileFor(settings, manager);
     const output = generatedSourcesPath(settings);
     mkdirSync(dirname(output), { recursive: true });
 
     withStagingDir("lockfile", (dir) => {
-        const staged = stageLockfile(settings.paths.root, lockfile, dir);
+        const staged = stageLockfile(settings, lockfile, dir);
         runCliTool({
             tool: FLATPAK_NODE_GENERATOR.command,
             args: [manager, staged, ...storeVersionArgs(pin), "-o", output],
@@ -185,6 +242,7 @@ const generateNodeSources = (settings: DeploySettings, manager: PackageManager, 
 };
 
 export {
+    assertStandaloneProject,
     detectPackageManager,
     GENERATED_SOURCES,
     generateNodeSources,
@@ -194,4 +252,5 @@ export {
     type PackageManager,
     pnpmPinFor,
     resolveGitSource,
+    yarnPinFor,
 };

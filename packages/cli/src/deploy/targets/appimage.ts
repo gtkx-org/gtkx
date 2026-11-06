@@ -25,13 +25,14 @@ const APPRUN_FILENAME = "AppRun";
 const APPDIR_NAME = "AppDir";
 const USR_DIR = "usr";
 const EXTRACT_AND_RUN = "APPIMAGE_EXTRACT_AND_RUN";
+const ZSYNC_EXTENSION = ".zsync";
 
 const appimageTarget: DeployTarget = {
     name: "appimage",
     prefix: PREFIX,
     isHostOnly: true,
     tools: [FILE_TOOL],
-    render: (payload) => renderManifests(payload),
+    render: (payload) => Promise.try(() => renderManifests(payload)),
     pack: (payload) => packAppImage(payload),
 };
 
@@ -148,14 +149,16 @@ const packAppImage = async (payload: DeployPayload): Promise<DeployArtifact[]> =
         args: toolArgsFor(settings, tooling.runtime, appDir, target),
         target: "the AppImage",
         shouldStream: true,
-        options: { env: { ...process.env, ARCH: settings.arch.appimage, [EXTRACT_AND_RUN]: "1" } },
+        options: { cwd: output, env: { ...process.env, ARCH: settings.arch.appimage, [EXTRACT_AND_RUN]: "1" } },
     });
 
     if (!existsSync(target)) {
         throw new Error(`appimagetool reported success but wrote no AppImage at ${target}`);
     }
 
-    return [{ path: target, size: statSync(target).size }];
+    const zsync = `${target}${ZSYNC_EXTENSION}`;
+
+    return [target, ...(existsSync(zsync) ? [zsync] : [])].map((path) => ({ path, size: statSync(path).size }));
 };
 
 export { appimageTarget };

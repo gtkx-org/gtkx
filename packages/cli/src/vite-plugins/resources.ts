@@ -10,8 +10,10 @@ import { sourceLanguage } from "../internal/source-imports.js";
 import { createRetainedStagingDir, type RetainedStagingDir, withStagingDir } from "../internal/staging-dir.js";
 import { ASSET_RE } from "./asset-extensions.js";
 import { isBareRelativeAsset, parseIconSpecifier, parseResourceSpecifier } from "./asset-specifier.js";
+import { stylesheetTargets } from "./css.js";
 import { renderInitModule } from "./resource-init-module.js";
 import {
+    ASSET_MODULE_SUFFIX,
     BUNDLE_FILENAME,
     escapeXml,
     fromVirtualId,
@@ -19,6 +21,7 @@ import {
     isVirtual,
     REL_SEPARATOR,
     RESOURCE_PATH_EXPORT,
+    RESOURCE_RESOLVE_OPTION,
     toVirtualId,
     VIRTUAL_ID_RE,
     VIRTUAL_INIT,
@@ -102,6 +105,11 @@ const DEV_STAGING_PREFIX = "resources-dev";
 const MANIFEST_FILENAME = "package.json";
 const DATA_PREFIX = "#data/";
 const BUNDLED_QUERY_MENTION_RE = /[?&](?:icon|resource)(?:[=&]|$)/;
+/* TODO: Drop this query once Vite's Rolldown keeps the `custom` options of overlapping resolves apart. Until then a
+ * resource stylesheet can lose RESOURCE_RESOLVE_OPTION and become an injected `gtkx:css` module, whose filter
+ * excludes queried sources. https://github.com/rolldown/rolldown/issues/11180
+ */
+const ASSET_SOURCE_QUERY = "?gtkx-asset-source";
 const ICON_EXTENSIONS: Set<string> = new Set([".png", ".svg", ".xpm"]);
 
 const ICON_CONTEXTS: Set<string> = new Set([
@@ -136,6 +144,8 @@ const STOCK_ICON_CONTEXTS: Set<string> = new Set([
 
 const ICON_SIZE_RE = /^([1-9]\d*)x\1(?:@[1-9]\d*)?$/;
 const RESERVED_ICON_NAMES: Set<string> = new Set(["", ".", ".."]);
+const STYLESHEET_RE = /\.css$/i;
+const NON_RESOURCE_TARGET_RE = /^(?:[a-z][a-z\d+.-]*:|#|$)/i;
 
 const isDependencyFile = (root: string, path: string): boolean =>
     isPathInside(root, path) && relative(root, path).split(sep).includes("node_modules");
@@ -422,18 +432,27 @@ const registerIconEntry = (state: PluginState, sourcePath: string, derived: Deri
     return entry;
 };
 
-const virtualAssetId = (entry: ResourceEntry): string =>
+const virtualEntryId = (entry: ResourceEntry): string =>
     toVirtualId(entry.sourcePath) + REL_SEPARATOR + entry.resourcePath;
 
+const virtualAssetId = (entry: ResourceEntry): string => virtualEntryId(entry) + ASSET_MODULE_SUFFIX;
+
 const virtualIconId = ({ entry, iconName }: ResolvedIconEntry): string =>
-    virtualAssetId(entry) + ICON_NAME_SEPARATOR + iconName;
+    virtualEntryId(entry) + ICON_NAME_SEPARATOR + iconName + ASSET_MODULE_SUFFIX;
+
+const resolveCustomOptions = (options: Record<string, unknown> | undefined): Record<string, unknown> => {
+    const custom = options?.["custom"];
+
+    return isRecord(custom) ? custom : {};
+};
 
 const resolveAssetSource = async (
     ctx: ResolveContext,
     request: { assetSource: string; importer: string | undefined; options: Record<string, unknown> | undefined },
 ): Promise<string> => {
-    const resolved = await ctx.resolve(request.assetSource, request.importer, {
+    const resolved = await ctx.resolve(request.assetSource + ASSET_SOURCE_QUERY, request.importer, {
         ...request.options,
+        custom: { ...resolveCustomOptions(request.options), [RESOURCE_RESOLVE_OPTION]: true },
         skipSelf: true,
     });
 
@@ -502,7 +521,7 @@ const loadInitModule = (state: PluginState): string => {
 };
 
 const virtualAssetMetadata = (virtualId: string): { absPath: string; iconName: string | null; rel: string } => {
-    const rest = fromVirtualId(virtualId);
+    const rest = fromVirtualId(virtualId).slice(0, -ASSET_MODULE_SUFFIX.length);
     const separatorIndex = rest.indexOf(REL_SEPARATOR);
     const relAndMetadata = rest.slice(separatorIndex + REL_SEPARATOR.length);
     const iconSeparatorIndex = relAndMetadata.indexOf(ICON_NAME_SEPARATOR);
@@ -563,8 +582,37 @@ const loadAssetModule = (state: PluginState, virtualId: string): string => {
     ].join("\n");
 };
 
+const stylesheetTargetPath = (stylesheet: ResourceEntry, target: string): string | null => {
+    const path = target.replace(/[?#].*$/, "");
+
+    if (NON_RESOURCE_TARGET_RE.test(path)) {
+        return null;
+    }
+
+    return posix.normalize(path.startsWith("/") ? path : posix.join(posix.dirname(stylesheet.resourcePath), path));
+};
+
+const warnUnbundledStylesheetTargets = (ctx: Pick<Rolldown.PluginContext, "warn">, state: PluginState): void => {
+    for (const entry of state.entries.values()) {
+        if (!STYLESHEET_RE.test(entry.resourcePath)) {
+            continue;
+        }
+
+        for (const target of stylesheetTargets(entry.sourcePath, readFileSync(entry.sourcePath, "utf8"))) {
+            const resourcePath = stylesheetTargetPath(entry, target);
+
+            if (resourcePath?.startsWith(`${state.prefix}/`) === true && !state.entries.has(resourcePath)) {
+                ctx.warn(
+                    `${entry.sourcePath} refers to "${target}", which GTK loads from the GResource path ` +
+                        `${resourcePath}, but no import bundles a file there. Import it with ?resource=${resourcePath}.`,
+                );
+            }
+        }
+    }
+};
+
 const finalizeBuildBundle = (
-    ctx: Pick<Rolldown.PluginContext, "getFileName">,
+    ctx: Pick<Rolldown.PluginContext, "getFileName" | "warn">,
     bundle: Rolldown.OutputBundle,
     state: PluginState,
 ): void => {
@@ -585,6 +633,7 @@ const finalizeBuildBundle = (
         return;
     }
 
+    warnUnbundledStylesheetTargets(ctx, state);
     const compiled = withStagingDir("resources-out", (outDir) => compileBundle(state, join(outDir, BUNDLE_FILENAME)));
     output.source = compiled;
     info(`Compiled ${String(state.entries.size)} resource(s) into ${BUNDLE_FILENAME}`);

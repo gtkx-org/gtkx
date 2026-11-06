@@ -1,5 +1,5 @@
 import type { InlineConfig, ModuleNode, Plugin, ViteDevServer } from "vite";
-import { error, warn } from "@gtkx/utils";
+import { CONSTRUCT_ONLY_PROP_CHANGE, error, errorCode, warn } from "@gtkx/utils";
 import { isCatalogSource } from "../i18n/catalogs.js";
 import { loadModuleExclusively, withExclusiveLoad } from "../internal/module-loads.js";
 import { parseRuntimeImportsIn, sourceLanguage } from "../internal/source-imports.js";
@@ -7,14 +7,23 @@ import { projectSchemaFiles, SCHEMA_SUFFIX, stageAndCompileProjectSchemas } from
 import { createStorybookSession, type StorybookSession } from "../storybook/session.js";
 import { isUrlSpecifier } from "../vite-plugins/asset-specifier.js";
 import { injectedCssId } from "../vite-plugins/css.js";
+import { REFRESH_REG } from "../vite-plugins/fast-refresh/refresh-filter.js";
 import { REL_SEPARATOR, toVirtualId } from "../vite-plugins/resource-shared.js";
 import { stripQuery } from "../vite-plugins/strip-query.js";
 import { createChangeQueue, type WatchedChange } from "./change-queue.js";
 import { createFailureTracker, type FailureTracker } from "./failure-tracker.js";
+import { checkDevCatalogs } from "./locale-dir.js";
 import { isMissingImport, missingImportName } from "./missing-import.js";
 import { createRefreshTracker, type RefreshTracker } from "./refresh-tracker.js";
 import { RESTART_EXIT_CODE } from "./supervisor.js";
-import { createDevServerConfig, type DevServerWatchEvent, isServerConfigFile } from "./vite-dev-server.js";
+import { isRepeatedRegistration } from "./type-registration.js";
+import {
+    createDevLogger,
+    createDevServerConfig,
+    type DevLogger,
+    type DevServerWatchEvent,
+    isServerConfigFile,
+} from "./vite-dev-server.js";
 
 type LoadAppModule = (id: string) => Promise<Record<string, unknown>>;
 type ApplicationState = "primary" | "remote" | "shutDown" | "unregistered";
@@ -22,16 +31,27 @@ type ApplicationState = "primary" | "remote" | "shutDown" | "unregistered";
 type DevRunnerDeps = {
     createServer(config: InlineConfig): Promise<ViteDevServer>;
     waitForApplicationId(timeoutMs: number, shouldKeepWaiting: () => boolean): Promise<string | null>;
-    applicationId: string;
-    startMcpClient(applicationId: string, loadAppModule: LoadAppModule): Promise<unknown>;
+    translationDomain: string;
+    mcpApplicationId: string;
+    startMcpClient(
+        applicationId: string,
+        loadAppModule: LoadAppModule,
+        reportUncaughtError: (cause: unknown) => void,
+    ): Promise<unknown>;
     stopMcpClient(): void;
+    reportApplicationError(cause: unknown): void;
+    watchApplicationRegistration(): void;
     watchApplicationShutdown(onShutdown: () => void): void;
     watchUncaughtErrors(onUncaughtError: (cause: unknown) => void): void;
+    hasApplicationErrorHandler(): boolean;
+    watchWorkerSources(onSource: (path: string) => void): void;
     getApplicationRegistrationState(): ApplicationState;
+    hasStoreChanged(): boolean;
     installShutdownHandlers(onSignal: () => void | Promise<void>): void;
     quitDefaultApplication(): void;
     performRefresh: () => void;
     isRefreshBoundary(module: Record<string, unknown>): boolean;
+    incompatibleExportName(module: Record<string, unknown>): string | null;
     staleExportName(previous: Record<string, unknown>, current: Record<string, unknown>): string | null;
     readFileRevision(path: string): Promise<string>;
     hasWrittenCatalog(path: string): boolean;
@@ -40,6 +60,7 @@ type DevRunnerDeps = {
     plugins(entryPath: string): Plugin[];
     log(message: string): void;
     exit(code: number): never;
+    exitWhenIdle(code: number): void;
 };
 
 type DevRunner = {
@@ -52,6 +73,8 @@ type DevRunnerOptions = {
 
 type ShutdownController = {
     isShuttingDown: () => boolean;
+    isRestarting: () => boolean;
+    beginRestart: () => void;
     shutdown: (requestQuit: () => void | Promise<void>) => Promise<void>;
 };
 
@@ -63,19 +86,30 @@ type DevSession = {
     failure: FailureTracker;
     pendingSaves: Map<string, string>;
     imports: Map<string, Set<string>>;
+    registrations: Set<string>;
     schemaFiles: Set<string>;
+    workerSources: Set<string>;
     hasPendingSchemaChange: boolean;
+    isParked: boolean;
+    keepsApplicationOnError: boolean;
     storybook: StorybookSession | undefined;
 };
 
-type SettledLoad = {
-    loadedExports: Record<string, unknown>;
-    isSettled: boolean;
+type RefreshPlan = {
+    invalidated: Set<ModuleNode>;
+    boundaries: Set<ModuleNode>;
 };
 
-type SettleAttempt = {
-    loadedExports: Record<string, unknown> | null;
-    module: ModuleNode;
+type RefreshWalk = {
+    session: DevSession;
+    rejected: ReadonlySet<ModuleNode>;
+    visited: Set<ModuleNode>;
+    plan: RefreshPlan;
+};
+
+type PlanLoad = {
+    loaded: Map<ModuleNode, Record<string, unknown>>;
+    isSettled: boolean;
 };
 
 const APPLICATION_MOUNT_TIMEOUT_MS = 10_000;
@@ -86,20 +120,24 @@ const SKIP_REASON = `did not settle in ${String(LOAD_ATTEMPT_LIMIT)} attempts; s
 const DROPPED_REFRESH = "Fast Refresh dropped";
 const SAVE_ACTION = "File changed";
 const RETRY_ACTION = "Retrying pending save";
+const NONE_REJECTED: ReadonlySet<ModuleNode> = new Set();
 
-const announceFailure = (server: ViteDevServer, cause: unknown): void => {
+const unreportedDetail = (server: ViteDevServer, cause: unknown): unknown =>
+    cause instanceof Error && server.config.logger.hasErrorLogged(cause) ? cause.message.split("\n", 1)[0] : cause;
+
+const STOPPED_FAILURE = "Application error; stopped the application. Fix the error and save again to restart it.";
+const KEPT_FAILURE = "Application error; keeping the dev server up. Fix the error and save again.";
+
+const announceFailure = (server: ViteDevServer, cause: unknown, keepsApplicationOnError: boolean): void => {
     if (cause instanceof Error) {
         server.ssrFixStacktrace(cause);
     }
 
-    error("Application error; keeping the dev server up. Fix the error and save again.", cause);
-};
-
-const parkSession = (session: DevSession): void => {
-    session.deps.log("Waiting for a change to restart the application...");
+    error(keepsApplicationOnError ? KEPT_FAILURE : STOPPED_FAILURE, unreportedDetail(server, cause));
 };
 
 const requestRestart = async (session: DevSession): Promise<never> => {
+    session.controller.beginRestart();
     session.deps.log("Full restart (process restart)");
 
     try {
@@ -111,21 +149,97 @@ const requestRestart = async (session: DevSession): Promise<never> => {
     return session.deps.exit(RESTART_EXIT_CODE);
 };
 
-const requiresRestart = (session: DevSession, module: ModuleNode): boolean => {
-    if (session.failure.isDown()) {
-        return true;
+const isRefreshOfConstructOnlyProp = (session: DevSession, cause: unknown): boolean =>
+    session.refreshTracker.isRefreshing() && errorCode(cause) === CONSTRUCT_ONLY_PROP_CHANGE;
+
+const stopFailedApplication = (session: DevSession, cause: unknown): void => {
+    if (session.controller.isRestarting()) {
+        return;
     }
 
-    const loadedExports = module.ssrModule;
+    if (isRefreshOfConstructOnlyProp(session, cause)) {
+        warn(`${DROPPED_REFRESH}: the edit changed a construct-only prop, which only a newly built element accepts`);
+        void requestRestart(session);
 
-    if (!loadedExports) {
+        return;
+    }
+
+    if (session.keepsApplicationOnError) {
+        session.failure.report(cause);
+
+        return;
+    }
+
+    session.failure.fail(cause);
+    session.deps.quitDefaultApplication();
+};
+
+const parkSession = (session: DevSession): void => {
+    if (session.isParked) {
+        return;
+    }
+
+    session.isParked = true;
+    session.deps.log("Waiting for a change to restart the application...");
+};
+
+const registersComponents = (session: DevSession, module: ModuleNode, rejected: ReadonlySet<ModuleNode>): boolean =>
+    module.id !== null && session.registrations.has(module.id) && !rejected.has(module);
+
+const reachesBoundaries = (walk: RefreshWalk, module: ModuleNode): boolean => {
+    if (module.importers.size === 0) {
         return false;
     }
 
-    return !session.deps.isRefreshBoundary(loadedExports);
+    for (const importer of module.importers) {
+        if (walk.visited.has(importer)) {
+            continue;
+        }
+
+        walk.visited.add(importer);
+        walk.plan.invalidated.add(importer);
+
+        if (registersComponents(walk.session, importer, walk.rejected)) {
+            walk.plan.boundaries.add(importer);
+        } else if (!reachesBoundaries(walk, importer)) {
+            return false;
+        }
+    }
+
+    return true;
 };
 
-const invalidateChangedModule = (session: DevSession, module: ModuleNode): void => {
+const planPropagation = (
+    session: DevSession,
+    sources: readonly ModuleNode[],
+    rejected: ReadonlySet<ModuleNode>,
+): RefreshPlan | null => {
+    const walk: RefreshWalk = {
+        session,
+        rejected,
+        visited: new Set(sources),
+        plan: { invalidated: new Set(), boundaries: new Set() },
+    };
+
+    if (!sources.every((source) => reachesBoundaries(walk, source)) || walk.plan.boundaries.size === 0) {
+        return null;
+    }
+
+    return walk.plan;
+};
+
+const planChange = (session: DevSession, module: ModuleNode): RefreshPlan | null => {
+    if (registersComponents(session, module, NONE_REJECTED)) {
+        return { invalidated: new Set([module]), boundaries: new Set([module]) };
+    }
+
+    const plan = planPropagation(session, [module], NONE_REJECTED);
+    plan?.invalidated.add(module);
+
+    return plan;
+};
+
+const invalidateModuleAndImporters = (session: DevSession, module: ModuleNode): void => {
     session.server.moduleGraph.invalidateModule(module);
 
     for (const importer of module.importers) {
@@ -133,58 +247,65 @@ const invalidateChangedModule = (session: DevSession, module: ModuleNode): void 
     }
 };
 
-const isEvaluationCurrent = (
-    session: DevSession,
-    changedPath: string,
-    loadedExports: Record<string, unknown>,
-): boolean => {
-    const evaluated = session.server.moduleGraph.getModuleById(changedPath);
+const evaluatedModuleFor = (session: DevSession, changedPath: string): ModuleNode | undefined => {
+    const { moduleGraph } = session.server;
+    const module = moduleGraph.getModuleById(changedPath);
+
+    if (module?.ssrModule) {
+        return module;
+    }
+
+    return (
+        moduleGraph
+            .getModulesByFile(changedPath)
+            ?.values()
+            .find((variant) => variant.ssrModule !== null) ?? module
+    );
+};
+
+const isEvaluationCurrent = (session: DevSession, changedPath: string): boolean => {
+    const evaluated = evaluatedModuleFor(session, changedPath);
 
     if (!evaluated?.ssrTransformResult) {
         return false;
     }
 
-    return evaluated.ssrModule === loadedExports;
+    return evaluated.ssrModule !== null;
 };
 
-const loadInvalidatedModule = (session: DevSession, changedPath: string, module: ModuleNode): Promise<SettledLoad> =>
+const loadPlan = (session: DevSession, changedPath: string, plan: RefreshPlan): Promise<PlanLoad> =>
     withExclusiveLoad(session.server, async () => {
         const revision = await session.deps.readFileRevision(changedPath);
-        invalidateChangedModule(session, module);
-        const loadedExports = await session.server.ssrLoadModule(changedPath);
+
+        for (const module of plan.invalidated) {
+            invalidateModuleAndImporters(session, module);
+        }
+
+        const loaded: Map<ModuleNode, Record<string, unknown>> = new Map();
+
+        for (const boundary of plan.boundaries) {
+            loaded.set(boundary, await session.server.ssrLoadModule(boundary.url));
+        }
+
         const settledRevision = await session.deps.readFileRevision(changedPath);
 
         return {
-            loadedExports,
-            isSettled: settledRevision === revision && isEvaluationCurrent(session, changedPath, loadedExports),
+            loaded,
+            isSettled: settledRevision === revision && isEvaluationCurrent(session, changedPath),
         };
     });
 
-const settleAttempt = async (session: DevSession, changedPath: string, module: ModuleNode): Promise<SettleAttempt> => {
-    const { loadedExports, isSettled } = await loadInvalidatedModule(session, changedPath, module);
-
-    if (isSettled) {
-        return { loadedExports, module };
-    }
-
-    return { loadedExports: null, module: session.server.moduleGraph.getModuleById(changedPath) ?? module };
-};
-
-const loadSettledExports = async (
+const loadSettledPlan = async (
     session: DevSession,
     changedPath: string,
-    changedModule: ModuleNode,
-): Promise<Record<string, unknown> | null> => {
-    let module = changedModule;
-
+    plan: RefreshPlan,
+): Promise<Map<ModuleNode, Record<string, unknown>> | null> => {
     for (let round = 0; round < LOAD_ATTEMPT_LIMIT && !session.controller.isShuttingDown(); round++) {
-        const attempt = await settleAttempt(session, changedPath, module);
+        const { loaded, isSettled } = await loadPlan(session, changedPath, plan);
 
-        if (attempt.loadedExports) {
-            return attempt.loadedExports;
+        if (isSettled) {
+            return loaded;
         }
-
-        module = attempt.module;
     }
 
     return null;
@@ -205,9 +326,9 @@ const droppedExportName = (previous: Record<string, unknown>, current: Record<st
 const unpatchedExportReason = (
     session: DevSession,
     previous: Record<string, unknown> | null,
-    current: Record<string, unknown>,
+    current: Record<string, unknown> | undefined,
 ): string | null => {
-    if (!previous) {
+    if (!previous || !current) {
         return null;
     }
 
@@ -226,32 +347,27 @@ const unpatchedExportReason = (
     return `renamed the component it exports as ${stale}, which the window is still rendering`;
 };
 
-const refreshChangedModule = async (
+const rejectedBoundaries = (session: DevSession, loaded: Map<ModuleNode, Record<string, unknown>>): ModuleNode[] =>
+    [...loaded].filter(([, moduleExports]) => !session.deps.isRefreshBoundary(moduleExports)).map(([module]) => module);
+
+const incompatibleExportReason = (
     session: DevSession,
-    changedPath: string,
-    changedModule: ModuleNode,
-    previous: Record<string, unknown> | null,
-): Promise<void> => {
-    const loadedExports = await loadSettledExports(session, changedPath, changedModule);
+    loaded: Map<ModuleNode, Record<string, unknown>>,
+    rejected: readonly ModuleNode[],
+): string | null => {
+    for (const module of rejected) {
+        const moduleExports = loaded.get(module);
+        const name = moduleExports ? session.deps.incompatibleExportName(moduleExports) : null;
 
-    if (session.controller.isShuttingDown()) {
-        return;
+        if (name !== null) {
+            return `${module.file ?? module.url} exports ${name}, which is not a component; move it to another module to refresh in place`;
+        }
     }
 
-    if (!loadedExports) {
-        warn(`Fast Refresh skipped: ${changedPath} ${SKIP_REASON}`);
+    return null;
+};
 
-        return;
-    }
-
-    if (!session.deps.isRefreshBoundary(loadedExports)) {
-        await requestRestart(session);
-
-        return;
-    }
-
-    const unpatched = unpatchedExportReason(session, previous, loadedExports);
-
+const completeRefresh = async (session: DevSession, changedPath: string, unpatched: string | null): Promise<void> => {
     if (unpatched !== null) {
         warn(`${DROPPED_REFRESH}: ${changedPath} ${unpatched}`);
         await requestRestart(session);
@@ -265,8 +381,58 @@ const refreshChangedModule = async (
     session.deps.log("Fast Refresh complete");
 };
 
+const refreshChangedModule = async (
+    session: DevSession,
+    changedPath: string,
+    changedModule: ModuleNode,
+    previous: Record<string, unknown> | null,
+): Promise<void> => {
+    const rejected: Set<ModuleNode> = new Set();
+    let blocker: string | null = null;
+    let plan = planChange(session, changedModule);
+
+    while (plan !== null) {
+        const loaded = await loadSettledPlan(session, changedPath, plan);
+
+        if (session.controller.isShuttingDown()) {
+            return;
+        }
+
+        if (!loaded) {
+            warn(`Fast Refresh skipped: ${changedPath} ${SKIP_REASON}`);
+
+            return;
+        }
+
+        const rejectedNow = rejectedBoundaries(session, loaded);
+
+        if (rejectedNow.length === 0) {
+            await completeRefresh(
+                session,
+                changedPath,
+                unpatchedExportReason(session, previous, loaded.get(changedModule)),
+            );
+
+            return;
+        }
+
+        for (const module of rejectedNow) {
+            rejected.add(module);
+        }
+
+        blocker ??= incompatibleExportReason(session, loaded, rejectedNow);
+        plan = planPropagation(session, rejectedNow, rejected);
+    }
+
+    if (blocker !== null) {
+        warn(`${DROPPED_REFRESH}: ${blocker}`);
+    }
+
+    await requestRestart(session);
+};
+
 const applyModuleChange = async (session: DevSession, changedPath: string, action: string): Promise<void> => {
-    const module = session.server.moduleGraph.getModuleById(changedPath);
+    const module = evaluatedModuleFor(session, changedPath);
 
     if (!module) {
         return;
@@ -274,13 +440,32 @@ const applyModuleChange = async (session: DevSession, changedPath: string, actio
 
     session.deps.log(`${action}: ${changedPath}`);
 
-    if (requiresRestart(session, module)) {
+    if (session.failure.isDown()) {
         await requestRestart(session);
 
         return;
     }
 
     await refreshChangedModule(session, changedPath, module, module.ssrModule ?? null);
+};
+
+const replaceStylesheet = async (session: DevSession, changedPath: string, stylesheet: ModuleNode): Promise<void> => {
+    session.deps.log(`Stylesheet changed: ${changedPath}`);
+
+    if (session.failure.isDown()) {
+        await requestRestart(session);
+
+        return;
+    }
+
+    try {
+        await withExclusiveLoad(session.server, async () => {
+            session.server.moduleGraph.invalidateModule(stylesheet);
+            await session.server.ssrLoadModule(stylesheet.url);
+        });
+    } catch (error_) {
+        error("Hot reload failed:", unreportedDetail(session.server, error_));
+    }
 };
 
 const awaitMissingImport = (session: DevSession, changedPath: string, cause: unknown): void => {
@@ -295,6 +480,11 @@ const awaitMissingImport = (session: DevSession, changedPath: string, cause: unk
     session.pendingSaves.set(changedPath, missingName);
 };
 
+const restartForRegistration = async (session: DevSession, changedPath: string): Promise<void> => {
+    session.deps.log(`Registered GObject type changed: ${changedPath}`);
+    await requestRestart(session);
+};
+
 const applySave = async (session: DevSession, changedPath: string, action: string): Promise<void> => {
     try {
         await applyModuleChange(session, changedPath, action);
@@ -303,8 +493,14 @@ const applySave = async (session: DevSession, changedPath: string, action: strin
             return;
         }
 
+        if (isRepeatedRegistration(error_)) {
+            await restartForRegistration(session, changedPath);
+
+            return;
+        }
+
         awaitMissingImport(session, changedPath, error_);
-        error("Hot reload failed:", error_);
+        error("Hot reload failed:", unreportedDetail(session.server, error_));
     }
 };
 
@@ -351,17 +547,28 @@ const handleFileRemove = async (session: DevSession, removedPath: string): Promi
     await requestRestart(session);
 };
 
-const createShutdownController = (server: ViteDevServer, deps: DevRunnerDeps): ShutdownController => {
+const createShutdownController = (
+    server: ViteDevServer,
+    deps: DevRunnerDeps,
+    logger: DevLogger,
+): ShutdownController => {
     let isShuttingDown = false;
+    let isRestarting = false;
 
     return {
         isShuttingDown: () => isShuttingDown,
+        isRestarting: () => isRestarting,
+        beginRestart: () => {
+            isRestarting = true;
+            logger.silenceErrors();
+        },
         shutdown: async (requestQuit: () => void | Promise<void>): Promise<void> => {
             if (isShuttingDown) {
                 return;
             }
 
             isShuttingDown = true;
+            logger.silenceErrors();
             await requestQuit();
             deps.stopMcpClient();
             await server.close();
@@ -385,6 +592,15 @@ const restartForCatalog = async (session: DevSession, changedPath: string): Prom
     }
 
     session.deps.log(`Translation catalog changed: ${changedPath}`);
+
+    try {
+        await checkDevCatalogs(session.server.config.root, session.deps.translationDomain);
+    } catch (error_) {
+        error("Translation catalogs failed; keeping the current application.", error_);
+
+        return;
+    }
+
     await requestRestart(session);
 };
 
@@ -419,8 +635,31 @@ const hasChangedSchemaInputs = (session: DevSession, change: WatchedChange): boo
     );
 };
 
+const didRestartForWorker = async (session: DevSession, change: WatchedChange): Promise<boolean> => {
+    if (!session.workerSources.has(change.path)) {
+        return false;
+    }
+
+    session.deps.log(`Worker module ${change.event}: ${change.path}`);
+    await requestRestart(session);
+
+    return true;
+};
+
+const loadedStylesheetFor = (session: DevSession, path: string): ModuleNode | undefined => {
+    const stylesheet = session.server.moduleGraph.getModuleById(injectedCssId(path));
+
+    return stylesheet?.ssrModule ? stylesheet : undefined;
+};
+
+const hasLoadedFileModule = (session: DevSession, path: string): boolean =>
+    session.server.moduleGraph
+        .getModulesByFile(path)
+        ?.values()
+        .some((module) => module.ssrModule !== null) ?? false;
+
 const didRestartForStylesheet = async (session: DevSession, change: WatchedChange): Promise<boolean> => {
-    if (!session.server.moduleGraph.getModuleById(injectedCssId(change.path))) {
+    if (change.event === "change" || !loadedStylesheetFor(session, change.path)) {
         return false;
     }
 
@@ -493,6 +732,7 @@ const didRestartForChange = async (session: DevSession, change: WatchedChange): 
     }
 
     return (
+        (await didRestartForWorker(session, change)) ||
         (await didRestartForStylesheet(session, change)) ||
         (await didRestartForAsset(session, change)) ||
         didRestartForImports(session, change.path)
@@ -522,7 +762,15 @@ const applyChange = async (session: DevSession, change: WatchedChange): Promise<
         return;
     }
 
-    await applySave(session, change.path, SAVE_ACTION);
+    const stylesheet = loadedStylesheetFor(session, change.path);
+
+    if (!stylesheet || hasLoadedFileModule(session, change.path)) {
+        await applySave(session, change.path, SAVE_ACTION);
+    }
+
+    if (stylesheet) {
+        await replaceStylesheet(session, change.path, stylesheet);
+    }
 };
 
 const watchProjectFiles = (session: DevSession): void => {
@@ -542,27 +790,28 @@ const onShutdownSignal =
             return;
         }
 
-        session.deps.log("Received shutdown signal - stopping dev runner...");
-
         await session.controller.shutdown(() => {
             session.deps.quitDefaultApplication();
         });
     };
 
-const closeAndExit = async (session: DevSession, code = 0): Promise<never> => {
+const closeSession = async (session: DevSession): Promise<boolean> => {
     try {
         await session.controller.shutdown((): void => undefined);
     } catch (error_) {
         error("Error closing server:", error_);
 
-        return session.deps.exit(1);
+        return false;
     }
 
-    return session.deps.exit(code);
+    return true;
 };
 
+const closeAndExit = async (session: DevSession, code = 0): Promise<never> =>
+    session.deps.exit((await closeSession(session)) ? code : 1);
+
 const isSessionInactive = (session: DevSession): boolean => {
-    if (session.controller.isShuttingDown()) {
+    if (session.controller.isShuttingDown() || session.controller.isRestarting()) {
         return true;
     }
 
@@ -575,10 +824,14 @@ const isSessionInactive = (session: DevSession): boolean => {
     return true;
 };
 
-const stopForApplicationQuit = (session: DevSession): Promise<never> => {
+const stopForApplicationQuit = async (session: DevSession): Promise<void> => {
     session.deps.log("Application quit - stopping dev runner...");
 
-    return closeAndExit(session, process.exitCode === undefined ? 0 : Number(process.exitCode));
+    if (!(await closeSession(session))) {
+        session.deps.exit(1);
+    }
+
+    session.deps.exitWhenIdle(process.exitCode === undefined ? 0 : Number(process.exitCode));
 };
 
 const settleUnmount = (session: DevSession, wasRefreshing: boolean): void => {
@@ -616,20 +869,22 @@ const onApplicationShutdown =
 
 const refusedExitCode = (): number => (process.exitCode === undefined ? 1 : Number(process.exitCode));
 
-const connectApplication = async (session: DevSession): Promise<void> => {
+const startMcpClient = async (session: DevSession): Promise<void> => {
     const { deps, server } = session;
-    const { applicationId } = deps;
-    deps.log(`Connected application ID: ${applicationId}`);
-    await deps.startMcpClient(applicationId, (id) => loadModuleExclusively(server, id));
+    await deps.startMcpClient(
+        deps.mcpApplicationId,
+        (id) => loadModuleExclusively(server, id),
+        (cause) => {
+            if (!deps.hasApplicationErrorHandler()) {
+                stopFailedApplication(session, cause);
+            }
+        },
+    );
 };
 
-const stopForOwnedApplicationId = async (session: DevSession, liveApplicationId: string): Promise<void> => {
-    session.deps.log(
-        `Another process already owns ${liveApplicationId}, so this session can never show a window - ` +
-            "stopping dev runner. Quit that instance or change applicationId, then start gtkx dev again.",
-    );
-
-    await closeAndExit(session, OWNED_ID_EXIT_CODE);
+const connectApplication = async (session: DevSession): Promise<void> => {
+    session.deps.log(`Connected application ID: ${session.deps.mcpApplicationId}`);
+    await startMcpClient(session);
 };
 
 const stopForStoppedApplication = async (session: DevSession, registrationState: ApplicationState): Promise<void> => {
@@ -646,11 +901,13 @@ const stopForStoppedApplication = async (session: DevSession, registrationState:
         return;
     }
 
-    session.deps.log("Application refused its command line - stopping dev runner...");
+    session.deps.log(
+        "Application did not start: it rejected its command line or could not register its ID - stopping dev runner...",
+    );
     await closeAndExit(session, refusedExitCode());
 };
 
-const connectLiveApplication = async (session: DevSession, liveApplicationId: string): Promise<void> => {
+const connectLiveApplication = async (session: DevSession): Promise<void> => {
     const registrationState = session.deps.getApplicationRegistrationState();
 
     if (registrationState === "primary") {
@@ -660,7 +917,7 @@ const connectLiveApplication = async (session: DevSession, liveApplicationId: st
     }
 
     if (registrationState === "remote") {
-        await stopForOwnedApplicationId(session, liveApplicationId);
+        await closeAndExit(session, OWNED_ID_EXIT_CODE);
 
         return;
     }
@@ -674,6 +931,10 @@ const attachApplication = async (session: DevSession): Promise<void> => {
     const liveApplicationId = await deps.waitForApplicationId(APPLICATION_MOUNT_TIMEOUT_MS, () => !failure.isDown());
 
     if (failure.isDown()) {
+        if (!session.controller.isShuttingDown()) {
+            await startMcpClient(session);
+        }
+
         return;
     }
 
@@ -683,7 +944,7 @@ const attachApplication = async (session: DevSession): Promise<void> => {
         return;
     }
 
-    await connectLiveApplication(session, liveApplicationId);
+    await connectLiveApplication(session);
 };
 
 const loadEntry = async (
@@ -696,12 +957,20 @@ const loadEntry = async (
     try {
         const entry = await loadModuleExclusively(session.server, entryPath);
         if (storybookConfig !== undefined) {
-            session.storybook = createStorybookSession(session.server, entry, storybookConfig, (module) =>
-                session.deps.isRefreshBoundary(module),
-            );
+            session.storybook = createStorybookSession(session.server, entry, storybookConfig, {
+                log: (message) => session.deps.log(message),
+                isRefreshBoundary: (module) => session.deps.isRefreshBoundary(module),
+                restartForRegistration: (changedPath) => restartForRegistration(session, changedPath),
+            });
             await session.storybook.initialize();
         }
     } catch (error_) {
+        if (session.controller.isShuttingDown() || session.controller.isRestarting()) {
+            session.failure.fail();
+
+            return;
+        }
+
         awaitMissingImport(session, entryPath, error_);
         session.failure.fail(error_);
     }
@@ -741,21 +1010,43 @@ const trackModuleImports = (imports: Map<string, Set<string>>): Plugin => ({
     },
 });
 
-const createSession = (server: ViteDevServer, deps: DevRunnerDeps, imports: Map<string, Set<string>>): DevSession => {
+const trackRefreshRegistrations = (registrations: Set<string>): Plugin => ({
+    name: "gtkx:dev-refresh-registrations",
+    transform(code, id) {
+        if (code.includes(REFRESH_REG)) {
+            registrations.add(id);
+        } else {
+            registrations.delete(id);
+        }
+    },
+});
+
+const createSession = (
+    server: ViteDevServer,
+    logger: DevLogger,
+    deps: DevRunnerDeps,
+    tracked: { imports: Map<string, Set<string>>; registrations: Set<string> },
+    keepsApplicationOnError: boolean,
+): DevSession => {
     const refreshTracker = createRefreshTracker(deps.performRefresh);
 
     return {
         server,
         deps: { ...deps, performRefresh: refreshTracker.performRefresh },
-        controller: createShutdownController(server, deps),
+        controller: createShutdownController(server, deps, logger),
         refreshTracker,
         failure: createFailureTracker((cause) => {
-            announceFailure(server, cause);
+            announceFailure(server, cause, keepsApplicationOnError);
+            deps.reportApplicationError(cause);
         }, refreshTracker.isRefreshing),
         pendingSaves: new Map(),
-        imports,
+        imports: tracked.imports,
+        registrations: tracked.registrations,
         schemaFiles: new Set(projectSchemaFiles(server.config.root).files),
+        workerSources: new Set(),
         hasPendingSchemaChange: false,
+        isParked: false,
+        keepsApplicationOnError,
         storybook: undefined,
     };
 };
@@ -763,22 +1054,44 @@ const createSession = (server: ViteDevServer, deps: DevRunnerDeps, imports: Map<
 const createDevRunner = (deps: DevRunnerDeps, options: DevRunnerOptions = {}): DevRunner => ({
     async run(entryPath: string): Promise<void> {
         const imports = new Map<string, Set<string>>();
+        const registrations = new Set<string>();
+        const logger = createDevLogger();
         const server = await deps.createServer(
-            createDevServerConfig(process.cwd(), deps.deployOutDir, [
-                trackModuleImports(imports),
-                ...deps.plugins(entryPath),
-            ]),
+            createDevServerConfig(
+                process.cwd(),
+                deps.deployOutDir,
+                [trackModuleImports(imports), ...deps.plugins(entryPath), trackRefreshRegistrations(registrations)],
+                logger.logger,
+            ),
         );
-        const session = createSession(server, deps, imports);
+        const session = createSession(
+            server,
+            logger,
+            deps,
+            { imports, registrations },
+            options.storybookConfig !== undefined,
+        );
         deps.installShutdownHandlers(onShutdownSignal(session));
 
         deps.watchUncaughtErrors((cause) => {
-            session.failure.report(cause);
+            stopFailedApplication(session, cause);
         });
 
+        deps.watchWorkerSources((path) => {
+            session.workerSources.add(path);
+            server.watcher.add(path);
+        });
+
+        deps.watchApplicationRegistration();
         deps.watchApplicationShutdown(onApplicationShutdown(session));
         watchProjectFiles(session);
         await loadEntry(session, entryPath, options.storybookConfig);
+
+        if (deps.hasStoreChanged()) {
+            deps.log("Generated bindings changed while the application loaded.");
+            await requestRestart(session);
+        }
+
         await attachApplication(session);
         announceReady(session);
     },

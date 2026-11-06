@@ -37,7 +37,10 @@ const deploy = defineCommand({
         },
     },
     async run({ args }) {
-        const { cwd, entry, configFile } = await resolveProject(args, DEPLOY_MODE);
+        const { cwd, entry, configFile } = await resolveProject(args, DEPLOY_MODE, {
+            name: "deploy",
+            forwardsApplicationArgs: false,
+        });
 
         await runDeploy({
             entry,
