@@ -36,13 +36,17 @@ const buildDefaults: InlineConfig = {
     },
 };
 
+const projectRelative = (root: string, path: string): string =>
+    posix.normalize(relative(root, resolve(root, path)).replaceAll("\\", "/"));
+
 const forcedConfig = async (options: BuildOptions, root: string, assetsDir: string): Promise<InlineConfig> => {
     const { entry, shouldPreserveI18nMetadata = true } = options;
     const buildManifest = createBuildManifestCollector();
     const loadedConfig = await loadConfig(root, { mode: BUILD_MODE, configFile: options.configFile });
     const buildConfigIdentity = {
-        configFile: posix.normalize(relative(root, loadedConfig.configFile).replaceAll("\\", "/")),
+        configFile: projectRelative(root, loadedConfig.configFile),
         configDigest: configDigest(loadedConfig.config),
+        entry: projectRelative(root, entry),
     };
 
     return {

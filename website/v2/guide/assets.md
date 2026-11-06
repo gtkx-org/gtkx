@@ -90,7 +90,7 @@ gtkx build src/helper.ts --out dist-helper
 
 Choose a directory below the project root that is empty or contains an earlier GTKX build, and add it to `.gitignore`, which scaffolded projects set up only for `dist/` and `build/`. GTKX rejects unrelated files, symlinked paths, output nested inside another build, and output inside the deploy output directory (`build/` unless `deploy.outDir` says otherwise), which every deployment replaces. Generated bundles contain their JavaScript dependencies; unresolved package imports fail the build.
 
-`gtkx deploy --skip-build` packages `dist/`. Its `--out` option selects the deployment artifact directory, not the application build directory. See [Deploying](/v2/guide/deploying).
+`gtkx deploy --skip-build` packages `dist/`. Its `--out` option selects the deployment artifact directory, not the application build directory. See [Deploying](/v2/guide/deploying), and [Helper commands](/v2/guide/deploying#helper-commands) to package a helper build beside the application.
 
 ## Next
 

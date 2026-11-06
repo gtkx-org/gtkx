@@ -499,7 +499,7 @@ const buildApplication = async ({
 
 const buildArchPayload = async ({ options, plan, settings, metadata }: BuildPayloadRequest): Promise<DeployPayload> => {
     validateMetadata(settings, metadata, isFlathubSubmission(settings, plan.targets));
-    const buildManifest = readBuildManifest(settings, plan.loaded);
+    const buildManifest = readBuildManifest(settings, { ...plan.loaded, entry: options.entry });
 
     const builtSettings: DeploySettings = {
         ...settings,

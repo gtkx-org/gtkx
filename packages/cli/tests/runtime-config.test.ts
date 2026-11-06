@@ -117,7 +117,7 @@ describe("runtime configuration", () => {
         expect(runBundle(join(relocated, "lib", binary, "bundle.mjs"))).toContain("Bonjour, Ada !");
         const manifestPath = "dist/gtkx-schemas.json";
         const manifest = readFileSync(join(project.root, manifestPath), "utf8");
-        project.write(manifestPath, manifest.replace(/"formatVersion":\s*4/, '"formatVersion":3'));
+        project.write(manifestPath, manifest.replace(/"formatVersion":\s*5/, '"formatVersion":4'));
         await expect(
             runCommand(createCommand(), {
                 rawArgs: ["deploy", "--cwd", project.root, "--skip-build", "--print-manifests", "--target", "deb"],

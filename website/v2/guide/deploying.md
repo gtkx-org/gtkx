@@ -111,9 +111,10 @@ gtkx deploy --skip-build
 ```
 
 `--skip-build` always reads `dist/`, regardless of the deployment's `--out` directory. Keep
-`dist/gtkx-schemas.json` beside the bundle: it records the build's configuration, imported schemas, and
-dependency notices. Deployment rejects a different production configuration or an older metadata format;
-rebuild to update it. Changes to the `deploy` block alone do not need a rebuild.
+`dist/gtkx-schemas.json` beside the bundle: it records the build's entry, configuration, imported schemas, and
+dependency notices. Deployment rejects a build of another entry, such as a helper built without `--out`, a
+different production configuration, or an older metadata format; rebuild to update it. Changes to the `deploy`
+block alone do not need a rebuild.
 
 Each deployment replaces its managed output directory. Choose an empty directory or an earlier GTKX deploy
 directory below the project root, outside `dist/`; symlinked output paths and unrelated files are rejected.
@@ -224,7 +225,8 @@ to choose the arguments for `deploy.flatpak.finishArgs`.
 
 Extra files must exist before deployment starts. Their destinations are relative to the installation prefix;
 see [DeployExtraFileOptions](/v2/reference/@gtkx/config/index/type-aliases/DeployExtraFileOptions) for explicit
-file modes. Generated desktop, AppStream, and MIME metadata take precedence over extra files targeting the
+file modes. A directory source installs every file below it, so a directory of man pages or a whole build output
+takes one entry. Generated desktop, AppStream, and MIME metadata take precedence over extra files targeting the
 same destination.
 
 ### Desktop actions
@@ -264,6 +266,48 @@ export const App = () => {
     );
 };
 ```
+
+### Helper commands
+
+An application can ship a command-line helper beside it, such as a `tally-report` command that prints the
+application's data without opening a window. Build the helper into its own directory, as in
+[Production build output](/v2/guide/assets#production-build-output), before every deployment, since
+`gtkx deploy` rebuilds only `dist/`:
+
+```bash
+gtkx build src/report.ts --out dist-report
+gtkx deploy
+```
+
+List the whole directory in `extraFiles`, so chunk names that change between helper builds need no
+configuration change, along with a launcher script and the helper's dependency notices:
+
+```ts
+deploy: {
+    extraFiles: {
+        "lib/tally-report": "dist-report",
+        "bin/tally-report": { source: "packaging/tally-report", mode: "0755" },
+        "share/licenses/tally/tally-report-NOTICES": "dist-report/BUNDLED-NOTICES",
+    },
+},
+```
+
+The launcher runs the helper with the bundled Node.js runtime. Every target installs it at
+`lib/<binaryName>/node` below the installation prefix, `lib/tally/node` for an application whose binary name is
+`tally`, so launcher scripts can rely on that path:
+
+```sh
+#!/bin/sh
+set -e
+self=$(readlink -f "$0")
+prefix=$(dirname "$(dirname "$self")")
+exec "$prefix/lib/tally/node" "$prefix/lib/tally-report/bundle.mjs" "$@"
+```
+
+Debian, RPM, AppImage, and prebuilt Flatpak packages then contain the helper. Inside the Flatpak sandbox, run
+it with `flatpak run --command=tally-report <application ID>`. GTKX does not merge the helper's notices into the
+application's, and a [source Flatpak](#publishing-on-flathub) builds only the application from your repository,
+so building and installing the helper there is up to you.
 
 ## Source Flatpak builds {#publishing-on-flathub}
 

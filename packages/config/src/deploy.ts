@@ -195,13 +195,13 @@ const brandingSchema = z.strictObject({
 }) satisfies z.ZodType<DeployBrandingOptions>;
 
 /**
- * A `deploy.extraFiles` entry in object form: the source file, resolved against the project root, that is
- * installed at the entry's prefix-relative destination, and the octal mode it is installed with.
+ * A `deploy.extraFiles` entry in object form: the source file or directory, resolved against the project root,
+ * that is installed at the entry's prefix-relative destination, and the octal mode it is installed with.
  */
 type DeployExtraFileOptions = {
-    /** Source file path, resolved relative to the project root. */
+    /** Source file or directory path, resolved relative to the project root. */
     source: string;
-    /** Octal file mode. Setuid and setgid bits are rejected. */
+    /** Octal file mode, applied to every file of a directory source. Setuid and setgid bits are rejected. */
     mode?: string | undefined;
 };
 
@@ -627,7 +627,10 @@ type DeployOptions = {
     /**
      * Extra files keyed by destination inside the install prefix, without a leading slash or a `..` segment.
      * Each value is a source path relative to the project root, or a {@link DeployExtraFileOptions} entry that
-     * also sets the file mode.
+     * also sets the file mode. A directory source installs every file below it at the same path below the
+     * destination; without a mode, each file is executable when its source is. Scripts installed this way, such
+     * as a helper command's launcher, can run the bundled Node.js runtime at `lib/<binaryName>/node` in every
+     * prebuilt target and in source Flatpaks.
      */
     extraFiles?: Record<string, string | DeployExtraFileOptions> | undefined;
     /** Minimum runtime library versions keyed by GIR library ID, used when deriving package dependencies. */

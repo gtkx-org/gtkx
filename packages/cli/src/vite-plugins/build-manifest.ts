@@ -27,6 +27,7 @@ type PackageSource = {
 type BuildConfigIdentity = {
     configFile: string;
     configDigest: string;
+    entry: string;
 };
 
 const JSON_INDENT = 4;

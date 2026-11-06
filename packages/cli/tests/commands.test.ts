@@ -8,6 +8,7 @@ import { execFile, spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { once } from "node:events";
 import {
+    chmodSync,
     copyFileSync,
     existsSync,
     mkdirSync,
@@ -1860,6 +1861,7 @@ describe("CLI commands", () => {
                     "share/man/man1/cli-example.1": "packaging/cli-example.1",
                     "share/bash-completion/completions/cli-example": "packaging/cli-example.bash",
                     "share/cli-example/presets/default.json": "packaging/default.json",
+                    "lib/cli-example-report": "dist-report",
                 },
             },
         });
@@ -1867,6 +1869,10 @@ describe("CLI commands", () => {
         project.write("packaging/cli-example.1", ".TH CLI-EXAMPLE 1\n");
         project.write("packaging/cli-example.bash", "complete -W --help cli-example\n");
         project.write("packaging/default.json", "{}\n");
+        project.write("dist-report/bundle.mjs", 'import "./assets/glib-CzVA7iGT.mjs";\n');
+        project.write("dist-report/assets/glib-CzVA7iGT.mjs", "export {};\n");
+        project.write("dist-report/gtkx.node", "native\n");
+        chmodSync(join(project.root, "dist-report/gtkx.node"), 0o755);
         const nodeLicense = "Node.js is licensed for use as follows: vendored runtime license";
         project.write("vendor/node/LICENSE", nodeLicense);
         mkdirSync(join(project.root, "vendor/node/bin"));
@@ -1897,7 +1903,7 @@ describe("CLI commands", () => {
         const contents = (packager: string) =>
             (
                 parse(readFileSync(join(build, "targets", packager, "nfpm.yaml"), "utf8")) as {
-                    contents: { dst: string; type?: string }[];
+                    contents: { dst: string; type?: string; file_info?: { mode: number } }[];
                 }
             ).contents;
         const packaged = (packager: string) => contents(packager).map((content) => content.dst);
@@ -1910,6 +1916,27 @@ describe("CLI commands", () => {
                 .filter((content) => content.type === "dir" && content.dst.startsWith("/usr/share"))
                 .map((content) => content.dst),
         ).toEqual(["/usr/share/cli-example", "/usr/share/cli-example/presets", "/usr/share/licenses/cli-example"]);
+        const helper = (packager: string) =>
+            Object.fromEntries(
+                contents(packager)
+                    .filter((content) => content.dst.startsWith("/usr/lib/cli-example-report"))
+                    .map((content) => [content.dst, content.type ?? content.file_info?.mode]),
+            );
+        const helperFiles = {
+            "/usr/lib/cli-example-report/assets/glib-CzVA7iGT.mjs": 0o644,
+            "/usr/lib/cli-example-report/bundle.mjs": 0o644,
+            "/usr/lib/cli-example-report/gtkx.node": 0o755,
+        };
+        expect(helper("deb")).toEqual(helperFiles);
+        expect(helper("rpm")).toEqual({
+            ...helperFiles,
+            "/usr/lib/cli-example-report": "dir",
+            "/usr/lib/cli-example-report/assets": "dir",
+        });
+        expect(contents("rpm").map((content) => content.dst)).not.toContain("/usr/lib");
+        expect(readFileSync(join(build, "stage/lib/cli-example-report/assets/glib-CzVA7iGT.mjs"), "utf8")).toBe(
+            "export {};\n",
+        );
         const flatpak = parse(readFileSync(join(build, "targets/flatpak/org.gtkx.example.yml"), "utf8")) as {
             modules: { "post-install": string[] }[];
         };
@@ -1937,6 +1964,31 @@ describe("CLI commands", () => {
             "utf8",
         );
         expect(notices).toContain(nodeLicense);
+    });
+
+    it("refuses to package with --skip-build a dist/ built from another entry", async () => {
+        using project = createProject({
+            applicationIcon: "icon.svg",
+            deploy: {
+                name: "CLI Example",
+                summary: "Exercises the deployment command",
+                categories: ["Utility"],
+                description: ["An example application used to exercise real deployment output."],
+                developer: { name: "GTKX", email: "hello@gtkx.dev" },
+                license: "MIT",
+                node: { source: "host", shouldStrip: false },
+            },
+        });
+        project.write("LICENSE", "MIT License\nCopyright GTKX\nPermission is hereby granted, free of charge.\n");
+        project.write("icon.svg", '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"/>');
+        project.write("src/report.ts", 'console.log("report");');
+        const deploy = ["deploy", "--cwd", project.root, "--skip-build", "--print-manifests", "--target", "deb"];
+        await invoke(["build", "--cwd", project.root, "src/report.ts"]);
+        await expect(invoke(deploy)).rejects.toThrow(
+            "dist/gtkx-schemas.json was built from src/report.ts, not the application entry src/index.ts",
+        );
+        await invoke(["build", "--cwd", project.root]);
+        await invoke(deploy);
     });
 
     it("requires the shared libraries of configured GIR libraries in system packages", async () => {

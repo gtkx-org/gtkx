@@ -20,6 +20,7 @@ type ResolvedBuildManifest = {
 type ExpectedBuildConfig = {
     config: Config;
     configFile: string;
+    entry: string;
 };
 
 const invalidManifest = (path: string): Error =>
@@ -74,6 +75,22 @@ const assertBuildConfig = (
     }
 };
 
+const assertBuildEntry = (
+    settings: DeploySettings,
+    manifestPath: string,
+    manifest: BuildManifest,
+    expected: ExpectedBuildConfig,
+): void => {
+    const expectedEntry = toPosixPath(relative(settings.paths.root, expected.entry));
+
+    if (manifest.entry !== expectedEntry) {
+        throw new Error(
+            `Cannot deploy: ${manifestPath} was built from ${manifest.entry}, not the application entry ` +
+                `${expectedEntry}. Run \`gtkx build\` again, or drop --skip-build.`,
+        );
+    }
+};
+
 const readBuildManifest = (settings: DeploySettings, expected: ExpectedBuildConfig): ResolvedBuildManifest => {
     const manifestPath = join(settings.paths.dist, BUILD_MANIFEST_FILENAME);
 
@@ -84,6 +101,7 @@ const readBuildManifest = (settings: DeploySettings, expected: ExpectedBuildConf
     const parsed: unknown = JSON.parse(readFileSync(manifestPath, "utf8"));
     const manifest = parseBuildManifest(parsed, manifestPath);
     assertBuildConfig(settings, manifestPath, manifest, expected);
+    assertBuildEntry(settings, manifestPath, manifest, expected);
     const files = manifest.schemas.map((entry) => resolveRecordedSchema(settings.paths.root, manifestPath, entry));
     const unique = sortStrings(new Set(files));
     assertUniqueSchemaBasenames(unique);
