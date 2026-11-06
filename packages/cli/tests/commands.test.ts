@@ -163,6 +163,38 @@ describe("CLI commands", () => {
         );
     });
 
+    it("rejects options a command does not define, naming the closest one it does", async () => {
+        using project = createProject();
+
+        await expect(invoke(["deploy", "--cwd", project.root, "--targets=deb", "--print-manifests"])).rejects.toThrow(
+            "Unknown option for gtkx deploy: --targets (did you mean --target?)",
+        );
+        await expect(invoke(["build", "--cwd", project.root, "--outt", "dist-x"])).rejects.toThrow(
+            "--outt (did you mean --out?). gtkx build takes --cwd, --config and --out",
+        );
+        await expect(invoke(["mcp", "init", "--cwd", project.root, "--client", "claude", "--global"])).rejects.toThrow(
+            "Unknown option for gtkx mcp init: --global. gtkx mcp init takes --client and --cwd",
+        );
+        await expect(invoke(["dev", "--cwd", project.root, "--headles", "notes.txt"])).rejects.toThrow(
+            '--headles (did you mean --headless?). gtkx dev takes --cwd, --config, --headless and --size; run "gtkx dev --help" for details. To pass "--headles" to the application, put it after "--"',
+        );
+        expect(readdirSync(project.root).toSorted()).toEqual(["gtkx.config.ts", "node_modules", "package.json", "src"]);
+    });
+
+    it("accepts the spellings of defined options and names the running command for a stray entry", async () => {
+        using project = createProject();
+        vi.stubEnv("XDG_CACHE_HOME", project.root);
+        project.write("notes.txt", "");
+
+        await invoke(["cleanup", "--dryRun", "--no-dry-run"]);
+        await expect(invoke(["dev", "--cwd", project.root, "notes.txt", "--", "--anything"])).rejects.toThrow(
+            '"gtkx dev -- notes.txt"',
+        );
+        await expect(invoke(["build", "--cwd", project.root, "notes.txt"])).rejects.toThrow(
+            `Application entry must be a JavaScript or TypeScript module: ${join(project.root, "notes.txt")}. gtkx build takes no application arguments.`,
+        );
+    });
+
     it("keeps builds out of the deploy output directory that each deployment replaces", async () => {
         using project = createProject({ deploy: { outDir: "packages" } });
 

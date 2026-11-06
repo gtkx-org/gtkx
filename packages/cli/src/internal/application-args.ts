@@ -12,6 +12,10 @@ const splitApplicationArgs = (argv: string[]): { cliArgs: string[]; applicationA
     return { cliArgs: argv.slice(0, separator), applicationArgs: argv.slice(separator + 1) };
 };
 
+const applicationArgsHint = (command: string, value: string): string =>
+    `To pass "${value}" to the application, put it after "--", as in "gtkx ${command} -- ${value}"; ` +
+    `npm drops the first "--" of "npm run", so there write "npm run ${command} -- -- ${value}".`;
+
 const withoutApplicationArgs = <T extends ArgsDef>(
     name: string,
     command: CommandDef<T>,
@@ -40,4 +44,4 @@ const withoutApplicationArgs = <T extends ArgsDef>(
     };
 };
 
-export { splitApplicationArgs, withoutApplicationArgs };
+export { applicationArgsHint, splitApplicationArgs, withoutApplicationArgs };

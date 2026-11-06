@@ -122,7 +122,7 @@ Before installing, the command exempts GTKX's own packages from the package mana
 
 The CLI of 2.0.0-beta.12 and earlier releases has no `upgrade` command. Run the newer one once with `npx @gtkx/cli@beta upgrade`; on a release day, [Upgrading to 2.0](/v2/guide/upgrading-to-2) shows how to run it past a release-age gate.
 
-`gtkx dev`, `gtkx build` and the other project commands warn when the installed GTKX packages are not all on one version.
+`gtkx dev`, `gtkx build` and the other project commands warn when the installed GTKX packages are not all on one version. Every `gtkx` command stops on an option it does not define, naming the option and the ones it takes, and suggests the closest for a typo; `npx gtkx <command> --help` describes a command's options.
 
 ## Troubleshooting
 

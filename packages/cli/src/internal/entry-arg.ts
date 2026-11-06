@@ -1,6 +1,9 @@
 import type { PositionalArgDef, StringArgDef } from "citty";
 import { statSync } from "node:fs";
 import { extname, resolve } from "node:path";
+import { applicationArgsHint } from "./application-args.js";
+
+type EntryCommand = { name: string; forwardsApplicationArgs: boolean };
 
 const DEFAULT_ENTRY_BASE = "src/index";
 const DEFAULT_ENTRY_EXTENSIONS = [".tsx", ".jsx", ".ts", ".js"];
@@ -51,7 +54,12 @@ const resolveDefaultEntry = (cwd: string): string => {
     throw missingDefaultEntryError(cwd);
 };
 
-const resolveGivenEntry = (cwd: string, entry: string): string => {
+const entryHint = (command: EntryCommand, entry: string): string =>
+    command.forwardsApplicationArgs
+        ? applicationArgsHint(command.name, entry)
+        : `gtkx ${command.name} takes no application arguments.`;
+
+const resolveGivenEntry = (cwd: string, entry: string, command: EntryCommand): string => {
     const path = resolve(cwd, entry);
     const extension = extname(path);
 
@@ -61,9 +69,7 @@ const resolveGivenEntry = (cwd: string, entry: string): string => {
 
     if (![...DEFAULT_ENTRY_EXTENSIONS, ".mjs", ".mts"].includes(extension)) {
         throw new Error(
-            `Application entry must be a JavaScript or TypeScript module: ${path}. ` +
-                `To pass "${entry}" to the application, put it after "--", as in "gtkx dev -- ${entry}"; ` +
-                `npm drops the first "--" of "npm run", so there write "npm run dev -- -- ${entry}".`,
+            `Application entry must be a JavaScript or TypeScript module: ${path}. ${entryHint(command, entry)}`,
         );
     }
 
@@ -74,7 +80,7 @@ const resolveGivenEntry = (cwd: string, entry: string): string => {
     return path;
 };
 
-const resolveEntry = (cwd: string, entry: string | undefined): string =>
-    entry ? resolveGivenEntry(cwd, entry) : resolveDefaultEntry(cwd);
+const resolveEntry = (cwd: string, entry: string | undefined, command: EntryCommand): string =>
+    entry ? resolveGivenEntry(cwd, entry, command) : resolveDefaultEntry(cwd);
 
-export { configArg, cwdArg, entryArg, resolveCwd, resolveEntry };
+export { configArg, cwdArg, type EntryCommand, entryArg, resolveCwd, resolveEntry };

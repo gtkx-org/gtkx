@@ -33,7 +33,15 @@ const createDevCommand = (options: { signal?: AbortSignal; applicationArgs?: str
                 throw new Error("--size requires --headless");
             }
 
-            const { cwd, entry: entryPath, configFile, configDependencies } = await prepareProject(args, DEV_MODE);
+            const {
+                cwd,
+                entry: entryPath,
+                configFile,
+                configDependencies,
+            } = await prepareProject(args, DEV_MODE, {
+                name: "dev",
+                forwardsApplicationArgs: true,
+            });
             const watch: DevWatch | undefined = await resolveConfigWatch(
                 cwd,
                 { mode: DEV_MODE, configFile },

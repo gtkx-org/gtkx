@@ -1,7 +1,7 @@
 import { ensureGeneratedIn } from "../codegen/run-codegen.js";
 import { type CodegenContext, resolveCodegenContext } from "../codegen/store-resolver.js";
 import { deployOutDirFor } from "./deploy-out-dir.js";
-import { resolveCwd, resolveEntry } from "./entry-arg.js";
+import { type EntryCommand, resolveCwd, resolveEntry } from "./entry-arg.js";
 
 type ProjectArgs = { entry?: string; cwd?: string; config?: string };
 type PreparedProject = {
@@ -13,13 +13,13 @@ type PreparedProject = {
 };
 type ResolvedProject = PreparedProject & { context: CodegenContext };
 
-const resolveProject = async (args: ProjectArgs, mode: string): Promise<ResolvedProject> => {
+const resolveProject = async (args: ProjectArgs, mode: string, command: EntryCommand): Promise<ResolvedProject> => {
     const cwd = resolveCwd(args);
     const context = await resolveCodegenContext(cwd, { mode, configFile: args.config });
 
     return {
         cwd,
-        entry: resolveEntry(cwd, args.entry),
+        entry: resolveEntry(cwd, args.entry, command),
         configFile: context.configFile,
         configDependencies: context.configDependencies,
         deployOutDir: deployOutDirFor(cwd, context.config.deploy?.outDir),
@@ -27,8 +27,8 @@ const resolveProject = async (args: ProjectArgs, mode: string): Promise<Resolved
     };
 };
 
-const prepareProject = async (args: ProjectArgs, mode: string): Promise<PreparedProject> => {
-    const { context, ...project } = await resolveProject(args, mode);
+const prepareProject = async (args: ProjectArgs, mode: string, command: EntryCommand): Promise<PreparedProject> => {
+    const { context, ...project } = await resolveProject(args, mode, command);
     await ensureGeneratedIn(context, { shouldAnnounce: true, mode });
 
     return project;

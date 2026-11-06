@@ -22,17 +22,28 @@ const withErrorBoundary = <T extends ArgsDef>(
     command: CommandDef<T>,
     onError?: (cause: unknown) => never,
 ): CommandDef<T> => {
-    const run = command.run;
-    if (run === undefined || onError === undefined) return command;
+    const { setup, run } = command;
+    if (onError === undefined) return command;
     return {
         ...command,
-        run: async (context): Promise<unknown> => {
-            try {
-                return await run(context);
-            } catch (error) {
-                return onError(error);
-            }
-        },
+        ...(setup !== undefined && {
+            setup: async (context): Promise<void> => {
+                try {
+                    await setup(context);
+                } catch (error) {
+                    onError(error);
+                }
+            },
+        }),
+        ...(run !== undefined && {
+            run: async (context): Promise<unknown> => {
+                try {
+                    return await run(context);
+                } catch (error) {
+                    return onError(error);
+                }
+            },
+        }),
     };
 };
 

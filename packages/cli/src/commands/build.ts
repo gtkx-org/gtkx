@@ -21,7 +21,10 @@ const build = defineCommand({
         },
     },
     async run({ args }) {
-        const { cwd, entry, configFile, deployOutDir } = await prepareProject(args, BUILD_MODE);
+        const { cwd, entry, configFile, deployOutDir } = await prepareProject(args, BUILD_MODE, {
+            name: "build",
+            forwardsApplicationArgs: false,
+        });
         const outDir = resolveBuildOutDir(cwd, args.out, deployOutDir);
         using preparedOutput = prepareBuildOutDir(cwd, outDir);
         info(`Building ${entry}`);
