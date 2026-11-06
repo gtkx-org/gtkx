@@ -8,6 +8,7 @@ export default defineConfig(
         test: {
             name: "vitest",
             include: ["tests/**/*.test.ts"],
+            setupFiles: ["./tests/setup.ts"],
             pool: "forks",
             disableConsoleIntercept: true,
             testTimeout: 120_000,

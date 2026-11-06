@@ -1,4 +1,5 @@
 import { resolveExecutable } from "@gtkx/utils";
+import { spawn, spawnSync } from "node:child_process";
 import {
     existsSync,
     mkdirSync,
@@ -108,6 +109,61 @@ describe("headless Vitest integration", () => {
         for (const root of roots) await expect.poll(() => existsSync(root)).toBe(false);
     });
 
+    it("lets workers cancelled by bail exit through their exit handlers", async () => {
+        using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-vitest-bail-"));
+        mkdirSync(join(directory.path, "node_modules"));
+        symlinkSync(join(workspace, "node_modules/vitest"), join(directory.path, "node_modules/vitest"), "dir");
+        writeFileSync(join(directory.path, "package.json"), '{"type":"module"}');
+        writeFileSync(
+            join(directory.path, "gtkx.config.ts"),
+            'export default { applicationId: "org.gtkx.vitest", codegen: false };',
+        );
+        writeFileSync(
+            join(directory.path, "vitest.config.mjs"),
+            `import gtkx from ${JSON.stringify(pluginPath)};
+            export default { plugins: [gtkx()], test: { include: ["*.test.mjs"], bail: 1 } };`,
+        );
+        const names = ["first", "second"];
+        for (const name of names) {
+            writeFileSync(
+                join(directory.path, `${name}.test.mjs`),
+                `import { test } from "vitest";
+                import { writeFileSync } from "node:fs";
+                writeFileSync(new URL("./${name}.started", import.meta.url), "");
+                process.on("exit", () => writeFileSync(new URL("./${name}.exited", import.meta.url), ""));
+                test("fails", () => { throw new Error("expected failure"); });`,
+            );
+        }
+        const runner = await createVitest({
+            root: directory.path,
+            config: join(directory.path, "vitest.config.mjs"),
+            watch: false,
+            reporters: [],
+        });
+        try {
+            await runner.start();
+        } finally {
+            await runner.close();
+        }
+        const started = names.filter((name) => existsSync(join(directory.path, `${name}.started`)));
+        expect(started).not.toEqual([]);
+        for (const name of started)
+            await expect.poll(() => existsSync(join(directory.path, `${name}.exited`))).toBe(true);
+    });
+
+    it("lets a worker with nothing left to run exit and tear down its display", () => {
+        const preload = new URL("../dist/worker-preload.js", import.meta.url).href;
+        const result = spawnSync(
+            process.execPath,
+            ["--import", preload, "--eval", "process.stdout.write(process.env.XDG_RUNTIME_DIR ?? '')"],
+            { encoding: "utf8", timeout: 20_000, killSignal: "SIGKILL" },
+        );
+        expect(result.signal).toBeNull();
+        expect(result.status).toBe(0);
+        expect(result.stdout).toMatch(/gtkx-xdg-/);
+        expect(existsSync(result.stdout)).toBe(false);
+    });
+
     it("resolves its configuration without sway but fails to create the runner", async () => {
         using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-vitest-missing-"));
         const config = join(directory.path, "vitest.config.mjs");
@@ -115,6 +171,23 @@ describe("headless Vitest integration", () => {
         vi.stubEnv("PATH", writePathWithoutSway(directory.path));
         await expect(resolveConfig({ root: directory.path, config })).resolves.toBeDefined();
         await expect(createVitest({ root: directory.path, config, watch: false, reporters: [] })).rejects.toThrow();
+    });
+
+    it("rejects runs that share a worker between test files", async () => {
+        using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-vitest-shared-"));
+        const config = join(directory.path, "vitest.config.mjs");
+        writeFileSync(config, `import gtkx from ${JSON.stringify(pluginPath)}; export default { plugins: [gtkx()] };`);
+        const sharedConfig = join(directory.path, "vitest.shared.config.mjs");
+        writeFileSync(
+            sharedConfig,
+            `import gtkx from ${JSON.stringify(pluginPath)}; export default { plugins: [gtkx()], test: { isolate: false } };`,
+        );
+        await expect(
+            createVitest({ root: directory.path, config, isolate: false, watch: false, reporters: [] }),
+        ).rejects.toThrow();
+        await expect(
+            createVitest({ root: directory.path, config: sharedConfig, watch: false, reporters: [] }),
+        ).rejects.toThrow();
     });
 
     it("rejects when sway is missing, leaving no runtime directory or environment changes", async () => {
@@ -135,6 +208,23 @@ describe("headless Vitest integration", () => {
             display: process.env.WAYLAND_DISPLAY,
             bus: process.env.DBUS_SESSION_BUS_ADDRESS,
         }).toEqual(before);
+    });
+
+    it("stops processes that inherited its runtime and removes it on teardown", async () => {
+        const stop = await startHeadlessDisplay(resolveHeadlessOptions({}));
+        const runtime = process.env.XDG_RUNTIME_DIR;
+        const loader = spawn(process.execPath, ["--eval", "setInterval(() => {}, 1000)"], { stdio: "ignore" });
+        try {
+            await new Promise((resolve, reject) => {
+                loader.once("spawn", resolve);
+                loader.once("error", reject);
+            });
+            stop();
+            await expect.poll(() => loader.exitCode !== null || loader.signalCode !== null).toBe(true);
+            await expect.poll(() => runtime === undefined || existsSync(runtime), { timeout: 5_000 }).toBe(false);
+        } finally {
+            loader.kill("SIGKILL");
+        }
     });
 
     it.each(["normal", "delayed"])(
