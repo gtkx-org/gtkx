@@ -27,7 +27,7 @@ const usePresentDialog = (): ((dialog: Adw.Dialog) => void) => {
     );
 };
 
-const CLOSE_ANSWERS = ["onClosed", "onCloseAttempt", "onResponse"];
+const CLOSING_ANSWERS = ["onClosed", "onResponse"];
 
 const refusedCloseMessage = (dialog: Adw.Dialog, props: Props): string => {
     const handlers = dialog instanceof Adw.AlertDialog ? "onClosed or onResponse" : "onClosed";
@@ -40,7 +40,8 @@ const refusedCloseMessage = (dialog: Adw.Dialog, props: Props): string => {
 };
 
 const useDialogCloseRequests = (dialog: Adw.Dialog | null, props: Props): Props => {
-    const isAnswered = CLOSE_ANSWERS.some((name) => typeof props[name] === "function");
+    const isClosing = CLOSING_ANSWERS.some((name) => typeof props[name] === "function");
+    const isAnswered = isClosing || typeof props.onCloseAttempt === "function";
     const isAllowed = props.canClose !== false;
     const key = dialog === null ? "" : typeNameOf(dialog);
 
@@ -56,7 +57,7 @@ const useDialogCloseRequests = (dialog: Adw.Dialog | null, props: Props): Props 
               "until the app stops rendering it. Stop rendering it from onClosed.",
     );
 
-    return { ...props, canClose: isAllowed && isAnswered };
+    return { ...props, canClose: isAllowed && isClosing };
 };
 
 const createDialogComponent = (Component: ElementType): ((props: DialogComponentProps) => ReactNode) =>

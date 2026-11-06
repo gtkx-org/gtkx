@@ -367,7 +367,7 @@ describe("Dialog - close requests", () => {
         expect(requireWidget(dialogRef, "Reopened dialog")).toBeRooted();
     });
 
-    it("lets onCloseAttempt answer a dialog that cannot close", async () => {
+    it("lets onCloseAttempt answer a close request", async () => {
         const dialogRef = createRef<Adw.Dialog>();
         let attempts = 0;
         await render(
@@ -375,7 +375,6 @@ describe("Dialog - close requests", () => {
                 <AdwDialog
                     ref={dialogRef}
                     title="Unsaved"
-                    canClose={false}
                     onCloseAttempt={() => {
                         attempts += 1;
                     }}

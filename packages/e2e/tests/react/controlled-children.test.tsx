@@ -331,6 +331,29 @@ describe("open-state props after the user dismisses what they open", () => {
         expect(stderr).toHaveBeenCalled();
     });
 
+    it("lets onCloseAttempt answer a bottom sheet given open", async () => {
+        const ref = createRef<Adw.BottomSheet>();
+        let attempts = 0;
+        await render(
+            <AdwBottomSheet
+                ref={ref}
+                open
+                onCloseAttempt={() => {
+                    attempts += 1;
+                }}
+                sheet={<GtkLabel>Sheet</GtkLabel>}
+            >
+                <GtkLabel>Content</GtkLabel>
+            </AdwBottomSheet>,
+        );
+        const sheet = requireObject(ref);
+        await act(() => {
+            sheet.activateAction("sheet.close", null);
+        });
+        expect(attempts).toBe(1);
+        expect(sheet.getOpen()).toBe(true);
+    });
+
     it("closes a bottom sheet given open when onNotifyOpen takes the new value", async () => {
         const ref = createRef<Adw.BottomSheet>();
         const App = () => {

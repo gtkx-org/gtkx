@@ -194,8 +194,6 @@ const createSearchBarComponent = (Component: ElementType): ((props: Props) => Re
         },
     );
 
-const SHEET_CLOSE_ANSWERS = ["onNotifyOpen", "onCloseAttempt"];
-
 const createBottomSheetComponent = (Component: ElementType): ((props: Props) => ReactNode) => {
     const ControlledSheet = createOpenStateComponent<Adw.BottomSheet>(
         Component,
@@ -210,8 +208,8 @@ const createBottomSheetComponent = (Component: ElementType): ((props: Props) => 
     return (props: Props): ReactNode => {
         const [sheet, setSheet] = useState<Adw.BottomSheet | null>(null);
         const ref = useMergedRef(props.ref as Ref<Adw.BottomSheet> | undefined, setSheet);
-        const isAnswered =
-            props.open === undefined || SHEET_CLOSE_ANSWERS.some((name) => typeof props[name] === "function");
+        const isClosing = props.open === undefined || typeof props.onNotifyOpen === "function";
+        const isAnswered = isClosing || typeof props.onCloseAttempt === "function";
         const isAllowed = props.canClose !== false;
 
         useRefusedCloseWarning(
@@ -224,7 +222,7 @@ const createBottomSheetComponent = (Component: ElementType): ((props: Props) => 
                 "the sheet manage it.",
         );
 
-        return <ControlledSheet {...props} ref={ref} canClose={isAllowed && isAnswered} />;
+        return <ControlledSheet {...props} ref={ref} canClose={isAllowed && isClosing} />;
     };
 };
 
