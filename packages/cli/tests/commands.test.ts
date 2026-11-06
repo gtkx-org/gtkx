@@ -1975,6 +1975,9 @@ describe("CLI commands", () => {
         expect(flatpak.modules.at(-1)?.["post-install"]).toEqual([
             "glib-compile-schemas ${FLATPAK_DEST}/share/glib-2.0/schemas",
         ]);
+        expect(readFileSync(join(build, "stage/share/metainfo/org.gtkx.example.metainfo.xml"), "utf8")).not.toContain(
+            "<translation",
+        );
         for (const schemaFile of ["gschemas.compiled", "org.gtkx.example.gschema.xml"]) {
             expect(existsSync(join(build, "stage/lib/cli-example", schemaFile))).toBe(false);
             expect(existsSync(join(build, "overlay/appimage/lib/cli-example", schemaFile))).toBe(true);
@@ -2140,6 +2143,8 @@ describe("CLI commands", () => {
         );
         expect(JSON.stringify(module)).not.toContain("pnpm.cjs");
         expect(JSON.stringify(module)).not.toContain("gschemas.compiled");
+        const metainfo = module?.sources.find((source) => source["dest-filename"] === "org.gtkx.example.metainfo.xml");
+        expect(String(metainfo?.contents)).toContain('<translation type="gettext">org.gtkx.example</translation>');
         const localeConfig = module?.sources.find((source) => source["dest-filename"] === "gtkx-i18n.json");
         expect(JSON.parse(String(localeConfig?.contents))).toEqual({ localeDir: "../../share/locale" });
         expect(

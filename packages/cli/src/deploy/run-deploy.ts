@@ -134,9 +134,12 @@ const writeManifest = (manifest: DeployManifest): void => {
     writeFileSync(manifest.path, manifest.contents);
 };
 
-const renderMetadata = (settings: DeploySettings): StagedMetadata => ({
+const translationDomain = (project: CatalogProject | null): string | null =>
+    project === null || project.catalogs.length === 0 ? null : project.domain;
+
+const renderMetadata = (settings: DeploySettings, project: CatalogProject | null): StagedMetadata => ({
     desktopEntry: renderDesktopEntry(settings),
-    metainfo: renderMetainfo(settings),
+    metainfo: renderMetainfo(settings, translationDomain(project)),
     mimePackage: renderMimePackage(settings),
 });
 
@@ -472,7 +475,7 @@ const buildApplication = async ({
     settings,
     buildOutDir,
 }: BuildApplicationRequest): Promise<StagedMetadata> => {
-    const templates = renderMetadata(settings);
+    const templates = renderMetadata(settings, plan.project);
 
     if (buildOutDir === null) {
         if (plan.project !== null) {

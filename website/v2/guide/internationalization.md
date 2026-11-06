@@ -181,7 +181,7 @@ Without `gettext-domain`, those tools show the source text. Installed packages p
 
 ## Translate package metadata
 
-A normal `gtkx deploy` refreshes the catalog with application and metadata messages, then compiles and packages the translations. The same PO files supply desktop-entry names, AppStream text, and MIME descriptions.
+A normal `gtkx deploy` refreshes the catalog with application and metadata messages, then compiles and packages the translations. The same PO files supply desktop-entry names, AppStream text, and MIME descriptions. The AppStream metainfo also names the application's gettext domain, so AppStream catalog generators, including Flathub's, can list the languages the application is translated into.
 
 `gtkx deploy --skip-build` packages the existing build and recompiles existing catalogs without updating PO files. Every locale in `LINGUAS` must already have a catalog. Packaged launchers locate the installed catalogs automatically.
 
