@@ -93,6 +93,13 @@ const functionFromNode = (node: RawNode, context: ParseContext): GirFunction => 
     return applyParameterOverrides(applyReturnTransfer(fn));
 };
 
+/** GIR regenerated from a typelib by `g-ir-generate` omits `<instance-parameter>`, but every method takes its owner as receiver. */
+const methodFromNode = (node: RawNode, owner: string, context: ParseContext): GirFunction => {
+    const fn = functionFromNode(node, context);
+    fn.instance ??= parameterFromNode({ "@_name": "self", type: { "@_name": owner } }, context);
+    return fn;
+};
+
 const declaredFunctionName = (fn: GirFunction): string => DECLARED_FUNCTION_NAMES.get(fn) ?? fn.name;
 
-export { declaredFunctionName, functionFromNode, type GirFunction };
+export { declaredFunctionName, functionFromNode, methodFromNode, type GirFunction };

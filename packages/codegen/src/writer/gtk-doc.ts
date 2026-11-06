@@ -1,4 +1,5 @@
 import { camelCase, kebabCase } from "@gtkx/utils";
+import { enumMemberKey } from "../gir/enum.js";
 import { HIDDEN_SYMBOLS } from "../gir/hidden-symbols.js";
 
 const CONSTANT_MAP: Record<string, string> = { TRUE: "true", FALSE: "false", NULL: "null" };
@@ -10,6 +11,7 @@ const HIDDEN_LINK_PREFIXES: Map<string, string> = new Map([
 ]);
 
 const CALLABLE_LINK_KINDS: Set<string> = new Set(["method", "func", "ctor", "vfunc", "id"]);
+const MEMBER_LINK_KINDS: Set<string> = new Set(["enum", "flags", "error"]);
 const SENTINEL = String.fromCodePoint(0xe0_00);
 const CODE_BLOCK_OPEN = "|[";
 const CODE_BLOCK_CLOSE = "]|";
@@ -70,6 +72,8 @@ const renderLink = (kind: string, target: string): string => {
 
     if (kind === "property" || CALLABLE_LINK_KINDS.has(kind)) {
         segments[lastIndex] = camelCase(segments[lastIndex] ?? "");
+    } else if (MEMBER_LINK_KINDS.has(kind) && segments.length === 3) {
+        segments[lastIndex] = enumMemberKey(segments[lastIndex] ?? "");
     }
 
     const symbol = segments.join(".");

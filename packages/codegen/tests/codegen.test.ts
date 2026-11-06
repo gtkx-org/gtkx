@@ -28,7 +28,7 @@ import {
     resolveStore,
     runCodegen,
 } from "../src/index.js";
-import { writeDocs } from "../src/internal.js";
+import { ensureStoreLinks, generateBindings, readBuiltinElementsForDocs, writeDocs } from "../src/internal.js";
 
 const workspace = fileURLToPath(new URL("../../..", import.meta.url));
 const createProject = () => {
@@ -48,10 +48,11 @@ const createProject = () => {
     return directory;
 };
 
-const diagnostics = (root: string, source: string) => {
+const diagnostics = (root: string, source: string, options: ts.CompilerOptions = {}) => {
     const file = join(root, "consumer.ts");
     writeFileSync(file, source);
     const program = ts.createProgram([file], {
+        ...options,
         strict: true,
         noEmit: true,
         skipLibCheck: true,
@@ -142,10 +143,120 @@ describe("generated bindings", () => {
         expect(
             diagnostics(
                 directory.path,
-                `import { File } from "@gtkx/gi/gio";
+                `import {
+                Application,
+                ApplicationFlags,
+                Cancellable,
+                DBusError,
+                dbusErrorGetRemoteError,
+                File,
+                ListModel,
+                type ListModelImpl,
+                type Socket,
+                type SocketAddress,
+            } from "@gtkx/gi/gio";
+            import { Error as GLibError, Source, sourceRemove, UnicodeScript } from "@gtkx/gi/glib";
+            import { Object as GObject, TYPE_ENUM, TYPE_FLAGS, TYPE_INT, TYPE_OBJECT, typeIsA } from "@gtkx/gi/gobject";
+            import { registerClass, withSignals } from "@gtkx/runtime";
             const file: File = File.newForPath("/tmp/example");
             const path: string | null = file.getPath();
-            export { path };`,
+            const cancellable: GObject = new Cancellable();
+            declare const someObject: GObject;
+            declare const address: SocketAddress;
+            const socket = someObject as Socket;
+            const connected: boolean = socket.connect(address, null);
+            // @ts-expect-error a socket connects to an address
+            socket.connect("localhost");
+            class StoreBase extends GObject implements ListModelImpl {
+                vfuncGetItemType(): bigint { return TYPE_OBJECT; }
+                vfuncGetNItems(): number { return 0; }
+                vfuncGetItem(): GObject | null { return null; }
+            }
+            const Store = registerClass(StoreBase, { typeName: "ConsumerStore", implements: [ListModel] });
+            const model: ListModel = new Store();
+            model.connect("items-changed", (position: number, removed: number, added: number) => position + removed + added);
+            class ServiceBase extends Application {
+                declare count: number;
+                pulse(): boolean {
+                    this.emit("activate");
+                    this.emit("action-enabled-changed", "quit", true);
+                    this.emit("action-added::quit", "quit");
+                    const id: bigint = this.connect("shutdown", () => {});
+                    this.disconnect(id);
+                    const onStartup = (): void => {};
+                    this.on("startup", onStartup).once("activate", () => {}).off("startup", onStartup);
+                    this.connect("action-enabled-changed", (name, enabled) => name.length > 0 && enabled);
+                    this.connect("notify::application-id", (pspec) => pspec.getName());
+                    this.connect("notify::count", (pspec) => pspec.getName());
+                    // @ts-expect-error unknown signal
+                    this.emit("no-such-signal");
+                    // @ts-expect-error activate takes no arguments
+                    this.emit("activate", 1);
+                    // @ts-expect-error enabled is a boolean
+                    this.emit("action-enabled-changed", "quit", "yes");
+                    // @ts-expect-error activate has no details
+                    this.connect("activate::detail", () => {});
+                    // @ts-expect-error the action name is a string
+                    this.connect("action-added", (name: number) => name);
+                    // @ts-expect-error unknown signal
+                    this.on("no-such-signal", () => {});
+                    return this.emit("name-lost");
+                }
+            }
+            const Service = registerClass(ServiceBase, {
+                typeName: "ConsumerService",
+                signals: { bumped: { paramTypes: [TYPE_INT] } },
+            });
+            class CounterBase extends Service {
+                bump(): void {
+                    this.connect("bumped", () => {});
+                    this.emit("bumped", 1);
+                    // @ts-expect-error unknown signal
+                    this.emit("bumpd", 1);
+                }
+            }
+            export const Counter = registerClass(CounterBase, { typeName: "ConsumerCounter" });
+            new Counter().emit("bumped", 2);
+            declare const gerror: GLibError;
+            const remote: string | null = DBusError.getRemoteError(gerror);
+            const isFailed: boolean = gerror.matches(DBusError, DBusError.FAILED);
+            const created: GLibError = new GLibError(DBusError, DBusError.FAILED, "failed");
+            const flat: string | null = dbusErrorGetRemoteError(gerror);
+            const domain: number = DBusError.quark();
+            const failed: DBusError = DBusError.FAILED;
+            const script: UnicodeScript = UnicodeScript.fromIso15924(0x4c61746e);
+            const latin: UnicodeScript.LATIN = UnicodeScript.LATIN;
+            const tag: number = UnicodeScript.toIso15924(latin);
+            const latinName: string | undefined = UnicodeScript[latin];
+            const flagsType: bigint = ApplicationFlags.__type__;
+            const isFlags: boolean = typeIsA(ApplicationFlags, TYPE_FLAGS);
+            const isEnum: boolean = typeIsA(DBusError, TYPE_ENUM) && typeIsA(UnicodeScript, TYPE_ENUM);
+            // @ts-expect-error an object instance is not a GType
+            typeIsA(cancellable, TYPE_OBJECT);
+            const removed: boolean = Source.remove(1);
+            const removedFlat: boolean = sourceRemove(1);
+            class TickerBase extends withSignals(Application, { ticked: { paramTypes: [TYPE_INT] } }) {
+                tick(): void {
+                    this.emit("ticked", 1);
+                    queueMicrotask(() => this.emit("ticked", 2));
+                    this.connect("ticked", () => {});
+                    this.on("ticked", () => {});
+                    this.emit("activate");
+                    // @ts-expect-error unknown signal
+                    this.emit("tickd", 1);
+                }
+            }
+            export const Ticker = registerClass(TickerBase, {
+                typeName: "ConsumerTicker",
+                signals: { reset: { paramTypes: [ApplicationFlags] } },
+            });
+            const ticker = new Ticker();
+            ticker.on("ticked", () => {});
+            ticker.emit("reset", ApplicationFlags.DEFAULT_FLAGS);
+            declare const either: Application | ServiceBase;
+            either.emit("activate");
+            either.on("startup", () => {}).disconnect(either.connect("shutdown", () => {}));
+            export { cancellable, connected, created, domain, failed, flagsType, flat, isEnum, isFailed, isFlags, latinName, path, remote, removed, removedFlat, script, tag };`,
             ),
         ).toEqual([]);
         expect(
@@ -194,22 +305,41 @@ describe("generated bindings", () => {
         expect(await runCodegen({ ...options, jsx })).toMatchObject({ isRegenerated: false });
     });
 
-    it("shares matching bindings and rejects incompatible changes from another project", async () => {
+    it("shares bindings for the union of projects' libraries and rejects incompatible projects", async () => {
         using directory = createProject();
         const { gi, jsx } = resolveStore(directory.path);
         if (jsx === null) throw new Error("JSX store was not resolved");
-        const options = { libraries: ["Gio-2.0"], girPath: resolveGirPath(undefined, directory.path), gi, jsx };
+        const girPath = resolveGirPath(undefined, directory.path);
+        const options = { libraries: ["Gio-2.0"], girPath, gi, jsx };
         await runCodegen(options);
         const consumer = join(directory.path, "consumer");
         mkdirSync(consumer);
         const shared = resolveStore(consumer);
         if (shared.jsx === null) throw new Error("Shared JSX store was not resolved");
-        const sharedOptions = { ...options, gi: shared.gi, jsx: shared.jsx, isForced: true };
-        await runCodegen(sharedOptions);
-        await expect(runCodegen({ ...sharedOptions, libraries: ["GLib-2.0"] })).rejects.toThrow();
+        const sharedOptions = { ...options, gi: shared.gi, jsx: shared.jsx };
+        await runCodegen({ ...sharedOptions, libraries: ["GLib-2.0"] });
+        expect(readGeneratedLibraries(gi.linkDir)?.libraries).toEqual(["Gio-2.0", "GLib-2.0"]);
+        expect(await runCodegen(options)).toMatchObject({ isRegenerated: false });
         await expect(runCodegen({ ...sharedOptions, jsx: undefined })).rejects.toThrow();
-        expect(readGeneratedLibraries(gi.linkDir)?.libraries).toContain("Gio-2.0");
+        await expect(runCodegen({ ...sharedOptions, userLazyElements: ["GtkLabel"] })).rejects.toThrow();
+        await expect(runCodegen({ ...sharedOptions, girPath: [consumer, ...girPath] })).rejects.toThrow();
+        await expect(runCodegen({ ...sharedOptions, libraries: ["Gio-3.0"] })).rejects.toThrow();
         expect(readGeneratedElements(jsx.linkDir).length).toBeGreaterThan(0);
+        await runCodegen({ ...sharedOptions, jsx: { ...shared.jsx, version: "0.0.0" } });
+        await runCodegen(options);
+        await runCodegen({ ...sharedOptions, userLazyElements: ["GtkLabel"], isSharingForced: true });
+        await expect(runCodegen(options)).rejects.toThrow();
+        await runCodegen({ ...options, isSharingForced: true });
+        expect(readGeneratedLibraries(gi.linkDir)?.libraries).toEqual(["Gio-2.0"]);
+        await runCodegen({ ...sharedOptions, libraries: ["GLib-2.0"] });
+
+        const otherReact = join(consumer, "node_modules", "react");
+        mkdirSync(otherReact, { recursive: true });
+        writeFileSync(join(otherReact, "package.json"), '{"name":"react","version":"19.0.0"}');
+        expect(() => resolveStore(consumer)).toThrow();
+        rmSync(consumer, { recursive: true });
+        await runCodegen(options);
+        expect(readGeneratedLibraries(gi.linkDir)?.libraries).toEqual(["Gio-2.0"]);
 
         const customStore = (name: string) => ({
             ...gi,
@@ -228,6 +358,111 @@ describe("generated bindings", () => {
         expect(readGeneratedLibraries(gi.linkDir)?.libraries).toContain("Gio-2.0");
         expect(readGeneratedElements(jsx.linkDir).length).toBeGreaterThan(0);
         expect(readFileSync(unrelated, "utf8")).toBe("preserve");
+
+        const nestedCairo = join(directory.path, "nested-cairo");
+        mkdirSync(join(nestedCairo, "node_modules", "@gtkx"), { recursive: true });
+        rmSync(join(directory.path, "node_modules", "@gtkx", "cairo"));
+        symlinkSync(join(workspace, "packages", "cairo"), join(nestedCairo, "node_modules", "@gtkx", "cairo"), "dir");
+        const nested = resolveStore(nestedCairo);
+        await runCodegen({ ...options, gi: nested.gi, jsx: nested.jsx ?? undefined });
+        expect(createRequire(realpathSync(join(gi.linkDir, "package.json"))).resolve("@gtkx/cairo/package.json")).toBe(
+            realpathSync(join(workspace, "packages", "cairo", "package.json")),
+        );
+    });
+
+    it("limits each project sharing a store to the namespaces of its own libraries", async () => {
+        using directory = createProject();
+        const girPath = resolveGirPath(undefined, directory.path);
+        const root = resolveStore(directory.path);
+        if (root.jsx === null) throw new Error("JSX store was not resolved");
+        await runCodegen({ libraries: ["Gio-2.0"], girPath, gi: root.gi, jsx: root.jsx });
+        const app = join(directory.path, "apps", "app");
+        mkdirSync(app, { recursive: true });
+        const shared = resolveStore(app);
+        if (shared.jsx === null) throw new Error("Shared JSX store was not resolved");
+        await runCodegen({ libraries: ["GObject-2.0"], girPath, gi: shared.gi, jsx: shared.jsx });
+        const resolveFrom = (cwd: string, specifier: string) =>
+            realpathSync(
+                fileURLToPath(
+                    execFileSync(
+                        process.execPath,
+                        ["--input-type=module", "-e", `console.log(import.meta.resolve(${JSON.stringify(specifier)}))`],
+                        { cwd, encoding: "utf8", stdio: "pipe" },
+                    ).trim(),
+                ),
+            );
+
+        expect(resolveFrom(app, "@gtkx/gi/gobject")).toBe(resolveFrom(directory.path, "@gtkx/gi/gobject"));
+        expect(resolveFrom(app, "@gtkx/gi/glib")).toBe(resolveFrom(directory.path, "@gtkx/gi/glib"));
+        expect(resolveFrom(app, "@gtkx/jsx/gobject")).toBe(resolveFrom(directory.path, "@gtkx/jsx/gobject"));
+        expect(() => resolveFrom(app, "@gtkx/gi/gio")).toThrow();
+        expect(() => resolveFrom(app, "@gtkx/jsx/gio")).toThrow();
+        expect(resolveFrom(directory.path, "@gtkx/gi/gio")).toBe(
+            realpathSync(join(root.gi.linkDir, "gio", "index.js")),
+        );
+        expect(
+            diagnostics(
+                app,
+                `import { typeFromName } from "@gtkx/gi/gobject";
+                export const type: bigint = typeFromName("GObject");`,
+            ),
+        ).toEqual([]);
+        expect(
+            diagnostics(app, `import { File } from "@gtkx/gi/gio"; export const file = File.newForPath("/tmp");`),
+        ).not.toEqual([]);
+        expect(
+            diagnostics(
+                directory.path,
+                `import { File } from "@gtkx/gi/gio"; export const file: File = File.newForPath("/tmp");`,
+            ),
+        ).toEqual([]);
+
+        for (const prunedRoot of [app, directory.path]) {
+            for (const kind of ["gi", "jsx"]) {
+                rmSync(join(prunedRoot, "node_modules", "@gtkx", kind), { recursive: true });
+            }
+        }
+        const viewPaths = (kind: string) => [
+            join(app, "node_modules", ".gtkx", kind, "*", "index.d.ts"),
+            join(app, "node_modules", ".gtkx", kind, "*.d.ts"),
+        ];
+        const scaffoldPaths = { paths: { "@gtkx/gi/*": viewPaths("gi"), "@gtkx/jsx/*": viewPaths("jsx") } };
+        expect(
+            diagnostics(
+                app,
+                `import { typeFromName } from "@gtkx/gi/gobject";
+                export const type: bigint = typeFromName("GObject");`,
+                scaffoldPaths,
+            ),
+        ).toEqual([]);
+        expect(
+            diagnostics(
+                app,
+                `import { File } from "@gtkx/gi/gio"; export const file = File.newForPath("/tmp");`,
+                scaffoldPaths,
+            ),
+        ).not.toEqual([]);
+        ensureStoreLinks(app);
+        expect(resolveFrom(app, "@gtkx/gi/gobject")).toBe(resolveFrom(directory.path, "@gtkx/gi/gobject"));
+        expect(resolveFrom(app, "@gtkx/jsx/gobject")).toBe(resolveFrom(directory.path, "@gtkx/jsx/gobject"));
+
+        await runCodegen({ libraries: ["Gio-2.0", "Json-1.0"], girPath, gi: root.gi, jsx: root.jsx });
+        expect(
+            diagnostics(app, `import { Parser } from "@gtkx/gi/json"; export const parser: Parser = new Parser();`),
+        ).not.toEqual([]);
+        expect(
+            diagnostics(
+                app,
+                `import { Parser } from "@gtkx/gi/json"; export const parser: Parser = new Parser();`,
+                scaffoldPaths,
+            ),
+        ).not.toEqual([]);
+        expect(
+            diagnostics(
+                directory.path,
+                `import { Parser } from "@gtkx/gi/json"; export const parser: Parser = new Parser();`,
+            ),
+        ).toEqual([]);
     });
 
     it("refreshes reference pages when their props dependencies or cached metadata change", () => {
@@ -253,6 +488,480 @@ describe("generated bindings", () => {
         expect(writeDocs(options).isRegenerated).toBe(false);
     });
 
+    it("documents the children slot of parent-created elements in place of their construct-only props", async () => {
+        using directory = createProject();
+        const outDir = join(directory.path, "reference");
+        writeDocs({
+            ...(await readBuiltinElementsForDocs()),
+            libraries: ["Adw-1"],
+            girPath: resolveGirPath(undefined, directory.path),
+            resolveFrom: directory.path,
+            outDir,
+        });
+        const page = (name: string) => readFileSync(join(outDir, "adw", `${name}.md`), "utf8");
+        expect(page("layout")).toContain("### `children`");
+        expect(page("layout")).not.toContain("### `content`");
+        expect(page("view-stack-page")).toContain("### `children`");
+        expect(page("view-stack-page")).not.toContain("### `child`\n");
+        expect(page("layout-slot")).toContain("### `id`");
+        expect(page("layout-slot")).not.toContain("### `children`");
+    });
+
+    it("documents configured accepted child types on elements that inherit their children slot", async () => {
+        using directory = createProject();
+        const outDir = join(directory.path, "reference");
+        const builtin = await readBuiltinElementsForDocs();
+        writeDocs({
+            ...builtin,
+            acceptedChildTypes: { ...builtin.acceptedChildTypes, GtkPaned: ["GtkLabel"] },
+            libraries: ["Adw-1"],
+            girPath: resolveGirPath(undefined, directory.path),
+            resolveFrom: directory.path,
+            outDir,
+        });
+        const block = readFileSync(join(outDir, "gtk", "paned.md"), "utf8")
+            .split("### `children`")[1]
+            ?.split("### ")[0];
+        expect(block).toContain("[GtkLabel](");
+    });
+
+    it("marks deprecated slot props as deprecated", async () => {
+        using directory = createProject();
+        const outDir = join(directory.path, "reference");
+        writeDocs({
+            ...(await readBuiltinElementsForDocs()),
+            libraries: ["Adw-1"],
+            girPath: resolveGirPath(undefined, directory.path),
+            resolveFrom: directory.path,
+            outDir,
+        });
+        const block = (name: string) =>
+            readFileSync(join(outDir, "adw", "toolbar-view.md"), "utf8")
+                .split(`### \`${name}\``)[1]
+                ?.split("### ")[0];
+        expect(block("topBar")).toContain("deprecated");
+        expect(block("topBar")).toContain("`top`");
+        expect(block("top")).not.toContain("deprecated");
+    });
+
+    it("marks configured construct-only props as construct-only", async () => {
+        using directory = createProject();
+        const outDir = join(directory.path, "reference");
+        writeDocs({
+            ...(await readBuiltinElementsForDocs()),
+            libraries: ["Adw-1"],
+            girPath: resolveGirPath(undefined, directory.path),
+            resolveFrom: directory.path,
+            outDir,
+        });
+        const block = (namespace: string, page: string, name: string) =>
+            readFileSync(join(outDir, namespace, `${page}.md`), "utf8")
+                .split(`### \`${name}\``)[1]
+                ?.split("### ")[0];
+        expect(block("gio", "menu-item", "label")).toContain("construct-only");
+        expect(block("gio", "menu-item", "action")).toContain("construct-only");
+        expect(block("gio", "menu-item", "section")).not.toContain("construct-only");
+        expect(block("gtk", "shortcut-trigger", "accelerator")).toContain("construct-only");
+    });
+
+    it("describes configured prop types with their public names and fields", async () => {
+        using directory = createProject();
+        const outDir = join(directory.path, "reference");
+        writeDocs({
+            ...(await readBuiltinElementsForDocs()),
+            libraries: ["Adw-1"],
+            girPath: resolveGirPath(undefined, directory.path),
+            resolveFrom: directory.path,
+            outDir,
+        });
+        const block = (namespace: string, page: string, name: string) =>
+            readFileSync(join(outDir, namespace, `${page}.md`), "utf8")
+                .split(`### \`${name}\``)[1]
+                ?.split("### ")[0];
+        expect(block("gtk", "level-bar", "offsets")).toContain(
+            "- `name: string`: Style class applied to the bar's blocks",
+        );
+        expect(block("gtk", "level-bar", "offsets")).toContain("- `value?: number`: Upper bound of that interval");
+        expect(block("gtk", "constraint-layout", "vfl")).toContain("- `views?: Map<string, Gtk.ConstraintTarget>`");
+        expect(block("gio", "menu", "items")).toContain("- `submenu?: MenuItem[]`");
+        expect(block("gio", "menu", "items")).toContain("- `hiddenWhen?:");
+        expect(block("gtk", "widget", "style")).not.toContain("- `");
+        expect(block("adw", "alert-dialog", "responses")).toContain("- `appearance?: Adw.ResponseAppearance`");
+        expect(block("gtk", "widget", "textDirection")).toContain("`Gtk.TextDirection | null | undefined`");
+    });
+
+    it("renders GIR enumeration member links with the emitted member names", async () => {
+        using directory = createProject();
+        const outDir = join(directory.path, "reference");
+        writeDocs({
+            ...(await readBuiltinElementsForDocs()),
+            libraries: ["Adw-1"],
+            girPath: resolveGirPath(undefined, directory.path),
+            resolveFrom: directory.path,
+            outDir,
+        });
+        const toastOverlay = readFileSync(join(outDir, "adw", "toast-overlay.md"), "utf8");
+        expect(toastOverlay).toContain("uses the `Gtk.AccessibleRole.GROUP` role");
+        expect(toastOverlay).not.toContain("`Gtk.AccessibleRole.group`");
+    });
+
+    it("documents element constructors and defaults as the declarations type them", async () => {
+        using directory = createProject();
+        const outDir = join(directory.path, "reference");
+        writeDocs({
+            ...(await readBuiltinElementsForDocs()),
+            libraries: ["Adw-1"],
+            girPath: resolveGirPath(undefined, directory.path),
+            resolveFrom: directory.path,
+            outDir,
+        });
+        const page = (namespace: string, name: string) => readFileSync(join(outDir, namespace, `${name}.md`), "utf8");
+        expect(page("gtk", "overlay")).toContain("new(): Gtk.Overlay");
+        expect(page("adw", "timed-animation")).toMatch(/new\([^)]*\): Adw\.TimedAnimation/);
+        expect(page("gtk", "range")).toContain("default `1.7976931348623157e+308`");
+        expect(page("gtk", "aspect-frame")).toContain("default `0.5`");
+        expect(page("gtk", "progress-bar")).toContain("default `Gtk.Orientation.HORIZONTAL`");
+        expect(page("gtk", "font-chooser-widget")).toContain(
+            "default `Gtk.FontChooserLevel.STYLE | Gtk.FontChooserLevel.SIZE`",
+        );
+    });
+
+    it("constructs records with new through their new constructor like GJS", async () => {
+        using directory = createProject();
+        writeFileSync(
+            join(directory.path, "Digest-1.0.gir"),
+            `<?xml version="1.0"?>
+             <repository version="1.0" xmlns="http://www.gtk.org/introspection/core/1.0"
+               xmlns:c="http://www.gtk.org/introspection/c/1.0" xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+               <include name="GLib" version="2.0"/>
+               <namespace name="Digest" version="1.0" shared-library="libglib-2.0.so.0" c:prefix="G">
+                 <record name="Checksum" c:type="GChecksum" copy-function="g_checksum_copy"
+                   free-function="g_checksum_free">
+                   <constructor name="new" c:identifier="g_checksum_new">
+                     <return-value transfer-ownership="full" nullable="1"><type name="Checksum"/></return-value>
+                     <parameters>
+                       <parameter name="checksum_type" transfer-ownership="none"><type name="gint"/></parameter>
+                     </parameters>
+                   </constructor>
+                   <method name="get_string" c:identifier="g_checksum_get_string">
+                     <return-value transfer-ownership="none"><type name="utf8"/></return-value>
+                     <parameters>
+                       <instance-parameter name="checksum" transfer-ownership="none"><type name="Checksum"/></instance-parameter>
+                     </parameters>
+                   </method>
+                 </record>
+               </namespace>
+             </repository>`,
+        );
+        const girPath = resolveGirPath([directory.path], directory.path);
+        const libraries = ["GLib-2.0", "Digest-1.0"];
+        const { gi } = resolveStore(directory.path);
+        await runCodegen({ libraries, girPath, gi });
+        const consumer = `import { Checksum } from "@gtkx/gi/digest";
+            import { ChecksumType, KeyFile, TimeZone, VariantType } from "@gtkx/gi/glib";
+            const type: VariantType = new VariantType("s");
+            const file: KeyFile = new KeyFile();
+            const checksum: Checksum = new Checksum(ChecksumType.SHA256);
+            const failures: string[] = [];
+            for (const construct of [
+                // @ts-expect-error the new constructor takes a type string
+                () => new VariantType(),
+                () => new Checksum(-1),
+                // @ts-expect-error a zero-argument constructor other than new keeps the record abstract
+                () => new TimeZone("UTC"),
+            ]) {
+                try {
+                    construct();
+                } catch (error) {
+                    failures.push(String(error));
+                }
+            }
+            console.log(JSON.stringify({
+                type: type instanceof VariantType && type.dupString(),
+                file: file instanceof KeyFile,
+                checksum: checksum instanceof Checksum && checksum.getString().length,
+                failures,
+            }));`;
+        expect(diagnostics(directory.path, consumer)).toEqual([]);
+        const output = execFileSync(process.execPath, ["consumer.ts"], {
+            cwd: directory.path,
+            encoding: "utf8",
+            stdio: "pipe",
+            timeout: 20_000,
+        });
+        expect(JSON.parse(output)).toEqual({
+            type: "s",
+            file: true,
+            checksum: 64,
+            failures: [
+                expect.stringContaining("Missing required argument"),
+                expect.stringContaining("Cannot construct Digest.Checksum: Digest.Checksum.new returned null."),
+                expect.stringContaining("Cannot construct GLib.TimeZone with new"),
+            ],
+        });
+        const reference = loadApiReference({ libraries, girPath, resolveFrom: directory.path });
+        const page = (name: string) => {
+            const result = reference.lookup(name);
+            return result.outcome === "page" ? result.markdown : "";
+        };
+        expect(page("GLib.VariantType")).toContain("`new GLib.VariantType(...)` calls `GLib.VariantType.new(...)`.");
+        expect(page("GLib.TimeZone")).toContain("## Constructors");
+        expect(page("GLib.TimeZone")).not.toContain("`new GLib.TimeZone(...)`");
+    });
+
+    it("returns null from nullable zero-terminated arrays like GJS", async () => {
+        using directory = createProject();
+        const { gi } = resolveStore(directory.path);
+        await runCodegen({ libraries: ["Gio-2.0"], girPath: resolveGirPath(undefined, directory.path), gi });
+        const consumer = `import { DataInputStream, MemoryInputStream } from "@gtkx/gi/gio";
+            import { Bytes } from "@gtkx/gi/glib";
+            const reader = DataInputStream.new(MemoryInputStream.newFromBytes(Bytes.new(new TextEncoder().encode("a\\n\\nb"))));
+            const lines: (string | null)[] = [];
+            for (let index = 0; index < 4; index += 1) {
+                const [line]: [Uint8Array | null, number] = reader.readLine(null);
+                lines.push(line === null ? null : new TextDecoder().decode(line));
+            }
+            console.log(JSON.stringify({ lines, empty: Bytes.new(new Uint8Array()).getData() }));`;
+        expect(diagnostics(directory.path, consumer)).toEqual([]);
+        const output = execFileSync(process.execPath, ["consumer.ts"], {
+            cwd: directory.path,
+            encoding: "utf8",
+            stdio: "pipe",
+            timeout: 20_000,
+        });
+        expect(JSON.parse(output)).toEqual({ lines: ["a", "", "b", null], empty: {} });
+    });
+
+    it("omits asynchronous reads into caller-allocated buffers like GJS", async () => {
+        using directory = createProject();
+        const libraries = ["Gio-2.0"];
+        const girPath = resolveGirPath(undefined, directory.path);
+        const { gi } = resolveStore(directory.path);
+        await runCodegen({ libraries, girPath, gi });
+        const consumer = `import { type InputStream, MemoryInputStream } from "@gtkx/gi/gio";
+            import { Bytes } from "@gtkx/gi/glib";
+            const stream: InputStream = MemoryInputStream.newFromBytes(Bytes.new(new TextEncoder().encode("GTKX")));
+            // @ts-expect-error the buffer is filled after the call returns
+            void stream.readAsync;
+            // @ts-expect-error the buffer is filled after the call returns
+            void stream.readAllAsync;
+            const [count, buffer] = stream.read(4, null);
+            console.log(JSON.stringify({
+                readAsync: "readAsync" in stream,
+                readAllAsync: "readAllAsync" in stream,
+                readBytesAsync: typeof stream.readBytesAsync,
+                read: new TextDecoder().decode(buffer.subarray(0, count)),
+            }));`;
+        expect(diagnostics(directory.path, consumer)).toEqual([]);
+        const output = execFileSync(process.execPath, ["consumer.ts"], {
+            cwd: directory.path,
+            encoding: "utf8",
+            stdio: "pipe",
+            timeout: 20_000,
+        });
+        expect(JSON.parse(output)).toEqual({
+            readAsync: false,
+            readAllAsync: false,
+            readBytesAsync: "function",
+            read: "GTKX",
+        });
+        const reference = loadApiReference({ libraries, girPath, resolveFrom: directory.path });
+        const result = reference.lookup("Gio.InputStream");
+        const page = result.outcome === "page" ? result.markdown : "";
+        expect(page).toContain("### `readBytesAsync`");
+        expect(page).not.toContain("### `readAsync`");
+        expect(page).not.toContain("### `readAllAsync`");
+    });
+
+    it("omits the D-Bus interface skeleton vtable slot that JavaScript cannot fill", async () => {
+        using directory = createProject();
+        const libraries = ["Gio-2.0"];
+        const girPath = resolveGirPath(undefined, directory.path);
+        const { gi } = resolveStore(directory.path);
+        await runCodegen({ libraries, girPath, gi });
+        const consumer = `import { DBusInterfaceSkeleton } from "@gtkx/gi/gio";
+            export class Skeleton extends DBusInterfaceSkeleton {
+                // @ts-expect-error GDBusInterfaceVTable cannot be constructed or filled
+                protected override vfuncGetVtable(): never {
+                    throw new Error("unreachable");
+                }
+            }
+            console.log(JSON.stringify({
+                getInfo: "vfuncGetInfo" in DBusInterfaceSkeleton.prototype,
+                getVtable: "vfuncGetVtable" in DBusInterfaceSkeleton.prototype,
+            }));`;
+        expect(diagnostics(directory.path, consumer)).toEqual([]);
+        const output = execFileSync(process.execPath, ["consumer.ts"], {
+            cwd: directory.path,
+            encoding: "utf8",
+            stdio: "pipe",
+            timeout: 20_000,
+        });
+        expect(JSON.parse(output)).toEqual({ getInfo: true, getVtable: false });
+        const reference = loadApiReference({ libraries, girPath, resolveFrom: directory.path });
+        const result = reference.lookup("Gio.DBusInterfaceSkeleton");
+        const page = result.outcome === "page" ? result.markdown : "";
+        expect(page).toContain("vfuncGetInfo");
+        expect(page).not.toContain("vfuncGetVtable");
+    });
+
+    it("emits signals from flat GValue arrays without a length like GJS", async () => {
+        using directory = createProject();
+        const { gi } = resolveStore(directory.path);
+        await runCodegen({ libraries: ["Gio-2.0"], girPath: resolveGirPath(undefined, directory.path), gi });
+        const consumer = `import { SimpleAction } from "@gtkx/gi/gio";
+            import { Variant, VariantType } from "@gtkx/gi/glib";
+            import { signalEmitv, signalLookup, typeFromName, Value } from "@gtkx/gi/gobject";
+            const action = new SimpleAction({ name: "pick", parameterType: new VariantType("s") });
+            const picked: string[] = [];
+            action.on("activate", (parameter) => {
+                picked.push(String(parameter?.unpack()));
+            });
+            const id = signalLookup("activate", typeFromName("GSimpleAction"));
+            const instance = new Value();
+            instance.init(typeFromName("GSimpleAction"));
+            instance.setObject(action);
+            const parameter = new Value();
+            parameter.init(typeFromName("GVariant"));
+            parameter.setVariant(new Variant("s", "from a value"));
+            signalEmitv([instance, parameter], id, 0);
+            signalEmitv([action, new Variant("s", "from JavaScript")], id, 0);
+            console.log(JSON.stringify(picked));`;
+        expect(diagnostics(directory.path, consumer)).toEqual([]);
+        const output = execFileSync(process.execPath, ["consumer.ts"], {
+            cwd: directory.path,
+            encoding: "utf8",
+            stdio: "pipe",
+            timeout: 20_000,
+        });
+        expect(JSON.parse(output)).toEqual(["from a value", "from JavaScript"]);
+    });
+
+    it("adds and removes tables of action entries on every action map like GJS", async () => {
+        using directory = createProject();
+        const { gi } = resolveStore(directory.path);
+        await runCodegen({ libraries: ["Gio-2.0"], girPath: resolveGirPath(undefined, directory.path), gi });
+        const consumer = `import { type ActionEntryObj, Application, SimpleAction, SimpleActionGroup } from "@gtkx/gi/gio";
+            import { Variant, VariantType } from "@gtkx/gi/glib";
+            import { registerClass } from "@gtkx/runtime";
+            const calls: unknown[] = [];
+            const group = new SimpleActionGroup();
+            const entries: ActionEntryObj[] = [
+                {
+                    name: "zoom-in",
+                    activate(action, parameter) {
+                        calls.push(["zoom-in", this === action, action instanceof SimpleAction, parameter]);
+                    },
+                },
+                {
+                    name: "open",
+                    parameterType: "s",
+                    activate: (_action, parameter) => calls.push(["open", parameter?.unpack()]),
+                },
+                {
+                    name: "size",
+                    state: "'large'",
+                    changeState(action, value) {
+                        calls.push(["size", value?.unpack()]);
+                        if (value !== null) action.setState(value);
+                    },
+                },
+                { name: "hidden", state: true },
+                { name: "depth", parameterType: new VariantType("i"), state: new Variant("i", 2) },
+            ];
+            const result: void = group.addActionEntries(entries);
+            group.activateAction("zoom-in", null);
+            group.activateAction("open", new Variant("s", "README"));
+            group.changeActionState("size", new Variant("s", "small"));
+            group.changeActionState("hidden", new Variant("b", false));
+            const states = {
+                size: group.getActionState("size")?.unpack(),
+                hidden: group.getActionState("hidden")?.unpack(),
+                depth: [group.lookupAction("depth")?.getParameterType()?.dupString(), group.getActionState("depth")?.unpack()],
+            };
+            // @ts-expect-error entry fields are camelCase
+            group.addActionEntries([{ name: "bad-type", parameter_type: "s" }]);
+            const failures: string[] = [];
+            const invalid: ActionEntryObj[] = [
+                { name: "invalid-type", parameterType: "zz" },
+                { name: "invalid-state", state: "large" },
+                // @ts-expect-error every entry is named
+                { activate: () => undefined },
+            ];
+            for (const entry of invalid) {
+                try {
+                    group.addActionEntries([entry]);
+                } catch (error) {
+                    failures.push(String(error));
+                }
+            }
+            const added = group.listActions().toSorted();
+            group.removeActionEntries(entries);
+            group.removeActionEntries([{ name: "bad-type" }]);
+            const AppBase = class extends Application {};
+            const App = registerClass(AppBase, { typeName: "ConsumerActionApp" });
+            const app = new App({ applicationId: "org.gtkx.ConsumerActionApp" });
+            app.addActionEntries([{ name: "quit", activate: () => calls.push(["quit"]) }]);
+            app.lookupAction("quit")?.activate(null);
+            console.log(JSON.stringify({ result: result === undefined, calls, states, failures, added, left: group.listActions() }));`;
+        expect(diagnostics(directory.path, consumer)).toEqual([]);
+        const output = execFileSync(process.execPath, ["consumer.ts"], {
+            cwd: directory.path,
+            encoding: "utf8",
+            stdio: "pipe",
+            timeout: 20_000,
+        });
+        expect(JSON.parse(output)).toEqual({
+            result: true,
+            calls: [["zoom-in", true, true, null], ["open", "README"], ["size", "small"], ["quit"]],
+            states: { size: "small", hidden: false, depth: ["i", 2] },
+            failures: [
+                expect.stringContaining('parameterType "zz" is not a valid VariantType'),
+                expect.stringContaining("unknown keyword"),
+                expect.stringContaining("action entry name must be a string"),
+            ],
+            added: ["bad-type", "depth", "hidden", "open", "size", "zoom-in"],
+            left: [],
+        });
+    });
+
+    it("reads embedded records that hold pointers as read-only views like GJS", async () => {
+        using directory = createProject();
+        const libraries = ["PangoCairo-1.0"];
+        const girPath = resolveGirPath(undefined, directory.path);
+        const { gi } = resolveStore(directory.path);
+        await runCodegen({ libraries, girPath, gi });
+        const consumer = `import { Analysis, AttrList, Font, itemize } from "@gtkx/gi/pango";
+            import { FontMap } from "@gtkx/gi/pangocairo";
+            const context = FontMap.getDefault().createContext();
+            const [item] = itemize(context, "Hello", 0, 5, AttrList.new(), null);
+            const analysis: Analysis = item.analysis;
+            const assign = () => {
+                // @ts-expect-error an embedded record is read-only
+                item.analysis = analysis;
+            };
+            console.log(JSON.stringify({
+                isView: analysis instanceof Analysis,
+                font: analysis.font instanceof Font,
+                level: analysis.level,
+                length: item.length,
+                assign: typeof assign,
+            }));`;
+        expect(diagnostics(directory.path, consumer)).toEqual([]);
+        const output = execFileSync(process.execPath, ["consumer.ts"], {
+            cwd: directory.path,
+            encoding: "utf8",
+            stdio: "pipe",
+            timeout: 20_000,
+        });
+        expect(JSON.parse(output)).toEqual({ isView: true, font: true, level: 0, length: 5, assign: "function" });
+        const reference = loadApiReference({ libraries, girPath, resolveFrom: directory.path });
+        const item = reference.lookup("Pango.Item");
+        expect(item.outcome === "page" ? item.markdown : "").toContain(
+            "### `analysis`\n\n`Pango.Analysis` · read-only",
+        );
+    });
+
     it("generates JSX bindings that accept documented props and reject incompatible consumers", async () => {
         using directory = createProject();
         const { gi, jsx } = resolveStore(directory.path);
@@ -274,6 +983,17 @@ describe("generated bindings", () => {
         expect(
             diagnostics(directory.path, `${imports} export const button = createElement(GtkButton, { label: 42 });`),
         ).not.toEqual([]);
+        expect(
+            diagnostics(
+                directory.path,
+                `import { createElement } from "react"; import { GtkStack } from "@gtkx/jsx/gtk";
+                export const stack = createElement(GtkStack, {
+                    onNotifyVisibleChild: (child) => child?.getName(),
+                    onNotifyHhomogeneous: (isHomogeneous: boolean) => !isHomogeneous,
+                    onNotifyTransitionDuration: (duration: number) => duration.toFixed(),
+                });`,
+            ),
+        ).toEqual([]);
         execFileSync(
             process.execPath,
             [
@@ -295,6 +1015,29 @@ describe("generated bindings", () => {
         );
     });
 
+    it("types configured element props from a module relative to the project root", async () => {
+        using directory = createProject();
+        mkdirSync(join(directory.path, "src"));
+        writeFileSync(join(directory.path, "src", "props.ts"), "export type CaptionProps = { caption?: string };");
+        await generateBindings({
+            cwd: directory.path,
+            config: {
+                applicationId: "org.gtkx.Props",
+                elements: { config: { GtkButton: { props: { module: "./src/props.ts", export: "CaptionProps" } } } },
+            },
+        });
+        const imports = 'import { createElement } from "react"; import { GtkButton } from "@gtkx/jsx/gtk";';
+        expect(
+            diagnostics(
+                directory.path,
+                `${imports} export const button = createElement(GtkButton, { caption: "Hi" });`,
+            ),
+        ).toEqual([]);
+        expect(
+            diagnostics(directory.path, `${imports} export const button = createElement(GtkButton, { caption: 42 });`),
+        ).not.toEqual([]);
+    });
+
     it("indexes upstream class, function and documentation contracts", () => {
         const reference = loadApiReference({
             libraries: ["Gio-2.0"],
@@ -303,9 +1046,47 @@ describe("generated bindings", () => {
         });
         expect(reference.lookup("Gio.File", "interface")).toMatchObject({ outcome: "page", symbol: { name: "File" } });
         expect(reference.lookup("Gio.DoesNotExist")).toMatchObject({ outcome: "notFound" });
+        const domainPage = reference.lookup("Gio.DBusError");
+        expect(domainPage.outcome === "page" ? domainPage.markdown : "").toContain(
+            "| `Gio.DBusError.getRemoteError()` | `Gio.dbusErrorGetRemoteError()` |",
+        );
         expect(reference.symbols({ namespace: "Gio", kinds: ["class"] })).toEqual(
             expect.arrayContaining([expect.objectContaining({ name: "Application" })]),
         );
+        expect(reference.search({ query: "replaceContentsAsync" })[0]).toMatchObject({
+            namespace: "Gio",
+            name: "File.replaceContentsAsync",
+            kind: "method",
+        });
+        expect(reference.search({ query: "Gio.Application.act", kinds: ["signal"] })).toEqual([
+            expect.objectContaining({ name: "Application.activate", kind: "signal" }),
+        ]);
+        const member = reference.lookup("Gio.File.replaceContentsAsync");
+        const memberPage = member.outcome === "page" ? member.markdown : "";
+        expect(memberPage).toContain("### `replaceContentsAsync`");
+        expect(memberPage).not.toContain("### `loadContentsAsync`");
+        expect(reference.lookup("Gio.Application.activate")).toMatchObject({ outcome: "ambiguous" });
+        const inherited = reference.lookup("Gio.MemoryInputStream.close", "method");
+        expect(inherited).toMatchObject({ outcome: "page", symbol: { name: "InputStream.close" } });
+        expect(inherited.outcome === "page" ? inherited.markdown : "").toContain(
+            "`Gio.MemoryInputStream` inherits it from `Gio.InputStream`.",
+        );
+        expect(reference.lookup("GObject.ObjectClass")).toMatchObject({ outcome: "page", symbol: { kind: "record" } });
+        expect(reference.search({ query: "listProperties" })).toEqual(
+            expect.arrayContaining([expect.objectContaining({ name: "ObjectClass.listProperties", kind: "method" })]),
+        );
+        expect(reference.lookup("Gio.ApplicationClass")).toMatchObject({ outcome: "notFound" });
+        expect(reference.lookup("GSimpleAction.enabled")).toMatchObject({
+            outcome: "page",
+            symbol: { name: "SimpleAction.enabled", kind: "property" },
+        });
+        expect(reference.lookup("GMemoryInputStream.close", "method")).toMatchObject({
+            outcome: "page",
+            symbol: { name: "InputStream.close" },
+        });
+        expect(reference.search({ query: "GSimpleAction.enab" })).toEqual([
+            expect.objectContaining({ name: "SimpleAction.enabled", kind: "property" }),
+        ]);
     });
 
     it("exposes only signal pointer slots whose ownership can be honored", async () => {
@@ -382,6 +1163,75 @@ describe("generated bindings", () => {
                 expect.arrayContaining([expect.stringContaining(signal)]),
             );
         }
+    });
+
+    it("passes the receiver to methods of GIR regenerated from a typelib", async () => {
+        using directory = createProject();
+        writeFileSync(
+            join(directory.path, "Regenerated-1.0.gir"),
+            `<?xml version="1.0"?>
+             <repository version="1.0" xmlns="http://www.gtk.org/introspection/core/1.0"
+               xmlns:c="http://www.gtk.org/introspection/c/1.0" xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+               <include name="GObject" version="2.0"/>
+               <namespace name="Regenerated" version="1.0" shared-library="libgio-2.0.so.0" c:prefix="G">
+                 <class name="Cancellable" parent="GObject.Object" glib:type-name="GCancellable"
+                   glib:get-type="g_cancellable_get_type">
+                   <constructor name="new" c:identifier="g_cancellable_new">
+                     <return-value transfer-ownership="full"><type name="Cancellable"/></return-value>
+                   </constructor>
+                   <method name="cancel" c:identifier="g_cancellable_cancel">
+                     <return-value transfer-ownership="none"><type name="none"/></return-value>
+                   </method>
+                   <method name="is_cancelled" c:identifier="g_cancellable_is_cancelled">
+                     <return-value transfer-ownership="none"><type name="gboolean"/></return-value>
+                   </method>
+                 </class>
+               </namespace>
+             </repository>`,
+        );
+        const { gi } = resolveStore(directory.path);
+        await runCodegen({ libraries: ["Regenerated-1.0"], girPath: resolveGirPath([directory.path]), gi });
+        const cancelled = execFileSync(
+            process.execPath,
+            [
+                "--input-type=module",
+                "-e",
+                `import { Cancellable } from "@gtkx/gi/regenerated";
+                const first = Cancellable.new();
+                const second = Cancellable.new();
+                second.cancel();
+                console.log(JSON.stringify([first.isCancelled(), second.isCancelled()]));`,
+            ],
+            { cwd: directory.path, encoding: "utf8", stdio: "pipe", timeout: 20_000 },
+        );
+        expect(JSON.parse(cancelled)).toEqual([false, true]);
+    });
+
+    it("initializes a library whose GIR declares an init function when its namespace is imported", async () => {
+        using directory = createProject();
+        const { gi } = resolveStore(directory.path);
+        await runCodegen({ libraries: ["GstPbutils-1.0"], girPath: resolveGirPath(undefined, directory.path), gi });
+        const initialized = execFileSync(
+            process.execPath,
+            [
+                "--input-type=module",
+                "-e",
+                `import * as GstPbutils from "@gtkx/gi/gstpbutils";
+                import * as Gst from "@gtkx/gi/gst";
+                console.log(JSON.stringify([Gst.isInitialized(), typeof GstPbutils.Discoverer]));`,
+            ],
+            { cwd: directory.path, encoding: "utf8", stdio: "pipe", timeout: 20_000 },
+        );
+        expect(JSON.parse(initialized)).toEqual([true, "function"]);
+    });
+
+    it("leaves library teardown to process exit", async () => {
+        using directory = createProject();
+        const { gi } = resolveStore(directory.path);
+        await runCodegen({ libraries: ["GtkSource-5"], girPath: resolveGirPath(undefined, directory.path), gi });
+        const bootstrap = readFileSync(join(gi.linkDir, "gtksource", "bootstrap.js"), "utf8");
+        expect(bootstrap).toContain("init();");
+        expect(bootstrap).not.toContain("finalize");
     });
 
     it("rejects missing and malformed metadata without publishing a store", async () => {

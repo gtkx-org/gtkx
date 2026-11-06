@@ -397,7 +397,10 @@ const hasUnmarshalableParam = (context: ModuleContext, callable: GirFunction): b
         isRefusedTransfer(context, callable.returnValue.type, callable.returnValue.transferOwnership) ||
         isByValueRecord(context, callable.returnValue.type, callable.returnValue.cType) ||
         (hasAsyncCallback(context, callable) &&
-            callable.parameters.some((parameter) => isByValueRecord(context, parameter.type, parameter.cType))) ||
+            callable.parameters.some(
+                (parameter) =>
+                    isCallerAllocatedOut(parameter) || isByValueRecord(context, parameter.type, parameter.cType),
+            )) ||
         callable.parameters.some((parameter) => isUnmarshalableCallParam(context, parameter))
     );
 };

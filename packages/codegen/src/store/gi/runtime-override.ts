@@ -1,4 +1,5 @@
 import type { GirFunction } from "../../gir/function.js";
+import type { ModuleContext } from "../../writer/context.js";
 
 type RuntimeOverride = {
     generics?: string;
@@ -6,7 +7,20 @@ type RuntimeOverride = {
     returnType: string;
     body: string;
     renames?: [string, string][];
+    runtimeTypes?: string[];
+    runtimeInternalTypes?: string[];
+    paramDocs?: [string, string][];
 };
+
+const BINDING_TRANSFORM_TYPES = {
+    runtimeTypes: ["NativeInstance"],
+    runtimeInternalTypes: ["BindingTransform", "ReadablePropertyValue", "WritablePropertyValue"],
+};
+
+const bindingTransformDocs = (from: string, to: string): string =>
+    `transforms each value read from ${from} into the value written to ${to}: a function that receives ` +
+    "the binding and the value and returns `[success, value]`, as in GJS, or a `GObject.Closure`, which " +
+    "receives the binding and both `GObject.Value`s and fills in the second; `null` uses the default conversion";
 
 const RUNTIME_OVERRIDES: Map<string, RuntimeOverride> = new Map([
     [
@@ -27,6 +41,54 @@ const RUNTIME_OVERRIDES: Map<string, RuntimeOverride> = new Map([
             renames: [["v_boxed", "boxed"]],
         },
     ],
+    [
+        "g_object_bind_property_with_closures",
+        {
+            generics:
+                "<TSource extends NativeInstance<Object>, TTarget extends NativeInstance<Object>, " +
+                "TSourceProperty extends string, TTargetProperty extends string>",
+            signature:
+                "this: TSource, sourceProperty: TSourceProperty, target: TTarget, targetProperty: TTargetProperty, " +
+                "flags: BindingFlags, transformTo?: BindingTransform<Binding, " +
+                "ReadablePropertyValue<TSource, TSourceProperty>, WritablePropertyValue<TTarget, TTargetProperty>> " +
+                "| Closure | null, transformFrom?: BindingTransform<Binding, " +
+                "ReadablePropertyValue<TTarget, TTargetProperty>, WritablePropertyValue<TSource, TSourceProperty>> " +
+                "| Closure | null",
+            returnType: "Binding",
+            body: 'throw new Error("g_object_bind_property_with_closures: runtime override not installed");',
+            ...BINDING_TRANSFORM_TYPES,
+            paramDocs: [
+                ["transformTo", bindingTransformDocs("`sourceProperty`", "`targetProperty`")],
+                [
+                    "transformFrom",
+                    `${bindingTransformDocs("`targetProperty`", "`sourceProperty`")}; only a bidirectional binding uses it`,
+                ],
+            ],
+        },
+    ],
+    [
+        "g_binding_group_bind_with_closures",
+        {
+            generics:
+                "<TTarget extends NativeInstance<Object>, TTargetProperty extends string, TSourceValue = unknown>",
+            signature:
+                "sourceProperty: string, target: TTarget, targetProperty: TTargetProperty, flags: BindingFlags, " +
+                "transformTo?: BindingTransform<Binding, TSourceValue, " +
+                "WritablePropertyValue<TTarget, TTargetProperty>> | Closure | null, " +
+                "transformFrom?: BindingTransform<Binding, ReadablePropertyValue<TTarget, TTargetProperty>, " +
+                "TSourceValue> | Closure | null",
+            returnType: "void",
+            body: 'throw new Error("g_binding_group_bind_with_closures: runtime override not installed");',
+            ...BINDING_TRANSFORM_TYPES,
+            paramDocs: [
+                ["transformTo", bindingTransformDocs("`sourceProperty`", "`targetProperty`")],
+                [
+                    "transformFrom",
+                    `${bindingTransformDocs("`targetProperty`", "`sourceProperty`")}; only a bidirectional binding uses it`,
+                ],
+            ],
+        },
+    ],
 ]);
 
 const runtimeOverrideFor = (callable: GirFunction): RuntimeOverride | undefined =>
@@ -40,8 +102,32 @@ const runtimeOverrideRenames = (callable: GirFunction): Map<string, string> | un
     return renames === undefined ? undefined : new Map(renames);
 };
 
-const renderRuntimeOverride = (callable: GirFunction, memberName: string): string | undefined => {
+const runtimeOverrideParamDocs = (callable: GirFunction): Map<string, string> | undefined => {
+    const docs = runtimeOverrideFor(callable)?.paramDocs;
+
+    return docs === undefined ? undefined : new Map(docs);
+};
+
+const importRuntimeOverride = (context: ModuleContext, callable: GirFunction): RuntimeOverride | undefined => {
     const override = runtimeOverrideFor(callable);
+
+    for (const name of override?.runtimeTypes ?? []) {
+        context.addRuntimeTypeImport(name);
+    }
+
+    for (const name of override?.runtimeInternalTypes ?? []) {
+        context.addRuntimeInternalTypeImport(name);
+    }
+
+    return override;
+};
+
+const renderRuntimeOverride = (
+    context: ModuleContext,
+    callable: GirFunction,
+    memberName: string,
+): string | undefined => {
+    const override = importRuntimeOverride(context, callable);
 
     if (override === undefined) {
         return undefined;
@@ -52,4 +138,11 @@ const renderRuntimeOverride = (callable: GirFunction, memberName: string): strin
     return `${memberName}${generics}(${override.signature}): ${override.returnType} {\n    ${override.body}\n}`;
 };
 
-export { renderRuntimeOverride, runtimeOverrideFor, runtimeOverrideRenames, type RuntimeOverride };
+export {
+    importRuntimeOverride,
+    renderRuntimeOverride,
+    runtimeOverrideFor,
+    runtimeOverrideParamDocs,
+    runtimeOverrideRenames,
+    type RuntimeOverride,
+};

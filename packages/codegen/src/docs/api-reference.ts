@@ -4,6 +4,7 @@ import type { GirClass } from "../gir/class.js";
 import type { GirFunction } from "../gir/function.js";
 import type { GirRecord } from "../gir/record.js";
 import { isEmittableAlias } from "../analysis/alias-admission.js";
+import { ancestorChain } from "../gir/ancestry.js";
 import { isSupportedCallback } from "../analysis/callback-shape.js";
 import { computeGiFingerprint, type GiFingerprint, type GiInputs, isGiFingerprintFresh } from "../fingerprint.js";
 import { isEmittableEntity } from "../gir/emittable.js";
@@ -15,15 +16,28 @@ import { isEmittableConstant } from "../store/gi/constant.js";
 import { isEmittableNamespaceFunction, namespaceFunctionExportName } from "../store/gi/function.js";
 import { setAcceptedChildTypes } from "../store/jsx/accepted-child-types.js";
 import { type ElementProps, setElementProps } from "../store/jsx/element-prop-imports.js";
+import { lazyOmittedProps } from "../store/jsx/element-prop-types.js";
 import { isMountableElement } from "../store/jsx/generated-elements.js";
-import { collectIntrinsicElementClasses, type GlibNamedClass } from "../store/jsx/intrinsic-elements.js";
+import { buildGirIndex } from "../store/jsx/gir-index.js";
+import {
+    collectIntrinsicElementClasses,
+    type GlibNamedClass,
+    implementedInterfaces,
+} from "../store/jsx/intrinsic-elements.js";
 import { type OmittedProps, setOmittedProps } from "../store/jsx/omitted-props.js";
 import { type ElementPageContext, renderElementPage } from "./element-page.js";
 import { createPropsCatalog, type PropsCatalog } from "./handwritten-props.js";
 import { hasFreshPropsDependencies } from "./props-dependencies.js";
 import { freshDeclarationDir } from "./props-program.js";
-import { docsSignatureContext, firstSentence, namespaceOrder } from "./render.js";
-import { type GiSymbolEntry, renderSymbolPage, type SymbolPageOptions } from "./symbol-page.js";
+import { docsSignatureContext, firstSentence, namespaceOrder, type SectionMember } from "./render.js";
+import {
+    type GiSymbolEntry,
+    type MemberSection,
+    memberSections,
+    renderMemberPage,
+    renderSymbolPage,
+    type SymbolPageOptions,
+} from "./symbol-page.js";
 
 /** What to index and the element config the rendered pages reflect. */
 type ApiReferenceOptions = {
@@ -37,6 +51,8 @@ type ApiReferenceOptions = {
     /** GObject properties the project omits from generated props; without it pages show props that do not exist. */
     omittedProps?: OmittedProps;
     acceptedChildTypes?: Record<string, string[]>;
+    /** Elements their parent container creates; without it their pages show construct-only props they reject. */
+    lazyElements?: string[];
 };
 
 /** Narrows an `ApiReference.symbols` enumeration. */
@@ -59,14 +75,23 @@ type ApiSymbolKind =
     | "interface"
     | "record";
 
-/** An indexed symbol, without its reference page. */
+/**
+ * What an indexed member of a class, interface or record is, after the section of its owner's page that
+ * documents it.
+ */
+type ApiMemberKind = "constructor" | "field" | "method" | "property" | "signal" | "staticMethod";
+
+/** An indexed symbol or member, without its reference page. */
 type ApiSymbol = {
     /** GIR namespace declaring the symbol, such as `"Adw"`. */
     namespace: string;
-    /** Name within the namespace, which for an element is its GLib type name. */
+    /**
+     * Name within the namespace: an element's GLib type name, or `Owner.member` for a member, such as
+     * `"File.replaceContentsAsync"`.
+     */
     name: string;
     /** Kind the reference groups and filters the symbol by, `"element"` for a JSX tag. */
-    kind: ApiSymbolKind;
+    kind: ApiSymbolKind | ApiMemberKind;
     /** First sentence of the symbol's GIR documentation, elided past 220 characters and empty when it has none. */
     summary: string;
 };
@@ -88,9 +113,9 @@ type ApiLookupResult =
     | {
           /** Discriminant selecting the variant. */
           outcome: "page";
-          /** Index entry for the symbol the query resolved to. */
+          /** Index entry for the symbol or member the query resolved to. */
           symbol: ApiSymbol;
-          /** The symbol's complete reference page, rendered as Markdown. */
+          /** The symbol's complete reference page, or a member's section of its owner's page, as Markdown. */
           markdown: string;
       }
     | {
@@ -104,14 +129,18 @@ type ApiLookupResult =
           outcome: "notFound";
       };
 
-/** A fuzzy search over indexed symbol names. */
+/** A fuzzy search over indexed symbol and member names. */
 type ApiSearchOptions = {
-    /** Text matched case-insensitively against each symbol's name and its qualified `Namespace.Name` form. */
+    /**
+     * Text matched case-insensitively against each symbol's name and its qualified `Namespace.Name` form,
+     * and against each member's name; a query containing a dot also matches `Owner.member`,
+     * `Namespace.Owner.member`, and `Element.member` for the JSX element of a class.
+     */
     query: string;
     /** GIR namespace to keep, matched case-insensitively; every namespace when omitted. */
     namespace?: string;
-    /** Symbol kinds to keep; every kind when omitted. */
-    kinds?: ApiSymbolKind[];
+    /** Symbol and member kinds to keep; every kind when omitted. */
+    kinds?: (ApiSymbolKind | ApiMemberKind)[];
     /** Maximum number of results, 20 by default. */
     limit?: number;
 };
@@ -126,9 +155,31 @@ type ElementEntry = {
 
 type SymbolEntry = GiSymbolEntry | ElementEntry;
 
-type ScoredEntry = {
+type MemberOwnerEntry = Extract<GiSymbolEntry, { kind: "class" | "interface" | "record" }>;
+
+type MemberEntry = {
+    kind: ApiMemberKind;
+    owner: MemberOwnerEntry;
+    name: string;
+    summary: string;
+    lowerName: string;
+    lowerQualified: string[];
+};
+
+type ScoredItem = {
     score: number;
-    entry: SymbolEntry;
+    isMember: boolean;
+    name: string;
+    namespace: string;
+    kind: ApiSymbolKind | ApiMemberKind;
+    symbol: () => ApiSymbol;
+};
+
+type MemberMatch = {
+    owner: MemberOwnerEntry;
+    section: MemberSection;
+    member: SectionMember;
+    requestedOwner: string | undefined;
 };
 
 /** Every kind the reference indexes, in the order a namespace overview groups its symbols. */
@@ -156,7 +207,19 @@ const KIND_SECTION_TITLES: Record<ApiSymbolKind, string> = {
     constant: "Constants",
 };
 
+/** Every kind of class, interface and record member the reference indexes, in page order. */
+const API_MEMBER_KINDS: ApiMemberKind[] = ["constructor", "staticMethod", "property", "signal", "method", "field"];
+
+const MEMBER_KIND_SET: ReadonlySet<string> = new Set(API_MEMBER_KINDS);
+
 const DEFAULT_SEARCH_LIMIT = 20;
+
+const isApiMemberKind = (kind: ApiSymbolKind | ApiMemberKind): kind is ApiMemberKind => MEMBER_KIND_SET.has(kind);
+
+const isMemberOwner = (entry: SymbolEntry): entry is MemberOwnerEntry =>
+    entry.kind === "class" || entry.kind === "interface" || entry.kind === "record";
+
+const memberKey = (name: string): string => name.replaceAll(/[-_]/g, "").toLowerCase();
 
 const compareNames = (a: string, b: string): number => {
     if (a < b) {
@@ -166,13 +229,15 @@ const compareNames = (a: string, b: string): number => {
     return a > b ? 1 : 0;
 };
 
-const symbolKindSet = (kinds: ApiSymbolKind[] | undefined): Set<ApiSymbolKind> | undefined =>
+type KindSet = ReadonlySet<ApiSymbolKind | ApiMemberKind>;
+
+const symbolKindSet = (kinds: (ApiSymbolKind | ApiMemberKind)[] | undefined): KindSet | undefined =>
     kinds === undefined ? undefined : new Set(kinds);
 
 const isQueriedEntry = (
-    entry: SymbolEntry,
+    entry: { kind: ApiSymbolKind | ApiMemberKind; namespace: GirNamespace },
     namespaceFilter: string | undefined,
-    kinds: Set<ApiSymbolKind> | undefined,
+    kinds: KindSet | undefined,
 ): boolean => {
     if (namespaceFilter !== undefined && entry.namespace.name.toLowerCase() !== namespaceFilter) {
         return false;
@@ -202,7 +267,7 @@ const functionEntry = (
     docsContext: ReturnType<typeof docsSignatureContext>,
     fn: GirFunction,
 ): GiSymbolEntry | undefined => {
-    if (!isEmittableNamespaceFunction(docsContext, namespace.name, fn)) {
+    if (!isEmittableNamespaceFunction(docsContext, fn)) {
         return undefined;
     }
 
@@ -241,8 +306,10 @@ const classEntries = (namespace: GirNamespace): GiSymbolEntry[] => {
     return entries;
 };
 
+const hasClassStructMethods = (record: GirRecord): boolean => record.methods.some((method) => method.introspectable);
+
 const recordEntry = (namespace: GirNamespace, record: GirRecord): GiSymbolEntry | undefined => {
-    if (record.isVtable || !isEmittableEntity(record)) {
+    if ((record.isVtable && !hasClassStructMethods(record)) || !isEmittableEntity(record)) {
         return undefined;
     }
 
@@ -314,49 +381,88 @@ const narrowToExactMatches = (candidates: SymbolEntry[], trimmed: string, isQual
     return exact.length > 0 ? exact : candidates;
 };
 
-const getScoredEntry = (
-    entry: SymbolEntry,
-    query: string,
-    namespaceFilter: string | undefined,
-    kinds: Set<ApiSymbolKind> | undefined,
-): ScoredEntry | undefined => {
-    if (!isQueriedEntry(entry, namespaceFilter, kinds)) {
-        return undefined;
-    }
-
-    const score = searchScore(entry, query);
-
-    if (score === 0) {
-        return undefined;
-    }
-
-    return { score, entry };
-};
-
-const compareScoredEntries = (a: ScoredEntry, b: ScoredEntry): number =>
+const compareScoredItems = (a: ScoredItem, b: ScoredItem): number =>
     b.score - a.score ||
-    a.entry.name.length - b.entry.name.length ||
-    compareNames(a.entry.name, b.entry.name) ||
-    compareNames(namespaceOrder(a.entry.namespace.name), namespaceOrder(b.entry.namespace.name)) ||
-    compareNames(a.entry.kind, b.entry.kind);
+    Number(a.isMember) - Number(b.isMember) ||
+    a.name.length - b.name.length ||
+    compareNames(a.name, b.name) ||
+    compareNames(namespaceOrder(a.namespace), namespaceOrder(b.namespace)) ||
+    compareNames(a.kind, b.kind);
 
-const searchScore = (entry: SymbolEntry, query: string): number => {
-    const name = entry.name.toLowerCase();
-    const qualified = `${entry.namespace.name.toLowerCase()}.${name}`;
-
-    if (name === query || qualified === query) {
+const searchScore = (name: string, qualified: string[], query: string): number => {
+    if (name === query || qualified.includes(query)) {
         return 3;
     }
 
-    if (name.startsWith(query)) {
+    if (name.startsWith(query) || qualified.some((form) => form.startsWith(query))) {
         return 2;
     }
 
-    if (name.includes(query) || qualified.includes(query)) {
+    if (name.includes(query) || qualified.some((form) => form.includes(query))) {
         return 1;
     }
 
     return 0;
+};
+
+const memberEntries = (owner: MemberOwnerEntry, library: Library, elementName: string | undefined): MemberEntry[] =>
+    memberSections(owner, library).flatMap((section) =>
+        section.members
+            .filter((member) => member.origin === undefined)
+            .map((member) => {
+                const lowerName = member.name.toLowerCase();
+                const ownerName = owner.name.toLowerCase();
+
+                return {
+                    kind: section.kind,
+                    owner,
+                    name: member.name,
+                    summary: member.summary,
+                    lowerName,
+                    lowerQualified: [
+                        `${ownerName}.${lowerName}`,
+                        `${owner.namespace.name.toLowerCase()}.${ownerName}.${lowerName}`,
+                        ...(elementName === undefined ? [] : [`${elementName.toLowerCase()}.${lowerName}`]),
+                    ],
+                };
+            }),
+    );
+
+const findOwnMembers = (
+    owner: MemberOwnerEntry,
+    library: Library,
+    name: string,
+    kind: ApiMemberKind | undefined,
+): MemberMatch[] => {
+    const key = memberKey(name);
+
+    return memberSections(owner, library)
+        .filter((section) => kind === undefined || section.kind === kind)
+        .flatMap((section) =>
+            section.members
+                .filter((member) => memberKey(member.name) === key)
+                .map((member) => ({ owner, section, member, requestedOwner: undefined })),
+        );
+};
+
+const memberSymbol = (member: Pick<MemberEntry, "kind" | "owner" | "name" | "summary">): ApiSymbol => ({
+    namespace: member.owner.namespace.name,
+    name: `${member.owner.name}.${member.name}`,
+    kind: member.kind,
+    summary: member.summary,
+});
+
+const matchSymbol = (match: MemberMatch): ApiSymbol =>
+    memberSymbol({ ...match.member, kind: match.section.kind, owner: match.owner });
+
+const narrowToExactMembers = (matches: MemberMatch[], name: string): MemberMatch[] => {
+    if (matches.length <= 1) {
+        return matches;
+    }
+
+    const exact = matches.filter((match) => match.member.name === name);
+
+    return exact.length > 0 ? exact : matches;
 };
 
 /** An index over the GIR data a project's bindings are generated from, queryable and renderable as Markdown. */
@@ -369,6 +475,7 @@ class ApiReference {
     private byName: Map<string, SymbolEntry[]> = new Map();
     private byNamespace: Map<string, SymbolEntry[]> = new Map();
     private elementsByClass: Map<string, string> = new Map();
+    private members: MemberEntry[] | undefined;
 
     private props: ElementProps;
     private propsCatalog: PropsCatalog;
@@ -398,12 +505,13 @@ class ApiReference {
             resolveFrom,
             declarationDir: freshDeclarationDir(resolveFrom, this.giInputs),
         });
+        this.buildIndex();
         this.elementContext = {
             library: this.library,
             linkFor: (): string | undefined => undefined,
             handwrittenProps: this.propsCatalog.byType,
+            lazyOmittedProps: lazyOmittedProps(buildGirIndex(this.library), options.lazyElements ?? []),
         };
-        this.buildIndex();
     }
 
     private applyElementConfig(): void {
@@ -532,22 +640,172 @@ class ApiReference {
         return narrowToExactMatches(candidates, trimmed, isQualified);
     }
 
-    private scoreEntries(
-        query: string,
-        namespaceFilter: string | undefined,
-        kinds: Set<ApiSymbolKind> | undefined,
-    ): ScoredEntry[] {
-        const scored: ScoredEntry[] = [];
+    private elementNameOf(owner: MemberOwnerEntry): string | undefined {
+        return owner.kind === "record"
+            ? undefined
+            : this.elementsByClass.get(`${owner.namespace.name}.${owner.klass.name}`);
+    }
+
+    private memberIndex(): MemberEntry[] {
+        this.members ??= this.entries
+            .filter(isMemberOwner)
+            .flatMap((owner) => memberEntries(owner, this.library, this.elementNameOf(owner)));
+
+        return this.members;
+    }
+
+    private memberOwnersOf(entry: SymbolEntry): MemberOwnerEntry[] {
+        if (isMemberOwner(entry)) {
+            return [entry];
+        }
+
+        const owner =
+            entry.kind === "element"
+                ? this.ownerEntry(entry.element.namespace.name, entry.element.klass.name)
+                : undefined;
+
+        return owner === undefined ? [] : [owner];
+    }
+
+    private scoreSymbols(query: string, namespaceFilter: string | undefined, kinds: KindSet | undefined): ScoredItem[] {
+        const scored: ScoredItem[] = [];
 
         for (const entry of this.entries) {
-            const item = getScoredEntry(entry, query, namespaceFilter, kinds);
+            if (!isQueriedEntry(entry, namespaceFilter, kinds)) {
+                continue;
+            }
 
-            if (item !== undefined) {
-                scored.push(item);
+            const name = entry.name.toLowerCase();
+            const score = searchScore(name, [`${entry.namespace.name.toLowerCase()}.${name}`], query);
+
+            if (score > 0) {
+                scored.push({
+                    score,
+                    isMember: false,
+                    name: entry.name,
+                    namespace: entry.namespace.name,
+                    kind: entry.kind,
+                    symbol: () => this.toApiSymbol(entry),
+                });
             }
         }
 
         return scored;
+    }
+
+    private scoreMembers(query: string, namespaceFilter: string | undefined, kinds: KindSet | undefined): ScoredItem[] {
+        if (kinds !== undefined && ![...kinds].some((kind) => isApiMemberKind(kind))) {
+            return [];
+        }
+
+        const isQualified = query.includes(".");
+        const scored: ScoredItem[] = [];
+
+        for (const member of this.memberIndex()) {
+            if (!isQueriedEntry({ kind: member.kind, namespace: member.owner.namespace }, namespaceFilter, kinds)) {
+                continue;
+            }
+
+            const score = searchScore(member.lowerName, isQualified ? member.lowerQualified : [], query);
+
+            if (score > 0) {
+                scored.push({
+                    score,
+                    isMember: true,
+                    name: member.name,
+                    namespace: member.owner.namespace.name,
+                    kind: member.kind,
+                    symbol: () => memberSymbol(member),
+                });
+            }
+        }
+
+        return scored;
+    }
+
+    private ownerEntry(namespaceName: string, className: string): MemberOwnerEntry | undefined {
+        const key = `${namespaceName}.${sanitizeTypeIdentifier(className)}`.toLowerCase();
+
+        return this.byQualified
+            .get(key)
+            ?.find((entry): entry is MemberOwnerEntry => entry.kind === "class" || entry.kind === "interface");
+    }
+
+    private ancestorOwners(owner: MemberOwnerEntry): MemberOwnerEntry[] {
+        if (owner.kind === "record") {
+            return [];
+        }
+
+        const ancestors = [...ancestorChain(this.library, owner.klass, owner.namespace.name)]
+            .slice(1)
+            .map((ancestor) => this.ownerEntry(ancestor.namespaceName, ancestor.klass.name));
+        const interfaces = implementedInterfaces(owner.klass, owner.namespace, this.library).map((iface) =>
+            this.ownerEntry(iface.namespace.name, iface.klass.name),
+        );
+
+        return [...ancestors, ...interfaces].filter((entry) => entry !== undefined);
+    }
+
+    private findMembers(owner: MemberOwnerEntry, name: string, kind: ApiMemberKind | undefined): MemberMatch[] {
+        const own = findOwnMembers(owner, this.library, name, kind);
+
+        if (own.length > 0) {
+            return own;
+        }
+
+        for (const ancestor of this.ancestorOwners(owner)) {
+            const inherited = findOwnMembers(ancestor, this.library, name, kind).filter(
+                (match) => match.member.origin === undefined,
+            );
+
+            if (inherited.length > 0) {
+                return inherited.map((match) => ({
+                    ...match,
+                    requestedOwner: `${owner.namespace.name}.${owner.name}`,
+                }));
+            }
+        }
+
+        return [];
+    }
+
+    private lookupMember(trimmed: string, kind: ApiMemberKind | undefined): ApiLookupResult {
+        const separator = trimmed.lastIndexOf(".");
+
+        if (separator <= 0 || separator === trimmed.length - 1) {
+            return { outcome: "notFound" };
+        }
+
+        const name = trimmed.slice(separator + 1);
+        const owners = [
+            ...new Set(
+                this.lookupCandidates(trimmed.slice(0, separator), undefined).flatMap((entry) =>
+                    this.memberOwnersOf(entry),
+                ),
+            ),
+        ];
+        const matches = narrowToExactMembers(
+            owners.flatMap((owner) => this.findMembers(owner, name, kind)),
+            name,
+        );
+        const match = matches[0];
+
+        if (match === undefined) {
+            return { outcome: "notFound" };
+        }
+
+        if (matches.length > 1) {
+            return {
+                outcome: "ambiguous",
+                candidates: matches.map((candidate) => matchSymbol(candidate)),
+            };
+        }
+
+        return {
+            outcome: "page",
+            symbol: matchSymbol(match),
+            markdown: renderMemberPage(match),
+        };
     }
 
     /** Paths of the `.gir` files the index was built from, including the ones pulled in as dependencies. */
@@ -567,24 +825,32 @@ class ApiReference {
     }
 
     /**
-     * Resolves a name to a single symbol and renders its reference page. The name may be bare (`Toast`) or
-     * qualified (`Adw.Toast`), and is matched case-insensitively; a name several symbols answer to is
-     * reported as ambiguous rather than picked between.
+     * Resolves a name to a single symbol and renders its reference page, or to a single member of a class,
+     * interface or record and renders that member's section. A symbol name may be bare (`Toast`) or
+     * qualified (`Adw.Toast`); a member is named after its owner (`Gio.File.replaceContentsAsync`,
+     * `File.replaceContentsAsync`, or the JSX element `AdwToast.title` for the class it renders), and a member a
+     * class inherits resolves to the ancestor or interface documenting it. Names are matched case-insensitively, and dashes in signal names are optional; a name
+     * several symbols or members answer to is reported as ambiguous rather than picked between.
      *
-     * @param kind Restricts the match to one kind, which is how a class and its JSX element are told apart.
+     * @param kind Restricts the match to one kind, which is how a class and its JSX element, or a signal and
+     *   a method of the same name, are told apart.
      */
-    lookup(query: string, kind?: ApiSymbolKind): ApiLookupResult {
+    lookup(query: string, kind?: ApiSymbolKind | ApiMemberKind): ApiLookupResult {
         const trimmed = query.trim();
 
         if (trimmed.length === 0) {
             return { outcome: "notFound" };
         }
 
+        if (kind !== undefined && isApiMemberKind(kind)) {
+            return this.lookupMember(trimmed, kind);
+        }
+
         const candidates = this.lookupCandidates(trimmed, kind);
         const entry = candidates[0];
 
         if (entry === undefined) {
-            return { outcome: "notFound" };
+            return kind === undefined ? this.lookupMember(trimmed, undefined) : { outcome: "notFound" };
         }
 
         if (candidates.length > 1) {
@@ -594,7 +860,10 @@ class ApiReference {
         return { outcome: "page", symbol: this.toApiSymbol(entry), markdown: this.renderPage(entry) };
     }
 
-    /** Every indexed symbol the query keeps, ordered by namespace (Adw, then Gtk, then alphabetically) and name. */
+    /**
+     * Every indexed symbol the query keeps, ordered by namespace (Adw, then Gtk, then alphabetically) and
+     * name. Members are searched and looked up, not enumerated here.
+     */
     symbols(query: ApiSymbolQuery = {}): ApiSymbol[] {
         const namespaceFilter = query.namespace?.toLowerCase();
         const kinds = symbolKindSet(query.kinds);
@@ -606,8 +875,10 @@ class ApiReference {
     }
 
     /**
-     * Symbols whose name matches the query, best first: an exact name beats a prefix, which beats a
-     * substring, and shorter names win ties. An empty query matches nothing.
+     * Symbols and class, interface and record members whose name matches the query, best first: an exact
+     * name beats a prefix, which beats a substring, a symbol beats a member, and shorter names win ties.
+     * Members a class takes from an interface are found on the interface. An empty query matches nothing.
+     * The first search indexes members, which renders every member section once.
      */
     search(options: ApiSearchOptions): ApiSymbol[] {
         const query = options.query.trim().toLowerCase();
@@ -618,10 +889,14 @@ class ApiReference {
 
         const limit = Math.max(1, Math.floor(options.limit ?? DEFAULT_SEARCH_LIMIT));
         const namespaceFilter = options.namespace?.toLowerCase();
-        const scored = this.scoreEntries(query, namespaceFilter, symbolKindSet(options.kinds));
-        scored.sort(compareScoredEntries);
+        const kinds = symbolKindSet(options.kinds);
+        const scored = [
+            ...this.scoreSymbols(query, namespaceFilter, kinds),
+            ...this.scoreMembers(query, namespaceFilter, kinds),
+        ];
+        scored.sort(compareScoredItems);
 
-        return scored.slice(0, limit).map((item) => this.toApiSymbol(item.entry));
+        return scored.slice(0, limit).map((item) => item.symbol());
     }
 
     /** A summary of every indexed namespace, ordered Adw, Gtk, then alphabetically. */
@@ -725,8 +1000,10 @@ class ApiReference {
 
 export type { ApiReference };
 export {
+    API_MEMBER_KINDS,
     API_SYMBOL_KINDS,
     loadApiReference,
+    type ApiMemberKind,
     type ApiReferenceOptions,
     type ApiSymbolKind,
     type ApiSymbol,

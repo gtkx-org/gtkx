@@ -1,0 +1,118 @@
+import { sortStrings } from "@gtkx/utils";
+import { randomUUID } from "node:crypto";
+import { existsSync, mkdirSync, renameSync, writeFileSync } from "node:fs";
+import { basename, dirname, join } from "node:path";
+import { z } from "zod";
+import { getNamespace } from "../gir/libraries.js";
+import { readJsonFile } from "../json.js";
+
+const sharedProjectSchema = z.object({
+    libraries: z.array(z.string()),
+    girPath: z.array(z.string()),
+    jsx: z.string().nullable(),
+});
+
+const sharedProjectsSchema = z.object({ projects: z.record(z.string(), sharedProjectSchema) });
+
+/** What one project needs from a store it may share with other projects. */
+type SharedProject = z.infer<typeof sharedProjectSchema>;
+
+const PROJECTS_FILENAME = "projects.json";
+
+const sharedProjectsPath = (storeDir: string): string =>
+    join(dirname(storeDir), `.${basename(storeDir)}-store`, PROJECTS_FILENAME);
+
+const readSharedProjects = (storeDir: string): Record<string, SharedProject> =>
+    sharedProjectsSchema.safeParse(readJsonFile(sharedProjectsPath(storeDir))).data?.projects ?? {};
+
+const otherProjects = (storeDir: string, owner: string): [string, SharedProject][] =>
+    Object.entries(readSharedProjects(storeDir)).filter(([root]) => root !== owner && existsSync(root));
+
+const sharingError = (storeDir: string, other: string, difference: string): Error =>
+    new Error(
+        `Cannot share the generated store in ${dirname(storeDir)} with ${other}: ${difference}. Projects that ` +
+            "resolve the same store, such as the apps of a pnpm workspace, generate one set of bindings. Align the " +
+            "projects, then run gtkx codegen again; after changing them all, `gtkx codegen --force` regenerates " +
+            "for this project alone and the others join again when they next generate bindings.",
+    );
+
+const conflictingLibrary = (project: SharedProject, required: SharedProject): string | null => {
+    const namespaces: Map<string, string> = new Map(
+        project.libraries.map((library) => [getNamespace(library), library]),
+    );
+
+    for (const library of required.libraries) {
+        const current = namespaces.get(getNamespace(library));
+
+        if (current !== undefined && current !== library) {
+            return `the projects bind ${current} and ${library}`;
+        }
+    }
+
+    return null;
+};
+
+const describeDifference = (project: SharedProject, required: SharedProject): string | null => {
+    if (JSON.stringify(required.girPath) !== JSON.stringify(project.girPath)) {
+        return "the projects search different GIR directories (`girPath`)";
+    }
+
+    if ((required.jsx === null) !== (project.jsx === null)) {
+        return "only one of the projects uses @gtkx/react";
+    }
+
+    if (required.jsx !== project.jsx) {
+        return "the projects configure different `elements`";
+    }
+
+    return conflictingLibrary(project, required);
+};
+
+/** The other projects a store is shared with and the libraries it has to provide for all of them. */
+type SharedStore = { libraries: string[]; others: [string, SharedProject][] };
+
+/**
+ * Resolves what a store shared with other live projects has to provide: the project's own libraries when it is
+ * alone, otherwise the union of every project's libraries.
+ *
+ * @param isForced Leaves out the other projects whose requirements conflict instead of failing.
+ * @throws If another project that shares the store needs a different GIR search path, element configuration
+ * or React support, or binds another version of a namespace, unless `isForced` is set.
+ */
+const shareStore = (storeDir: string, owner: string, project: SharedProject, isForced: boolean): SharedStore => {
+    const others: [string, SharedProject][] = [];
+
+    for (const [other, required] of otherProjects(storeDir, owner)) {
+        const difference = describeDifference(project, required);
+
+        if (difference === null) {
+            others.push([other, required]);
+        } else if (!isForced) {
+            throw sharingError(storeDir, other, difference);
+        }
+    }
+
+    const libraries = new Set([...project.libraries, ...others.flatMap(([, required]) => required.libraries)]);
+
+    return { libraries: others.length === 0 ? project.libraries : sortStrings([...libraries]), others };
+};
+
+/** Records what a project needs from a shared store beside the other projects that still share it. */
+const registerSharedProject = (storeDir: string, owner: string, project: SharedProject, shared: SharedStore): void => {
+    const path = sharedProjectsPath(storeDir);
+    const projects = Object.fromEntries([...shared.others, [owner, project]]);
+    const temporary = `${path}.${String(process.pid)}-${randomUUID()}`;
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(temporary, `${JSON.stringify({ projects }, null, 2)}\n`);
+    renameSync(temporary, path);
+};
+
+/** Roots of the other live projects recorded as sharing the store at `storeDir`. */
+const sharedProjectRoots = (storeDir: string, owner: string): string[] =>
+    otherProjects(storeDir, owner).map(([root]) => root);
+
+/** What the project at `owner` recorded it needs from the store at `storeDir`, or undefined before it generates. */
+const readSharedProject = (storeDir: string, owner: string): SharedProject | undefined =>
+    readSharedProjects(storeDir)[owner];
+
+export { readSharedProject, registerSharedProject, shareStore, sharedProjectRoots, type SharedProject };

@@ -10,9 +10,9 @@ import * as Regress from "@gtkx/gi/regress";
 
 import { callParent, getClassType, getInstanceType, registerClass, typeIsA } from "@gtkx/runtime";
 
-import { expect, test } from "vitest";
+import { assert, expect, test } from "vitest";
 
-import { drainGC } from "./helpers/memory.js";
+import { didSettle, drainGC } from "./helpers/memory.js";
 
 type Holder<T> = { value: T | null };
 
@@ -73,6 +73,24 @@ test("a registered subclass fills the int8 vtable slots the C callers dispatch t
     expect(instance.methodStrArgOutRet("hi")).toEqual(["hi!", 9]);
 });
 
+test("a vfunc result the C caller cannot take is reported by the vfunc that returned it", () => {
+    class FractionalInt8 extends GIMarshallingTests.Object {
+        override vfuncMethodInt8Out(): number {
+            return 1.5;
+        }
+
+        override vfuncMethodInt8ArgAndOutCaller(arg: number): number {
+            return arg / 2;
+        }
+    }
+
+    const Registered = registerClass(FractionalInt8, { typeName: uniqueName("GtkxFractionalInt8") });
+    const instance = new Registered({});
+
+    expect(() => instance.methodInt8Out()).toThrow(/FractionalInt8\.vfuncMethodInt8Out/);
+    expect(() => instance.methodInt8ArgAndOutCaller(3)).toThrow(/FractionalInt8\.vfuncMethodInt8ArgAndOutCaller/);
+});
+
 test("an override reaches the implementation it replaces through super", () => {
     const seen: number[] = [];
 
@@ -105,6 +123,38 @@ test("an override reaches the parent implementation through callParent", () => {
     instance.methodWithDefaultImplementation(5);
     expect(seen).toEqual([5]);
     expect(instance.int).toBe(7);
+});
+
+test("a dispose override runs on explicit disposal and is skipped once its JavaScript object is collected", async () => {
+    const disposed: string[] = [];
+
+    class Disposing extends Regress.TestObj {
+        label = "";
+
+        vfuncDispose(): void {
+            disposed.push(this.label);
+            callParent(Disposing, "vfuncDispose", this);
+        }
+    }
+
+    const Registered = registerClass(Disposing, { typeName: uniqueName("GtkxDisposing") });
+    const explicit = new Registered({});
+    explicit.label = "explicit";
+    explicit.runDispose();
+
+    const references = (() => {
+        const instance = new Registered({});
+        const bare = new GObject.Object({});
+        instance.label = "collected";
+        instance.setBare(bare);
+
+        return { instance: new WeakRef(instance), bare: new WeakRef(bare) };
+    })();
+
+    expect(
+        await didSettle(() => references.instance.deref() === undefined && references.bare.deref() === undefined),
+    ).toBe(true);
+    expect(disposed).toEqual(["explicit"]);
 });
 
 test("a slot filled several types up the hierarchy is reached from a JavaScript override", () => {
@@ -360,6 +410,26 @@ test("a GError rethrown from a vfunc surfaces as an error from the C caller", ()
 
     const Registered = registerClass(Rethrowing, { typeName: uniqueName("GtkxRethrowing") });
     expect(() => new Registered({}).vfuncMethWithError(0)).toThrow();
+});
+
+test("a GLib.Error constructed with new and thrown from a vfunc reaches the C caller intact", () => {
+    class Denying extends GIMarshallingTests.Object {
+        override vfuncVfuncMethWithErr(): boolean {
+            throw new GLib.Error(Gio.IOErrorEnum, Gio.IOErrorEnum.PERMISSION_DENIED, "denied");
+        }
+    }
+
+    const Registered = registerClass(Denying, { typeName: uniqueName("GtkxDenying") });
+    let error: unknown;
+
+    try {
+        new Registered({}).vfuncMethWithError(0);
+    } catch (thrown) {
+        error = thrown;
+    }
+
+    assert(error instanceof Gio.IOErrorEnum);
+    expect([error.code, error.message]).toEqual([Gio.IOErrorEnum.PERMISSION_DENIED, "denied"]);
 });
 
 test("object returning vfuncs report the ref counts their transfer annotations imply", async () => {

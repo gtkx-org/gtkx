@@ -37,6 +37,7 @@ type DocsFingerprintInput = {
     props: Record<string, ElementPropsExport>;
     omittedProps: Record<string, string[]>;
     acceptedChildTypes: Record<string, string[]>;
+    lazyElements: string[];
 };
 
 const docsFingerprintSchema = z.object({
@@ -224,6 +225,12 @@ const isGiStoreFresh = (giStoreDir: string, inputs: GiInputs): boolean => {
     return sentinel.success && isGiFingerprintFresh(sentinel.data, inputs);
 };
 
+const readGiStoreGirFiles = (giStoreDir: string): string[] => {
+    const sentinel = giFingerprintSchema.safeParse(readSentinel(giStoreDir));
+
+    return sentinel.success ? sentinel.data.girFiles : [];
+};
+
 const isGiFingerprintFresh = (fingerprint: GiFingerprint, inputs: GiInputs): boolean =>
     recordedGiValue(fingerprint, inputs) === fingerprint.value;
 
@@ -243,6 +250,7 @@ const hashDocs = (giValue: string, input: DocsFingerprintInput, propsValue: stri
                 serializeElementProps(input.props),
                 serializeStringLists(input.omittedProps),
                 serializeStringLists(input.acceptedChildTypes),
+                sortAlpha(input.lazyElements),
             ]),
         )
         .digest("hex");
@@ -295,18 +303,23 @@ const serializeStringLists = (map: Record<string, string[]>): [string, string][]
         .toSorted()
         .map((type) => [type, sortAlpha(map[type] ?? [])]);
 
+type ElementConfigInput = Omit<JsxFingerprintInput, "reactVersion">;
+
+const serializeElementConfig = (input: ElementConfigInput): unknown[] => [
+    serializeModuleExports(input.components),
+    input.lazyElements.toSorted(),
+    serializeElementProps(input.props),
+    serializeStringLists(input.omittedProps),
+];
+
 const hashJsx = (input: JsxFingerprintInput): string =>
     createHash("sha256")
-        .update(
-            JSON.stringify([
-                codegenHash(),
-                input.reactVersion,
-                serializeModuleExports(input.components),
-                input.lazyElements.toSorted(),
-                serializeElementProps(input.props),
-                serializeStringLists(input.omittedProps),
-            ]),
-        )
+        .update(JSON.stringify([codegenHash(), input.reactVersion, ...serializeElementConfig(input)]))
+        .digest("hex");
+
+const hashElementConfig = (input: ElementConfigInput): string =>
+    createHash("sha256")
+        .update(JSON.stringify(serializeElementConfig(input)))
         .digest("hex");
 
 const computeJsxFingerprint = (input: JsxFingerprintInput, intrinsicElementCount: number): JsxFingerprint => ({
@@ -336,8 +349,10 @@ export {
     computeDocsFingerprint,
     isGiStoreFresh,
     isGiFingerprintFresh,
+    readGiStoreGirFiles,
     isDocsOutputFresh,
     computeJsxFingerprint,
+    hashElementConfig,
     jsxStoreFreshness,
     type DocsFingerprintInput,
     type GiInputs,

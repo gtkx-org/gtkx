@@ -19,9 +19,11 @@ import {
     renderPromisifiedSignature,
 } from "./method.js";
 import {
+    importRuntimeOverride,
     renderRuntimeOverride,
     type RuntimeOverride,
     runtimeOverrideFor,
+    runtimeOverrideParamDocs,
     runtimeOverrideRenames,
 } from "./runtime-override.js";
 
@@ -122,6 +124,20 @@ const renderClassInstanceMember: InstanceMemberRenderer = instanceMemberRenderer
               }),
 );
 
+const renderShadowingClassInstanceMember: InstanceMemberRenderer = instanceMemberRenderer(
+    (context, callable, { name, finishFn }, scope) => {
+        const implementation = renderClassInstanceMember(context, callable, scope, name);
+
+        if (implementation === undefined) {
+            return undefined;
+        }
+
+        const signature = memberSignatureText(context, callable, name, { finishFn });
+
+        return `${memberDoc(context, callable, finishFn)}${signature};\n${name}(...args: never[]): any;\n${implementation}`;
+    },
+);
+
 const memberDoc = (context: ModuleContext, callable: GirFunction, finishFn: GirFunction | undefined): string =>
     callableDoc(context, callable, { finishFn });
 
@@ -200,6 +216,7 @@ const resolveCallableMember = (
 };
 
 const runtimeOverrideMember = (
+    context: ModuleContext,
     callable: GirFunction,
     name: string,
     doc: string,
@@ -209,7 +226,7 @@ const runtimeOverrideMember = (
         return undefined;
     }
 
-    const override = renderRuntimeOverride(callable, name);
+    const override = renderRuntimeOverride(context, callable, name);
 
     return override === undefined ? undefined : `${doc}${override}`;
 };
@@ -226,9 +243,11 @@ const renderCallableMember = (
     }
 
     const { cIdentifier, name } = resolved;
-    const renames = options.canUseRuntimeOverride === true ? runtimeOverrideRenames(callable) : undefined;
-    const doc = callableDoc(context, callable, { renames });
-    const override = runtimeOverrideMember(callable, name, doc, options.canUseRuntimeOverride);
+    const canUseRuntimeOverride = options.canUseRuntimeOverride === true;
+    const renames = canUseRuntimeOverride ? runtimeOverrideRenames(callable) : undefined;
+    const paramDocs = canUseRuntimeOverride ? runtimeOverrideParamDocs(callable) : undefined;
+    const doc = callableDoc(context, callable, { renames, paramDocs });
+    const override = runtimeOverrideMember(context, callable, name, doc, options.canUseRuntimeOverride);
 
     if (override !== undefined) {
         return override;
@@ -350,7 +369,7 @@ const memberSignature = (
     callable: GirFunction,
     options: MemberSignatureOptions,
 ): MemberSignature => {
-    const override = runtimeOverrideFor(callable);
+    const override = importRuntimeOverride(context, callable);
 
     if (override !== undefined) {
         return override;
@@ -594,6 +613,7 @@ export {
     renderInstanceMethodSignature,
     renderInstanceMethodReturnType,
     renderClassInstanceMember,
+    renderShadowingClassInstanceMember,
     instanceMemberSpec,
     instanceMemberNote,
     instanceScope,
