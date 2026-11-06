@@ -95,15 +95,25 @@ describe("scaffold command", () => {
     });
 
     it.each([
-        { userAgent: "yarn/4.18.1 npm/? node/v26.7.0 linux x64", pin: "yarn@4.18.1" },
-        { userAgent: "yarn/1.22.22 npm/? node/v26.7.0 linux x64", pin: undefined },
-    ])("pins the Yarn release that runs it as $userAgent", async ({ userAgent, pin }) => {
-        vi.stubEnv("npm_config_user_agent", userAgent);
-        using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-yarn-pin-"));
-        const target = join(directory.path, "example");
-        expect((await create(target, ["--package-manager", "yarn"])).status).toBe(0);
-        expect((JSON.parse(read(target, "package.json")) as { packageManager?: string }).packageManager).toBe(pin);
-    });
+        { userAgent: "yarn/4.18.1 npm/? node/v26.7.0 linux x64", corepackYarn: "1.22.22", pin: "yarn@4.18.1" },
+        { userAgent: "yarn/1.22.22 npm/? node/v26.7.0 linux x64", corepackYarn: "4.18.1", pin: undefined },
+        { userAgent: "npm/11.20.0 node/v26.7.0 linux x64", corepackYarn: "4.18.1", pin: "yarn@4.18.1" },
+        { userAgent: "npm/11.20.0 node/v26.7.0 linux x64", corepackYarn: "1.22.22", pin: undefined },
+    ])(
+        "pins the Yarn release that installs it as $userAgent with Corepack's Yarn $corepackYarn",
+        async ({ userAgent, corepackYarn, pin }) => {
+            vi.stubEnv("npm_config_user_agent", userAgent);
+            using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-yarn-pin-"));
+            const bin = join(directory.path, "bin");
+            mkdirSync(bin);
+            const corepack = `#!${process.execPath}\nconsole.log(${JSON.stringify(corepackYarn)});\n`;
+            writeFileSync(join(bin, "corepack"), corepack, { mode: 0o755 });
+            vi.stubEnv("PATH", `${bin}:${process.env.PATH ?? ""}`);
+            const target = join(directory.path, "example");
+            expect((await create(target, ["--package-manager", "yarn"])).status).toBe(0);
+            expect((JSON.parse(read(target, "package.json")) as { packageManager?: string }).packageManager).toBe(pin);
+        },
+    );
 
     it.each([
         {

@@ -133,6 +133,13 @@ const reportedYarnRelease = (root: string): string | null => {
 };
 
 /**
+ * The Yarn release that installs a project without a pin at `root`: the Yarn running the scaffold, otherwise the
+ * one `yarn --version` reports there through Corepack.
+ */
+const installingYarnRelease = (root: string): string | null =>
+    YARN_USER_AGENT_PATTERN.exec(process.env.npm_config_user_agent ?? "")?.[1] ?? reportedYarnRelease(root);
+
+/**
  * The Yarn release that installs the project at `root`: the release its `packageManager` field pins, otherwise
  * the Yarn running the scaffold, otherwise the one `yarn --version` reports there through Corepack, as the
  * install runs it.
@@ -145,7 +152,7 @@ const yarnRelease = (root: string): string | null => {
         return pin.slice(YARN_PIN_PREFIX.length);
     }
 
-    return YARN_USER_AGENT_PATTERN.exec(process.env.npm_config_user_agent ?? "")?.[1] ?? reportedYarnRelease(root);
+    return installingYarnRelease(root);
 };
 
 /**
@@ -268,25 +275,29 @@ const pinnedPackageManager = (root: string, packageManager: PackageManager): str
     }
 };
 
-/**
- * The `packageManager` pin for the Yarn 2 or newer release that `npm_config_user_agent` names, as
- * `yarn init -2` writes it, or null when another package manager or Yarn 1 runs the scaffold.
- */
-const runningYarnPin = (): string | null => {
-    const matched = YARN_USER_AGENT_PATTERN.exec(process.env.npm_config_user_agent ?? "");
-    const version = matched?.[1];
+const nearestDirectory = (path: string): string =>
+    existsSync(path) || dirname(path) === path ? path : nearestDirectory(dirname(path));
 
-    return version !== undefined && Number(matched?.[2]) >= FIRST_PINNED_YARN_MAJOR ? `yarn@${version}` : null;
+/**
+ * The `packageManager` pin for the Yarn 2 or newer release that installs a new project at `root`, as
+ * `yarn init -2` writes it, or null when that is Yarn 1. The project may not exist yet, so Corepack is asked in
+ * its nearest existing directory, which resolves the same release for a project without a pin.
+ */
+const installingYarnPin = (root: string): string | null => {
+    const release = installingYarnRelease(nearestDirectory(root));
+    const major = Number(YARN_RELEASE_PATTERN.exec(release ?? "")?.[1]);
+
+    return release !== null && major >= FIRST_PINNED_YARN_MAJOR ? `${YARN_PIN_PREFIX}${release}` : null;
 };
 
 /**
  * The `packageManager` field for the new `package.json`: the existing project's pin when it names
  * `packageManager`, otherwise, outside an enclosing workspace whose root owns the pin, the Yarn 2 or newer
- * release running the scaffold.
+ * release that installs the project.
  */
 const packageManagerPin = (root: string, packageManager: PackageManager, isInWorkspace: boolean): string | null =>
     pinnedPackageManager(root, packageManager) ??
-    (packageManager === "yarn" && !isInWorkspace ? runningYarnPin() : null);
+    (packageManager === "yarn" && !isInWorkspace ? installingYarnPin(root) : null);
 
 const workspacePatterns = (settings: unknown, field: string): string[] => {
     const patterns = isRecord(settings) ? settings[field] : undefined;
