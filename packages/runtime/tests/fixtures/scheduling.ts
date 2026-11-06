@@ -87,6 +87,28 @@ const runTimeout = async (): Promise<void> => {
     process.stdout.write(JSON.stringify(events));
 };
 
+const runThrowing = async (): Promise<void> => {
+    const { idle, quit } = await runtime();
+    const errors: string[] = [];
+    process.on("uncaughtException", (error) => {
+        errors.push(error.message);
+    });
+    const events: string[] = [];
+    const done = completion();
+    idle(0, () => {
+        events.push("first");
+        throw new Error("first failed");
+    });
+    idle(0, () => {
+        events.push("second");
+        done.resolve();
+        return false;
+    });
+    await done.promise;
+    quit();
+    process.stdout.write(JSON.stringify({ events, errors }));
+};
+
 const runQuit = async (): Promise<void> => {
     const { idle, quit } = await runtime();
     let calls = 0;
@@ -251,6 +273,8 @@ if (mode === "budget") {
     await runBudget();
 } else if (mode === "timeout") {
     await runTimeout();
+} else if (mode === "throwing") {
+    await runThrowing();
 } else if (mode === "quit") {
     await runQuit();
 } else if (mode === "descriptors") {
