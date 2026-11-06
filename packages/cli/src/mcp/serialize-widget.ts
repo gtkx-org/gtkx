@@ -51,7 +51,7 @@ const createNode = (widget: Gtk.Widget, expansion: Expansion): SerializedWidget 
     role: expansion.testing.formatRole(widget.getAccessibleRole()),
     name: expansion.testing.getWidgetAccessibleName(widget),
     text: readWidgetText(widget, expansion.testing),
-    isSensitive: widget.getSensitive(),
+    isSensitive: widget.isSensitive(),
     isVisible: widget.getVisible(),
     cssClasses: widget.getCssClasses(),
     children: [],

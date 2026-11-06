@@ -2670,7 +2670,7 @@ describe("CLI commands", () => {
         });
     });
 
-    it("summarizes widgets by their accessible name and reads boxed properties as text", async () => {
+    it("summarizes widgets by their accessible name and effective sensitivity and reads boxed properties as text", async () => {
         using project = createProject();
         const readyPath = join(project.root, "ready.txt");
         writeWidgetApp(
@@ -2684,14 +2684,20 @@ describe("CLI commands", () => {
                     <GtkButton iconName="list-add-symbolic" tooltipText="New Note" />
                     <GtkColorDialogButton tooltipText="Accent" rgba={accent} dialog={<GtkColorDialog />} />
                     <GtkLabel label="0.3048" accessibleLabel="Result value" />
+                    <GtkBox sensitive={false}>
+                        <GtkButton label="Locked" />
+                    </GtkBox>
                 </GtkBox>
             );`,
         );
         await withMcpClient(project.root, async (client) => {
             await withSession("dev", project.root, readyPath, async () => {
                 expect(await queryWidgets(client, { by: "name", value: "New Note" })).toEqual([
-                    expect.objectContaining({ type: "Button", name: "New Note" }),
+                    expect.objectContaining({ type: "Button", name: "New Note", isSensitive: true }),
                 ]);
+                expect(
+                    await queryWidgets(client, { by: "role", value: "button", options: { name: "Locked" } }),
+                ).toEqual([expect.objectContaining({ name: "Locked", isSensitive: false })]);
                 expect(await queryWidgets(client, { by: "name", value: "Result value" })).toEqual([
                     expect.objectContaining({ type: "Label", text: "0.3048" }),
                 ]);

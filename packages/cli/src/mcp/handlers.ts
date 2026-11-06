@@ -116,7 +116,7 @@ const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
             const signalArgs = (params.args ?? []).map((arg) => extractSignalArg(arg));
             const isRealized = widget.getRealized();
             const isMapped = widget.getMapped();
-            const isSensitive = widget.getSensitive();
+            const isSensitive = widget.isSensitive();
             await interact(ctx, testing, () => testing.fireEvent(widget, params.signal, ...signalArgs));
 
             return {
