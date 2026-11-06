@@ -172,16 +172,19 @@ const sharedDependencyMessage = (nodeModules: string, other: string, dependency:
     "such as the apps of a pnpm workspace, have to install the same versions of the @gtkx packages, react and " +
     "@types/react; align them, then run gtkx codegen again.";
 
+/** Whether the project's installed packages resolve the store written into `nodeModules`. */
+const resolvesStoreIn = (projectRoot: string, nodeModules: string): boolean => {
+    const anchored = findStoreNodeModules(projectRoot);
+
+    return anchored !== null && realpathSync(anchored) === realpathSync(nodeModules);
+};
+
 const checkSharedDependencies = (owner: string, nodeModules: string, dependencies: Record<string, string>): void => {
-    const anchor = realpathSync(nodeModules);
+    const sharing = sharedProjectRoots(join(nodeModules, STORE_DIR, "gi"), owner, (root) =>
+        resolvesStoreIn(root, nodeModules),
+    );
 
-    for (const other of sharedProjectRoots(join(nodeModules, STORE_DIR, "gi"), owner)) {
-        const otherNodeModules = findStoreNodeModules(other);
-
-        if (otherNodeModules === null || realpathSync(otherNodeModules) !== anchor) {
-            continue;
-        }
-
+    for (const other of sharing) {
         const required = resolveDependencies(other, [...GI_DEPENDENCIES, ...JSX_DEPENDENCIES]);
 
         for (const [name, directory] of Object.entries(dependencies)) {
@@ -192,13 +195,6 @@ const checkSharedDependencies = (owner: string, nodeModules: string, dependencie
             }
         }
     }
-};
-
-/** Whether the project's installed packages resolve the store written into `nodeModules`. */
-const resolvesStoreIn = (projectRoot: string, nodeModules: string): boolean => {
-    const anchored = findStoreNodeModules(projectRoot);
-
-    return anchored !== null && realpathSync(anchored) === realpathSync(nodeModules);
 };
 
 const isStoreView = (path: string): boolean => {

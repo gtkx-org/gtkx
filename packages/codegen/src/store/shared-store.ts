@@ -25,8 +25,13 @@ const sharedProjectsPath = (storeDir: string): string =>
 const readSharedProjects = (storeDir: string): Record<string, SharedProject> =>
     sharedProjectsSchema.safeParse(readJsonFile(sharedProjectsPath(storeDir))).data?.projects ?? {};
 
-const otherProjects = (storeDir: string, owner: string): [string, SharedProject][] =>
-    Object.entries(readSharedProjects(storeDir)).filter(([root]) => root !== owner && existsSync(root));
+/** Whether the project at `root` resolves the store, rather than one beside its own runtime or renderer copy. */
+type ResolvesStore = (root: string) => boolean;
+
+const otherProjects = (storeDir: string, owner: string, resolvesStore: ResolvesStore): [string, SharedProject][] =>
+    Object.entries(readSharedProjects(storeDir)).filter(
+        ([root]) => root !== owner && existsSync(root) && resolvesStore(root),
+    );
 
 const sharingError = (storeDir: string, other: string, difference: string): Error =>
     new Error(
@@ -72,17 +77,23 @@ const describeDifference = (project: SharedProject, required: SharedProject): st
 type SharedStore = { libraries: string[]; others: [string, SharedProject][] };
 
 /**
- * Resolves what a store shared with other live projects has to provide: the project's own libraries when it is
- * alone, otherwise the union of every project's libraries.
+ * Resolves what a store shared with other live projects that still resolve it has to provide: the project's own
+ * libraries when it is alone, otherwise the union of every project's libraries.
  *
  * @param isForced Leaves out the other projects whose requirements conflict instead of failing.
  * @throws If another project that shares the store needs a different GIR search path, element configuration
  * or React support, or binds another version of a namespace, unless `isForced` is set.
  */
-const shareStore = (storeDir: string, owner: string, project: SharedProject, isForced: boolean): SharedStore => {
+const shareStore = (
+    storeDir: string,
+    owner: string,
+    resolvesStore: ResolvesStore,
+    project: SharedProject,
+    isForced: boolean,
+): SharedStore => {
     const others: [string, SharedProject][] = [];
 
-    for (const [other, required] of otherProjects(storeDir, owner)) {
+    for (const [other, required] of otherProjects(storeDir, owner, resolvesStore)) {
         const difference = describeDifference(project, required);
 
         if (difference === null) {
@@ -107,9 +118,9 @@ const registerSharedProject = (storeDir: string, owner: string, project: SharedP
     renameSync(temporary, path);
 };
 
-/** Roots of the other live projects recorded as sharing the store at `storeDir`. */
-const sharedProjectRoots = (storeDir: string, owner: string): string[] =>
-    otherProjects(storeDir, owner).map(([root]) => root);
+/** Roots of the other live projects recorded as sharing the store at `storeDir` that still resolve it. */
+const sharedProjectRoots = (storeDir: string, owner: string, resolvesStore: ResolvesStore): string[] =>
+    otherProjects(storeDir, owner, resolvesStore).map(([root]) => root);
 
 /** What the project at `owner` recorded it needs from the store at `storeDir`, or undefined before it generates. */
 const readSharedProject = (storeDir: string, owner: string): SharedProject | undefined =>

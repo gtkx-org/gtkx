@@ -1,6 +1,6 @@
 import type { ElementPropsExport } from "@gtkx/config/elements";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import ts from "typescript";
 import type { ModuleExport } from "./react/element-config.js";
 import type { OmittedProps } from "./store/jsx/omitted-props.js";
@@ -10,6 +10,7 @@ import { runGiCodegen } from "./gi.js";
 import { Library } from "./gir/library.js";
 import { generateGlModules, type GlGenerationReport } from "./khronos/pipeline.js";
 import { acquireStoreLocks, sweepStagingDirs } from "./staging.js";
+import { resolvesStoreIn } from "./store/resolve-store.js";
 import { registerSharedProject, shareStore, type SharedProject } from "./store/shared-store.js";
 import {
     discardPreparedStore,
@@ -209,10 +210,11 @@ const emitStores = async (input: CodegenRunnerOptions): Promise<StoreResult> => 
 
     const { owner } = gi;
     const project = sharedProject(input);
+    const resolvesStore = (root: string): boolean => resolvesStoreIn(root, dirname(dirname(gi.storeDir)));
     const shared =
         owner === undefined
             ? null
-            : { owner, ...shareStore(gi.storeDir, owner, project, input.isSharingForced === true) };
+            : { owner, ...shareStore(gi.storeDir, owner, resolvesStore, project, input.isSharingForced === true) };
     const libraries = shared?.libraries ?? input.libraries;
     const options = hasStoreLayout(gi, jsx) ? { ...input, libraries } : { ...input, libraries, isForced: true };
     reclaimStoreArtifacts(gi);

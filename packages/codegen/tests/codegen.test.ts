@@ -335,6 +335,15 @@ describe("generated bindings", () => {
         expect(readGeneratedLibraries(gi.linkDir)?.libraries).toEqual(["Gio-2.0"]);
         await runCodegen({ ...sharedOptions, libraries: ["GLib-2.0"] });
 
+        const ownPackages = join(consumer, "node_modules", "@gtkx");
+        mkdirSync(ownPackages, { recursive: true });
+        for (const name of ["runtime", "react"]) {
+            symlinkSync(join(workspace, "packages", name), join(ownPackages, name), "dir");
+        }
+        await runCodegen(options);
+        expect(readGeneratedLibraries(gi.linkDir)?.libraries).toEqual(["Gio-2.0"]);
+        rmSync(ownPackages, { recursive: true });
+
         const otherReact = join(consumer, "node_modules", "react");
         mkdirSync(otherReact, { recursive: true });
         writeFileSync(join(otherReact, "package.json"), '{"name":"react","version":"19.0.0"}');
