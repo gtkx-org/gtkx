@@ -9,6 +9,7 @@ export {
     DEFAULT_SUBTREE_DEPTH,
     MAX_SUBTREE_WIDGETS,
     type ParamsSchema,
+    RECONNECT_DELAY_MS,
     type SerializedProperty,
     type SerializedWidget,
     type ServerInitiatedMethod,
