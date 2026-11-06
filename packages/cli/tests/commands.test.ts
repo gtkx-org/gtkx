@@ -540,12 +540,17 @@ describe("CLI commands", () => {
         expect(await typecheck()).toMatch(/^src\/logo\.ts\(1,25\): error TS2307: [^\n]*\n$/);
     });
 
-    it("bundles stylesheets imported with ?resource while a slower Vite plugin resolves another import", async () => {
+    it("bundles stylesheets imported with ?resource, warning about unbundled url() targets, while a slower Vite plugin resolves another import", async () => {
         using project = createProject();
         linkWorkspaceBindings(project.root);
-        for (const name of ["base", "style", "dark"]) {
+        for (const name of ["base", "dark"]) {
             project.write(`data/${name}.css`, `.${name} { color: red; }`);
         }
+        project.write(
+            "data/style.css",
+            `@import url("base.css");
+            .style { color: red; background-image: url("missing.png"); }`,
+        );
         project.write(
             "vite.config.ts",
             `export default {
@@ -570,11 +575,14 @@ describe("CLI commands", () => {
             export const paths = [base, style, dark];`,
         );
 
-        await invoke(["build", "--cwd", project.root]);
+        const output = await invoke(["build", "--cwd", project.root]);
 
         expect(readFileSync(join(project.root, "dist/bundle.mjs"), "utf8")).toContain(
             "/org/gtkx/example/data/style.css",
         );
+        expect(output.split("\n").filter((line) => line.includes("/org/gtkx/example/data/"))).toEqual([
+            expect.stringContaining("/org/gtkx/example/data/missing.png"),
+        ]);
     });
 
     it("applies imported CSS with its relative imports and images in development and production", async () => {

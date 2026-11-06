@@ -94,6 +94,27 @@ const bundleStylesheet = (filePath: string, content: string): BundledStylesheet 
     return { imports, urls, absolutePaths, css: root.toString() };
 };
 
+const stylesheetTargets = (filePath: string, content: string): string[] => {
+    const root = postcss.parse(content, { from: filePath });
+    const targets: string[] = [];
+
+    root.walkAtRules("import", (rule) => {
+        const match = CSS_IMPORT_TARGET_RE.exec(rule.params);
+
+        if (match !== null) {
+            targets.push(quotedTarget(match.slice(1)));
+        }
+    });
+
+    root.walkDecls((decl) => {
+        for (const match of decl.value.matchAll(CSS_URL_RE)) {
+            targets.push(quotedTarget(match.slice(1, 4)));
+        }
+    });
+
+    return targets;
+};
+
 const injectedCssExpression = (css: string): string =>
     css
         .split(URL_PLACEHOLDER_RE)
@@ -151,4 +172,4 @@ function gtkxCss(): Plugin {
     };
 }
 
-export { gtkxCss, INJECTED_CSS_ID_RE, injectedCssId };
+export { gtkxCss, INJECTED_CSS_ID_RE, injectedCssId, stylesheetTargets };

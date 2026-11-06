@@ -128,7 +128,7 @@ import "../data/style.css?resource=/com/example/Tasks/style.css";
 import "../data/paper.png?resource=/com/example/Tasks/paper.png";
 ```
 
-GTK resolves `url()` values in that file against its resource path, so `url("paper.png")` and `url("/com/example/Tasks/paper.png")` both load the image imported beside it. Import each image the stylesheet references at its matching path, since GTKX bundles only imported files.
+GTK resolves `url()` values in that file against its resource path, so `url("paper.png")` and `url("/com/example/Tasks/paper.png")` both load the image imported beside it. Import each image the stylesheet references at its matching path, since GTKX bundles only imported files. `gtkx build` warns about a `url()` or `@import` under the application's resource base path that names no bundled file.
 
 ## Follow appearance preferences
 

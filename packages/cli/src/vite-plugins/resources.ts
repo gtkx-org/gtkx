@@ -10,6 +10,7 @@ import { sourceLanguage } from "../internal/source-imports.js";
 import { createRetainedStagingDir, type RetainedStagingDir, withStagingDir } from "../internal/staging-dir.js";
 import { ASSET_RE } from "./asset-extensions.js";
 import { isBareRelativeAsset, parseIconSpecifier, parseResourceSpecifier } from "./asset-specifier.js";
+import { stylesheetTargets } from "./css.js";
 import { renderInitModule } from "./resource-init-module.js";
 import {
     ASSET_MODULE_SUFFIX,
@@ -143,6 +144,8 @@ const STOCK_ICON_CONTEXTS: Set<string> = new Set([
 
 const ICON_SIZE_RE = /^([1-9]\d*)x\1(?:@[1-9]\d*)?$/;
 const RESERVED_ICON_NAMES: Set<string> = new Set(["", ".", ".."]);
+const STYLESHEET_RE = /\.css$/i;
+const NON_RESOURCE_TARGET_RE = /^(?:[a-z][a-z\d+.-]*:|#|$)/i;
 
 const isDependencyFile = (root: string, path: string): boolean =>
     isPathInside(root, path) && relative(root, path).split(sep).includes("node_modules");
@@ -579,8 +582,37 @@ const loadAssetModule = (state: PluginState, virtualId: string): string => {
     ].join("\n");
 };
 
+const stylesheetTargetPath = (stylesheet: ResourceEntry, target: string): string | null => {
+    const path = target.replace(/[?#].*$/, "");
+
+    if (NON_RESOURCE_TARGET_RE.test(path)) {
+        return null;
+    }
+
+    return posix.normalize(path.startsWith("/") ? path : posix.join(posix.dirname(stylesheet.resourcePath), path));
+};
+
+const warnUnbundledStylesheetTargets = (ctx: Pick<Rolldown.PluginContext, "warn">, state: PluginState): void => {
+    for (const entry of state.entries.values()) {
+        if (!STYLESHEET_RE.test(entry.resourcePath)) {
+            continue;
+        }
+
+        for (const target of stylesheetTargets(entry.sourcePath, readFileSync(entry.sourcePath, "utf8"))) {
+            const resourcePath = stylesheetTargetPath(entry, target);
+
+            if (resourcePath?.startsWith(`${state.prefix}/`) === true && !state.entries.has(resourcePath)) {
+                ctx.warn(
+                    `${entry.sourcePath} refers to "${target}", which GTK loads from the GResource path ` +
+                        `${resourcePath}, but no import bundles a file there. Import it with ?resource=${resourcePath}.`,
+                );
+            }
+        }
+    }
+};
+
 const finalizeBuildBundle = (
-    ctx: Pick<Rolldown.PluginContext, "getFileName">,
+    ctx: Pick<Rolldown.PluginContext, "getFileName" | "warn">,
     bundle: Rolldown.OutputBundle,
     state: PluginState,
 ): void => {
@@ -601,6 +633,7 @@ const finalizeBuildBundle = (
         return;
     }
 
+    warnUnbundledStylesheetTargets(ctx, state);
     const compiled = withStagingDir("resources-out", (outDir) => compileBundle(state, join(outDir, BUNDLE_FILENAME)));
     output.source = compiled;
     info(`Compiled ${String(state.entries.size)} resource(s) into ${BUNDLE_FILENAME}`);
