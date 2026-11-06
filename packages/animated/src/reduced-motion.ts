@@ -3,10 +3,10 @@ import { Globals } from "@react-spring/core";
 import { useSyncExternalStore } from "react";
 
 type Listener = () => void;
-type Tracker = { settings: Gtk.Settings | null; isReduced: boolean | null };
+type Tracker = { settings: Gtk.Settings | null; isReduced: boolean | null; areAnimationsEnabled: boolean };
 
 const REDUCED_MOTION_MINOR = 22;
-const tracker: Tracker = { settings: null, isReduced: null };
+const tracker: Tracker = { settings: null, isReduced: null, areAnimationsEnabled: true };
 const listeners: Set<Listener> = new Set();
 
 const hasReducedMotionSetting = (): boolean => Gtk.checkVersion(4, REDUCED_MOTION_MINOR, 0) === null;
@@ -21,8 +21,13 @@ const sync = (): void => {
         return;
     }
 
-    const isReduced = !settings.gtkEnableAnimations || isReduceMotionPreferred(settings);
-    Globals.assign({ skipAnimation: !settings.gtkEnableAnimations });
+    const areAnimationsEnabled = settings.gtkEnableAnimations;
+    const isReduced = !areAnimationsEnabled || isReduceMotionPreferred(settings);
+
+    if (areAnimationsEnabled !== tracker.areAnimationsEnabled) {
+        tracker.areAnimationsEnabled = areAnimationsEnabled;
+        Globals.assign({ skipAnimation: !areAnimationsEnabled });
+    }
 
     if (isReduced === tracker.isReduced) {
         return;
@@ -75,7 +80,8 @@ const subscribe = (listener: Listener): (() => void) => {
  * `false` otherwise, or `null` before a display opens.
  *
  * @remarks
- * `gtk-enable-animations: false` makes springs jump to their targets.
+ * `gtk-enable-animations: false` makes springs jump to their targets. GTKX sets React Spring's
+ * `Globals.skipAnimation` only when that setting changes, so an application can set it for its own preference.
  * `gtk-interface-reduced-motion` leaves springs running for components to adapt;
  * it also drives GTK's `prefers-reduced-motion` media query.
  */
