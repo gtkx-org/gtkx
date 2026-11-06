@@ -69,6 +69,9 @@ describe("portable native stories", () => {
     it("composes a story that declares its own args type", async () => {
         const { Pair } = composeStories(stories);
         expectTypeOf(Pair).parameter(0).toEqualTypeOf<Partial<{ first: number; second: number }>>();
+        const Captioned: StoryObj<CounterProps & { subtitle?: string }> = { args: { subtitle: "Story subtitle" } };
+        const composed = composeStories({ default: stories.default, Captioned });
+        expectTypeOf(composed.Captioned).parameter(0).toEqualTypeOf<Partial<CounterProps & { subtitle?: string }>>();
         await render(<Pair second={5} />);
 
         const counts = screen.getAllByName("count");
