@@ -34,7 +34,8 @@ type UserEvent = {
     ) => Promise<void>;
     /**
      * Types into an editable widget. Keys named in braces, such as `{Enter}`, `{Backspace}` or `{Tab}`, are pressed
-     * as `keyboard` presses them, and a doubled opening brace types a literal `{`.
+     * as `keyboard` presses them, and a doubled opening brace types a literal `{`. Once a key moves focus out of the
+     * widget, as `{Tab}` does, the rest of the text goes to the newly focused widget.
      */
     type: (widget: Gtk.Accessible, text: string, options?: TypeOptions) => Promise<void>;
     /** Deletes all text from an editable widget. */

@@ -657,19 +657,29 @@ const isUnhandledPress = async (widget: Gtk.Widget, state: UserEventState, actio
     return !isHandled && MODIFIER_KEYVAL_TO_MASK[action.keyval] === undefined;
 };
 
-const currentKeyWidget = (widget: Gtk.Widget, start: KeyTarget): Gtk.Widget => {
-    const { root, focus } = keyTargetFor(widget);
+/**
+ * Returns a function that resolves the widget keys meant for `widget` reach now: the widget, or the widget outside it
+ * that focus has moved to since, as after a {Tab}.
+ */
+const followKeyFocus = (widget: Gtk.Widget): (() => Gtk.Widget) => {
+    const start = keyTargetFor(widget);
 
-    return root === start.root && focus !== null && focus !== start.focus && !focus.isAncestor(widget) ? focus : widget;
+    return () => {
+        const { root, focus } = keyTargetFor(widget);
+
+        return root === start.root && focus !== null && focus !== start.focus && !focus.isAncestor(widget)
+            ? focus
+            : widget;
+    };
 };
 
 /** Applies the key actions and returns the keyvals of the presses, other than modifiers, that nothing handled. */
 const applyKeyActions = async (widget: Gtk.Widget, state: UserEventState, actions: KeyAction[]): Promise<number[]> => {
-    const start = keyTargetFor(widget);
+    const keyWidget = followKeyFocus(widget);
     const unhandled: number[] = [];
 
     for (const action of actions) {
-        if (await isUnhandledPress(currentKeyWidget(widget, start), state, action)) {
+        if (await isUnhandledPress(keyWidget(), state, action)) {
             unhandled.push(action.keyval);
         }
     }
@@ -741,6 +751,7 @@ export {
     applyKeyActions,
     characterActions,
     focusedKeyWidget,
+    followKeyFocus,
     heldModifiers,
     keyboard,
     parseTypedInput,

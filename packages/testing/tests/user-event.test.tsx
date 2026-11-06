@@ -931,16 +931,20 @@ describe("userEvent.type", () => {
         expect(bufferText(view)).toBe("one\ntwo");
     });
 
-    it("moves focus on Tab between the fields it types into", async () => {
+    it("moves focus on Tab between the fields it types into, and types on into the newly focused one", async () => {
         const { findByName } = await renderColumn(
             <>
                 <GtkEntry name="first" />
                 <GtkEntry name="second" />
             </>,
         );
+        const first = await findByName("first", { as: Gtk.Entry });
+        const second = await findByName("second", { as: Gtk.Entry });
 
-        await userEvent.type(await findByName("first"), "Ada{Tab}");
-        expect(await findByName("second", { as: Gtk.Entry })).toHaveFocus();
+        await userEvent.type(first, "Ada{Tab}Lovelacee{Backspace}");
+        expect(second).toHaveFocus();
+        expect(first.getText()).toBe("Ada");
+        expect(second.getText()).toBe("Lovelace");
     });
 
     it("throws on an unknown or unclosed key descriptor without typing", async () => {

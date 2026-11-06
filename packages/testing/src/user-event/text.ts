@@ -5,7 +5,7 @@ import { formatRoleList } from "../role-helpers.js";
 import type { UserEventState } from "./state.js";
 import { callBooleanGetter } from "../widget-getters.js";
 import { wrapEvent } from "./event-wrapper.js";
-import { applyKeyActions, characterActions, parseTypedInput, type TypedStep } from "./keyboard.js";
+import { applyKeyActions, characterActions, followKeyFocus, parseTypedInput, type TypedStep } from "./keyboard.js";
 import { usageError } from "../usage-error.js";
 
 type SignalWatchTarget = {
@@ -200,20 +200,20 @@ const runEditableEvent = (
         return action(widget);
     });
 
-const typeStep = async (editable: EditableTarget, state: UserEventState, step: TypedStep): Promise<void> => {
+const typeStep = async (widget: Gtk.Widget, state: UserEventState, step: TypedStep): Promise<void> => {
     if ("actions" in step) {
-        await applyKeyActions(editable, state, step.actions);
+        await applyKeyActions(widget, state, step.actions);
 
         return;
     }
 
-    if ((state.modifierState & SHORTCUT_MODIFIERS) !== 0) {
-        await applyKeyActions(editable, state, characterActions(step.text));
+    if (!isEditable(widget) || (state.modifierState & SHORTCUT_MODIFIERS) !== 0) {
+        await applyKeyActions(widget, state, characterActions(step.text));
 
         return;
     }
 
-    insertEditableText(editable, step.text, "typing");
+    insertEditableText(widget, step.text, "typing");
 };
 
 /** Types into an editable widget, pressing the keys named in braces such as `{Enter}`; a doubled opening brace types a literal `{`. */
@@ -226,9 +226,10 @@ const type = (state: UserEventState, widget: Gtk.Widget, text: string, options?:
         }
 
         applyInitialSelection(editable, options ?? {});
+        const keyWidget = followKeyFocus(editable);
 
         for (const step of steps) {
-            await typeStep(editable, state, step);
+            await typeStep(keyWidget(), state, step);
         }
     });
 };
