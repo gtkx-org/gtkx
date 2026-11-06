@@ -1,5 +1,13 @@
 import { runCommand } from "citty";
-import { existsSync, mkdirSync, mkdtempDisposableSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+    existsSync,
+    mkdirSync,
+    mkdtempDisposableSync,
+    readFileSync,
+    statSync,
+    symlinkSync,
+    writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { stripVTControlCharacters } from "node:util";
@@ -213,11 +221,12 @@ describe("scaffold command", () => {
         const config =
             "; Company registry\nregistry=https://registry.example.com/\nmin-release-age=3\nmin-release-age-exclude[]=create-gtkx";
         mkdirSync(target);
-        writeFileSync(join(target, ".npmrc"), config);
+        writeFileSync(join(target, ".npmrc"), config, { mode: 0o600 });
         writeFileSync(join(target, "package.json"), '{"name":"keep"}');
         const { status, output } = await create(target, ["--overwrite", "--package-manager", "npm"]);
         expect(status).toBe(0);
         expect(read(target, ".npmrc").startsWith(`${config}\n`)).toBe(true);
+        expect(statSync(join(target, ".npmrc")).mode & 0o777).toBe(0o600);
         expect(npmReleaseAgeExcludes(target)).toEqual(["create-gtkx", "@gtkx/*"]);
         expect(output).not.toContain(".npmrc");
     });

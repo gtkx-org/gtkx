@@ -1,6 +1,6 @@
 import { tryResolveExecutable } from "@gtkx/utils";
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, matchesGlob, posix, relative, sep } from "node:path";
 import { type Document, isMap, isSeq, parse, parseDocument, stringify } from "yaml";
 import type { PackageManager } from "./package-managers.js";
@@ -49,9 +49,15 @@ const readSettings = (path: string, read: (source: string) => unknown): unknown 
     }
 };
 
+/**
+ * Writes `contents` to a new file at `path` in place of a file or symlink there, keeping the permissions of a
+ * replaced file, such as a private `.npmrc` that holds registry credentials.
+ */
 const replaceFile = (path: string, contents: string): void => {
+    const replaced = lstatSync(path, { throwIfNoEntry: false });
+
     rmSync(path, { force: true });
-    writeFileSync(path, contents);
+    writeFileSync(path, contents, { mode: replaced?.isFile() ? replaced.mode & 0o777 : undefined });
 };
 
 const updateYamlFile = (path: string, update: (document: Document) => void): void => {
