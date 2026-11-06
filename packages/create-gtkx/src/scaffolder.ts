@@ -2,12 +2,19 @@ import * as p from "@clack/prompts";
 import { APPLICATION_ID_MAX_LENGTH, isValidApplicationId } from "@gtkx/config/internal";
 import { errorMessage, HEADLESS_DISPLAY_TOOLS, missingToolLines, tryResolveExecutable, upperFirst } from "@gtkx/utils";
 import { execFileSync } from "node:child_process";
-import { lstatSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { lstatSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { addDependency, detectPackageManager as nypmDetectPackageManager } from "nypm";
 import { x } from "tinyexec";
 import packageManifest from "../package.json" with { type: "json" };
-import { writeBuildAllowance } from "./build-allowance.js";
+import {
+    PACKAGE_MANAGER_CONFIG_FILES,
+    enclosingWorkspace,
+    packageManagerPin,
+    type Workspace,
+    writePackageManagerSettings,
+} from "./build-allowance.js";
 import { OperationCanceledError, ScaffoldAbortedError } from "./errors.js";
 import { updateManifest } from "./manifest.js";
 import {
@@ -16,8 +23,9 @@ import {
     PACKAGE_MANAGERS,
     type PackageManager,
 } from "./package-managers.js";
-import { isValidProjectName } from "./project-name.js";
+import { isValidPackageName, packageNameFromDirectory, withoutAccents } from "./project-name.js";
 import { listTemplates, renderFile, type TemplateContext } from "./templates.js";
+import { addWorkspaceMcpServer } from "./workspace-mcp.js";
 
 type CreateOptions = {
     name?: string | undefined;
@@ -38,6 +46,7 @@ type ResolvedOptions = {
     displayName: string;
     applicationId: string;
     packageManager: PackageManager;
+    workspace: Workspace | null;
     isTypescript: boolean;
     shouldIncludeTesting: boolean;
     shouldInitializeGit: boolean;
@@ -52,6 +61,12 @@ type ScaffoldPlan = {
     files: ScaffoldFile[];
     replaceDestinations: string[];
     changes: ScaffoldChanges;
+    packageManagerPin: string | null;
+};
+
+type Progress = {
+    stop: (message: string) => void;
+    error: (message: string) => void;
 };
 
 type SpinnerStep = {
@@ -65,11 +80,18 @@ type SpinnerStep = {
 const selfVersion = packageManifest.version;
 const ICON_TEMPLATE_NAME = "icon.svg";
 const TYPESCRIPT_VERSION = "^6.0.3";
+const DEPENDENCY_RANGES: Record<string, string | undefined> = {
+    ...(JSON.parse(readFileSync(new URL("../dependency-ranges.json", import.meta.url), "utf8")) as Record<
+        string,
+        string
+    >),
+    typescript: TYPESCRIPT_VERSION,
+};
 
 const DEPENDENCIES = ["@gtkx/cairo", "@gtkx/css", "@gtkx/runtime", "@gtkx/react", "react"];
-const DEV_DEPENDENCIES = ["@gtkx/cli", "@gtkx/config", "@gtkx/mcp", "vite"];
-const TYPESCRIPT_DEV_DEPENDENCIES = ["@types/node", "@types/react", "typescript"];
-const TESTING_DEV_DEPENDENCIES = ["@gtkx/testing", "vitest"];
+const DEV_DEPENDENCIES = ["@gtkx/cli", "@gtkx/config", "@gtkx/mcp", "@gtkx/testing", "@types/react", "vite"];
+const TYPESCRIPT_DEV_DEPENDENCIES = ["@types/node", "typescript"];
+const TESTING_DEV_DEPENDENCIES = ["vitest"];
 
 const DEV_COMMAND: Record<PackageManager, string> = Object.fromEntries(
     PACKAGE_MANAGERS.map((manager) => [manager.value, manager.devCommand]),
@@ -79,20 +101,31 @@ const INSTALL_COMMAND: Record<PackageManager, string> = Object.fromEntries(
     PACKAGE_MANAGERS.map((manager) => [manager.value, manager.installCommand]),
 ) as Record<PackageManager, string>;
 
+const RUN_COMMAND: Record<PackageManager, string> = Object.fromEntries(
+    PACKAGE_MANAGERS.map((manager) => [manager.value, manager.runCommand]),
+) as Record<PackageManager, string>;
+
+const TEST_COMMAND: Record<PackageManager, string> = Object.fromEntries(
+    PACKAGE_MANAGERS.map((manager) => [manager.value, manager.testCommand]),
+) as Record<PackageManager, string>;
+
 const INHERITED_SCRIPT_POLICY_VARS = ["npm_config_allow_scripts", "npm_config_allow-scripts"];
+const LENIENT_PNPM_BUILDS_ENV = { pnpm_config_strict_dep_builds: "false" };
 const TESTING_TEMPLATES = new Set(["vitest.config.ts", "tests/app.test.tsx"]);
 const TYPESCRIPT_TEMPLATES = new Set(["tsconfig.json", "src/gtkx-env.d.ts"]);
 
 const APPLICATION_ID_FORMAT_ERROR = "Application ID must be reverse domain notation (e.g., com.example.myapp)";
+const PACKAGE_NAME_FORMAT_ERROR = "Package name must be a valid npm package name: lowercase, no spaces (e.g., my-app)";
 const APPLICATION_ID_PREFIX = "com.";
 const APPLICATION_ID_SUFFIX = ".app";
 
 const APPLICATION_ID_SEGMENT_LIMIT =
     APPLICATION_ID_MAX_LENGTH - APPLICATION_ID_PREFIX.length - APPLICATION_ID_SUFFIX.length;
 
-const displayNameFromProjectName = (name: string): string =>
-    name
-        .split("-")
+const displayNameFromDirectory = (directoryName: string): string =>
+    directoryName
+        .split(/[\s._-]+/)
+        .filter((part) => part.length > 0)
         .map((part) => upperFirst(part))
         .join(" ");
 
@@ -110,17 +143,23 @@ const gitConfigValue = (key: string): string | null => {
     }
 };
 
-const applicationIdSegment = (name: string): string => {
-    const compact = name.replaceAll("-", "");
+const compactIdentifier = (name: string): string => withoutAccents(name).replaceAll(/[^A-Za-z0-9_]/g, "");
+
+const applicationIdSegment = (directoryName: string, name: string): string => {
+    const compact = compactIdentifier(directoryName) || compactIdentifier(name);
     const segment = /^[A-Za-z_]/.test(compact) ? compact : `_${compact}`;
 
     return segment.slice(0, APPLICATION_ID_SEGMENT_LIMIT);
 };
 
-const suggestApplicationId = (name: string): string =>
-    `${APPLICATION_ID_PREFIX}${applicationIdSegment(name)}${APPLICATION_ID_SUFFIX}`;
+const suggestApplicationId = (directoryName: string, name: string): string =>
+    `${APPLICATION_ID_PREFIX}${applicationIdSegment(directoryName, name)}${APPLICATION_ID_SUFFIX}`;
 
-const deriveProjectName = (target: string): string => basename(resolve(process.cwd(), target));
+const HOME_PREFIX = /^~(?=$|\/)/;
+
+const expandHome = (target: string): string => target.replace(HOME_PREFIX, () => homedir());
+
+const directoryNameOf = (target: string): string => basename(resolve(process.cwd(), target));
 
 const isDirEmpty = (dir: string): boolean => {
     const entries = readdirSync(dir);
@@ -162,17 +201,14 @@ const guardCancellation = <T>(value: T | typeof p.CANCEL_SYMBOL): T => {
     return value;
 };
 
-const validateProjectName = (value: string | undefined): string | undefined => {
-    if (!value) {
-        return "Project name is required";
-    }
+const validatePackageNameFormat = (value: string): string | undefined =>
+    isValidPackageName(value) ? undefined : PACKAGE_NAME_FORMAT_ERROR;
 
-    if (!isValidProjectName(value)) {
-        return "Project name must be lowercase letters, numbers, and hyphens only";
-    }
+const validatePackageNameInput = (value: string | undefined): string | undefined =>
+    value ? validatePackageNameFormat(value) : "Package name is required";
 
-    return undefined;
-};
+const validatePackageNameAnswer = (value: string | undefined): string | undefined =>
+    value ? validatePackageNameFormat(value) : undefined;
 
 const validateApplicationIdFormat = (value: string): string | undefined =>
     isValidApplicationId(value) ? undefined : APPLICATION_ID_FORMAT_ERROR;
@@ -211,15 +247,11 @@ const requestedPackageManager = (value: string | undefined): PackageManager | un
     return value;
 };
 
-const validateTargetDir = (target: string): string | undefined => {
-    if (!target) {
-        return "Project directory is required";
-    }
+const validateTargetDir = (target: string): string | undefined =>
+    target ? undefined : "Project directory is required";
 
-    return validateProjectName(deriveProjectName(target));
-};
-
-const validateTargetAnswer = (value: string | undefined): string | undefined => validateTargetDir(value ?? "");
+const validateTargetAnswer = (value: string | undefined): string | undefined =>
+    validateTargetDir(expandHome(value ?? ""));
 
 const promptTarget = async (): Promise<string> =>
     guardCancellation(
@@ -230,8 +262,17 @@ const promptTarget = async (): Promise<string> =>
         }),
     );
 
-const promptApplicationId = async (name: string): Promise<string> => {
-    const defaultApplicationId = suggestApplicationId(name);
+const promptPackageName = async (derived: string): Promise<string> =>
+    guardCancellation(
+        await p.text({
+            message: "Package name",
+            ...(derived === "" ? {} : { placeholder: derived, defaultValue: derived }),
+            validate: derived === "" ? validatePackageNameInput : validatePackageNameAnswer,
+        }),
+    );
+
+const promptApplicationId = async (directoryName: string, name: string): Promise<string> => {
+    const defaultApplicationId = suggestApplicationId(directoryName, name);
 
     return guardCancellation(
         await p.text({
@@ -243,8 +284,8 @@ const promptApplicationId = async (name: string): Promise<string> => {
     );
 };
 
-const promptDisplayName = async (name: string): Promise<string> => {
-    const defaultDisplayName = displayNameFromProjectName(name);
+const promptDisplayName = async (directoryName: string): Promise<string> => {
+    const defaultDisplayName = displayNameFromDirectory(directoryName);
 
     return guardCancellation(
         await p.text({
@@ -389,28 +430,50 @@ const validateTargetAvailability = async (
 
 const resolveTarget = async (options: CreateOptions): Promise<string> => {
     if (options.name === undefined && options.isInteractive) {
-        return promptTarget();
+        return expandHome(await promptTarget());
     }
 
-    const target = options.name ?? "";
+    const target = expandHome(options.name ?? "");
     const error = validateTargetDir(target);
 
     return error === undefined ? target : fail(error);
 };
 
-const resolveApplicationId = async (options: CreateOptions, name: string): Promise<string> => {
+const resolvePackageName = async (options: CreateOptions, directoryName: string): Promise<string> => {
+    const derived = packageNameFromDirectory(directoryName);
+
+    if (derived === directoryName) {
+        return derived;
+    }
+
+    if (options.isInteractive) {
+        return promptPackageName(derived);
+    }
+
+    return derived === ""
+        ? fail(
+              `Directory name "${directoryName}" has no Latin letters or numbers to derive a package name from. ` +
+                  "Rename it, or run interactively to enter a package name",
+          )
+        : derived;
+};
+
+const resolveApplicationId = async (options: CreateOptions, directoryName: string, name: string): Promise<string> => {
     const applicationId =
-        options.applicationId ?? (options.isInteractive ? await promptApplicationId(name) : suggestApplicationId(name));
+        options.applicationId ??
+        (options.isInteractive
+            ? await promptApplicationId(directoryName, name)
+            : suggestApplicationId(directoryName, name));
 
     const error = validateApplicationIdInput(applicationId);
 
     return error === undefined ? applicationId : fail(error);
 };
 
-const resolveDisplayName = async (options: CreateOptions, name: string): Promise<string> => {
+const resolveDisplayName = async (options: CreateOptions, directoryName: string): Promise<string> => {
     const value =
         options.displayName ??
-        (options.isInteractive ? await promptDisplayName(name) : displayNameFromProjectName(name));
+        (options.isInteractive ? await promptDisplayName(directoryName) : displayNameFromDirectory(directoryName));
     const error = validateDisplayName(value);
 
     return error === undefined ? value.trim() : fail(error);
@@ -434,9 +497,10 @@ const resolvePackageManager = async (
 const resolveOptions = async (options: CreateOptions): Promise<ResolvedOptions> => {
     const requested = requestedPackageManager(options.packageManager);
     const target = await resolveTarget(options);
-    const name = deriveProjectName(target);
-    const displayName = await resolveDisplayName(options, name);
-    const applicationId = await resolveApplicationId(options, name);
+    const directoryName = directoryNameOf(target);
+    const name = await resolvePackageName(options, directoryName);
+    const displayName = await resolveDisplayName(options, directoryName);
+    const applicationId = await resolveApplicationId(options, directoryName, name);
     const root = resolve(process.cwd(), target);
     const shouldInitialize = shouldInitializeGit(root);
     const packageManager = await resolvePackageManager(requested, options);
@@ -455,6 +519,7 @@ const resolveOptions = async (options: CreateOptions): Promise<ResolvedOptions> 
         displayName,
         applicationId,
         packageManager,
+        workspace: enclosingWorkspace(root, packageManager),
         isTypescript,
         shouldIncludeTesting,
         shouldInitializeGit: shouldInitialize,
@@ -482,6 +547,17 @@ const destinationPath = (template: string, resolved: ResolvedOptions): string =>
         : scriptPath;
 };
 
+const scriptCommands = ({
+    packageManager,
+    isTypescript,
+    shouldIncludeTesting,
+}: Pick<ResolvedOptions, "packageManager" | "isTypescript" | "shouldIncludeTesting">): string[] => [
+    ...["dev", "build", "codegen", ...(isTypescript ? ["typecheck"] : [])].map(
+        (script) => `${RUN_COMMAND[packageManager]} ${script}`,
+    ),
+    ...(shouldIncludeTesting ? [TEST_COMMAND[packageManager]] : []),
+];
+
 const templateContext = (resolved: ResolvedOptions): TemplateContext => ({
     name: resolved.name,
     applicationId: resolved.applicationId,
@@ -491,6 +567,8 @@ const templateContext = (resolved: ResolvedOptions): TemplateContext => ({
     importExtension: resolved.isTypescript ? ".js" : ".jsx",
     developerName: gitConfigValue("user.name") ?? resolved.displayName,
     developerEmail: gitConfigValue("user.email"),
+    packageManager: resolved.packageManager,
+    scriptCommands: scriptCommands(resolved),
 });
 
 const assertSafeAncestor = (ancestor: string): void => {
@@ -549,22 +627,31 @@ const plannedScaffoldFiles = async (root: string, resolved: ResolvedOptions): Pr
     return files;
 };
 
-const auxiliaryDestinations = (root: string, resolved: ResolvedOptions): string[] =>
-    resolved.packageManager === "pnpm" ? [join(root, "pnpm-workspace.yaml")] : [];
+const configDestinations = (root: string, resolved: ResolvedOptions): string[] =>
+    resolved.workspace === null
+        ? PACKAGE_MANAGER_CONFIG_FILES[resolved.packageManager].map((file) => join(root, file))
+        : [];
 
 const planScaffoldProject = async (root: string, resolved: ResolvedOptions): Promise<ScaffoldPlan> => {
     const files = await plannedScaffoldFiles(root, resolved);
-    const destinations = [...files.map((file) => file.destination), ...auxiliaryDestinations(root, resolved)];
-    const replaceDestinations = destinations.filter((destination) => hasExistingDestination(root, destination));
+
+    for (const destination of configDestinations(root, resolved)) {
+        hasExistingDestination(root, destination);
+    }
+
+    const replaceDestinations = files
+        .map((file) => file.destination)
+        .filter((destination) => hasExistingDestination(root, destination));
 
     return {
         files,
         replaceDestinations,
         changes: replaceDestinations.map((destination) => relative(root, destination)),
+        packageManagerPin: packageManagerPin(root, resolved.packageManager, resolved.workspace !== null),
     };
 };
 
-const scaffoldProject = (plan: ScaffoldPlan): void => {
+const scaffoldProject = (root: string, plan: ScaffoldPlan): void => {
     for (const destination of plan.replaceDestinations) {
         rmSync(destination);
     }
@@ -572,6 +659,14 @@ const scaffoldProject = (plan: ScaffoldPlan): void => {
     for (const file of plan.files) {
         mkdirSync(dirname(file.destination), { recursive: true });
         writeFileSync(file.destination, file.contents);
+    }
+
+    const pin = plan.packageManagerPin;
+
+    if (pin !== null) {
+        updateManifest(root, (manifest) => {
+            manifest.packageManager = pin;
+        });
     }
 };
 
@@ -600,55 +695,109 @@ const dependencyVersions = (names: string[]): Record<string, string> =>
                 return [dependency, `^${selfVersion}`];
             }
 
-            return [dependency, dependency === "typescript" ? TYPESCRIPT_VERSION : "latest"];
+            const range = DEPENDENCY_RANGES[dependency];
+
+            if (range === undefined) {
+                throw new Error(`No supported version range for ${dependency}`);
+            }
+
+            return [dependency, range];
         }),
     );
 
 const dependencyArguments = (names: string[]): string[] =>
-    Object.entries(dependencyVersions(names)).map(([name, version]) =>
-        version === "latest" ? name : `${name}@${version}`,
-    );
+    Object.entries(dependencyVersions(names)).map(([name, version]) => `${name}@${version}`);
+
+const declaredDependencies = (value: unknown): Record<string, unknown> =>
+    typeof value === "object" && value !== null ? { ...value } : {};
 
 const writeDependencies = (root: string, devDependencies: string[]): void => {
     updateManifest(root, (manifest) => {
-        manifest.dependencies = dependencyVersions(DEPENDENCIES);
-        manifest.devDependencies = dependencyVersions(devDependencies);
+        manifest.dependencies = {
+            ...dependencyVersions(DEPENDENCIES),
+            ...declaredDependencies(manifest.dependencies),
+        };
+        manifest.devDependencies = {
+            ...dependencyVersions(devDependencies),
+            ...declaredDependencies(manifest.devDependencies),
+        };
     });
 };
 
 const formatRecovery = (resolved: ResolvedOptions): string =>
     `To finish setup, run ${INSTALL_COMMAND[resolved.packageManager]} in ${resolved.root}.`;
 
+const startProgress = (message: string): Progress => {
+    if (process.stdout.isTTY) {
+        const spinner = p.spinner();
+        spinner.start(message);
+
+        return spinner;
+    }
+
+    p.log.step(message);
+
+    return { stop: (done) => p.log.step(done), error: (failed) => p.log.error(failed) };
+};
+
 const runWithSpinner = async (step: SpinnerStep): Promise<void> => {
-    const spinner = p.spinner();
-    spinner.start(step.pending);
+    const progress = startProgress(step.pending);
 
     try {
         await step.run();
-        spinner.stop(step.done);
+        progress.stop(step.done);
     } catch (error) {
-        spinner.error(step.failed);
+        progress.error(step.failed);
         p.log.error(errorMessage(error));
         step.explain?.();
         throw new ScaffoldAbortedError(step.failed);
     }
 };
 
+const printWorkspaceAllowances = ({ root, packageManager, workspace }: ResolvedOptions): void => {
+    const installed = workspace === null ? null : enclosingWorkspace(root, packageManager);
+
+    if (installed === null || installed.missingSettings.length === 0) {
+        return;
+    }
+
+    p.log.warn(
+        `The ${installed.packageManager} workspace lacks settings this app needs. ` +
+            `Set these entries, then run ${INSTALL_COMMAND[installed.packageManager]}:\n\n` +
+            installed.missingSettings
+                .map(
+                    ({ file, section, entries }) =>
+                        `${section === null ? file : `${file} (under ${section})`}:\n${entries}`,
+                )
+                .join("\n\n"),
+    );
+};
+
+const hasMissingAllowances = (resolved: ResolvedOptions): boolean =>
+    resolved.workspace?.packageManager === "pnpm" && resolved.workspace.missingSettings.length > 0;
+
 const installAllDependencies = async (resolved: ResolvedOptions, devDependencies: string[]): Promise<void> => {
     const { root, packageManager } = resolved;
+    const env = hasMissingAllowances(resolved) ? LENIENT_PNPM_BUILDS_ENV : {};
 
     await runWithSpinner({
         pending: "Installing dependencies...",
         done: "Dependencies installed",
         failed: "Failed to install dependencies",
         run: async () => {
-            await withoutInheritedScriptPolicy(async () => {
-                const options = { cwd: root, packageManager, silent: true };
-                await addDependency(dependencyArguments(DEPENDENCIES), options);
-                await addDependency(dependencyArguments(devDependencies), { ...options, dev: true });
-            });
+            try {
+                await withoutInheritedScriptPolicy(async () => {
+                    const options = { cwd: root, packageManager, env, silent: true };
+                    await addDependency(dependencyArguments(DEPENDENCIES), options);
+                    await addDependency(dependencyArguments(devDependencies), { ...options, dev: true });
+                });
+            } catch (error) {
+                writeDependencies(root, devDependencies);
+                throw error;
+            }
         },
         explain: () => {
+            printWorkspaceAllowances(resolved);
             p.log.info(formatRecovery(resolved));
         },
     });
@@ -675,17 +824,16 @@ const initializeGitRepo = async (root: string, shouldInitialize: boolean): Promi
         return;
     }
 
-    const spinner = p.spinner();
-    spinner.start("Initializing git repository...");
+    const progress = startProgress("Initializing git repository...");
 
     try {
         const opts = { nodeOptions: { cwd: root }, throwOnError: true } as const;
         await x("git", ["init"], opts);
         await x("git", ["add", "-A"], opts);
         await x("git", ["commit", "-m", "Initial commit"], opts);
-        spinner.stop("Git repository initialized");
+        progress.stop("Git repository initialized");
     } catch {
-        spinner.error("Failed to initialize git repository");
+        progress.error("Failed to initialize git repository");
     }
 };
 
@@ -697,6 +845,33 @@ const missingHeadlessToolsNote = (): string => {
     return missing.length === 0
         ? ""
         : ["", "", "To run tests, install these tools:", ...missingToolLines(missing)].join("\n");
+};
+
+const addRootMcpServer = ({ workspace, name, root }: ResolvedOptions): void => {
+    if (workspace === null) {
+        return;
+    }
+
+    const result = addWorkspaceMcpServer(workspace, name);
+
+    if (result.kind === "added") {
+        p.log.info(
+            `Added the MCP server "${result.key}" to ${result.path}, so an AI client opened at the workspace ` +
+                "root reaches this app.",
+        );
+    } else if (result.kind === "shared") {
+        p.log.info(
+            `The MCP server "${result.key}" in ${result.path} drives every running GTKX app, including this one, ` +
+                `so no server was added for it. To look up this app's bindings, pass projectRoot "${root}" to its ` +
+                "reference tools.",
+        );
+    } else if (result.kind === "unreadable") {
+        p.log.warn(
+            `Could not add this app's MCP server to ${result.path}: ${result.reason}. For an AI client opened ` +
+                `at the workspace root, add this entry under "mcpServers":\n\n` +
+                JSON.stringify({ [result.key]: result.server }, null, 4),
+        );
+    }
 };
 
 const printNextSteps = (resolved: ResolvedOptions): void => {
@@ -713,8 +888,11 @@ const createProjectStructure = async (root: string, resolved: ResolvedOptions, p
         failed: "Failed to create the project structure",
         run: () => {
             mkdirSync(root, { recursive: true });
-            scaffoldProject(plan);
-            writeBuildAllowance(root, resolved.packageManager);
+            scaffoldProject(root, plan);
+
+            if (resolved.workspace === null) {
+                writePackageManagerSettings(root, resolved.packageManager);
+            }
         },
     });
 };
@@ -730,12 +908,14 @@ const scaffold = async (options: CreateOptions = {}): Promise<void> => {
     await createProjectStructure(root, resolved, plan);
     writeDependencies(root, devDeps);
     reportCompletedChanges(plan.changes);
+    addRootMcpServer(resolved);
 
     if (resolved.shouldInstallDependencies) {
         await installAllDependencies(resolved, devDeps);
     }
 
     await initializeGitRepo(root, resolved.shouldInitializeGit);
+    printWorkspaceAllowances(resolved);
     printNextSteps(resolved);
 };
 
