@@ -2,9 +2,14 @@ import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 
-const resolveBinding = (projectManifest: string, arch: "x64" | "arm64"): string | undefined => {
-    const projectRequire = createRequire(projectManifest);
-    const nativeManifest = projectRequire.resolve("@gtkx/native/package.json");
+const resolveNativeManifest = (root: string): string => {
+    const runtimeManifest = createRequire(join(root, "package.json")).resolve("@gtkx/runtime/package.json");
+
+    return createRequire(runtimeManifest).resolve("@gtkx/native/package.json");
+};
+
+const resolveBinding = (root: string, arch: "x64" | "arm64"): string | undefined => {
+    const nativeManifest = resolveNativeManifest(root);
     const nativeRoot = dirname(nativeManifest);
     const local = join(nativeRoot, `native.linux-${arch}-gnu.node`);
 
@@ -23,4 +28,4 @@ const resolveBinding = (projectManifest: string, arch: "x64" | "arm64"): string 
     }
 };
 
-export { resolveBinding };
+export { resolveBinding, resolveNativeManifest };

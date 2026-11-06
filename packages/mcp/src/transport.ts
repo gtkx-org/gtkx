@@ -32,6 +32,10 @@ type AppConnections = {
 const MAX_MESSAGE_BYTES = 64 * 1024 * 1024;
 const MAX_PENDING_WRITE_BYTES = 8 * 1024 * 1024;
 
+function connectionAcceptedEvent(connection: ProtocolConnection): ConnectionEvent {
+    return new CustomEvent("connection", { detail: connection });
+}
+
 function connectionDisconnectionEvent(connection: ProtocolConnection): ConnectionEvent {
     return new CustomEvent("disconnection", { detail: connection });
 }
@@ -163,6 +167,7 @@ class ProtocolConnection extends Protocol<Request, Notification, Result> {
 }
 
 export {
+    connectionAcceptedEvent,
     connectionDisconnectionEvent,
     connectionErrorEvent,
     ProtocolConnection,

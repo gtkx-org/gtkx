@@ -1,4 +1,4 @@
-import { isPathInside, isRecord } from "@gtkx/utils";
+import { isPathInside, isPathWithin, isRecord } from "@gtkx/utils";
 import { lstatSync, readdirSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { BUILD_MANIFEST_FILENAME, BUILD_MANIFEST_GENERATOR } from "./build-manifest.js";
@@ -71,13 +71,20 @@ const gtkxBuildDescendant = (root: string): string | null => {
     return null;
 };
 
-const assertSafeBuildLocation = (root: string, outDir: string): void => {
+const assertSafeBuildLocation = (root: string, outDir: string, deployOutDir: string): void => {
     if (!isPathInside(root, outDir)) {
         throw new Error(`Build output ${outDir} must be below the project root ${root}`);
     }
 
     if (hasSymlinkComponent(root, outDir)) {
         throw new Error(`Build output ${outputName(root, outDir)} passes through a symbolic link`);
+    }
+
+    if (isPathWithin(deployOutDir, outDir)) {
+        throw new Error(
+            `Build output ${outputName(root, outDir)} is inside the deploy output directory ` +
+                `${outputName(root, deployOutDir)}, which every deployment replaces`,
+        );
     }
 
     const ancestor = gtkxBuildAncestor(root, outDir);
@@ -108,11 +115,11 @@ const nonReusableBuildOutputError = (root: string, outDir: string): Error => {
     return new Error(`Build output ${outputName(root, outDir)} is nonempty and is not an earlier GTKX build`);
 };
 
-const resolveBuildOutDir = (root: string, configured?: string): string => {
+const resolveBuildOutDir = (root: string, configured: string | undefined, deployOutDir: string): string => {
     const selected = configured ?? DEFAULT_BUILD_OUT_DIR;
     const outDir = resolve(root, selected);
 
-    assertSafeBuildLocation(root, outDir);
+    assertSafeBuildLocation(root, outDir, deployOutDir);
 
     if (!isReusableBuildDirectory(outDir)) {
         throw nonReusableBuildOutputError(root, outDir);

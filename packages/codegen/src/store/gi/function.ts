@@ -3,6 +3,7 @@ import type { GirFunction } from "../../gir/function.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { tFn } from "../../analysis/descriptor.js";
 import { hasUnmarshalableParam } from "../../analysis/param-capability.js";
+import { inputParameters } from "../../analysis/param-structure.js";
 import { arrayLiteral, renderBlock } from "../../writer/emit.js";
 import { matchAsyncFinish } from "./async.js";
 import { callableDoc } from "./callable-doc.js";
@@ -31,6 +32,7 @@ type NamespaceFunctionOptions = {
 
 const DESCRIPTOR_FREE_PROPERTY_SPEC_FACTORIES: Set<string> = new Set([
     "g_param_spec_boolean",
+    "g_param_spec_boxed",
     "g_param_spec_char",
     "g_param_spec_double",
     "g_param_spec_enum",
@@ -77,33 +79,51 @@ const renderFnExpression = (context: ModuleContext, fn: GirFunction): string | u
     });
 };
 
-const isMovedOntoEmittedMember = (context: ModuleContext, namespaceName: string, fn: GirFunction): boolean => {
-    const [typeName, memberName] = fn.movedTo?.split(".") ?? [];
-
-    if (typeName === undefined || memberName === undefined) {
-        return false;
-    }
-
-    const resolved = context.library.resolveType(namespaceName, typeName);
-
-    if (resolved?.kind !== "class" && resolved?.kind !== "interface" && resolved?.kind !== "record") {
-        return false;
-    }
-
-    const members = [...resolved.value.methods, ...resolved.value.functions, ...resolved.value.constructors];
-
-    return members.some((member) => member.name === memberName);
-};
-
-const isEmittableNamespaceFunction = (context: ModuleContext, namespaceName: string, fn: GirFunction): boolean =>
+const isEmittableNamespaceFunction = (context: ModuleContext, fn: GirFunction): boolean =>
     fn.introspectable &&
-    !isMovedOntoEmittedMember(context, namespaceName, fn) &&
     fn.shadowedBy === undefined &&
     fn.cIdentifier !== undefined &&
     !hasUnmarshalableParam(context, fn);
 
+type EnumStaticFunction = {
+    name: string;
+    exportName: string;
+    fn: GirFunction;
+};
+
+/**
+ * Namespace functions GIR moves onto an enumeration or error domain, which become its statics under
+ * the member name, as in GJS, while keeping their namespace export.
+ */
+const enumStaticFunctions = (context: ModuleContext, enumName: string): EnumStaticFunction[] => {
+    const statics: EnumStaticFunction[] = [];
+
+    for (const fn of context.namespace.functions) {
+        const [typeName, memberName] = fn.movedTo?.split(".") ?? [];
+        const cIdentifier = fn.cIdentifier;
+
+        if (
+            typeName !== enumName ||
+            memberName === undefined ||
+            cIdentifier === undefined ||
+            context.namespace.sharedLibrary === undefined ||
+            !isEmittableNamespaceFunction(context, fn)
+        ) {
+            continue;
+        }
+
+        const exportName = namespaceFunctionExportName(cIdentifier, fn.name, context.namespace.cSymbolPrefixes);
+
+        if (exportName.length > 0) {
+            statics.push({ name: toCamelIdentifier(memberName), exportName, fn });
+        }
+    }
+
+    return statics;
+};
+
 const generateNamespaceFunction = (context: ModuleContext, fn: GirFunction): void => {
-    if (!isEmittableNamespaceFunction(context, context.namespace.name, fn)) {
+    if (!isEmittableNamespaceFunction(context, fn)) {
         return;
     }
 
@@ -144,11 +164,7 @@ const matchNamespaceFinish = (context: ModuleContext, fn: GirFunction): Namespac
     const finishFn = matchAsyncFinish(context.library, fn, context.namespace.functions);
     const cIdentifier = finishFn?.cIdentifier;
 
-    if (
-        finishFn === undefined ||
-        cIdentifier === undefined ||
-        !isEmittableNamespaceFunction(context, context.namespace.name, finishFn)
-    ) {
+    if (finishFn === undefined || cIdentifier === undefined || !isEmittableNamespaceFunction(context, finishFn)) {
         return undefined;
     }
 
@@ -213,27 +229,20 @@ const appendInitBootstrap = (context: ModuleContext, exportName: string): void =
     context.addBootstrapCall(`${exportName}();`, { moduleExports: [exportName] });
 };
 
-const appendFinalizeBootstrap = (context: ModuleContext, exportName: string): void => {
-    context.addBootstrapCall(`onExit(${exportName});`, {
-        moduleExports: [exportName],
-        runtimeImports: ["onExit"],
-    });
-};
+const isCallableWithoutArguments = (context: ModuleContext, fn: GirFunction): boolean =>
+    inputParameters(context.library, fn).every(({ parameter }) => parameter.optional);
 
 const appendBootstrapRegistration = (context: ModuleContext, fn: GirFunction, exportName: string): void => {
-    if (fn.parameters.length > 0) {
-        return;
-    }
-
-    if (fn.name === "init") {
+    if (fn.name === "init" && isCallableWithoutArguments(context, fn)) {
         appendInitBootstrap(context, exportName);
-
-        return;
-    }
-
-    if (fn.name === "finalize") {
-        appendFinalizeBootstrap(context, exportName);
     }
 };
 
-export { renderFnExpression, generateNamespaceFunction, isEmittableNamespaceFunction, namespaceFunctionExportName };
+export {
+    enumStaticFunctions,
+    type EnumStaticFunction,
+    renderFnExpression,
+    generateNamespaceFunction,
+    isEmittableNamespaceFunction,
+    namespaceFunctionExportName,
+};

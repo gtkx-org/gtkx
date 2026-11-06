@@ -1,4 +1,4 @@
-import type * as Gtk from "@gtkx/gi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { DEFAULT_SUBTREE_DEPTH, MAX_SUBTREE_WIDGETS, type SerializedWidget } from "@gtkx/mcp/internal";
 
 type WidgetIdResolver = (widget: Gtk.Widget) => string;
@@ -6,6 +6,7 @@ type WidgetIdResolver = (widget: Gtk.Widget) => string;
 type WidgetFormatting = {
     formatRole(role: Gtk.AccessibleRole): string;
     getTypeTag(widget: Gtk.Widget): string;
+    getWidgetAccessibleName(widget: Gtk.Widget): string | null;
     getWidgetText(widget: Gtk.Widget): string | null;
 };
 
@@ -35,13 +36,22 @@ const getChildren = (widget: Gtk.Widget): Gtk.Widget[] => {
     return children;
 };
 
+const readTextViewText = (view: Gtk.TextView): string => {
+    const buffer = view.getBuffer();
+
+    return buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false);
+};
+
+const readWidgetText = (widget: Gtk.Widget, testing: WidgetFormatting): string | null =>
+    widget instanceof Gtk.TextView ? readTextViewText(widget) : testing.getWidgetText(widget);
+
 const createNode = (widget: Gtk.Widget, expansion: Expansion): SerializedWidget => ({
     id: expansion.resolveId(widget),
     type: expansion.testing.getTypeTag(widget),
     role: expansion.testing.formatRole(widget.getAccessibleRole()),
-    name: widget.getName() || null,
-    text: expansion.testing.getWidgetText(widget),
-    isSensitive: widget.getSensitive(),
+    name: expansion.testing.getWidgetAccessibleName(widget),
+    text: readWidgetText(widget, expansion.testing),
+    isSensitive: widget.isSensitive(),
     isVisible: widget.getVisible(),
     cssClasses: widget.getCssClasses(),
     children: [],

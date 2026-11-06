@@ -49,7 +49,6 @@ beforeEach(() => {
     useStore.setState({
         tasks: seedTasks,
         lists: seedLists,
-        collapsed: false,
         filter: "all",
         searchMode: false,
         searchQuery: "",

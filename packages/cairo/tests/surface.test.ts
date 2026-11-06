@@ -220,6 +220,29 @@ describe("ImageSurface", () => {
     });
 });
 
+describe("ImageSurface pixel memory", () => {
+    const nextTurn = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
+
+    it.each([
+        ["the constructor", () => new ImageSurface(Format.ARGB32, 1024, 1024)],
+        ["create", () => ImageSurface.create(Format.ARGB32, 1024, 1024)],
+        ["createSimilarImage", () => Surface.createSimilarImage(createImage(), Format.ARGB32, 1024, 1024)],
+        ["createSimilar", () => Surface.createSimilar(createImage(), Content.COLOR_ALPHA, 1024, 1024)],
+    ])("lets the garbage collector keep pace with image surfaces from %s", async (_name, create) => {
+        const released = { count: 0 };
+        const registry = new FinalizationRegistry(() => {
+            released.count += 1;
+        });
+
+        for (let frame = 0; frame < 256 && released.count === 0; frame++) {
+            registry.register(create(), frame);
+            await nextTurn();
+        }
+
+        expect(released.count).toBeGreaterThan(0);
+    });
+});
+
 describe("RecordingSurface", () => {
     it("creates recording surfaces through the constructor and the static", () => {
         const bounded = RecordingSurface.create(Content.COLOR, { x: 1, y: 2, width: 30, height: 40 });

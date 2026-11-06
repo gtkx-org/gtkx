@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { AdwPreferencesGroup } from "@gtkx/jsx/adw";
+import { AdwDialog, AdwPreferencesGroup } from "@gtkx/jsx/adw";
 import { GSimpleAction } from "@gtkx/jsx/gio";
 import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton, GtkEntry, GtkLabel, GtkWindow } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
@@ -17,10 +17,21 @@ import {
     queryAllByRole,
     render,
     screen,
+    userEvent,
     waitFor,
     type WrapperComponent,
 } from "@gtkx/testing";
-import { Component, createContext, createRef, useContext, useEffect, useLayoutEffect, useState } from "react";
+import {
+    Component,
+    createContext,
+    createRef,
+    Suspense,
+    use,
+    useContext,
+    useEffect,
+    useLayoutEffect,
+    useState,
+} from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { withHostWindow, withStolenActivation } from "./widget-fixtures.js";
 
@@ -31,9 +42,20 @@ const initialConfig = { ...getConfig() };
 const WrapperContext = createContext("default");
 const entryRef = createRef<Gtk.Entry>();
 
+const failure = new Error("boom");
+
 const Thrower = (): ReactNode => {
-    throw new Error("boom");
+    throw failure;
 };
+
+const rejectLater = (error: Error): Promise<string> =>
+    new Promise((_resolve, reject) => {
+        setTimeout(() => {
+            reject(error);
+        }, 50);
+    });
+
+const Loaded = ({ load }: { load: Promise<string> }): ReactNode => <GtkLabel>{use(load)}</GtkLabel>;
 
 const WrappingProvider: WrapperComponent = ({ children }) => (
     <WrapperContext.Provider value="wrapped">{children}</WrapperContext.Provider>
@@ -69,6 +91,14 @@ const ApplicationProbe = (): ReactNode => {
         </GtkApplication>
     );
 };
+
+const LingeringApplication = ({ applicationId }: { applicationId: string }): ReactNode => (
+    <GtkApplication applicationId={applicationId} inactivityTimeout={60_000}>
+        <GtkApplicationWindow defaultWidth={100} defaultHeight={100}>
+            <GtkLabel name="lingering">Lingering</GtkLabel>
+        </GtkApplicationWindow>
+    </GtkApplication>
+);
 
 const expectFocusedEntry = (): void => {
     const root = entryRef.current?.getRoot();
@@ -230,24 +260,55 @@ describe("render", () => {
         expect(recoverableErrors).toBe(0);
     });
 
-    it("throws when the tree throws, reporting it to onCaughtError", async () => {
+    it("renders an error boundary's fallback, reporting the caught error to onCaughtError", async () => {
         const caughtErrors: CaughtErrorInfo[] = [];
 
-        await expect(
-            render(
-                <ErrorBoundary>
-                    <Thrower />
-                </ErrorBoundary>,
-                {
-                    onCaughtError: (_error, errorInfo) => {
-                        caughtErrors.push(errorInfo);
-                    },
+        await render(
+            <ErrorBoundary>
+                <Thrower />
+            </ErrorBoundary>,
+            {
+                onCaughtError: (_error, errorInfo) => {
+                    caughtErrors.push(errorInfo);
                 },
-            ),
-        ).rejects.toThrow();
+            },
+        );
 
+        expect(await screen.findByText("error")).toBeVisible();
         expect(caughtErrors).toHaveLength(1);
         expect(caughtErrors[0]?.errorBoundary).toBeInstanceOf(ErrorBoundary);
+        await cleanup();
+    });
+
+    it("keeps an error boundary's fallback for a load that fails after rendering", async () => {
+        const load = rejectLater(new Error("load failed"));
+
+        await render(
+            <ErrorBoundary>
+                <Suspense fallback={<GtkLabel>Loading</GtkLabel>}>
+                    <Loaded load={load} />
+                </Suspense>
+            </ErrorBoundary>,
+        );
+
+        expect(await screen.findByText("error")).toBeVisible();
+        await cleanup();
+    });
+
+    it("fails with an uncaught error itself, during render or at cleanup", async () => {
+        await expect(render(<Thrower />)).rejects.toBe(failure);
+
+        const loadFailure = new Error("load failed");
+        await render(
+            <Suspense fallback={<GtkLabel>Loading</GtkLabel>}>
+                <Loaded load={rejectLater(loadFailure)} />
+            </Suspense>,
+        );
+
+        await waitFor(() => {
+            expect(screen.queryByText("Loading")).toBeNull();
+        });
+        await expect(cleanup()).rejects.toBe(loadFailure);
     });
 });
 
@@ -266,6 +327,22 @@ describe("render window activation", () => {
         );
 
         expectFocusedEntry();
+    });
+
+    it("hands activation to a dialog rendered on its own, so keys move focus inside it", async () => {
+        await render(
+            <AdwDialog title="Rename">
+                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                    <AutoFocusedEntry />
+                    <GtkButton name="rename" label="Rename" />
+                </GtkBox>
+            </AdwDialog>,
+        );
+
+        expectFocusedEntry();
+        const entry = screen.getByPlaceholderText("Search tasks");
+        await userEvent.keyboard(entry, "{Tab}");
+        expect(screen.getByName("rename")).toHaveFocus();
     });
 
     it("reports it as focused when rendering into a window the caller presented", async () => {
@@ -356,6 +433,22 @@ describe("Gio.Application.getDefault", () => {
         expect(unrendered.getIsRegistered()).toBe(false);
         expect(Gio.Application.getDefault()).toBeNull();
         await renderApplicationProbe();
+    });
+
+    it("quits an application that would outlive its tree, so the next render registers the same ID", async () => {
+        const applicationId = `${APPLICATION_ID}.lingering`;
+        await render(<LingeringApplication applicationId={applicationId} />, { container: rootElement });
+        const first = Gio.Application.getDefault();
+        first?.hold();
+
+        try {
+            await cleanup();
+            await render(<LingeringApplication applicationId={applicationId} />, { container: rootElement });
+            expect(await screen.findByName("lingering")).toBeRooted();
+            expect(Gio.Application.getDefault()).not.toBe(first);
+        } finally {
+            first?.release();
+        }
     });
 });
 

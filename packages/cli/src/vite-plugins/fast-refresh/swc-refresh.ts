@@ -68,10 +68,7 @@ const injectRefreshRegistration = (
         return;
     }
 
-    const header = `
-import { createModuleRegistration as __createModuleRegistration__ } from "${REFRESH_RUNTIME_SPECIFIER}";
-const { ${REFRESH_REG}, ${REFRESH_SIG} } = __createModuleRegistration__(${JSON.stringify(id)});
-`;
+    const header = `import { createModuleRegistration as __createModuleRegistration__ } from "${REFRESH_RUNTIME_SPECIFIER}"; const { ${REFRESH_REG}, ${REFRESH_SIG} } = __createModuleRegistration__(${JSON.stringify(id)}); `;
 
     return { code: header + code, map: null };
 };

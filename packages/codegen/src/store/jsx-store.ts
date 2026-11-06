@@ -34,7 +34,6 @@ const writeJsxStore = (params: WriteJsxStoreParams): PreparedStore => {
     return prepareStore({
         storeDir: options.storeDir,
         linkDir: options.linkDir,
-        owner: options.owner,
         files,
         manifest: buildManifest({
             name: "@gtkx/jsx",

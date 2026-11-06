@@ -1,12 +1,17 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
+import { getInstanceType, TYPE_INVALID, typeFromName, typeIsA } from "@gtkx/runtime";
 import { hasSignalListener } from "@gtkx/runtime/internal";
 import type { UserEventState } from "./state.js";
 import { getEditableDelegate } from "../editable.js";
 import { fireEvent } from "../fire-event.js";
 import { ancestors, descendants } from "../traversal.js";
+import { receivesEventsFor } from "./controller.js";
 import { wrapEvent } from "./event-wrapper.js";
+import { usageError } from "../usage-error.js";
+import { getWidgetTypeName } from "../widget-getters.js";
+import { activeToplevel, mappedToplevels } from "../window-state.js";
 
 /** Options for `userEvent.tab`. */
 type TabOptions = {
@@ -16,6 +21,8 @@ type TabOptions = {
 
 type KeyAction = { keyval: number; isPress: boolean };
 type ParseStep = { actions: KeyAction[]; next: number };
+type TypedStep = { text: string } | { actions: KeyAction[] };
+type TypedParseStep = { step: TypedStep; next: number };
 type KeyStopController = Gtk.EventControllerKey | Gtk.ShortcutController;
 type KeyStop = { widget: Gtk.Widget; controller: KeyStopController };
 type KeyTarget = { root: Gtk.Root | null; focus: Gtk.Widget | null };
@@ -57,6 +64,7 @@ const KEY_MAP: Record<string, number> = {
 };
 
 const KEY_CONTROLLER_SIGNALS = ["key-pressed", "key-released"];
+const LITERAL_BRACE = "{{";
 
 const MODIFIER_KEYVAL_TO_MASK: Record<number, number> = {
     [Gdk.KEY_Shift_L]: Gdk.ModifierType.SHIFT_MASK,
@@ -69,6 +77,17 @@ const MODIFIER_KEYVAL_TO_MASK: Record<number, number> = {
     [Gdk.KEY_Meta_R]: Gdk.ModifierType.META_MASK,
 };
 
+const MODIFIER_NAMES: [string, number][] = [
+    ["Control", Gdk.ModifierType.CONTROL_MASK],
+    ["Shift", Gdk.ModifierType.SHIFT_MASK],
+    ["Alt", Gdk.ModifierType.ALT_MASK],
+    ["Meta", Gdk.ModifierType.META_MASK],
+];
+
+/** The modifier keys pressed and not yet released, named as `keyboard` input names them. */
+const heldModifiers = (state: UserEventState): string[] =>
+    MODIFIER_NAMES.filter(([, mask]) => (state.modifierState & mask) !== 0).map(([name]) => name);
+
 /** Moves focus within the widget's root. */
 const tab = (widget: Gtk.Widget, options?: TabOptions): Promise<void> =>
     wrapEvent(widget, () => {
@@ -79,6 +98,12 @@ const tab = (widget: Gtk.Widget, options?: TabOptions): Promise<void> =>
             root.childFocus(direction);
         }
     });
+
+const characterKeyval = (keyName: string): number | undefined => {
+    const [character, ...rest] = Array.from(keyName);
+
+    return character === undefined || rest.length > 0 ? undefined : Gdk.unicodeToKeyval(character.codePointAt(0) ?? 0);
+};
 
 const parseKeyToken = (token: string): { keyval: number; isPress: boolean; isRelease: boolean } => {
     let keyName = token;
@@ -93,10 +118,10 @@ const parseKeyToken = (token: string): { keyval: number; isPress: boolean; isRel
         isRelease = false;
     }
 
-    const keyval = KEY_MAP[keyName];
+    const keyval = KEY_MAP[keyName] ?? characterKeyval(keyName);
 
     if (keyval === undefined) {
-        throw new Error(`Unknown key: {${keyName}}`);
+        throw usageError(new Error(`Unknown key: {${keyName}}`));
     }
 
     return { keyval, isPress, isRelease };
@@ -155,6 +180,59 @@ const parseKeyboardInput = (input: string): KeyAction[] => {
     }
 
     return actions;
+};
+
+const characterActions = (text: string): KeyAction[] =>
+    Array.from(text, (character) => parseCharAt(character, 0).actions).flat();
+
+const parseTypedTextAt = (input: string, i: number): TypedParseStep => {
+    const brace = input.indexOf("{", i);
+    const next = brace === -1 ? input.length : brace;
+
+    return { step: { text: input.slice(i, next) }, next };
+};
+
+const parseTypedStepAt = (input: string, i: number): TypedParseStep => {
+    if (input.startsWith(LITERAL_BRACE, i)) {
+        return { step: { text: "{" }, next: i + LITERAL_BRACE.length };
+    }
+
+    if (input[i] !== "{") {
+        return parseTypedTextAt(input, i);
+    }
+
+    const brace = parseBraceAt(input, i);
+
+    if (brace === null) {
+        throw usageError(new Error(`Unclosed key descriptor at ${String(i)} in "${input}"; type a literal { as {{`));
+    }
+
+    return { step: { actions: brace.actions }, next: brace.next };
+};
+
+const appendTypedStep = (steps: TypedStep[], step: TypedStep): void => {
+    const last = steps.at(-1);
+
+    if (last !== undefined && "text" in last && "text" in step) {
+        steps[steps.length - 1] = { text: last.text + step.text };
+
+        return;
+    }
+
+    steps.push(step);
+};
+
+const parseTypedInput = (input: string): TypedStep[] => {
+    const steps: TypedStep[] = [];
+    let i = 0;
+
+    while (i < input.length) {
+        const { step, next } = parseTypedStepAt(input, i);
+        appendTypedStep(steps, step);
+        i = next;
+    }
+
+    return steps;
 };
 
 const updateModifierState = (state: UserEventState, action: KeyAction): void => {
@@ -237,15 +315,12 @@ const managedShortcutHost = (manager: Gtk.Widget, shortcut: Gtk.Shortcut): Gtk.W
     return null;
 };
 
-const isMovingFocus = (action: Gtk.ShortcutAction): boolean =>
-    action instanceof Gtk.SignalAction && action.getSignalName() === "move-focus";
-
 const isShortcutLive = (host: Gtk.Widget): boolean => host.isSensitive() && host.getMapped();
 
 const didRunShortcutAction = (shortcut: Gtk.Shortcut, host: Gtk.Widget, flags: Gtk.ShortcutActionFlags): boolean => {
     const action = shortcut.getAction();
 
-    if (action === null || isMovingFocus(action) || !isShortcutLive(host)) {
+    if (action === null || !isShortcutLive(host)) {
         return false;
     }
 
@@ -355,25 +430,116 @@ const didDispatchAccelsOnWindow = (window: Gtk.Window, keyval: number, modifiers
     return false;
 };
 
-const didDispatchApplicationAccels = (widget: Gtk.Widget, keyval: number, modifiers: number): boolean => {
-    const root = widget.getRoot();
+const didDispatchApplicationAccels = (target: Gtk.Widget, keyval: number, modifiers: number): boolean => {
+    const root = target.getRoot();
 
-    return root instanceof Gtk.Window && didDispatchAccelsOnWindow(root, keyval, modifiers);
+    return (
+        root instanceof Gtk.Window &&
+        receivesEventsFor(root, Gtk.PropagationLimit.SAME_NATIVE, target) &&
+        didDispatchAccelsOnWindow(root, keyval, modifiers)
+    );
 };
 
-const isKeyStopController = (controller: Gtk.EventController): controller is KeyStopController => {
+const SEARCH_BAR_CAPTURE_NAME = "gtk-search-bar-capture";
+const ENTRY_COMPLETION_CLASS = "entry-completion";
+const FILE_CHOOSER_ENTRY_TYPE_NAME = "GtkFileChooserEntry";
+const CELL_EDITABLE_TYPE_NAME = "GtkCellEditableWidget";
+
+/**
+ * GTK has no public getter for a text view's own key controller (`gtk_text_view_get_key_controller` is private) and
+ * lists controllers newest first, so the last key controller is the one the text view added when it was created.
+ * Controllers that subclasses such as GtkSourceView add read the current event, which emulated keys lack.
+ */
+const isTextViewKeyController = (controller: Gtk.EventController, widget: Gtk.Widget): boolean =>
+    controllersOn(widget)
+        .filter((current) => current instanceof Gtk.EventControllerKey)
+        .toArray()
+        .at(-1) === controller;
+
+const isTextViewLibraryController = (controller: Gtk.EventController, widget: Gtk.Widget): boolean =>
+    widget instanceof Gtk.TextView && !isTextViewKeyController(controller, widget);
+
+const capturesKeysOf = (candidate: Gtk.Widget, widget: Gtk.Widget): boolean =>
+    (candidate instanceof Gtk.SearchEntry || candidate instanceof Gtk.SearchBar) &&
+    candidate.getKeyCaptureWidget() === widget;
+
+/**
+ * A search entry or search bar with a key capture widget adds a key controller to that widget, which forwards the
+ * current event to the entry. The search bar names its controller; the search entry leaves its own unnamed.
+ */
+const isSearchKeyCapture = (controller: Gtk.EventController, widget: Gtk.Widget): boolean => {
+    const name = controller.getName();
+
+    return (
+        name === SEARCH_BAR_CAPTURE_NAME ||
+        (name === null &&
+            (capturesKeysOf(widget, widget) ||
+                descendants(widget).some((candidate) => capturesKeysOf(candidate, widget))))
+    );
+};
+
+const isFileChooserForwarder = (_controller: Gtk.EventController, widget: Gtk.Widget): boolean =>
+    widget instanceof Gtk.FileChooserWidget || getWidgetTypeName(widget) === FILE_CHOOSER_ENTRY_TYPE_NAME;
+
+/**
+ * Widget types from other libraries whose key controllers read the current event: WebKit filters it through its input
+ * method and passes it to the web process.
+ */
+const EVENT_READING_LIBRARY_TYPE_NAMES = ["WebKitWebViewBase"];
+
+const isLibraryEventReader = (_controller: Gtk.EventController, widget: Gtk.Widget): boolean =>
+    EVENT_READING_LIBRARY_TYPE_NAMES.some((name) => {
+        const type = typeFromName(name);
+
+        return type !== TYPE_INVALID && typeIsA(getInstanceType(widget), type);
+    });
+
+const isDeprecatedPopup = (widget: Gtk.Widget): boolean =>
+    widget instanceof Gtk.Popover &&
+    (widget.getParent() instanceof Gtk.ComboBox || widget.hasCssClass(ENTRY_COMPLETION_CLASS));
+
+const isDeprecatedWidgetForwarder = (_controller: Gtk.EventController, widget: Gtk.Widget): boolean =>
+    widget instanceof Gtk.TreeView ||
+    getWidgetTypeName(widget) === CELL_EDITABLE_TYPE_NAME ||
+    isDeprecatedPopup(widget);
+
+/**
+ * Key controllers GTK and its libraries add without a JavaScript listener whose handlers need the real key event,
+ * which emulated keys lack: they filter it through an input method, forward it with
+ * `gtk_event_controller_key_forward()` or read it directly, and log a critical without one. Emulated keys skip them;
+ * every other key controller receives the keys.
+ */
+const REAL_EVENT_KEY_HANDLERS: ((controller: Gtk.EventController, widget: Gtk.Widget) => boolean)[] = [
+    isTextViewLibraryController,
+    isSearchKeyCapture,
+    isFileChooserForwarder,
+    isDeprecatedWidgetForwarder,
+    isLibraryEventReader,
+];
+
+const needsRealKeyEvent = (controller: Gtk.EventController, widget: Gtk.Widget): boolean =>
+    REAL_EVENT_KEY_HANDLERS.some((needsEvent) => needsEvent(controller, widget));
+
+const isKeyStopController = (controller: Gtk.EventController, widget: Gtk.Widget): controller is KeyStopController => {
     if (controller instanceof Gtk.ShortcutController) {
         return controller.getScope() === Gtk.ShortcutScope.LOCAL;
     }
 
-    return controller instanceof Gtk.EventControllerKey && hasSignalListener(controller, KEY_CONTROLLER_SIGNALS);
+    return (
+        controller instanceof Gtk.EventControllerKey &&
+        (hasSignalListener(controller, KEY_CONTROLLER_SIGNALS) || !needsRealKeyEvent(controller, widget))
+    );
 };
 
-const keyStopsInPhase = (widget: Gtk.Widget, phase: Gtk.PropagationPhase): KeyStop[] => {
+const keyStopsInPhase = (widget: Gtk.Widget, phase: Gtk.PropagationPhase, target: Gtk.Widget): KeyStop[] => {
     const stops: KeyStop[] = [];
 
     for (const controller of controllersOn(widget)) {
-        if (controller.getPropagationPhase() === phase && isKeyStopController(controller)) {
+        if (
+            controller.getPropagationPhase() === phase &&
+            receivesEventsFor(widget, controller.getPropagationLimit(), target) &&
+            isKeyStopController(controller, widget)
+        ) {
             stops.push({ widget, controller });
         }
     }
@@ -381,7 +547,20 @@ const keyStopsInPhase = (widget: Gtk.Widget, phase: Gtk.PropagationPhase): KeySt
     return stops;
 };
 
+const focusWithin = (widget: Gtk.Widget): Gtk.Widget | null => {
+    const root = widget.getRoot();
+    const focus = root instanceof Gtk.Window ? root.getFocus() : null;
+
+    return focus?.getMapped() === true && focus.isAncestor(widget) ? focus : null;
+};
+
 const propagationChain = (widget: Gtk.Widget): Gtk.Widget[] => {
+    const focus = focusWithin(widget);
+
+    if (focus !== null) {
+        return [focus, ...ancestors(focus)];
+    }
+
     const delegate = getEditableDelegate(widget);
     const below = delegate === null ? [] : [delegate];
 
@@ -393,9 +572,9 @@ const keyPropagationChain = (widget: Gtk.Widget): KeyStop[] => {
     const [eventWidget = widget] = chain;
 
     return [
-        ...chain.toReversed().flatMap((current) => keyStopsInPhase(current, Gtk.PropagationPhase.CAPTURE)),
-        ...keyStopsInPhase(eventWidget, Gtk.PropagationPhase.TARGET),
-        ...chain.flatMap((current) => keyStopsInPhase(current, Gtk.PropagationPhase.BUBBLE)),
+        ...chain.toReversed().flatMap((current) => keyStopsInPhase(current, Gtk.PropagationPhase.CAPTURE, eventWidget)),
+        ...keyStopsInPhase(eventWidget, Gtk.PropagationPhase.TARGET, eventWidget),
+        ...chain.flatMap((current) => keyStopsInPhase(current, Gtk.PropagationPhase.BUBBLE, eventWidget)),
     ];
 };
 
@@ -423,8 +602,9 @@ const isKeyTargetInvalidated = (widget: Gtk.Widget, target: KeyTarget): boolean 
 
 const didHandlePress = (widget: Gtk.Widget, keyval: number, modifiers: Gdk.ModifierType): boolean => {
     const target = keyTargetFor(widget);
+    const [eventWidget = widget] = propagationChain(widget);
 
-    if (didDispatchApplicationAccels(widget, keyval, modifiers)) {
+    if (didDispatchApplicationAccels(eventWidget, keyval, modifiers)) {
         return true;
     }
 
@@ -449,33 +629,133 @@ const emitKeyReleased = (widget: Gtk.Widget, keyval: number, modifiers: Gdk.Modi
     }
 };
 
-const applyKeyPress = async (widget: Gtk.Widget, keyval: number, modifiers: Gdk.ModifierType): Promise<void> => {
+const applyKeyPress = async (widget: Gtk.Widget, keyval: number, modifiers: Gdk.ModifierType): Promise<boolean> => {
     if (didHandlePress(widget, keyval, modifiers)) {
-        return;
+        return true;
     }
 
     if (keyval === Gdk.KEY_Return && widget instanceof Gtk.Editable) {
         await fireEvent(widget, "activate");
+
+        return true;
     }
+
+    return false;
 };
 
-const applyKeyAction = async (widget: Gtk.Widget, state: UserEventState, action: KeyAction): Promise<void> => {
+const isUnhandledPress = async (widget: Gtk.Widget, state: UserEventState, action: KeyAction): Promise<boolean> => {
     updateModifierState(state, action);
 
-    if (action.isPress) {
-        await applyKeyPress(widget, action.keyval, state.modifierState);
+    if (!action.isPress) {
+        emitKeyReleased(widget, action.keyval, state.modifierState);
 
+        return false;
+    }
+
+    const isHandled = await applyKeyPress(widget, action.keyval, state.modifierState);
+
+    return !isHandled && MODIFIER_KEYVAL_TO_MASK[action.keyval] === undefined;
+};
+
+/**
+ * Returns a function that resolves the widget keys meant for `widget` reach now: the widget, or the widget outside it
+ * that focus has moved to since, as after a {Tab}.
+ */
+const followKeyFocus = (widget: Gtk.Widget): (() => Gtk.Widget) => {
+    const start = keyTargetFor(widget);
+
+    return () => {
+        const { root, focus } = keyTargetFor(widget);
+
+        return root === start.root && focus !== null && focus !== start.focus && !focus.isAncestor(widget)
+            ? focus
+            : widget;
+    };
+};
+
+/** Applies the key actions and returns the keyvals of the presses, other than modifiers, that nothing handled. */
+const applyKeyActions = async (widget: Gtk.Widget, state: UserEventState, actions: KeyAction[]): Promise<number[]> => {
+    const keyWidget = followKeyFocus(widget);
+    const unhandled: number[] = [];
+
+    for (const action of actions) {
+        if (await isUnhandledPress(keyWidget(), state, action)) {
+            unhandled.push(action.keyval);
+        }
+    }
+
+    return unhandled;
+};
+
+const keyLabel = (keyval: number): string => {
+    const name = Object.keys(KEY_MAP).find((key) => KEY_MAP[key] === keyval);
+    const character = Gdk.keyvalToUnicode(keyval);
+
+    if (name !== undefined) {
+        return `{${name}}`;
+    }
+
+    return character === 0 ? `{${Gdk.keyvalName(keyval) ?? String(keyval)}}` : String.fromCodePoint(character);
+};
+
+const canTakeFocus = (widget: Gtk.Widget): boolean => widget.getFocusable() && widget.getCanFocus();
+
+/**
+ * Focuses a target whose window has its focus elsewhere, as a user does before typing, so the window's own bindings
+ * such as {Space} and {Enter} activating the focus widget act on the target. An entry that delegates its focus to its
+ * text, such as a search entry, takes it there without selecting the text, as a click does. A widget that passes its
+ * focus to a child, such as a menu button to its button, focuses that child.
+ */
+const focusKeyTarget = (widget: Gtk.Widget): void => {
+    if (focusWithin(widget) !== null) {
         return;
     }
 
-    emitKeyReleased(widget, action.keyval, state.modifierState);
+    const delegate = getEditableDelegate(widget);
+
+    if (delegate instanceof Gtk.Text && canTakeFocus(delegate)) {
+        delegate.grabFocusWithoutSelecting();
+    } else {
+        widget.grabFocus();
+    }
 };
 
-const keyboard = (state: UserEventState, widget: Gtk.Widget, input: string): Promise<void> =>
-    wrapEvent(widget, async () => {
-        for (const action of parseKeyboardInput(input)) {
-            await applyKeyAction(widget, state, action);
-        }
+/**
+ * Sends the key sequence and returns the keys, as `keyboard` input would name them, whose presses nothing on the
+ * widget, its focused descendant or their ancestors handled.
+ */
+const keyboard = async (state: UserEventState, widget: Gtk.Widget, input: string): Promise<string[]> => {
+    let unhandled: number[] = [];
+
+    await wrapEvent(widget, async () => {
+        focusKeyTarget(widget);
+        unhandled = await applyKeyActions(widget, state, parseKeyboardInput(input));
     });
 
-export { tab, keyboard, type TabOptions };
+    return [...new Set(unhandled.map((keyval) => keyLabel(keyval)))];
+};
+
+const focusedKeyWidget = (): Gtk.Widget => {
+    const window = activeToplevel() ?? mappedToplevels()[0];
+
+    if (window === undefined) {
+        throw usageError(new Error("No window is open to receive the keys"));
+    }
+
+    const focus = window.getFocus();
+
+    return focus?.getMapped() ? focus : window;
+};
+
+export {
+    applyKeyActions,
+    characterActions,
+    focusedKeyWidget,
+    followKeyFocus,
+    heldModifiers,
+    keyboard,
+    parseTypedInput,
+    tab,
+    type TabOptions,
+    type TypedStep,
+};

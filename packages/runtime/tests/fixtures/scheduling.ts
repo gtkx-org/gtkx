@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { closeSync, openSync, readSync } from "node:fs";
+import { closeSync, openSync, readSync, writeSync } from "node:fs";
+import { Socket } from "node:net";
 import { isMainThread, parentPort, Worker } from "node:worker_threads";
 
 const mode = isMainThread ? process.argv[2] : "workers";
@@ -86,6 +87,28 @@ const runTimeout = async (): Promise<void> => {
     process.stdout.write(JSON.stringify(events));
 };
 
+const runThrowing = async (): Promise<void> => {
+    const { idle, quit } = await runtime();
+    const errors: string[] = [];
+    process.on("uncaughtException", (error) => {
+        errors.push(error.message);
+    });
+    const events: string[] = [];
+    const done = completion();
+    idle(0, () => {
+        events.push("first");
+        throw new Error("first failed");
+    });
+    idle(0, () => {
+        events.push("second");
+        done.resolve();
+        return false;
+    });
+    await done.promise;
+    quit();
+    process.stdout.write(JSON.stringify({ events, errors }));
+};
+
 const runQuit = async (): Promise<void> => {
     const { idle, quit } = await runtime();
     let calls = 0;
@@ -111,6 +134,7 @@ const runDescriptors = async (): Promise<void> => {
     const pipe = t.bind("libc.so.6", "pipe", [t.buffer], t.int32);
     const duplicate = t.bind("libc.so.6", "dup2", [t.int32, t.int32], t.int32);
     const moveAbove = t.bind("libc.so.6", "fcntl", [t.int32, t.int32, t.int32], t.int32);
+    const copyDescriptor = t.bind("libc.so.6", "dup", [t.int32], t.int32);
     const descriptors = new Int32Array(2);
     const createPipe = (): { input: number; output: number } => {
         assert.equal(pipe(descriptors), 0);
@@ -171,6 +195,28 @@ const runDescriptors = async (): Promise<void> => {
     closeSync(input);
     closeSync(output);
     await nextTurn();
+    ({ input, output } = createPipe());
+    const closedSource = watch(0, input, 1, () => true);
+    await nextTurn();
+    closeSync(input);
+    const nodePipe = createPipe();
+    if (nodePipe.input !== input) {
+        assert.equal(duplicate(nodePipe.input, input), input);
+        closeSync(nodePipe.input);
+    }
+    const socket = new Socket({ fd: input, readable: true, writable: false });
+    for (let round = 0; round < 3; round += 1) {
+        const received = completion();
+        socket.once("data", () => received.resolve());
+        writeSync(nodePipe.output, "a");
+        await received.promise;
+    }
+    assert.equal(remove(closedSource), true);
+    socket.destroy();
+    closeSync(nodePipe.output);
+    closeSync(output);
+    events.push("closed");
+    await nextTurn();
     const regularFile = openSync(import.meta.filename, "r");
     const unwatchable = completion();
     let unwatchableCalls = 0;
@@ -185,6 +231,22 @@ const runDescriptors = async (): Promise<void> => {
     assert.equal(remove(unwatchableSource), true);
     events.push("unwatchable");
     closeSync(regularFile);
+    ({ input, output } = createPipe());
+    const copy = copyDescriptor(input);
+    assert(typeof copy === "number" && copy >= 0);
+    const duplicatedSource = watch(0, input, 1, () => true);
+    await nextTurn();
+    writeSync(output, "a");
+    assert.equal(remove(duplicatedSource), true);
+    closeSync(input);
+    await nextTurn();
+    const idleStart = performance.eventLoopUtilization();
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    const { utilization } = performance.eventLoopUtilization(idleStart);
+    closeSync(copy);
+    closeSync(output);
+    assert(utilization < 0.5, "A closed duplicated descriptor kept the event loop busy");
+    events.push("duplicated");
     quit();
     process.stdout.write(JSON.stringify(events));
 };
@@ -228,6 +290,8 @@ if (mode === "budget") {
     await runBudget();
 } else if (mode === "timeout") {
     await runTimeout();
+} else if (mode === "throwing") {
+    await runThrowing();
 } else if (mode === "quit") {
     await runQuit();
 } else if (mode === "descriptors") {

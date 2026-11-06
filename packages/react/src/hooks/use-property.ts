@@ -14,8 +14,23 @@ type PropertyName<T extends Pick<GObject.Object, "__properties__" | "__type__">>
  * Subscribes to a GObject property and returns its current value, re-rendering when the property changes.
  *
  * @param propertyName The camelCase name of a readable property on the object.
+ * @returns The current value.
+ */
+function useProperty<T extends Pick<GObject.Object, "__properties__" | "__type__">, P extends PropertyName<T>>(
+    object: T,
+    propertyName: P,
+): ReadableProperties<T>[P];
+/**
+ * Subscribes to a GObject property of an object that may be null and returns its current value,
+ * re-rendering when the property changes.
+ *
+ * @param propertyName The camelCase name of a readable property on the object.
  * @returns The current value, or `undefined` while the object is null.
  */
+function useProperty<T extends Pick<GObject.Object, "__properties__" | "__type__">, P extends PropertyName<T>>(
+    object: T | null | undefined,
+    propertyName: P,
+): ReadableProperties<T>[P] | undefined;
 function useProperty<T extends Pick<GObject.Object, "__properties__" | "__type__">, P extends PropertyName<T>>(
     object: T | null | undefined,
     propertyName: P,

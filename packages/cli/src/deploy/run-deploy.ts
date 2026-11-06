@@ -1,6 +1,6 @@
-import { type Config, loadConfig } from "@gtkx/config";
+import { type ApplicationConfig, loadConfig } from "@gtkx/config";
 import { info, warn } from "@gtkx/utils";
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import type {
     DeployArchName,
@@ -25,7 +25,8 @@ import {
 } from "../i18n/catalogs.js";
 import { extractSourceCatalogTo } from "../i18n/source-messages.js";
 import { prepareBuildOutDir, resolveBuildOutDir } from "../internal/build-output.js";
-import { discoverSourceFiles } from "../internal/source-imports.js";
+import { discoverSourceFilesIn } from "../internal/source-imports.js";
+import { uncoveredDebLibraries } from "./depends.js";
 import { renderDesktopEntry } from "./freedesktop/desktop-entry.js";
 import { extractMetadataMessages, localizeMetadata } from "./freedesktop/localize.js";
 import { renderMetainfo } from "./freedesktop/metainfo.js";
@@ -43,13 +44,15 @@ import { readPackageManifest } from "./settings/package-manifest.js";
 import { prepareDeployOutDir } from "./settings/paths.js";
 import { missingDeployError } from "./settings/starter.js";
 import { finishArgsFor, hasDisplaySocket, runtimeLabelFor } from "./targets/flatpak-manifest.js";
-import { detectPackageManager } from "./targets/flatpak-sources.js";
+import { assertStandaloneProject, detectPackageManager } from "./targets/flatpak-sources.js";
 import {
     APPSTREAMCLI,
     assertTools,
+    configuredNfpmTool,
     DESKTOP_FILE_VALIDATE,
     FLATPAK_NODE_GENERATOR,
     FLATPAK_NODE_GENERATOR_PNPM,
+    MSGCAT,
     MSGFMT,
     MSGGREP,
     MSGINIT,
@@ -73,9 +76,10 @@ type DeployOptions = {
 };
 
 type LoadedDeployConfig = {
-    config: Config;
+    config: ApplicationConfig;
     configFile: string;
     root: string;
+    translationDomain: string;
     deploy: DeployConfig;
 };
 
@@ -119,6 +123,7 @@ const BYTES_PER_MIB = 1024 * 1024;
 const WEBKIT_LIBRARY = "WebKit-6.0";
 const NETWORK_ARG = "--share=network";
 const APPIMAGE_TARGET = "appimage";
+const DEB_TARGET = "deb";
 const FLATPAK_TARGET = "flatpak";
 
 const displayPath = (settings: DeploySettings, path: string): string => relative(settings.paths.root, path);
@@ -129,9 +134,12 @@ const writeManifest = (manifest: DeployManifest): void => {
     writeFileSync(manifest.path, manifest.contents);
 };
 
-const renderMetadata = (settings: DeploySettings): StagedMetadata => ({
+const translationDomain = (project: CatalogProject | null): string | null =>
+    project === null || project.catalogs.length === 0 ? null : project.domain;
+
+const renderMetadata = (settings: DeploySettings, project: CatalogProject | null): StagedMetadata => ({
     desktopEntry: renderDesktopEntry(settings),
-    metainfo: renderMetainfo(settings),
+    metainfo: renderMetainfo(settings, translationDomain(project)),
     mimePackage: renderMimePackage(settings),
 });
 
@@ -224,6 +232,22 @@ const warnUnusedMinimums = (settings: DeploySettings): void => {
     );
 };
 
+const warnUncoveredDebLibraries = (targets: DeployTarget[], settings: DeploySettings): void => {
+    const uncovered = uncoveredDebLibraries(settings);
+
+    if (uncovered.length === 0 || targets.every((target) => target.name !== DEB_TARGET)) {
+        return;
+    }
+
+    const listed = uncovered
+        .map(({ library, sharedLibraries }) => `${library} (${sharedLibraries.join(", ")})`)
+        .join(", ");
+    warn(
+        `The deb package depends on no package that provides ${listed}, so ${settings.name} fails to start ` +
+            "where those shared libraries are missing. List the Debian packages that ship them in `deploy.depends.deb`.",
+    );
+};
+
 const isPrebuiltFlatpak = (targets: DeployTarget[], settings: DeploySettings): boolean =>
     targets.some((target) => target.name === FLATPAK_TARGET) && settings.deploy.flatpak?.mode !== "source";
 
@@ -249,6 +273,18 @@ const sourceModeTools = (targets: DeployTarget[], settings: DeploySettings): Dep
     }
 
     return detectPackageManager(settings) === "pnpm" ? [FLATPAK_NODE_GENERATOR_PNPM] : [FLATPAK_NODE_GENERATOR];
+};
+
+const NFPM_TARGETS = new Set(["deb", "rpm"]);
+
+const packagingToolsFor = (targets: DeployTarget[], settings: DeploySettings): DeployTool[] => {
+    const nfpm = settings.deploy.tools?.nfpm;
+
+    if (nfpm === undefined || targets.every((target) => !NFPM_TARGETS.has(target.name))) {
+        return [];
+    }
+
+    return [configuredNfpmTool(settings.paths.root, nfpm)];
 };
 
 const isNodeRequired = (targets: DeployTarget[], settings: DeploySettings): boolean =>
@@ -278,10 +314,10 @@ const crossBuildToolsFor = (arches: DeployArchName[]): DeployTool[] =>
 
 const mutableCatalogTools = (project: CatalogProject): DeployTool[] => {
     if (project.catalogs.length === 0) {
-        return [MSGGREP, XGETTEXT];
+        return [MSGCAT, MSGGREP, XGETTEXT];
     }
 
-    return [MSGFMT, MSGGREP, ...(requiresCatalogInitialization(project) ? [MSGINIT] : []), MSGMERGE, XGETTEXT];
+    return [MSGCAT, MSGFMT, MSGGREP, ...(requiresCatalogInitialization(project) ? [MSGINIT] : []), MSGMERGE, XGETTEXT];
 };
 
 const catalogTools = (project: CatalogProject | null, shouldSkipBuild: boolean): DeployTool[] => {
@@ -299,9 +335,17 @@ const catalogTools = (project: CatalogProject | null, shouldSkipBuild: boolean):
 const preflight = ({ plan, settings, shouldPrintManifests, shouldSkipBuild }: PreflightRequest): void => {
     const { targets, arches, project } = plan;
 
+    if (isFlathubSubmission(settings, targets)) {
+        assertStandaloneProject(settings);
+    }
+
     const packagerTools = shouldPrintManifests
         ? []
-        : [...runtimeToolsFor(targets, settings, arches), ...targets.flatMap((target) => target.tools)];
+        : [
+              ...runtimeToolsFor(targets, settings, arches),
+              ...targets.flatMap((target) => target.tools),
+              ...packagingToolsFor(targets, settings),
+          ];
 
     const required = [
         DESKTOP_FILE_VALIDATE,
@@ -367,7 +411,7 @@ const resolveArchNames = (options: DeployOptions, deploy: DeployConfig): string[
 };
 
 const loadDeployConfig = async (options: DeployOptions): Promise<LoadedDeployConfig> => {
-    const { config, configFile, root } = await loadConfig(options.cwd, {
+    const { config, configFile, root, translationDomain } = await loadConfig(options.cwd, {
         mode: BUILD_MODE,
         configFile: options.configFile,
     });
@@ -376,7 +420,7 @@ const loadDeployConfig = async (options: DeployOptions): Promise<LoadedDeployCon
         throw missingDeployError(config.applicationId, readPackageManifest(root));
     }
 
-    return { config, configFile, root, deploy: config.deploy };
+    return { config, configFile, root, translationDomain, deploy: config.deploy };
 };
 
 const settingsFor = (plan: DeployPlan, options: DeployOptions, arch: DeployArchName): DeploySettings =>
@@ -395,7 +439,7 @@ const planDeploy = async (options: DeployOptions): Promise<DeployPlan> => {
         loaded,
         targets: targetsFor(resolveTargetNames(options, loaded.deploy)),
         arches: archesFor(resolveArchNames(options, loaded.deploy)),
-        project: resolveCatalogProject(loaded.root, loaded.config.applicationId),
+        project: resolveCatalogProject(loaded.root, loaded.translationDomain),
     };
 };
 
@@ -408,8 +452,7 @@ const synchronizeMetadataCatalogs = async (
         return;
     }
 
-    const srcDir = join(project.root, "src");
-    const sourceFiles = discoverSourceFiles(existsSync(srcDir) ? srcDir : project.root);
+    const sourceFiles = discoverSourceFilesIn(project.sourceDirs);
     const stagingDir = mkdtempSync(join(project.poDir, ".gtkx-deploy-i18n-"));
     const stagedTemplate = join(stagingDir, `${project.domain}.pot`);
     const template = join(project.poDir, `${project.domain}.pot`);
@@ -431,7 +474,7 @@ const buildApplication = async ({
     settings,
     buildOutDir,
 }: BuildApplicationRequest): Promise<StagedMetadata> => {
-    const templates = renderMetadata(settings);
+    const templates = renderMetadata(settings, plan.project);
 
     if (buildOutDir === null) {
         if (plan.project !== null) {
@@ -458,7 +501,7 @@ const buildApplication = async ({
 
 const buildArchPayload = async ({ options, plan, settings, metadata }: BuildPayloadRequest): Promise<DeployPayload> => {
     validateMetadata(settings, metadata, isFlathubSubmission(settings, plan.targets));
-    const buildManifest = readBuildManifest(settings, plan.loaded);
+    const buildManifest = readBuildManifest(settings, { ...plan.loaded, entry: options.entry });
 
     const builtSettings: DeploySettings = {
         ...settings,
@@ -487,14 +530,14 @@ const buildArchPayload = async ({ options, plan, settings, metadata }: BuildPayl
     };
 };
 
-const renderTargetManifests = (
+const renderTargetManifests = async (
     targets: DeployTarget[],
     payload: DeployPayload,
-): Map<DeployTarget, DeployManifest[]> => {
+): Promise<Map<DeployTarget, DeployManifest[]>> => {
     const rendered: Map<DeployTarget, DeployManifest[]> = new Map();
 
     for (const target of targets) {
-        const manifests = target.render(payload);
+        const manifests = await target.render(payload);
 
         for (const manifest of manifests) {
             writeManifest(manifest);
@@ -537,7 +580,7 @@ const deployArch = async (request: ArchRunRequest): Promise<DeployArtifact[]> =>
     const { options, plan, arch, metadata } = request;
     const settings = settingsFor(plan, options, arch);
     const payload = await buildArchPayload({ options, plan, settings, metadata });
-    const rendered = renderTargetManifests(plan.targets, payload);
+    const rendered = await renderTargetManifests(plan.targets, payload);
 
     if (options.shouldPrintManifests) {
         const count = rendered.values().toArray().flat().length;
@@ -586,7 +629,10 @@ const runDeploy = async (options: DeployOptions): Promise<void> => {
 
     const plan = await regenerate(options, planned);
     const settings = settingsFor(plan, options, plan.arches[0]);
-    const buildOutDir = options.shouldSkipBuild ? null : resolveBuildOutDir(settings.paths.root, settings.paths.dist);
+    warnUncoveredDebLibraries(plan.targets, settings);
+    const buildOutDir = options.shouldSkipBuild
+        ? null
+        : resolveBuildOutDir(settings.paths.root, settings.paths.dist, settings.paths.outDir);
     using preparedDeployOutput = prepareDeployOutDir(settings.paths.root, settings.paths.outDir);
     const metadata = await buildApplication({ options, plan, settings, buildOutDir });
     const artifacts: DeployArtifact[] = [];

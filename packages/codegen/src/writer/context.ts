@@ -4,9 +4,13 @@ import { declaredTypeNames, type GirNamespace } from "../gir/namespace.js";
 import { namespaceOverrides } from "../store/gi/overrides.js";
 import { type Declaration, ModuleBuilder } from "./module.js";
 
+type GeneratedClass = {
+    className: string;
+    glibTypeName: string;
+};
+
 type BootstrapCallOptions = {
     moduleExports?: string[];
-    runtimeImports?: string[];
 };
 
 const addExternalNamespaceImport = (context: ModuleContext, packageName: string, namespaceName: string): void => {
@@ -32,7 +36,7 @@ class ModuleContext {
     public externalDependencies: Set<string> = new Set();
     public bootstrapCalls: string[] = [];
     public bootstrapModuleExports: Set<string> = new Set();
-    public bootstrapRuntimeImports: Set<string> = new Set();
+    public generatedClasses: GeneratedClass[] = [];
 
     constructor(namespace: GirNamespace, library: Library) {
         this.namespace = namespace;
@@ -77,14 +81,9 @@ class ModuleContext {
 
     addBootstrapCall(code: string, options: BootstrapCallOptions = {}): void {
         const moduleExports = options.moduleExports ?? [];
-        const runtimeImports = options.runtimeImports ?? [];
 
         for (const name of moduleExports) {
             this.bootstrapModuleExports.add(name);
-        }
-
-        for (const name of runtimeImports) {
-            this.bootstrapRuntimeImports.add(name);
         }
 
         this.bootstrapCalls.push(code);
@@ -170,4 +169,4 @@ class ModuleContext {
     }
 }
 
-export { ModuleContext };
+export { type GeneratedClass, ModuleContext };

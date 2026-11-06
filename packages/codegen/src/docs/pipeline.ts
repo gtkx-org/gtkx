@@ -14,7 +14,9 @@ import { arrayGuard, hasFields, isString } from "../guards.js";
 import { readJsonFile } from "../json.js";
 import { setAcceptedChildTypes } from "../store/jsx/accepted-child-types.js";
 import { type ElementProps, setElementProps } from "../store/jsx/element-prop-imports.js";
+import { lazyOmittedProps } from "../store/jsx/element-prop-types.js";
 import { isMountableElement } from "../store/jsx/generated-elements.js";
+import { buildGirIndex } from "../store/jsx/gir-index.js";
 import { collectIntrinsicElementClasses, type GlibNamedClass } from "../store/jsx/intrinsic-elements.js";
 import { type OmittedProps, setOmittedProps } from "../store/jsx/omitted-props.js";
 import { type ElementPageContext, renderElementPage } from "./element-page.js";
@@ -47,6 +49,7 @@ type DocsOptions = {
     props?: ElementProps;
     omittedProps?: OmittedProps;
     acceptedChildTypes?: Record<string, string[]>;
+    lazyElements?: string[];
     isForced?: boolean;
 };
 
@@ -182,7 +185,7 @@ const rootIndexPage = (namespaces: DocsNamespace[], libraries: string[], linkSty
         "- **Props** derived from GObject properties, plus the element props GTKX adds (such as `children` " +
             "and named slots), with types, defaults, and upstream documentation.",
         "- **Signals** as `on<Signal>` handler props with their exact handler signatures.",
-        "- **Static methods** available on the matching class from `@gtkx/gi/<namespace>`.",
+        "- **Constructors** and **static methods** available on the matching class from `@gtkx/gi/<namespace>`.",
         "- **Methods** available on the underlying instance through the `ref` prop.",
         "",
         "## Namespaces",
@@ -287,8 +290,9 @@ const generatePages = (input: {
     linkStyle: DocsLinkStyle;
     library: Library;
     props: PropsCatalog;
+    lazyElements: string[];
 }): GeneratedDocs => {
-    const { options, basePath, linkStyle, library, props } = input;
+    const { options, basePath, linkStyle, library, props, lazyElements } = input;
     const intrinsicElements = collectIntrinsicElementClasses(library);
     const byNamespace = groupElementsByNamespace(intrinsicElements);
     const linkByGlibName = buildElementLinks(intrinsicElements, basePath, linkStyle);
@@ -296,6 +300,7 @@ const generatePages = (input: {
         library,
         linkFor: (glibName) => linkByGlibName.get(glibName),
         handwrittenProps: props.byType,
+        lazyOmittedProps: lazyOmittedProps(buildGirIndex(library), lazyElements),
     };
     const pages: Page[] = [];
     const namespaces: DocsNamespace[] = [];
@@ -370,7 +375,7 @@ const assertOwnedOutDir = (options: DocsOptions, manifest: DocsManifest | undefi
     );
 };
 
-const clearOutDir = (options: DocsOptions, manifest: DocsManifest | undefined): void => {
+const clearOutDir = (outDir: string, manifest: DocsManifest | undefined): void => {
     if (manifest === undefined) {
         return;
     }
@@ -383,7 +388,7 @@ const clearOutDir = (options: DocsOptions, manifest: DocsManifest | undefined): 
     ];
 
     for (const entry of entries) {
-        rmSync(join(options.outDir, entry), { recursive: true, force: true });
+        rmSync(join(outDir, entry), { recursive: true, force: true });
     }
 };
 
@@ -418,6 +423,7 @@ const docsFingerprintInput = (options: DocsOptions): DocsFingerprintInput => ({
     props: options.props ?? {},
     omittedProps: options.omittedProps ?? {},
     acceptedChildTypes: options.acceptedChildTypes ?? {},
+    lazyElements: options.lazyElements ?? [],
 });
 
 const writeDocs = (options: DocsOptions): DocsResult => {
@@ -443,8 +449,15 @@ const writeDocs = (options: DocsOptions): DocsResult => {
         declarationDir:
             options.declarationDir ?? freshDeclarationDir(input.resolveFrom, giInputs(options, library.girFiles)),
     });
-    const { pages, namespaces } = generatePages({ options, basePath: input.basePath, linkStyle, library, props });
-    clearOutDir(options, previous);
+    const { pages, namespaces } = generatePages({
+        options,
+        basePath: input.basePath,
+        linkStyle,
+        library,
+        props,
+        lazyElements: input.lazyElements,
+    });
+    clearOutDir(options.outDir, previous);
     mkdirSync(options.outDir, { recursive: true });
     const manifest: DocsManifest = { generator: MANIFEST_GENERATOR, namespaces };
     writeFileSync(manifestPath, JSON.stringify(manifest));
@@ -455,4 +468,19 @@ const writeDocs = (options: DocsOptions): DocsResult => {
     return { isRegenerated: true, namespaces };
 };
 
-export { writeDocs };
+/** Removes the pages `writeDocs` generated into `outDir`, and the directory once nothing else is left in it. */
+const removeDocs = (outDir: string): void => {
+    const manifest = readDocsManifest(join(outDir, MANIFEST_FILENAME));
+
+    if (manifest === undefined) {
+        return;
+    }
+
+    clearOutDir(outDir, manifest);
+
+    if (readdirSync(outDir).length === 0) {
+        rmSync(outDir, { recursive: true, force: true });
+    }
+};
+
+export { removeDocs, writeDocs };

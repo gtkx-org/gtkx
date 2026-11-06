@@ -93,6 +93,16 @@ describe("style prop", () => {
         expect(getMinWidth(styled)).toBeGreaterThanOrEqual(WIDE);
     });
 
+    it("applies the per-side and font longhands GTK accepts", async () => {
+        const { plain, styled } = await renderPair({
+            borderLeftStyle: "solid",
+            borderLeftWidth: WIDE,
+            borderTopLeftRadius: 4,
+            fontVariantNumeric: "tabular-nums",
+        });
+        expect(getMinWidth(styled)).toBeGreaterThanOrEqual(getMinWidth(plain) + WIDE);
+    });
+
     it("resolves a GTK named color", async () => {
         const { plain, styled } = await renderPair({ color: "alpha(@theme_fg_color, 0.4)" });
         expect(getAlpha(styled)).toBeCloseTo(getAlpha(plain) * NAMED_ALPHA, 2);
@@ -108,6 +118,25 @@ describe("style prop", () => {
         expect(getColor(styled)).toEqual(RED);
         styled.setStateFlags(Gtk.StateFlags.PRELIGHT, false);
         expect(getColor(styled)).toEqual(GREEN);
+    });
+
+    it("sets a custom property that descendants read through var()", async () => {
+        const ref = createRef<Gtk.Label>();
+        const laneRef = createRef<Gtk.Box>();
+        const Lane = ({ color }: { color: string }): ReactNode => (
+            <GtkBox ref={laneRef} style={{ "--lane-color": color, "&:hover": { "--lane-color": BLUE_CSS } }}>
+                <GtkLabel ref={ref} style={{ color: "var(--lane-color)" }}>
+                    lane
+                </GtkLabel>
+            </GtkBox>
+        );
+
+        const { rerender } = await render(<Lane color={RED_CSS} />);
+        expect(getColor(ref.current)).toEqual(RED);
+        await rerender(<Lane color={GREEN_CSS} />);
+        expect(getColor(ref.current)).toEqual(GREEN);
+        mounted(laneRef.current).setStateFlags(Gtk.StateFlags.PRELIGHT, false);
+        expect(getColor(ref.current)).toEqual(BLUE);
     });
 
     it("preserves valid selector text matching the named-color escape prefix", async () => {

@@ -1,4 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
+import type { PointerInput } from "@gtkx/testing";
 import {
     invalidRequestError,
     methodNotFoundError,
@@ -9,14 +10,16 @@ import {
     ServerRequestParamsSchemas,
     widgetNotFoundError,
 } from "@gtkx/mcp/internal";
+import { errorMessage } from "@gtkx/utils";
 import type { WidgetRegistry } from "./widget-registry.js";
 import { serializeWidget } from "./serialize-widget.js";
-import { loadTestingModule, type TestingModule } from "./testing-loader.js";
+import type { TestingModule } from "./testing-loader.js";
 import { readWidgetProperties } from "./widget-properties.js";
 
 type HandlerContext = {
-    app: Gtk.Application;
     registry: WidgetRegistry;
+    loadTesting: () => Promise<TestingModule>;
+    reportUncaughtError: (cause: unknown) => void;
 };
 
 type ValidatedHandler = (ctx: HandlerContext, params: unknown) => Promise<Result>;
@@ -25,7 +28,8 @@ type WidgetParams = { widgetId?: string | undefined };
 type TargetedHandler<Params> = (ctx: HandlerContext, target: WidgetTarget, params: Params) => Promise<Result>;
 type QueryParams = ServerRequestParams<"widget.query">;
 type QueryBy = QueryParams["by"];
-type QueryRunner = (testing: TestingModule, app: Gtk.Application, params: QueryParams) => Promise<Gtk.Widget[]>;
+type WindowQuery = (root: Gtk.Window) => Gtk.Widget[];
+type QueryRunner = (testing: TestingModule, params: QueryParams) => WindowQuery;
 
 const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
     "app.getWindows": validated(ServerRequestParamsSchemas["app.getWindows"], ({ registry }) =>
@@ -36,18 +40,20 @@ const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
             })),
         }),
     ),
-    "widget.getTree": validated(ServerRequestParamsSchemas["widget.getTree"], async ({ app, registry }, params) => {
-        const testing = await loadTestingModule();
-        const container = params.rootId === undefined ? app : requireWidget(registry, params.rootId);
-
-        return {
-            tree: testing.prettyWidget(container, {
-                getId: (w) => registry.getOrCreateId(w),
+    "widget.getTree": validated(
+        ServerRequestParamsSchemas["widget.getTree"],
+        async ({ registry, loadTesting }, params) => {
+            const testing = await loadTesting();
+            const roots = params.rootId === undefined ? registry.toplevels() : [requireWidget(registry, params.rootId)];
+            const options = {
+                getId: (w: Gtk.Widget) => registry.getOrCreateId(w),
                 shouldHighlight: false,
                 ...(params.maxDepth !== undefined && { maxDepth: params.maxDepth }),
-            }),
-        };
-    }),
+            };
+
+            return { tree: roots.map((root) => testing.prettyWidget(root, options)).join("\n") };
+        },
+    ),
     "widget.query": validated(ServerRequestParamsSchemas["widget.query"], handleQuery),
     "widget.getProps": targeted(
         ServerRequestParamsSchemas["widget.getProps"],
@@ -59,28 +65,68 @@ const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
                 ...serializeWidget(widget, (target) => registry.getOrCreateId(target), testing, params.maxDepth),
             }),
     ),
-    "widget.click": targeted(ServerRequestParamsSchemas["widget.click"], async (_ctx, { testing, widget }) => {
-        await testing.userEvent.click(widget);
+    "widget.click": targeted(ServerRequestParamsSchemas["widget.click"], async (ctx, { testing, widget }) => {
+        const { isHandled } = await interact(ctx, testing, () => testing.userEventReports.click(widget));
 
-        return { success: true };
+        return { success: true, isHandled };
     }),
-    "widget.type": targeted(ServerRequestParamsSchemas["widget.type"], async (_ctx, { testing, widget }, params) => {
-        if (params.clear) {
-            await testing.userEvent.clear(widget);
+    "widget.type": targeted(ServerRequestParamsSchemas["widget.type"], async (ctx, { testing, widget }, params) => {
+        const held = testing.userEventReports.heldModifiers();
+
+        if (held.length > 0) {
+            throw new Error(heldModifiersTypingError(held));
         }
 
-        await testing.userEvent.type(widget, params.text);
+        await interact(ctx, testing, async () => {
+            if (params.clear) {
+                await testing.userEvent.clear(widget);
+            }
+
+            await testing.userEvent.type(widget, params.text.replaceAll("{", "{{"));
+        });
 
         return { success: true };
     }),
+    "widget.pressKeys": validated(ServerRequestParamsSchemas["widget.pressKeys"], async (ctx, params) => {
+        const testing = await ctx.loadTesting();
+        const widget = params.widgetId === undefined ? null : requireWidget(ctx.registry, params.widgetId);
+        const misdirected = widget === null ? null : misdirectedKeys(widget);
+        const { unhandledKeys } = await interact(ctx, testing, () =>
+            widget === null
+                ? testing.userEventReports.keyboard(params.keys)
+                : testing.userEventReports.keyboard(widget, params.keys),
+        );
+
+        const heldModifiers = testing.userEventReports.heldModifiers();
+
+        return {
+            success: true,
+            unhandledKeys,
+            ...(heldModifiers.length > 0 && { heldModifiers }),
+            ...(misdirected !== null && {
+                focusWidgetId: ctx.registry.getOrCreateId(misdirected.focus),
+                ...(misdirected.ancestor !== null && {
+                    focusableAncestorId: ctx.registry.getOrCreateId(misdirected.ancestor),
+                }),
+            }),
+        };
+    }),
+    "widget.pointer": targeted(
+        ServerRequestParamsSchemas["widget.pointer"],
+        async (ctx, { testing, widget }, params) => {
+            await interact(ctx, testing, () => testing.userEvent.pointer(widget, params.input as PointerInput));
+
+            return { success: true };
+        },
+    ),
     "widget.fireEvent": targeted(
         ServerRequestParamsSchemas["widget.fireEvent"],
-        async (_ctx, { testing, widget }, params) => {
+        async (ctx, { testing, widget }, params) => {
             const signalArgs = (params.args ?? []).map((arg) => extractSignalArg(arg));
             const isRealized = widget.getRealized();
             const isMapped = widget.getMapped();
-            const isSensitive = widget.getSensitive();
-            await testing.fireEvent(widget, params.signal, ...signalArgs);
+            const isSensitive = widget.isSensitive();
+            await interact(ctx, testing, () => testing.fireEvent(widget, params.signal, ...signalArgs));
 
             return {
                 signal: params.signal,
@@ -106,7 +152,7 @@ const SEARCHED_BY: Record<QueryBy, string> = {
     text: "the text the widget renders",
     name:
         'the widget name (gtk_widget_get_name, which reports the GType name such as "GtkButton" when no name ' +
-        "was set), the accessible label, and the text the widget renders",
+        "was set), the accessible name, the accessible label, and the text the widget renders",
     labelText: "the accessible label, the labelled-by relation, and the label whose mnemonic targets the widget",
 };
 
@@ -129,13 +175,14 @@ function targeted<Params extends WidgetParams>(
     schema: ParamsSchema<Params>,
     handler: TargetedHandler<Params>,
 ): ValidatedHandler {
-    return validated(schema, async (ctx, params) =>
-        handler(ctx, await widgetTarget(ctx.registry, params.widgetId), params),
-    );
+    return validated(schema, async (ctx, params) => handler(ctx, await widgetTarget(ctx, params.widgetId), params));
 }
 
-const widgetTarget = async (registry: WidgetRegistry, widgetId: string | undefined): Promise<WidgetTarget> => ({
-    testing: await loadTestingModule(),
+const widgetTarget = async (
+    { registry, loadTesting }: HandlerContext,
+    widgetId: string | undefined,
+): Promise<WidgetTarget> => ({
+    testing: await loadTesting(),
     widget: requireWidget(registry, widgetId),
 });
 
@@ -151,6 +198,87 @@ const requireWidget = (registry: WidgetRegistry, widgetId: string | undefined): 
     }
 
     return widget;
+};
+
+const isFocusable = (widget: Gtk.Widget): boolean => widget.getFocusable() && widget.getCanFocus();
+
+const canTakeFocus = (widget: Gtk.Widget): boolean => {
+    const delegate = widget instanceof Gtk.Editable ? widget.getDelegate() : null;
+
+    return isFocusable(widget) || (delegate !== null && isFocusable(delegate));
+};
+
+const focusableAncestor = (widget: Gtk.Widget): Gtk.Widget | null => {
+    for (let parent = widget.getParent(); parent !== null; parent = parent.getParent()) {
+        if (parent instanceof Gtk.Window) {
+            return null;
+        }
+
+        if (canTakeFocus(parent)) {
+            return parent;
+        }
+    }
+
+    return null;
+};
+
+/**
+ * Finds the window's focus widget that keys sent to a widget which cannot take focus reach instead, through the
+ * window's bindings such as {Space} and {Enter} activating its focus widget, together with the widget's nearest
+ * ancestor that can take focus. Returns null when the widget can take focus, holds the focus, or its focusable
+ * ancestor already does. A widget that passes its focus to a child, such as a menu button to its button, takes it
+ * here, as the keyboard input would before pressing the keys.
+ */
+const misdirectedKeys = (widget: Gtk.Widget): { focus: Gtk.Widget; ancestor: Gtk.Widget | null } | null => {
+    const root = widget.getRoot();
+    const focus = root instanceof Gtk.Window ? root.getFocus() : null;
+
+    if (canTakeFocus(widget) || focus === null || focus === widget || focus.isAncestor(widget) || widget.grabFocus()) {
+        return null;
+    }
+
+    const ancestor = focusableAncestor(widget);
+
+    return ancestor === focus ? null : { focus, ancestor };
+};
+
+const collectedErrors = (cause: unknown): unknown[] => (cause instanceof AggregateError ? cause.errors : [cause]);
+
+const withPointerTargetId = (registry: WidgetRegistry, testing: TestingModule, cause: unknown): unknown => {
+    const target = testing.getPointerTarget(cause);
+
+    if (target === null) {
+        return cause;
+    }
+
+    return new Error(`${errorMessage(cause)}. Its widget ID is "${registry.getOrCreateId(target)}".`, { cause });
+};
+
+const heldModifiersTypingError = (held: string[]): string =>
+    `${held.join(" and ")} ${held.length === 1 ? "is" : "are"} still held from an earlier gtkx_press_keys call, so ` +
+    "typing would press each key as a shortcut instead of entering text. Release " +
+    `${held.length === 1 ? "it" : "them"} first with gtkx_press_keys \`${held.map((name) => `{/${name}}`).join("")}\`.`;
+
+const interact = async <T>(ctx: HandlerContext, testing: TestingModule, run: () => Promise<T>): Promise<T> => {
+    try {
+        return await run();
+    } catch (cause) {
+        if (testing.isUsageError(cause)) {
+            throw withPointerTargetId(ctx.registry, testing, cause);
+        }
+
+        const errors = collectedErrors(cause);
+
+        for (const error of errors) {
+            ctx.reportUncaughtError(error);
+        }
+
+        if (!testing.isUncaughtError(cause)) {
+            throw cause;
+        }
+
+        throw new Error(errors.map((error) => errorMessage(error)).join("\n"), { cause });
+    }
 };
 
 const extractSignalArg = (arg: unknown): unknown => {
@@ -184,15 +312,7 @@ const resolveRole = (value: string | number): Gtk.AccessibleRole | undefined => 
     return typeof resolved === "number" ? resolved : undefined;
 };
 
-const matchesOrEmpty = async (find: () => Promise<Gtk.Widget[]>): Promise<Gtk.Widget[]> => {
-    try {
-        return await find();
-    } catch {
-        return [];
-    }
-};
-
-function runRoleQuery(testing: TestingModule, app: Gtk.Application, params: QueryParams): Promise<Gtk.Widget[]> {
+function runRoleQuery(testing: TestingModule, params: QueryParams): WindowQuery {
     const roleValue = resolveRole(params.value);
 
     if (roleValue === undefined) {
@@ -202,35 +322,62 @@ function runRoleQuery(testing: TestingModule, app: Gtk.Application, params: Quer
         );
     }
 
-    return matchesOrEmpty(() => testing.findAllByRole(app, roleValue, params.options));
+    return (root) => testing.queryAllByRole(root, roleValue, params.options);
 }
 
-function runTextQuery(testing: TestingModule, app: Gtk.Application, params: QueryParams): Promise<Gtk.Widget[]> {
-    return matchesOrEmpty(() => testing.findAllByText(app, String(params.value), params.options));
+function runTextQuery(testing: TestingModule, params: QueryParams): WindowQuery {
+    return (root) => testing.queryAllByText(root, String(params.value), params.options);
 }
 
-function runLabelTextQuery(testing: TestingModule, app: Gtk.Application, params: QueryParams): Promise<Gtk.Widget[]> {
-    return matchesOrEmpty(() => testing.findAllByLabelText(app, String(params.value), params.options));
+function runLabelTextQuery(testing: TestingModule, params: QueryParams): WindowQuery {
+    return (root) => testing.queryAllByLabelText(root, String(params.value), params.options);
 }
 
-async function runNameQuery(testing: TestingModule, app: Gtk.Application, params: QueryParams): Promise<Gtk.Widget[]> {
-    const matches = await Promise.all([
-        matchesOrEmpty(() => testing.findAllByName(app, String(params.value), params.options)),
-        runLabelTextQuery(testing, app, params),
-        runTextQuery(testing, app, params),
-    ]);
+function runAccessibleNameQuery(testing: TestingModule, params: QueryParams): WindowQuery {
+    const options = { ...params.options, name: String(params.value) };
 
-    return [...new Set(matches.flat())];
+    return (root) => {
+        const widgets = [...testing.getRoles(root).values()].flat();
+        const roles = new Set(widgets.map((widget) => widget.getAccessibleRole()));
+        const hasLabels = roles.delete(Gtk.AccessibleRole.LABEL);
+        const ordered = hasLabels ? [...roles, Gtk.AccessibleRole.LABEL] : [...roles];
+
+        return ordered.flatMap((role) => testing.queryAllByRole(root, role, options));
+    };
+}
+
+function runNameQuery(testing: TestingModule, params: QueryParams): WindowQuery {
+    const byAccessibleName = runAccessibleNameQuery(testing, params);
+    const byLabel = runLabelTextQuery(testing, params);
+    const byText = runTextQuery(testing, params);
+
+    return (root) => [
+        ...testing.queryAllByName(root, String(params.value), params.options),
+        ...byAccessibleName(root),
+        ...byLabel(root),
+        ...byText(root),
+    ];
 }
 
 const emptyQueryHint = (params: QueryParams): string =>
     `Nothing matched by:"${params.by}" value:"${String(params.value)}", which compared ${SEARCHED_BY[params.by]}. ` +
-    'Call gtkx_get_widget_tree to see what is mounted; by:"name" is the widest match, and by:"role" accepts ' +
-    "options.name to match the accessible name of a known role.";
+    'Call gtkx_get_widget_tree to see what is mounted; by:"name" is the widest match, by:"role" accepts ' +
+    "options.name to match the accessible name of a known role, and options.exact: false matches part of the " +
+    "text in any case.";
 
-async function handleQuery({ app, registry }: HandlerContext, params: QueryParams): Promise<Result> {
-    const testing = await loadTestingModule();
-    const widgets = await QUERY_RUNNERS[params.by](testing, app, params);
+async function handleQuery({ registry, loadTesting }: HandlerContext, params: QueryParams): Promise<Result> {
+    const testing = await loadTesting();
+    const query = QUERY_RUNNERS[params.by](testing, params);
+    const matchToplevels = (): Gtk.Widget[] => {
+        const matches = new Set(registry.toplevels().flatMap(query));
+
+        if (matches.size === 0) {
+            throw new Error(emptyQueryHint(params));
+        }
+
+        return [...matches];
+    };
+    const widgets = await testing.waitFor(matchToplevels).catch((): Gtk.Widget[] => []);
     const resolveId = (widget: Gtk.Widget): string => registry.getOrCreateId(widget);
 
     return {
@@ -251,10 +398,10 @@ const defaultScreenshotTarget = (registry: WidgetRegistry): Gtk.Widget => {
 };
 
 async function handleScreenshot(
-    { registry }: HandlerContext,
+    { registry, loadTesting }: HandlerContext,
     params: ServerRequestParams<"widget.screenshot">,
 ): Promise<Result> {
-    const testing = await loadTestingModule();
+    const testing = await loadTesting();
     const target = params.windowId ? requireWidget(registry, params.windowId) : defaultScreenshotTarget(registry);
     const result = await testing.screenshot(target, { path: params.path });
 

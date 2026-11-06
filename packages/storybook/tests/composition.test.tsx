@@ -66,6 +66,20 @@ describe("portable native stories", () => {
         expect(stories.WithStep.args).toEqual({ step: 3 });
     });
 
+    it("composes a story that declares its own args type", async () => {
+        const { Pair } = composeStories(stories);
+        expectTypeOf(Pair).parameter(0).toEqualTypeOf<Partial<{ first: number; second: number }>>();
+        const Captioned: StoryObj<CounterProps & { subtitle?: string }> = { args: { subtitle: "Story subtitle" } };
+        const composed = composeStories({ default: stories.default, Captioned });
+        expectTypeOf(composed.Captioned).parameter(0).toEqualTypeOf<Partial<CounterProps & { subtitle?: string }>>();
+        await render(<Pair second={5} />);
+
+        const counts = screen.getAllByName("count");
+        expect(counts).toHaveLength(2);
+        expect(counts[0]).toHaveTextContent(/^1$/);
+        expect(counts[1]).toHaveTextContent(/^5$/);
+    });
+
     it("combines preview, meta, and story annotations in the native tree", async () => {
         const Decorated = composeStory(stories.Decorated, stories.default, preview, "Decorated");
         await render(<Decorated />);

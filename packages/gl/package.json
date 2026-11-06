@@ -48,8 +48,8 @@
         "node": ">=26.7.0"
     },
     "dependencies": {
-        "@gtkx/runtime": "workspace:*",
-        "@gtkx/native": "workspace:*"
+        "@gtkx/runtime": "workspace:^",
+        "@gtkx/native": "workspace:^"
     },
     "devDependencies": {
         "@gtkx/codegen": "workspace:*",

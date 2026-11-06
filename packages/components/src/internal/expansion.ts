@@ -3,7 +3,7 @@ import type { Collection } from "./collection.js";
 import type { TreeExpansion } from "./tree-expansion.js";
 import type { VisibleOrder, WalkOptions } from "./tree-order.js";
 import { isCollectionIdle } from "./collection.js";
-import { useControlledSync } from "./controlled-sync.js";
+import { hasSameIds, useControlledSync } from "./controlled-sync.js";
 import { joinParts } from "./keys.js";
 import { trackPaths } from "./slots.js";
 import { adoptOrder, markExpanded, orderFor } from "./tree-expansion.js";
@@ -34,29 +34,44 @@ function hasSameExpansion(expanded: Set<string>, wanted: Set<string>): boolean {
     return expanded.size === wanted.size && wanted.isSubsetOf(expanded);
 }
 
-function toggleOptions(collection: Collection, wanted: Set<string>): WalkOptions {
+function collapsingPositions(expansion: TreeExpansion, wanted: Set<string>): number[] {
+    const positions: number[] = [];
+
+    walkVisible({
+        index: expansion.index,
+        slots: expansion.slots,
+        marks: trackPaths(expansion.expanded.difference(wanted)),
+        visit: (row) => {
+            if (row.isMarked) {
+                positions.push(row.position);
+            }
+        },
+    });
+
+    return positions;
+}
+
+function expandOptions(collection: Collection, wanted: Set<string>): WalkOptions {
     const { expansion } = collection;
 
     return {
         index: expansion.index,
         slots: trackPaths(wanted),
-        marks: trackPaths(wanted.symmetricDifference(expansion.expanded)),
+        marks: trackPaths(wanted.difference(expansion.expanded)),
         visit: (row) => {
             if (row.isMarked) {
-                collection.rowAt(row.position)?.setExpanded(row.isOpen);
+                collection.rowAt(row.position)?.setExpanded(true);
             }
         },
     };
 }
 
-function walkApplying(expansion: TreeExpansion, options: WalkOptions): VisibleOrder {
-    expansion.isApplying = true;
-
-    try {
-        return walkVisible(options);
-    } finally {
-        expansion.isApplying = false;
+function toggleRows(collection: Collection, wanted: Set<string>): VisibleOrder {
+    for (const position of collapsingPositions(collection.expansion, wanted).toReversed()) {
+        collection.rowAt(position)?.setExpanded(false);
     }
+
+    return walkVisible(expandOptions(collection, wanted));
 }
 
 function applyWanted(collection: Collection, expandedIds: string[]): void {
@@ -67,19 +82,29 @@ function applyWanted(collection: Collection, expandedIds: string[]): void {
         return;
     }
 
-    adoptOrder(expansion, walkApplying(expansion, toggleOptions(collection, wanted)));
+    expansion.isApplying = true;
+
+    try {
+        adoptOrder(expansion, toggleRows(collection, wanted));
+    } finally {
+        expansion.isApplying = false;
+    }
+}
+
+function rememberExpansion(context: ExpansionContext, expandedPaths: string[]): boolean {
+    const key = joinParts(expandedPaths);
+    const isKnown = context.last.key === key;
+    context.last.key = key;
+
+    return isKnown;
 }
 
 function reportExpansion(context: ExpansionContext): void {
     const { expandedIds, expandedPaths } = orderFor(context.collection.expansion);
-    const key = joinParts(expandedPaths);
 
-    if (context.last.key === key) {
-        return;
+    if (!rememberExpansion(context, expandedPaths)) {
+        context.onExpandedChange?.([...expandedIds]);
     }
-
-    context.last.key = key;
-    context.onExpandedChange?.([...expandedIds]);
 }
 
 function applyControlledExpansion(context: ExpansionContext, expandedIds: string[] | null | undefined): void {
@@ -87,8 +112,15 @@ function applyControlledExpansion(context: ExpansionContext, expandedIds: string
         return;
     }
 
-    applyWanted(context.collection, expandedIds ?? []);
-    reportExpansion(context);
+    const requested = expandedIds ?? [];
+    applyWanted(context.collection, requested);
+    const order = orderFor(context.collection.expansion);
+
+    if (hasSameIds(order.expandedIds, requested)) {
+        rememberExpansion(context, order.expandedPaths);
+    } else {
+        reportExpansion(context);
+    }
 }
 
 function didRowDrift(collection: Collection, change: ItemsChange): boolean {

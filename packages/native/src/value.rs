@@ -3,7 +3,7 @@ use std::ffi::c_void;
 use napi::bindgen_prelude::*;
 use napi::{Env, ValueType};
 
-use crate::handle::{Handle, HandleClass, INVALIDATED_HANDLE};
+use crate::handle::{Handle, HandleClass};
 
 mod closure;
 pub(crate) mod roots;
@@ -56,7 +56,8 @@ fn extract_handle_ptr(
             external.retain_lease()?;
             anyhow::ensure!(
                 !external.is_invalidated(),
-                "The {type_name} handle refers to nothing: {INVALIDATED_HANDLE}"
+                "The {type_name} handle refers to nothing: {}",
+                external.ended_reason()
             );
             check(external)?;
             Ok(external.as_ptr())

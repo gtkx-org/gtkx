@@ -96,10 +96,17 @@ const restoreOutputDirectory = (
     hasPrevious: boolean,
     temporary: DisposableDirectory,
 ): void => {
-    rmSync(path, { recursive: true, force: true });
+    try {
+        rmSync(path, { recursive: true, force: true });
 
-    if (hasPrevious) {
-        renameSync(previous, path);
+        if (hasPrevious) {
+            renameSync(previous, path);
+        }
+    } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        const kept = hasPrevious ? ` Its previous contents are kept in ${previous}.` : "";
+
+        throw new Error(`Could not restore ${path} after the failure: ${reason}.${kept}`, { cause: error });
     }
 
     temporary.remove();

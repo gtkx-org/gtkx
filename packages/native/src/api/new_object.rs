@@ -11,7 +11,6 @@ use crate::ffi::codec::{
     Ownership, acquire_construction_ref, release_construction_ref, tracked_gobject_value,
 };
 use crate::host::callback_error::CallbackErrorScope;
-use crate::host::log_writer::CriticalTrap;
 use crate::value::{pending_wrapper, wrapper};
 
 type Associator<'a> = Function<'a, FnArgs<(Unknown<'a>, Unknown<'a>)>, ()>;
@@ -93,12 +92,11 @@ fn ensure_instantiable(type_: glib::Type) -> Result<()> {
 unsafe fn construct(
     type_: glib::Type,
     properties: &ConstructProperties,
-) -> Result<(*mut gobject_ffi::GObject, Option<String>)> {
+) -> Result<*mut gobject_ffi::GObject> {
     let count = properties.count()?;
     let mut name_ptrs: Vec<*const c_char> =
         properties.names.iter().map(|name| name.as_ptr()).collect();
 
-    let trap = CriticalTrap::arm();
     let ptr = unsafe {
         gobject_ffi::g_object_new_with_properties(
             type_.into_glib(),
@@ -108,19 +106,14 @@ unsafe fn construct(
         )
     };
 
-    let critical = trap.disarm();
-
     if ptr.is_null() {
         return Err(Error::new(
             Status::GenericFailure,
-            critical.map_or_else(
-                || format!("new_object: could not construct an instance of '{type_}'"),
-                |critical| format!("new_object: {critical}"),
-            ),
+            format!("new_object: could not construct an instance of '{type_}'"),
         ));
     }
 
-    Ok((ptr, critical))
+    Ok(ptr)
 }
 
 fn associate_constructed(
@@ -203,7 +196,7 @@ pub fn new_object<'env>(
             crate::api::value_pointer::PropertyValueScope::for_values(env, &values)?;
         let guard =
             unsafe { pending_wrapper::push(type_.into_glib(), wrapper.raw(), associate.raw()) };
-        let (ptr, critical) = unsafe { construct(type_, &properties) }?;
+        let ptr = unsafe { construct(type_, &properties) }?;
         let existing = finish_construction(env, ptr, &guard, type_, &wrapper, &associate)?;
 
         for (name, value) in properties.names.iter().zip(&values) {
@@ -213,10 +206,7 @@ pub fn new_object<'env>(
             crate::api::value_pointer::retain_property_value(env, ptr, name, *value)?;
         }
 
-        match critical {
-            Some(message) => Err(Error::new(Status::GenericFailure, message)),
-            None => Ok(existing),
-        }
+        Ok(existing)
     })();
     drop(values);
     if CallbackErrorScope::has_error() {

@@ -11,6 +11,7 @@ import {
     GtkLabel,
     GtkListBox,
     GtkListBoxRow,
+    GtkRevealer,
     GtkScale,
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
@@ -129,7 +130,11 @@ describe("state matchers", () => {
             </GtkBox>,
         );
 
-        expect(await screen.findByText("Faded")).not.toBeVisible();
+        const faded = await screen.findByText("Faded");
+        expect(faded).not.toBeVisible();
+        expect(() => {
+            expect(faded).toBeVisible();
+        }).toThrow(/its ancestor <GENERIC> has opacity 0/);
         await render(<GtkButton label="Save" sensitive={false} />);
         const disabled = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Save" });
         expect(disabled).toBeDisabled();
@@ -142,6 +147,26 @@ describe("state matchers", () => {
         expect(enabled).not.toHaveRole(Gtk.AccessibleRole.CHECKBOX);
         expect(new Gtk.Label({ label: "Detached" })).not.toBeRooted();
         expect(null).not.toBeRooted();
+    });
+
+    it("treats a widget its container stops showing as hidden", async () => {
+        const Collapsible = ({ isRevealed }: { isRevealed: boolean }) => (
+            <GtkRevealer revealChild={isRevealed}>
+                <GtkBox>
+                    <GtkLabel>Details</GtkLabel>
+                </GtkBox>
+            </GtkRevealer>
+        );
+        const { rerender } = await render(<Collapsible isRevealed />);
+        const details = await screen.findByText("Details");
+        expect(details).toBeVisible();
+
+        await rerender(<Collapsible isRevealed={false} />);
+
+        expect(details).not.toBeVisible();
+        expect(() => {
+            expect(details).toBeVisible();
+        }).toThrow(/its ancestor <GENERIC> is not shown by its parent/);
     });
 
     it("read emptiness, validity and containment", async () => {
@@ -225,6 +250,26 @@ describe("state matchers", () => {
         expect(() => {
             expect(label).toBePartiallyPressed();
         }).toThrow();
+    });
+
+    it("point a toggle button to toBePressed and a check button to toBeChecked", async () => {
+        const { container } = await render(
+            <VBox>
+                <GtkCheckButton label="Accept" active={true} />
+                <GtkToggleButton label="Bold" active={true} />
+            </VBox>,
+        );
+
+        const view = within(container);
+        const toggle = await view.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, { name: "Bold" });
+        const check = await view.findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "Accept" });
+
+        expect(() => {
+            expect(toggle).toBeChecked();
+        }).toThrow("it exposes a pressed state instead; use toBePressed");
+        expect(() => {
+            expect(check).toBePressed();
+        }).toThrow("it exposes a checked state instead; use toBeChecked");
     });
 });
 

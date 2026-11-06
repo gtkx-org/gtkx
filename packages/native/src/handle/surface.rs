@@ -42,6 +42,10 @@ fn surface_fns() -> Option<(IsDestroyedFn, DestroyFn)> {
     Some(resolved)
 }
 
+pub(crate) fn is_surface(object: &glib::Object) -> bool {
+    surface_type().is_some_and(|surface_type| object.type_().is_a(surface_type))
+}
+
 pub(crate) fn awaits_destroy(object: &glib::Object) -> bool {
     if object.ref_count() != 1 {
         return false;

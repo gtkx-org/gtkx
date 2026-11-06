@@ -70,7 +70,17 @@ function createStackNavigator<
     const ParamList extends ParamListBase,
     const NavigatorID extends string | undefined = string | undefined,
     const TypeBag extends NavigatorTypeBagBase = StackTypeBag<ParamList, NavigatorID>,
-    const Config extends StaticConfig<TypeBag> | undefined = undefined,
+>(): TypedNavigator<TypeBag, undefined>;
+/** Creates a stack navigator rendered with `AdwNavigationView`: pushes and pops animate like native Adwaita pages. */
+function createStackNavigator<
+    const ParamList extends ParamListBase,
+    const NavigatorID extends string | undefined = string | undefined,
+    const TypeBag extends NavigatorTypeBagBase = StackTypeBag<ParamList, NavigatorID>,
+    const Config extends StaticConfig<TypeBag> = StaticConfig<TypeBag>,
+>(config: Config): TypedNavigator<TypeBag, Config>;
+function createStackNavigator<
+    const TypeBag extends NavigatorTypeBagBase,
+    const Config extends StaticConfig<TypeBag> | undefined,
 >(config?: Config): TypedNavigator<TypeBag, Config> {
     return createNavigatorFactory(StackNavigator)(config) as TypedNavigator<TypeBag, Config>;
 }

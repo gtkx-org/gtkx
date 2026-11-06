@@ -110,10 +110,12 @@ const FONT_EXTENTS_T: BoxedDescriptor = t.boxed("cairo_font_extents_t", {
 });
 
 const PATH_T: BoxedDescriptor = t.boxed("cairo_path_t", {
-    ownership: "full",
+    ownership: "borrowed",
     sharedLibrary: CAIRO_LIBRARY,
     freeFnName: "cairo_path_destroy",
 });
+
+const PATH_FULL_T: BoxedDescriptor = { ...PATH_T, ownership: "full" };
 
 const DOUBLE_BUFFER_T: BoxedDescriptor = t.boxed("double[]", { ownership: "borrowed", sharedLibrary: CAIRO_LIBRARY });
 
@@ -137,6 +139,7 @@ export {
     FONT_OPTIONS_T,
     GLYPH_T,
     MATRIX_T,
+    PATH_FULL_T,
     PATH_T,
     PATTERN_FULL_T,
     PATTERN_T,

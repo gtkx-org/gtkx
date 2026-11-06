@@ -1,25 +1,41 @@
-import { statSync } from "node:fs";
-import { normalize, resolve } from "node:path";
+import { sortStringsBy } from "@gtkx/utils";
+import { type Stats, statSync } from "node:fs";
+import { join, normalize, resolve } from "node:path";
 import type { DeployConfig, DeployExtraFile } from "../types.js";
+import { listFilesRecursive } from "../../internal/list-files.js";
 
 type ExtraFiles = NonNullable<DeployConfig["extraFiles"]>;
 type ExtraFileEntry = NonNullable<ExtraFiles[string]>;
 
 const OCTAL_RADIX = 8;
 
-const assertSourceFile = (root: string, file: DeployExtraFile): void => {
-    const source = resolve(root, file.source);
-
+const statSource = (root: string, file: DeployExtraFile): Stats => {
     try {
-        if (statSync(source).isFile()) {
-            return;
-        }
+        return statSync(resolve(root, file.source));
     } catch {
-        throw new Error(`Cannot install "${file.destination}": its source file "${file.source}" does not exist`);
+        throw new Error(`Cannot install "${file.destination}": its source "${file.source}" does not exist`);
+    }
+};
+
+const sourceStats = (root: string, file: DeployExtraFile): Stats => {
+    const stats = statSource(root, file);
+
+    if (!stats.isFile() && !stats.isDirectory()) {
+        throw new Error(`Cannot install "${file.destination}": its source "${file.source}" is not a file or directory`);
     }
 
-    throw new Error(`Cannot install "${file.destination}": its source "${file.source}" is not a file`);
+    return stats;
 };
+
+const expandDirectory = (root: string, file: DeployExtraFile): DeployExtraFile[] =>
+    sortStringsBy(listFilesRecursive(resolve(root, file.source)), (entry) => entry.rel).map((entry) => ({
+        destination: join(file.destination, entry.rel),
+        source: join(file.source, entry.rel),
+        mode: file.mode,
+    }));
+
+const expandExtraFile = (root: string, file: DeployExtraFile): DeployExtraFile[] =>
+    sourceStats(root, file).isDirectory() ? expandDirectory(root, file) : [file];
 
 const resolveExtraFile = (destination: string, entry: ExtraFileEntry): DeployExtraFile => {
     const normalizedDestination = normalize(destination);
@@ -33,16 +49,9 @@ const resolveExtraFile = (destination: string, entry: ExtraFileEntry): DeployExt
     return { destination: normalizedDestination, source: entry.source, mode };
 };
 
-const resolveExtraFiles = (root: string, deploy: DeployConfig): DeployExtraFile[] => {
-    const files = Object.entries(deploy.extraFiles ?? {}).map(([destination, entry]) =>
-        resolveExtraFile(destination, entry),
+const resolveExtraFiles = (root: string, deploy: DeployConfig): DeployExtraFile[] =>
+    Object.entries(deploy.extraFiles ?? {}).flatMap(([destination, entry]) =>
+        expandExtraFile(root, resolveExtraFile(destination, entry)),
     );
-
-    for (const file of files) {
-        assertSourceFile(root, file);
-    }
-
-    return files;
-};
 
 export { resolveExtraFiles };

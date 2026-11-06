@@ -4,8 +4,10 @@ use std::ffi::{CString, c_char, c_void};
 use std::ops::Deref;
 use std::rc::{Rc, Weak};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use ::libffi::{low as libffi_low, middle as libffi};
+use glib::gobject_ffi;
 use glib::prelude::StaticType as _;
 use napi::bindgen_prelude::{
     Either, External, Function, JsObjectValue, JsValue, JsValuesTupleIntoVec, Null, Object,
@@ -74,10 +76,30 @@ fn call_js_function<'e>(
         .map_err(CallbackError::Thrown)
 }
 
+/// What a callback stands in for on the C side, which decides how a call it cannot run is named.
+#[derive(Clone, Copy, Default)]
+pub(crate) enum CallbackRole {
+    #[default]
+    Callback,
+    /// The marshal of a `GClosure`, called with the parameter `GValue`s and the invocation hint.
+    ClosureMarshal,
+    /// The C callback of a `GClosure` with a generic marshal, called with the emitting instance first.
+    ClosureCallback,
+    /// A virtual function implementation installed over the one stored in its class.
+    Vfunc,
+}
+
+/// Positions of the `GClosureMarshal` arguments that name the emission a skipped call belonged to.
+const MARSHAL_N_PARAM_VALUES: usize = 2;
+const MARSHAL_PARAM_VALUES: usize = 3;
+const MARSHAL_INVOCATION_HINT: usize = 4;
+
 pub struct ClosureData {
     js_fn: RefCell<Option<ClosureHandle>>,
     owner: Arc<Owner>,
     native_parent: Cell<*mut c_void>,
+    role: Cell<CallbackRole>,
+    warned_foreign_thread: AtomicBool,
     pub signature: crate::api::bind::FunctionSignature,
     is_oneshot: bool,
     pub state_ptr: Cell<*mut ClosureState>,
@@ -108,6 +130,8 @@ impl ClosureData {
             js_fn: RefCell::new(Some(js_fn)),
             owner: release_queue::owner(),
             native_parent: Cell::new(std::ptr::null_mut()),
+            role: Cell::new(CallbackRole::Callback),
+            warned_foreign_thread: AtomicBool::new(false),
             signature,
             is_oneshot,
             state_ptr: Cell::new(std::ptr::null_mut()),
@@ -122,8 +146,13 @@ impl ClosureData {
 }
 
 impl ClosureData {
-    pub(crate) fn set_native_parent(&self, parent: *mut c_void) {
+    pub(crate) fn set_vfunc_parent(&self, parent: *mut c_void) {
+        self.role.set(CallbackRole::Vfunc);
         self.native_parent.set(parent);
+    }
+
+    pub(crate) fn set_role(&self, role: CallbackRole) {
+        self.role.set(role);
     }
 
     fn release_retained(&self) {
@@ -887,6 +916,145 @@ fn seed_ref<'e>(
     }
 }
 
+unsafe fn read_pointer_arg(args: &[*const c_void], index: usize) -> *mut c_void {
+    args.get(index)
+        .filter(|slot| !slot.is_null())
+        .map_or(std::ptr::null_mut(), |slot| unsafe {
+            *slot.cast::<*mut c_void>()
+        })
+}
+
+unsafe fn c_str_lossy(value: *const c_char) -> Option<String> {
+    (!value.is_null()).then(|| {
+        unsafe { std::ffi::CStr::from_ptr(value) }
+            .to_string_lossy()
+            .into_owned()
+    })
+}
+
+/// Names the signal emission `hint` describes on `instance`, through type and signal queries that
+/// are safe on any thread.
+unsafe fn describe_emission(
+    hint: *const gobject_ffi::GSignalInvocationHint,
+    instance: *mut c_void,
+) -> Option<String> {
+    if hint.is_null() || instance.is_null() {
+        return None;
+    }
+    let (signal_id, detail) = unsafe { ((*hint).signal_id, (*hint).detail) };
+    let mut query = std::mem::MaybeUninit::<gobject_ffi::GSignalQuery>::zeroed();
+    unsafe { gobject_ffi::g_signal_query(signal_id, query.as_mut_ptr()) };
+    let query = unsafe { query.assume_init() };
+    let name = unsafe { c_str_lossy(query.signal_name) }?;
+    let detail = if detail == 0 {
+        String::new()
+    } else {
+        unsafe { c_str_lossy(glib::ffi::g_quark_to_string(detail)) }
+            .map_or_else(String::new, |detail| format!("::{detail}"))
+    };
+    let instance_type =
+        unsafe { (*(*instance.cast::<gobject_ffi::GTypeInstance>()).g_class).g_type };
+    let type_name = unsafe { c_str_lossy(gobject_ffi::g_type_name(instance_type)) }?;
+    Some(format!(
+        "The JavaScript handler for signal '{name}{detail}' on {type_name} {instance:p}"
+    ))
+}
+
+impl ClosureData {
+    /// Names this callback for a call that arrived on a thread other than its owner's. It reads only
+    /// what the owning thread fixed before handing the callback to C, and queries the emission
+    /// through the thread-safe signal API.
+    unsafe fn describe_foreign_call(&self, args: &[*const c_void]) -> String {
+        match self.role.get() {
+            CallbackRole::ClosureMarshal => {
+                let hint = unsafe { read_pointer_arg(args, MARSHAL_INVOCATION_HINT) };
+                let params = unsafe { read_pointer_arg(args, MARSHAL_PARAM_VALUES) };
+                let has_params = args
+                    .get(MARSHAL_N_PARAM_VALUES)
+                    .filter(|slot| !slot.is_null())
+                    .is_some_and(|slot| unsafe { *slot.cast::<u32>() } > 0);
+                let instance = if !hint.is_null() && has_params && !params.is_null() {
+                    unsafe { gobject_ffi::g_value_peek_pointer(params.cast()) }
+                } else {
+                    std::ptr::null_mut()
+                };
+                unsafe { describe_emission(hint.cast(), instance) }
+                    .unwrap_or_else(|| "A JavaScript closure".to_owned())
+            }
+            CallbackRole::ClosureCallback => {
+                let instance = unsafe { read_pointer_arg(args, 0) };
+                let hint = if instance.is_null() {
+                    std::ptr::null_mut()
+                } else {
+                    unsafe { gobject_ffi::g_signal_get_invocation_hint(instance.cast()) }
+                };
+                unsafe { describe_emission(hint, instance) }
+                    .unwrap_or_else(|| "A JavaScript signal handler".to_owned())
+            }
+            CallbackRole::Vfunc => format!("The JavaScript implementation of {}", self.label),
+            CallbackRole::Callback => "A JavaScript callback".to_owned(),
+        }
+    }
+
+    /// Reports, once per callback, a call skipped because it arrived on a thread other than the one
+    /// that owns the JavaScript environment.
+    unsafe fn warn_foreign_thread(&self, args: &[*const c_void]) {
+        if self.warned_foreign_thread.swap(true, Ordering::Relaxed) {
+            return;
+        }
+        let subject = unsafe { self.describe_foreign_call(args) };
+        let fallback = if self.native_parent.get().is_null() {
+            ""
+        } else {
+            "; the implementation it overrides ran instead"
+        };
+        glib::g_warning!(
+            "Gtkx",
+            "{subject} was called on another thread and was skipped{fallback}. JavaScript runs \
+             only on the thread that owns GTKX, and some libraries, such as GStreamer, emit \
+             signals and call callbacks from their own threads. See \
+             https://gtkx.dev/v2/guide/workers#callbacks-from-other-threads"
+        );
+    }
+
+    /// Releases a one-shot callback that was skipped on another thread, on the thread that owns it.
+    /// The owner may free this data as soon as the release is posted, so the caller must not touch
+    /// it afterwards.
+    fn release_skipped_oneshot(&self) {
+        if !self.is_oneshot {
+            return;
+        }
+        let data_address = std::ptr::from_ref(self) as usize;
+        self.owner
+            .invoke("skipped one-shot callback cleanup", move || {
+                let data = unsafe { &*(data_address as *const Self) };
+                if let Some(state_ptr) = data.take_oneshot_state() {
+                    unsafe { ClosureState::release(state_ptr) };
+                }
+            });
+    }
+}
+
+unsafe fn call_native_parent(
+    cif: &libffi_low::ffi_cif,
+    result: &mut u64,
+    args: *const *const c_void,
+    data: &ClosureData,
+) {
+    let parent = data.native_parent.get();
+    if parent.is_null() {
+        return;
+    }
+    unsafe {
+        libffi_low::call_return_into(
+            std::ptr::from_ref(cif).cast_mut(),
+            libffi_low::CodePtr(parent),
+            args.cast_mut().cast(),
+            std::ptr::from_mut(result).cast(),
+        );
+    }
+}
+
 unsafe extern "C" fn closure_entry(
     cif: &libffi_low::ffi_cif,
     result: &mut u64,
@@ -895,24 +1063,20 @@ unsafe extern "C" fn closure_entry(
 ) {
     *result = 0;
     guard_ffi_boundary("callback entry", || {
-        if release_queue::is_retiring() || data.js_fn.borrow().is_none() {
-            let parent = data.native_parent.get();
-            if !parent.is_null() {
-                unsafe {
-                    libffi_low::call_return_into(
-                        std::ptr::from_ref(cif).cast_mut(),
-                        libffi_low::CodePtr(parent),
-                        args.cast_mut().cast(),
-                        std::ptr::from_mut(result).cast(),
-                    );
-                }
-            }
-            return;
-        }
         let mut logical_args: SmallVec<[*const c_void; 8]> =
             SmallVec::from_elem(std::ptr::null(), data.native_arg_count);
         for (native_index, &logical_index) in data.arg_order.iter().enumerate() {
             logical_args[logical_index] = unsafe { *args.add(native_index) };
+        }
+        if !data.owner.is_current_thread() {
+            unsafe { data.warn_foreign_thread(&logical_args) };
+            unsafe { call_native_parent(cif, result, args, data) };
+            data.release_skipped_oneshot();
+            return;
+        }
+        if release_queue::is_retiring() || data.js_fn.borrow().is_none() {
+            unsafe { call_native_parent(cif, result, args, data) };
+            return;
         }
         let state_ptr =
             unsafe { data.handle_call(logical_args.as_ptr(), (&raw mut *result).cast::<c_void>()) };

@@ -49,12 +49,14 @@ const findContentKind = (type: bigint): ContentKind | null => {
 
 const contentKindFor = (type: bigint): ContentKind | null => contentKinds.getOrInsertComputed(type, findContentKind);
 
+const APPLIED_AFTER_CONSTRUCTION = new Set(["cssClasses", "visible"]);
+
 const constructInput = (info: TypeInfo, props: Props): Props =>
     pickBy(
         props,
         (value, name) =>
             value !== undefined &&
-            name !== "cssClasses" &&
+            !APPLIED_AFTER_CONSTRUCTION.has(name) &&
             (info.createProps.has(name) || info.constructOnly.has(name) || info.construct.has(name)),
     );
 
@@ -72,7 +74,12 @@ const createObject = (typeName: string, type: bigint, input: Props): { object: G
         : { object: create(input), initialized: {} };
 };
 
-const resolveElementNode = (typeName: string, props: Props, dispatch: Dispatch): ElementNode | LazyNode => {
+const resolveElementNode = (
+    typeName: string,
+    props: Props,
+    dispatch: Dispatch,
+    routedObjects: Props,
+): ElementNode | LazyNode => {
     const info = typeInfoFor(typeName);
 
     if (info.isLazy) {
@@ -80,7 +87,7 @@ const resolveElementNode = (typeName: string, props: Props, dispatch: Dispatch):
     }
 
     const type = typeFromName(typeName);
-    const { object, initialized } = createObject(typeName, type, constructInput(info, props));
+    const { object, initialized } = createObject(typeName, type, constructInput(info, { ...props, ...routedObjects }));
     const node = createElementNode(typeName, object, dispatch, contentKindFor(type));
     node.props = initialized;
 

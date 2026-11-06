@@ -1,4 +1,4 @@
-import { ListItemFactory, type ListItemRenderer } from "@gtkx/components";
+import { ListItemFactory, type ListItemRenderer, type ListRowPropsResolver } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
     GtkBox,
@@ -13,13 +13,14 @@ import {
     GtkStringList,
 } from "@gtkx/jsx/gtk";
 import { getClassType } from "@gtkx/runtime";
-import { render, screen, userEvent, waitFor, within } from "@gtkx/testing";
+import { act, render, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { type ReactNode, useState } from "react";
 import { describe, expect, it } from "vitest";
 
 type NativeStringListProps = {
     strings: string[];
     renderItem: ListItemRenderer<Gtk.StringObject>;
+    rowProps?: ListRowPropsResolver<Gtk.StringObject> | undefined;
     search?: string | undefined;
     estimatedItemHeight?: number | undefined;
     estimatedItemWidth?: number | undefined;
@@ -39,6 +40,7 @@ const SINGLE_STRING = ["alpha"];
 function NativeStringList({
     strings,
     renderItem,
+    rowProps,
     search = "",
     estimatedItemHeight,
     estimatedItemWidth,
@@ -74,6 +76,7 @@ function NativeStringList({
                         estimatedItemHeight={estimatedItemHeight}
                         estimatedItemWidth={estimatedItemWidth}
                         renderItem={renderItem}
+                        rowProps={rowProps}
                     />
                 }
             />
@@ -280,6 +283,34 @@ describe("ListItemFactory native models", () => {
 
         await rerender(drawSizedStringList(100, renderIndexedString));
         expect(await within(container).findByText("0:alpha")).toBeVisible();
+    });
+
+    it("names and describes each row from its model object", async () => {
+        let list: Gtk.StringList | null = null;
+        await render(
+            <NativeStringList
+                strings={MUTABLE_STRINGS}
+                renderItem={renderIndexedString}
+                onList={(value) => {
+                    list = value;
+                }}
+                rowProps={({ item, index }) => ({
+                    accessibleLabel: `Word ${item.getString()}`,
+                    accessibleDescription: `Position ${String(index)}`,
+                })}
+            />,
+        );
+        const row = screen.getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Word alpha" });
+        expect(row).toHaveAccessibleDescription("Position 0");
+
+        await act(() => {
+            list?.splice(0, 1, ["gamma"]);
+        });
+
+        expect(screen.getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Word gamma" })).toHaveAccessibleDescription(
+            "Position 0",
+        );
+        expect(screen.queryByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Word alpha" })).toBeNull();
     });
 
     it("propagates renderer errors", async () => {

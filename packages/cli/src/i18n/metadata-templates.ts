@@ -6,7 +6,6 @@ type MetadataTemplateKind = "desktop" | "metainfo.xml" | "mime.xml";
 
 type MetadataTemplateFile = {
     kind: MetadataTemplateKind;
-    path: string;
     relativePath: string;
 };
 
@@ -15,9 +14,8 @@ const METADATA_TEMPLATE_DIRNAME = ".gtkx-metadata";
 
 const metadataTemplateFile = (project: CatalogProject, kind: MetadataTemplateKind): MetadataTemplateFile => {
     const path = join(project.poDir, METADATA_TEMPLATE_DIRNAME, `${project.domain}.template.${kind}`);
-    const relativePath = toPosixPath(relative(project.root, path));
 
-    return { kind, path, relativePath };
+    return { kind, relativePath: toPosixPath(relative(project.root, path)) };
 };
 
 const metadataTemplateFiles = (project: CatalogProject): MetadataTemplateFile[] =>

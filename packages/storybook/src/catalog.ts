@@ -41,7 +41,7 @@ type StoryLoadError = {
 
 /** Current explorer contents and loading state exposed to subscribers. */
 type StoryCatalogSnapshot = {
-    /** Successfully composed stories with duplicate identifiers excluded. */
+    /** Successfully composed stories tagged `dev`, with duplicate identifiers excluded. */
     stories: StoryEntry[];
     /** Failures encountered during the latest load or reported by the session. */
     errors: StoryLoadError[];
@@ -59,6 +59,7 @@ type CachedStories = {
 type LoadedSource = StoryLoadError | { source: StorySource; cached: CachedStories };
 
 const EMPTY_PREVIEW: Preview = {};
+const DEVELOPMENT_TAG = "dev";
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
     value !== null && typeof value === "object" && !Array.isArray(value);
@@ -118,15 +119,17 @@ const composeSource = (source: StorySource, module: unknown, preview: Preview): 
     } as Record<string, StoryAnnotations<Args>> & { default: ComponentMeta<Args> };
     const stories = composeStories(annotations, preview);
 
-    return Object.entries(stories).map(([exportName, story]) => ({
-        id: story.id,
-        title,
-        name: displayName(annotations[exportName], exportName),
-        exportName,
-        source: source.id,
-        story,
-        controls: explicitControls(story.argTypes, annotations[exportName], annotations.default, preview),
-    }));
+    return Object.entries(stories)
+        .filter(([, story]) => story.tags.includes(DEVELOPMENT_TAG))
+        .map(([exportName, story]) => ({
+            id: story.id,
+            title,
+            name: displayName(annotations[exportName], exportName),
+            exportName,
+            source: source.id,
+            story,
+            controls: explicitControls(story.argTypes, annotations[exportName], annotations.default, preview),
+        }));
 };
 
 const withoutDuplicateIds = (entries: StoryEntry[], errors: StoryLoadError[]): StoryEntry[] => {

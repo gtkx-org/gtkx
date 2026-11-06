@@ -1,5 +1,8 @@
+import { LIBRARY_APPLICATION_ID } from "@gtkx/config/internal";
+import { warn } from "@gtkx/utils";
 import { reapStaleHeadlessDisplaysAtStartup } from "@gtkx/vitest/headless";
 import { defineCommand } from "citty";
+import { relative } from "node:path";
 import { ensureGeneratedIn, resolveConfigWatch } from "../codegen/run-codegen.js";
 import { resolveCodegenContext } from "../codegen/store-resolver.js";
 import { startHeadlessDevDisplay } from "../dev/headless.js";
@@ -7,7 +10,7 @@ import { runDevSupervisor } from "../dev/supervisor.js";
 import { splitApplicationArgs } from "../internal/application-args.js";
 import { configArg, cwdArg, resolveCwd } from "../internal/entry-arg.js";
 import { prepareStorybookFiles } from "../storybook/config.js";
-import { createStorybookEntry } from "../storybook/entry.js";
+import { assertStorybookInstalled, createStorybookEntry } from "../storybook/entry.js";
 
 const DEV_MODE = "development";
 
@@ -40,11 +43,28 @@ const createStorybookCommand = (options: { signal?: AbortSignal; applicationArgs
             }
 
             const cwd = resolveCwd(args);
-            await prepareStorybookFiles(cwd, args["storybook-config"]);
-            const context = await resolveCodegenContext(cwd, DEV_MODE, args.config);
+            assertStorybookInstalled(cwd);
+            const { skippedMdx } = await prepareStorybookFiles(cwd, args["storybook-config"]);
+
+            if (skippedMdx.length > 0) {
+                warn(
+                    `Skipped MDX files, which the Storybook explorer does not support: ${skippedMdx.map((path) => relative(cwd, path)).join(", ")}`,
+                );
+            }
+
+            const configOptions = {
+                mode: DEV_MODE,
+                configFile: args.config,
+                defaultApplicationId: LIBRARY_APPLICATION_ID,
+            };
+            const context = await resolveCodegenContext(cwd, configOptions);
             await ensureGeneratedIn(context, { shouldAnnounce: true, mode: DEV_MODE });
             const entryPath = createStorybookEntry(cwd);
-            const watch = await resolveConfigWatch(cwd, DEV_MODE, context.configFile, context.configDependencies);
+            const watch = await resolveConfigWatch(
+                cwd,
+                { ...configOptions, configFile: context.configFile },
+                context.configDependencies,
+            );
             const applicationArgs = options.applicationArgs ?? splitApplicationArgs(rawArgs).applicationArgs;
             const headless = args.headless ? await startHeadlessDevDisplay(args.size) : undefined;
 

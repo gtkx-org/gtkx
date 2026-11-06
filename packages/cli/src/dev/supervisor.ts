@@ -1,14 +1,19 @@
-import { error, exitCodeForSignal, info, installGracefulShutdown } from "@gtkx/utils";
+import { error, exitCodeForSignal, info, installGracefulShutdown, isPathWithin } from "@gtkx/utils";
 import { type FSWatcher, watch as watchFs } from "chokidar";
 import { type ChildProcess, fork as nodeFork } from "node:child_process";
-import { existsSync, statSync } from "node:fs";
-import { basename, dirname, relative, sep } from "node:path";
+import { existsSync, readFileSync, statSync } from "node:fs";
+import { basename, dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import packageManifest from "../../package.json" with { type: "json" };
+import { WORKER_PRELOAD_ARGS } from "../internal/worker-preload-args.js";
+import { installedDirectory } from "../internal/linked-packages.js";
 import { DEV_RUNNER_READY, type DevRunnerBootstrap } from "./bootstrap.js";
 
 type DevWatch = {
     paths: string[];
+    inputs: string[];
     resolvePaths: () => string[];
+    resolveInputs: () => string[];
     regenerate: () => Promise<string[]>;
 };
 
@@ -21,6 +26,7 @@ type SupervisorState = {
     storybookConfig: string | undefined;
     mcpSocketPath: string | undefined;
     cwd: string;
+    projectCli: string | null;
     args: string[];
     watch: DevWatch | undefined;
     watchers: Map<string, FSWatcher>;
@@ -46,12 +52,19 @@ type DevSupervisorOptions = {
 
 type DebounceTimer = { handle: NodeJS.Timeout | null };
 
-const DEV_RUNNER_URL = new URL("../../bin/gtkx-dev-runner.js", import.meta.url);
+const DEV_RUNNER_PATH = "bin/gtkx-dev-runner.js";
+const DEV_RUNNER_URL = new URL(`../../${DEV_RUNNER_PATH}`, import.meta.url);
+const CLI_MANIFEST_PATH = fileURLToPath(new URL("../../package.json", import.meta.url));
 const FORCE_KILL_TIMEOUT_MS = 5000;
 const CONFIG_DEBOUNCE_MS = 150;
 const RESTART_EXIT_CODE = 75;
 const forkRunner = (modulePath: string, args: string[], cwd: string): ChildProcess =>
-    nodeFork(modulePath, args, { cwd, stdio: "inherit", detached: true });
+    nodeFork(modulePath, args, {
+        cwd,
+        stdio: "inherit",
+        detached: true,
+        execArgv: [...process.execArgv, ...WORKER_PRELOAD_ARGS],
+    });
 
 const captureShutdownExit = (state: SupervisorState, code: number | null, signal: NodeJS.Signals | null): void => {
     if (code !== null) {
@@ -146,6 +159,14 @@ const relaunchAfterExit = (state: SupervisorState): void => {
 
 const isSupervisorShuttingDown = (state: SupervisorState): boolean => state.isShuttingDown;
 
+const resolveInputsOrPrevious = (watch: DevWatch): string[] => {
+    try {
+        return watch.resolveInputs();
+    } catch {
+        return watch.inputs;
+    }
+};
+
 const reconcileConfigWatchers = async (
     state: SupervisorState,
     paths: string[],
@@ -159,7 +180,8 @@ const reconcileConfigWatchers = async (
 
     const added = paths.filter((path) => !watch.paths.includes(path) && existsSync(path));
     watch.paths = paths;
-    const targets = new Set(paths.map(configWatchDirectory));
+    watch.inputs = resolveInputsOrPrevious(watch);
+    const targets = new Set([...paths, ...watch.inputs].map(configWatchDirectory));
     const pending: Promise<void>[] = [];
 
     for (const [path, watcher] of state.watchers) {
@@ -180,7 +202,9 @@ const reconcileConfigWatchers = async (
             if (
                 !state.isShuttingDown &&
                 state.watchers.get(path) === watcher &&
-                watch.paths.some((target) => target === changed || target.startsWith(changed + sep))
+                [...watch.paths, ...watch.inputs].some(
+                    (target) => target === changed || target.startsWith(changed + sep),
+                )
             ) {
                 if (event === "unlinkDir" && changed === path) {
                     state.watchers.delete(path);
@@ -215,10 +239,59 @@ const reconcileConfigWatchers = async (
 };
 
 const consumeChangedPaths = (state: SupervisorState): string => {
-    const changed = [...state.changedPaths].map((path) => relative(state.cwd, path));
+    const changed = [...state.changedPaths].map((path) =>
+        isPathWithin(state.cwd, path) ? relative(state.cwd, path) : path,
+    );
     state.changedPaths.clear();
 
     return changed.length === 0 ? basename(state.configFile) : changed.join(", ");
+};
+
+const manifestVersion = (path: string): string | null => {
+    if (!existsSync(path)) {
+        return null;
+    }
+
+    const manifest = JSON.parse(readFileSync(path, "utf8")) as { version?: string };
+
+    return manifest.version ?? null;
+};
+
+const followProjectCli = (state: SupervisorState): string | null => {
+    const installed = manifestVersion(CLI_MANIFEST_PATH);
+
+    if (installed !== packageManifest.version) {
+        return installed === null ? "was moved or removed" : `was replaced by ${installed}`;
+    }
+
+    const projectCli = installedDirectory(state.cwd, "@gtkx/cli");
+
+    if (projectCli === state.projectCli) {
+        return null;
+    }
+
+    const resolved = projectCli === null ? null : manifestVersion(join(projectCli, "package.json"));
+
+    if (projectCli === null || resolved === null) {
+        return "was moved or removed";
+    }
+
+    if (resolved !== packageManifest.version) {
+        return `was replaced by ${resolved}`;
+    }
+
+    state.projectCli = projectCli;
+    state.runnerPath = join(projectCli, DEV_RUNNER_PATH);
+
+    return null;
+};
+
+const stopForReinstalledCli = (state: SupervisorState, change: string): void => {
+    error(
+        `The @gtkx/cli ${packageManifest.version} this gtkx dev runs from ${change} while it was running, ` +
+            "so it cannot reload the application or regenerate its bindings. Start gtkx dev again.",
+    );
+    void shutdownOnSignal(state, "SIGTERM").then(() => state.finish(1), state.fail);
 };
 
 const restart = async (state: SupervisorState): Promise<void> => {
@@ -234,8 +307,16 @@ const restart = async (state: SupervisorState): Promise<void> => {
         return;
     }
 
+    const cliChange = followProjectCli(state);
+
+    if (cliChange !== null) {
+        stopForReinstalledCli(state, cliChange);
+
+        return;
+    }
+
     state.isRestarting = true;
-    info(`${consumeChangedPaths(state)} changed; regenerating bindings...`);
+    info(`${consumeChangedPaths(state)} changed`);
     await reconcileConfigWatchers(state, watch.resolvePaths());
 
     try {
@@ -341,7 +422,11 @@ const shutdownOnSignal = async (state: SupervisorState, signal: NodeJS.Signals):
 
 const installShutdown = (state: SupervisorState): (() => void) => {
     return installGracefulShutdown({
-        onSignal: (signal) => shutdownOnSignal(state, signal),
+        onSignal: (signal) => {
+            info("Received shutdown signal - stopping dev runner...");
+
+            return shutdownOnSignal(state, signal);
+        },
         onForce: () => state.child?.kill("SIGKILL"),
         forceKillAfterMs: FORCE_KILL_TIMEOUT_MS,
         exitCode: (signal, graceful) => state.capturedChildExit ?? (graceful ? 0 : exitCodeForSignal(signal)),
@@ -361,6 +446,7 @@ const runDevSupervisor = async (options: DevSupervisorOptions): Promise<number> 
         storybookConfig,
         mcpSocketPath,
         cwd,
+        projectCli: installedDirectory(cwd, "@gtkx/cli"),
         args,
         watch,
         watchers: new Map(),

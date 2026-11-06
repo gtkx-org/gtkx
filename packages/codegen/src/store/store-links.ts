@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { type ResolvedStore, resolveStore } from "./resolve-store.js";
 import { ensureStoreLink } from "./store-fs.js";
+import { ensureStoreViews } from "./store-views.js";
 
 const resolvedStores: Map<string, ResolvedStore> = new Map();
 
@@ -43,6 +44,10 @@ const ensureStoreLinks = (projectRoot: string): void => {
         if (unit !== null) {
             ensureStoreLink(unit);
         }
+    }
+
+    if (store.gi.owner !== undefined) {
+        ensureStoreViews(store.gi.owner, store.gi, store.jsx);
     }
 };
 

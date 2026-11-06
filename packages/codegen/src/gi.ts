@@ -6,6 +6,7 @@ import { resolveBoundLibraries } from "./gir/libraries.js";
 import { type GirNamespace, namespaceDirectory } from "./gir/namespace.js";
 import { type GiNamespaceInput, writeGiStore } from "./store/gi-store.js";
 import { collectGeneratedLibraries } from "./store/gi/generated-libraries.js";
+import { collectNamespaceIncludes } from "./store/gi/namespace-includes.js";
 import { generateNamespaceModule } from "./store/gi/pipeline.js";
 
 type GiCodegenOptions = {
@@ -63,7 +64,8 @@ const runGiCodegen = (library: Library, options: GiCodegenOptions): GiCodegenRes
 
     const store = writeGiStore(gi, namespaces, externalPackages, {
         fingerprint,
-        libraries: collectGeneratedLibraries(resolveBoundLibraries(libraries)),
+        libraries: collectGeneratedLibraries(resolveBoundLibraries(libraries), library.namespaces),
+        includes: collectNamespaceIncludes(library.namespaces.values()),
     });
 
     return { namespaces: library.namespaces.size, store };

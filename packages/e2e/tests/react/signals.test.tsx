@@ -6,7 +6,7 @@ import * as GObject from "@gtkx/gi/gobject";
 import { ParamFlags, paramSpecInt } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as GtkSource from "@gtkx/gi/gtksource";
-import { AdwToggle, AdwToggleGroup } from "@gtkx/jsx/adw";
+import { AdwTabPage, AdwTabView, AdwToggle, AdwToggleGroup } from "@gtkx/jsx/adw";
 import {
     GtkAdjustment,
     GtkBox,
@@ -20,6 +20,8 @@ import {
     GtkShortcut,
     GtkShortcutController,
     GtkSpinButton,
+    GtkStack,
+    GtkStackPage,
     GtkSwitch,
     GtkText,
     GtkTextBuffer,
@@ -85,6 +87,18 @@ type BufferProbeProps = {
     onNotify?: ComponentProps<typeof GtkTextBuffer>["onNotify"];
     onNotifyText?: ComponentProps<typeof GtkTextBuffer>["onNotifyText"];
     onNotifyCursorPosition?: ComponentProps<typeof GtkTextBuffer>["onNotifyCursorPosition"];
+};
+
+type TabsProbeProps = {
+    titles: string[];
+    viewRef?: Ref<Adw.TabView>;
+    onNotifySelectedPage?: ComponentProps<typeof AdwTabView>["onNotifySelectedPage"];
+};
+
+type StackProbeProps = {
+    names: string[];
+    visibleChildName?: string;
+    onNotifyVisibleChildName?: ComponentProps<typeof GtkStack>["onNotifyVisibleChildName"];
 };
 
 type ProbeProps = {
@@ -239,6 +253,29 @@ const SpinProbe = ({ value, hasAdjustment = true, onNotifyValue, onNotifyText }:
         adjustment={hasAdjustment ? <GtkAdjustment value={value} lower={0} upper={100} /> : undefined}
     />
 );
+
+const TabsProbe = ({ titles, viewRef, onNotifySelectedPage }: TabsProbeProps) => (
+    <AdwTabView ref={viewRef} onNotifySelectedPage={onNotifySelectedPage}>
+        {titles.map((title) => (
+            <AdwTabPage key={title} title={title}>
+                <GtkLabel>{title}</GtkLabel>
+            </AdwTabPage>
+        ))}
+    </AdwTabView>
+);
+
+const StackProbe = ({ names, visibleChildName, onNotifyVisibleChildName }: StackProbeProps) => (
+    <GtkStack visibleChildName={visibleChildName} onNotifyVisibleChildName={onNotifyVisibleChildName}>
+        {names.map((name) => (
+            <GtkStackPage key={name} name={name}>
+                <GtkLabel>{name}</GtkLabel>
+            </GtkStackPage>
+        ))}
+    </GtkStack>
+);
+
+const pageTitles = (calls: [Adw.TabPage | null, Adw.TabView][]): (string | null)[] =>
+    calls.map(([page]) => page?.getTitle() ?? null);
 
 const ToggleProbe = ({ activeName, onNotifyActive, onNotifyActiveName }: ToggleProbeProps) => (
     <AdwToggleGroup activeName={activeName} onNotifyActive={onNotifyActive} onNotifyActiveName={onNotifyActiveName}>
@@ -681,18 +718,81 @@ describe("user event signals", () => {
         expect(handlers.onNotifyValue.calls).toEqual([]);
     });
 
-    it("suppresses every notify while a commit attaches a child", async () => {
+    it("does not echo a value the commit writes through a delegate while it attaches a child", async () => {
         const handleValue = recordCalls();
         await render(<SpinProbe value={30} onNotifyValue={handleValue} />);
+        await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
         expect(handleValue.calls).toEqual([]);
     });
 
-    it("suppresses every notify while a commit detaches a child", async () => {
-        const handleValue = recordCalls();
+    it("delivers the notify of a property a commit changes by detaching a child", async () => {
+        const handleValue = recordCalls<[number | null, Gtk.SpinButton]>();
         const { rerender } = await render(<SpinProbe value={30} onNotifyValue={handleValue} />);
-        handleValue.calls.length = 0;
         await rerender(<SpinProbe value={30} hasAdjustment={false} onNotifyValue={handleValue} />);
+
+        await waitFor(() => {
+            expect(handleValue.calls).toEqual([[0, expect.any(Gtk.SpinButton)]]);
+        });
+    });
+
+    it("does not report a property a child attach notifies without changing it", async () => {
+        const handleValue = recordCalls();
+        await render(<SpinProbe value={0} onNotifyValue={handleValue} />);
+        await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
         expect(handleValue.calls).toEqual([]);
+    });
+
+    it("tells a tab view's selection handler about the first page it mounts with", async () => {
+        const handleSelected = recordCalls<[Adw.TabPage | null, Adw.TabView]>();
+        await render(<TabsProbe titles={["one"]} onNotifySelectedPage={handleSelected} />);
+
+        await waitFor(() => {
+            expect(pageTitles(handleSelected.calls)).toEqual(["one"]);
+        });
+    });
+
+    it("tells a tab view's selection handler about the neighbour selected after removing the selected page", async () => {
+        const handleSelected = recordCalls<[Adw.TabPage | null, Adw.TabView]>();
+        const viewRef = createRef<Adw.TabView>();
+        const { rerender } = await render(
+            <TabsProbe titles={["one", "two", "three"]} viewRef={viewRef} onNotifySelectedPage={handleSelected} />,
+        );
+
+        await act(() => {
+            viewRef.current?.setSelectedPage(viewRef.current.getNthPage(1));
+        });
+
+        await waitFor(() => {
+            expect(pageTitles(handleSelected.calls).at(-1)).toBe("two");
+        });
+
+        handleSelected.calls.length = 0;
+        await rerender(<TabsProbe titles={["one", "three"]} viewRef={viewRef} onNotifySelectedPage={handleSelected} />);
+
+        await waitFor(() => {
+            expect(pageTitles(handleSelected.calls)).toEqual(["three"]);
+        });
+
+        expect(viewRef.current?.getSelectedPage()?.getTitle()).toBe("three");
+    });
+
+    it("does not echo a value the same commit writes after a child attach changed it", async () => {
+        const handleName = recordCalls();
+        const { rerender } = await render(
+            <StackProbe names={["a", "b"]} visibleChildName="b" onNotifyVisibleChildName={handleName} />,
+        );
+        await rerender(
+            <StackProbe names={["a", "b", "c"]} visibleChildName="c" onNotifyVisibleChildName={handleName} />,
+        );
+        await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+        expect(handleName.calls).toEqual([]);
+    });
+
+    it("does not report the first page a controlled stack mounts on when the app asked for it", async () => {
+        const handleName = recordCalls();
+        await render(<StackProbe names={["a", "b"]} visibleChildName="a" onNotifyVisibleChildName={handleName} />);
+        await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+        expect(handleName.calls).toEqual([]);
     });
 
     it("suppresses the notify of a written property whose prop name is not already camelCase", async () => {
