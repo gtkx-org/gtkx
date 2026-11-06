@@ -7,10 +7,10 @@ import { GtkBox, GtkImage, GtkLabel, GtkSignalListItemFactory } from "@gtkx/jsx/
 import { useProperty } from "@gtkx/react";
 import { useLatestRef } from "@gtkx/react/internal";
 import { omit, type Primitive } from "@gtkx/utils";
-import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import type { DropDownOwnProps, ListItemRenderer } from "../types.js";
 import { ItemPortals, useItemCells, useSectionHeader } from "./cells.js";
-import { slotRefFor } from "./collection-model.js";
+import { type SlotRef, slotRefFor } from "./collection-model.js";
 import { type Collection, isCollectionIdle } from "./collection.js";
 import { useControlledSync } from "./controlled-sync.js";
 import { showFirstHeader } from "./first-header.js";
@@ -39,6 +39,7 @@ type SelectionOptions = {
 
 type NotifySelectedHandler = NonNullable<DropDownBaseProps["onNotifySelected"]>;
 type ApplyState = { isApplying: boolean; isReady: boolean };
+type ShownSelection = { ref: SlotRef | null; text: string };
 
 type NotifyContext = {
     options: SelectionOptions;
@@ -114,18 +115,35 @@ const textOf = (value: unknown): string => {
     }
 };
 
-const useItemTextExpression = (collection: Collection): Gtk.Expression => {
+const slotText = (collection: Collection, ref: SlotRef | null): string =>
+    ref === null ? "" : textOf(collection.itemAt(ref)?.value);
+
+/**
+ * AdwComboRow reads the selected item's text for its subtitle only when the selected item or the expression changes.
+ * Slots keep their objects when an item's value changes in place, so the expression is replaced when the selected
+ * item's text changes without a selection change.
+ */
+const useItemTextExpression = (widget: SelectableWidget | null, collection: Collection): Gtk.Expression => {
     const latest = useLatestRef(collection);
-    const [expression] = useState(() =>
+    const shown = useRef<ShownSelection>({ ref: null, text: "" });
+    const createExpression = (): Gtk.Expression =>
         Gtk.ClosureExpression.new(
             GObject.TYPE_STRING,
-            (object: GObject.Object | null) => {
-                const ref = slotRefFor(object);
-                return ref === null ? "" : textOf(latest.current.itemAt(ref)?.value);
-            },
+            (object: GObject.Object | null) => slotText(latest.current, slotRefFor(object)),
             null,
-        ),
-    );
+        );
+    const [expression, setExpression] = useState(createExpression);
+
+    useLayoutEffect(() => {
+        const ref = slotRefFor(widget?.getSelectedItem() ?? null);
+        const text = slotText(collection, ref);
+        const isRenamed = ref !== null && ref === shown.current.ref && text !== shown.current.text;
+        shown.current = { ref, text };
+
+        if (isRenamed) {
+            setExpression(createExpression());
+        }
+    });
 
     return expression;
 };
@@ -261,7 +279,7 @@ function DropDownBase(props: DropDownBaseProps & { component: ElementType; itemL
     const header = useSectionHeader(renderHeader, collection, { width: -1, height: -1 });
     const handleNotifySelected = useDropDownSelection({ widget, collection, props });
     const renderListItem = popupRenderer(props, useProperty(widget, "selected"), itemLabel);
-    const expression = useItemTextExpression(collection);
+    const expression = useItemTextExpression(widget, collection);
 
     return (
         <>

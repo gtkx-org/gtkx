@@ -122,6 +122,9 @@ describe("render - ComboRow", () => {
         expect(ref.current).toHaveObjectProperty("subtitle", "By date");
         await rerender(<ComboShell comboRef={ref} items={items} selectedId="size" useSubtitle />);
         expect(ref.current).toHaveObjectProperty("subtitle", "By size");
+        const renamed = items.map((item) => (item.id === "size" ? { ...item, value: "By file size" } : item));
+        await rerender(<ComboShell comboRef={ref} items={renamed} selectedId="size" useSubtitle />);
+        expect(ref.current).toHaveObjectProperty("subtitle", "By file size");
     });
 
     it("renders custom item templates", async () => {
