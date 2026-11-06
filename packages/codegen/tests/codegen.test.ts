@@ -546,6 +546,32 @@ describe("generated bindings", () => {
         expect(block("gtk", "shortcut-trigger", "accelerator")).toContain("construct-only");
     });
 
+    it("describes configured prop types with their public names and fields", async () => {
+        using directory = createProject();
+        const outDir = join(directory.path, "reference");
+        writeDocs({
+            ...(await readBuiltinElementsForDocs()),
+            libraries: ["Adw-1"],
+            girPath: resolveGirPath(undefined, directory.path),
+            resolveFrom: directory.path,
+            outDir,
+        });
+        const block = (namespace: string, page: string, name: string) =>
+            readFileSync(join(outDir, namespace, `${page}.md`), "utf8")
+                .split(`### \`${name}\``)[1]
+                ?.split("### ")[0];
+        expect(block("gtk", "level-bar", "offsets")).toContain(
+            "- `name: string`: Style class applied to the bar's blocks",
+        );
+        expect(block("gtk", "level-bar", "offsets")).toContain("- `value?: number`: Upper bound of that interval");
+        expect(block("gtk", "constraint-layout", "vfl")).toContain("- `views?: Map<string, Gtk.ConstraintTarget>`");
+        expect(block("gio", "menu", "items")).toContain("- `submenu?: MenuItem[]`");
+        expect(block("gio", "menu", "items")).toContain("- `hiddenWhen?:");
+        expect(block("gtk", "widget", "style")).not.toContain("- `");
+        expect(block("adw", "alert-dialog", "responses")).toContain("- `appearance?: Adw.ResponseAppearance`");
+        expect(block("gtk", "widget", "textDirection")).toContain("`Gtk.TextDirection | null | undefined`");
+    });
+
     it("renders GIR enumeration member links with the emitted member names", async () => {
         using directory = createProject();
         const outDir = join(directory.path, "reference");

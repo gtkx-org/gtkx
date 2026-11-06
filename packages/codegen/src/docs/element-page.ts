@@ -2,7 +2,7 @@ import { toCamelIdentifier, upperFirst } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { Library } from "../gir/library.js";
 import type { ModuleContext } from "../writer/context.js";
-import type { HandwrittenProp } from "./handwritten-props.js";
+import type { HandwrittenProp, PropTypeShape } from "./handwritten-props.js";
 import { ancestorClassMethodNames } from "../analysis/inheritance.js";
 import { isEmittableProperty } from "../analysis/property-admission.js";
 import { isEmittableSignal } from "../analysis/signal-admission.js";
@@ -216,6 +216,17 @@ const acceptedChildTypesDoc = (context: ElementPageContext, owner: MemberOwner):
     );
 };
 
+const propTypeShapeDoc = (shape: PropTypeShape): string =>
+    [
+        `**\`${shape.name}\` fields**`,
+        "",
+        ...shape.fields.map((field) => {
+            const signature = `\`${field.name}${field.isOptional ? "?" : ""}: ${field.type}\``;
+
+            return field.doc.length === 0 ? `- ${signature}` : `- ${signature}: ${field.doc}`;
+        }),
+    ].join("\n");
+
 const handwrittenPropEntry = (
     context: ElementPageContext,
     owner: MemberOwner,
@@ -223,7 +234,9 @@ const handwrittenPropEntry = (
     constructOnly: readonly string[],
 ): MetaDocEntry => {
     const childTypesDoc = prop.name === "children" ? acceptedChildTypesDoc(context, owner) : "";
-    const doc = [prop.doc, childTypesDoc].filter((part) => part.length > 0).join("\n\n");
+    const doc = [prop.doc, childTypesDoc, ...prop.shapes.map(propTypeShapeDoc)]
+        .filter((part) => part.length > 0)
+        .join("\n\n");
 
     return {
         name: prop.name,
