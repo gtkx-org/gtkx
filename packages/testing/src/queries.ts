@@ -1,5 +1,14 @@
+import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
-import type { ByRoleOptions, ByRoleValue, Matcher, MatcherOptions, NormalizerFn, QueryFamilies } from "./types.js";
+import type {
+    ByRoleOptions,
+    ByRoleValue,
+    Matcher,
+    MatcherOptions,
+    NormalizerFn,
+    QueryFamilies,
+    WaitForOptions,
+} from "./types.js";
 import { buildQueries, type BuiltQueries, type QueryAllBy } from "./build-queries.js";
 import { multipleFoundError, notFoundError } from "./errors.js";
 import { getDefaultNormalizer } from "./normalize.js";
@@ -277,6 +286,16 @@ const hasMatchingAccessibleStates = (widget: Gtk.Widget, options: ByRoleOptions)
     hasMatchingDescriptionState(widget, options) &&
     hasMatchingValueState(widget, options);
 
+const isDialogContentShown = (widget: Gtk.Widget): boolean => {
+    if (!(widget instanceof Adw.Dialog)) {
+        return true;
+    }
+
+    const child = widget.getChild();
+
+    return child === null || child.getMapped();
+};
+
 const isMatchingWidgetType = <T extends Gtk.Accessible>(
     widget: Gtk.Widget,
     options?: MatcherOptions<T>,
@@ -290,10 +309,22 @@ const hasMatchingAccessibleOptions = (widget: Gtk.Widget, options?: ByRoleOption
     return hasMatchingAccessibleName(widget, options) && hasMatchingAccessibleStates(widget, options);
 };
 
-function nameQueryFamily<Args extends unknown[], Element extends Gtk.Accessible>(
+function withWaitForOptions<Expected, Result>(
+    find: (container: Container, expected: Expected, options?: MatcherOptions<Gtk.Widget>) => Promise<Result>,
+) {
+    return (
+        container: Container,
+        expected: Expected,
+        options?: MatcherOptions<Gtk.Widget>,
+        waitForOptions?: WaitForOptions,
+    ): Promise<Result> =>
+        find(container, expected, waitForOptions === undefined ? options : { ...options, ...waitForOptions });
+}
+
+function nameQueryFamily<Expected, Element extends Gtk.Accessible>(
     suffix: string,
-    queryAllBy: QueryAllBy<Args, Element>,
-    built: BuiltQueries<Args, Element>,
+    queryAllBy: QueryAllBy<[expected: Expected, options?: MatcherOptions<Gtk.Widget>], Element>,
+    built: BuiltQueries<[expected: Expected, options?: MatcherOptions<Gtk.Widget>], Element>,
 ): Record<string, unknown> {
     const [queryBy, getAllBy, getBy, findAllBy, findBy] = built;
 
@@ -302,15 +333,16 @@ function nameQueryFamily<Args extends unknown[], Element extends Gtk.Accessible>
         [`queryAllBy${suffix}`]: queryAllBy,
         [`getBy${suffix}`]: getBy,
         [`getAllBy${suffix}`]: getAllBy,
-        [`findBy${suffix}`]: findBy,
-        [`findAllBy${suffix}`]: findAllBy,
+        [`findBy${suffix}`]: withWaitForOptions(findBy),
+        [`findAllBy${suffix}`]: withWaitForOptions(findAllBy),
     };
 }
 
 /**
  * Finds every widget under the container whose accessible role matches `role` and that satisfies the given options.
  * Widgets that are not mapped are never matched, and widgets excluded from the accessibility tree are
- * skipped unless `options.hidden` is set.
+ * skipped unless `options.hidden` is set. An Adwaita dialog matches once its content is shown, which
+ * libadwaita does a frame after the dialog opens.
  * @param container Widget subtree to search.
  * @param role Accessible role to match.
  * @param options Additional accessible name, state, and value constraints.
@@ -324,7 +356,7 @@ function queryAllByRole<T extends Gtk.Accessible = Gtk.Widget>(
     const isInaccessible = buildInaccessibilityCheck();
 
     const matches = findAll(container, (widget) => {
-        if (widget.getAccessibleRole() !== role) {
+        if (widget.getAccessibleRole() !== role || !isDialogContentShown(widget)) {
             return false;
         }
 
@@ -361,9 +393,10 @@ const collectMnemonicMatch = (
 };
 
 const labellingText = (widget: Gtk.Widget): string | null => {
-    const ownLabel = widget.getAccessibleRole() === Gtk.AccessibleRole.LABEL ? null : getWidgetOwnLabel(widget);
+    const ownLabel = getWidgetOwnLabel(widget);
+    const isOwnText = widget.getAccessibleRole() === Gtk.AccessibleRole.LABEL && ownLabel === namingLabelText(widget);
 
-    return ownLabel ?? getWidgetExternalLabelText(widget);
+    return (isOwnText ? null : ownLabel) ?? getWidgetExternalLabelText(widget);
 };
 
 const collectLabelMatches = (

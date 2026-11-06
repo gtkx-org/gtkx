@@ -1,6 +1,6 @@
 ---
 title: "Native Values"
-description: "Pass GTypes and GValues to native methods and read generated return values."
+description: "Pass GTypes, GValues and integers to native methods and read generated return values."
 ---
 
 # Native Values
@@ -19,6 +19,19 @@ const isWidget = GObject.typeIsA(Gtk.Label, Gtk.Widget);
 ```
 
 Generated classes and interfaces, and subclasses registered with `registerClass`, can be passed this way. A plain JavaScript subclass has no registration of its own. GTypes returned by bindings or passed to signal handlers remain `bigint` values.
+
+Generated enumerations, flags and error domains whose type is registered with GObject can be passed the same way, and carry their GType as `__type__`, like classes. Reading it registers the type, so use it rather than `GObject.typeFromName`, which finds a type only once something has registered it. JSX props that take a GType accept the `__type__` value:
+
+```tsx
+import * as GObject from "@gtkx/gi/gobject";
+import * as Gtk from "@gtkx/gi/gtk";
+import { AdwEnumListModel } from "@gtkx/jsx/adw";
+
+const isEnum = GObject.typeIsA(Gtk.SortType, GObject.TYPE_ENUM);
+const orders = <AdwEnumListModel enumType={Gtk.SortType.__type__} />;
+```
+
+A GType that GObject rejects for a construct property, such as the `0n` `typeFromName` returns for a type nobody registered, throws a `RangeError` instead of constructing the object without it.
 
 ## Passing a GValue
 
@@ -41,6 +54,36 @@ For nullable value parameters, `null` means no value object. To represent a type
 Returned byte sequences use `Uint8Array`; byte inputs accept `Uint8Array` or `number[]`. Returned `GObject.Value` objects are unpacked to their payloads, typed as `unknown`.
 
 Promisified operations omit a redundant leading success boolean from multi-value finish results; boolean-only results remain booleans. Inout records and boxed values are updated in place without being repeated in the return value. See [Async Operations](/v2/guide/async-operations) for promise usage.
+
+A record that a signal handler or callback receives stays valid until the handler returns. Reference-counted records, such as `WebKit.ScriptMessageReply`, are the exception: the handler may keep one and use it later, for example to answer once an asynchronous operation finishes.
+
+## Passing integers
+
+Integer parameters, properties and vfunc results take whole numbers within their native type's range. GTKX throws a `RangeError` for any other number, such as `Value 10922.4 is not an integer, int32 expects a whole number`, where GJS truncates a fractional number silently. Ported GJS code that computes sizes or positions with fractional arithmetic must round each value before passing it, choosing the rounding the code needs:
+
+```ts
+import * as Pango from "@gtkx/gi/pango";
+
+const shrinkFont = (description: Pango.FontDescription, size: number) =>
+    description.setSize(Math.round(size * 0.8));
+```
+
+The same applies to sizes a [vfunc returns](/v2/guide/subclassing#subclass-virtual-methods) and to fields of records such as `Gdk.Rectangle`. Use `Math.trunc` to keep GJS's behavior exactly.
+
+## Reading embedded records
+
+A record or union field that embeds another record by value, such as `Pango.Item.analysis` or the members of a `Poppler.Action`, reads as a view into the parent's memory, as in GJS:
+
+```ts
+import * as Poppler from "@gtkx/gi/poppler";
+
+const describeAction = (action: Poppler.Action) =>
+    action.type === Poppler.ActionType.GOTO_DEST
+        ? `${action.any.title} (page ${action.gotoDest.dest.pageNum})`
+        : action.any.title;
+```
+
+A view reflects later changes to the parent and keeps the parent alive while it is reachable. A view of a value lent to a callback expires with that value when the callback returns. When the embedded record holds pointers, the field is read-only, because copying a whole record would alias pointers the parent already owns.
 
 ## Next
 

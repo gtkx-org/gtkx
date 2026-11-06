@@ -1,17 +1,23 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { hasSignalListener } from "@gtkx/runtime/internal";
-import { callBooleanGetter, getCallableMethod, hasWidgetMethod } from "../widget-getters.js";
+import { callBooleanGetter, getCallableMethod, getWidgetTypeName, hasWidgetMethod } from "../widget-getters.js";
 import { queryAllControllers } from "./controller.js";
-import { wrapEvent } from "./event-wrapper.js";
+import { wrapPointerEvent } from "./event-wrapper.js";
 import { hasIndexedChildren, selectContainerChild, SELECTED_PROBE, unselectOtherChildren } from "./indexed-children.js";
 import { isClickTransparent, type NativeClick, nativeClickFor } from "./native-click.js";
+import type { UserEventState } from "./state.js";
 
 type PressPoint = { x: number; y: number };
 type ClickPhase = "pressed" | "released";
 type ClickSite = { gestures: Gtk.GestureClick[]; point: PressPoint };
 type ClickScope = { isClicked: boolean; isInternalAllowed: boolean };
 type DirectClick = { sites: ClickSite[]; outcome: NativeClick | null };
+type CurrentEventPatch = {
+    getCurrentButton?: Gtk.GestureClick["getCurrentButton"] | undefined;
+    getCurrentEventState?: Gtk.GestureClick["getCurrentEventState"] | undefined;
+    setState?: Gtk.GestureClick["setState"] | undefined;
+};
 
 type ClickTarget = {
     widget: Gtk.Widget;
@@ -23,6 +29,7 @@ type ClickTarget = {
 
 const CLICK_SIGNALS = ["pressed", "released"];
 const PRIMARY_BUTTONS: Set<number> = new Set([0, Gdk.BUTTON_PRIMARY]);
+const MENU_ITEM_TYPE_NAME = "GtkModelButton";
 
 const getCenterPoint = (widget: Gtk.Widget): PressPoint => {
     const width = widget.getWidth();
@@ -49,22 +56,96 @@ const getClickPoint = (clicked: Gtk.Widget, carrier: Gtk.Widget): PressPoint => 
     return { x: bounds.getX() + bounds.getWidth() / 2, y: bounds.getY() + bounds.getHeight() / 2 };
 };
 
-const emitGesture = (point: PressPoint, controllers: Gtk.GestureClick[], nPress: number, signal: ClickPhase): void => {
+const emitWithCurrentEvent = (
+    controller: Gtk.GestureClick,
+    button: number,
+    modifiers: Gdk.ModifierType,
+    emit: () => void,
+): boolean => {
+    const instance: CurrentEventPatch = controller;
+    const hasOwnButton = Object.hasOwn(instance, "getCurrentButton");
+    const hasOwnState = Object.hasOwn(instance, "getCurrentEventState");
+    const hasOwnSetState = Object.hasOwn(instance, "setState");
+    const previousButton = instance.getCurrentButton;
+    const previousState = instance.getCurrentEventState;
+    const previousSetState = instance.setState;
+    let isClaimed = false;
+    instance.getCurrentButton = () => button;
+    instance.getCurrentEventState = () => modifiers;
+    instance.setState = (state) => {
+        isClaimed = state === Gtk.EventSequenceState.CLAIMED;
+        return true;
+    };
+
+    try {
+        emit();
+    } finally {
+        if (hasOwnButton) {
+            instance.getCurrentButton = previousButton;
+        } else {
+            delete instance.getCurrentButton;
+        }
+
+        if (hasOwnState) {
+            instance.getCurrentEventState = previousState;
+        } else {
+            delete instance.getCurrentEventState;
+        }
+
+        if (hasOwnSetState) {
+            instance.setState = previousSetState;
+        } else {
+            delete instance.setState;
+        }
+    }
+
+    return isClaimed;
+};
+
+const emitGesture = (
+    point: PressPoint,
+    controllers: Gtk.GestureClick[],
+    nPress: number,
+    signal: ClickPhase,
+    button: number,
+    modifiers: Gdk.ModifierType,
+): boolean => {
+    let isClaimed = false;
+
     for (const controller of controllers) {
-        controller.emit(signal, nPress, point.x, point.y);
+        const hasClaimed = emitWithCurrentEvent(controller, button, modifiers, () => {
+            controller.emit(signal, nPress, point.x, point.y);
+        });
+        isClaimed ||= hasClaimed;
     }
+
+    return isClaimed;
 };
 
-const emitSitePhase = (sites: ClickSite[], nPress: number, phase: ClickPhase): void => {
+const emitSitePhase = (
+    sites: ClickSite[],
+    nPress: number,
+    phase: ClickPhase,
+    modifiers: Gdk.ModifierType,
+    button: number = Gdk.BUTTON_PRIMARY,
+): ClickSite[] => {
+    const reached: ClickSite[] = [];
+
     for (const site of sites) {
-        emitGesture(site.point, site.gestures, nPress, phase);
+        reached.push(site);
+
+        if (emitGesture(site.point, site.gestures, nPress, phase, button, modifiers)) {
+            break;
+        }
     }
+
+    return reached;
 };
 
-const emitClickSequence = (sites: ClickSite[], nPress: number): void => {
+const emitClickSequence = (sites: ClickSite[], nPress: number, modifiers: Gdk.ModifierType): void => {
     for (let i = 1; i <= nPress; i++) {
-        emitSitePhase(sites, i, "pressed");
-        emitSitePhase(sites, i, "released");
+        const reached = emitSitePhase(sites, i, "pressed", modifiers);
+        emitSitePhase(reached, i, "released", modifiers);
     }
 };
 
@@ -89,6 +170,10 @@ const gestureTargetFor = (widget: Gtk.Widget, isInternalAllowed: boolean): Click
 
     if (widget instanceof Gtk.Button) {
         return { widget, container: null, gestures, isClaiming: true, native: null };
+    }
+
+    if (widget instanceof Gtk.WindowHandle) {
+        return { widget, container: null, gestures: getAuthoredClickGestures(widget), isClaiming: true, native: null };
     }
 
     const container = containerFor(widget);
@@ -209,14 +294,14 @@ const applyContainerOutcome = (target: ClickTarget, nPress: number): void => {
     }
 };
 
-const applyClickOutcome = (target: ClickTarget, nPress: number): void => {
+const applyClickOutcome = (target: ClickTarget, nPress: number, modifiers: Gdk.ModifierType): void => {
     if (target.native === null) {
         applyContainerOutcome(target, nPress);
 
         return;
     }
 
-    target.native(target.widget, nPress);
+    target.native(target.widget, nPress, modifiers);
 };
 
 const applyContainerClick: NativeClick = (widget, nPress) => {
@@ -236,19 +321,68 @@ const directClickFor = (widget: Gtk.Widget): DirectClick => {
     return { sites: targetSites(widget, target), outcome: native ?? (container === null ? null : applyContainerClick) };
 };
 
-const applyClickOutcomes = (targets: ClickTarget[], nPress: number): void => {
+const listensForButton = (gesture: Gtk.GestureClick, button: number): boolean => {
+    const listened = gesture.getButton();
+
+    return listened === 0 || listened === button;
+};
+
+/**
+ * The press sites a non-primary button reaches: the authored click gestures listening for that button on the widget
+ * and its ancestors, as GTK propagates the press up the tree. Widgets react to these buttons only through gestures.
+ */
+const buttonSitesFor = (widget: Gtk.Widget, button: number): ClickSite[] => {
+    const sites: ClickSite[] = [];
+
+    for (let current: Gtk.Widget | null = widget; current !== null; current = current.getParent()) {
+        const gestures = queryAllControllers(current, Gtk.GestureClick).filter(
+            (gesture) => listensForButton(gesture, button) && hasClickHandlers(gesture),
+        );
+
+        if (gestures.length > 0) {
+            sites.push({ gestures, point: getClickPoint(widget, current) });
+        }
+    }
+
+    return sites;
+};
+
+const applyClickOutcomes = (targets: ClickTarget[], nPress: number, modifiers: Gdk.ModifierType): void => {
     for (const target of targets) {
-        applyClickOutcome(target, nPress);
+        applyClickOutcome(target, nPress, modifiers);
     }
 };
 
-const deliverClick = (widget: Gtk.Widget, nPress: number): Promise<void> =>
-    wrapEvent(widget, () => {
+/** Whether GTK's own click gesture on the widget acts without the real pointer event, as on buttons and menu items. */
+const isButtonLike = (widget: Gtk.Widget): boolean =>
+    widget instanceof Gtk.Button ||
+    widget instanceof Gtk.CheckButton ||
+    getWidgetTypeName(widget) === MENU_ITEM_TYPE_NAME;
+
+/**
+ * Whether a click target is known to handle the click: app code listens to its gestures, GTKX applies the outcome a
+ * real click has, or it is a button, check button or menu item. GTK's other gestures read the real pointer event, so
+ * a click that reaches only them may do nothing.
+ */
+const isHandlingTarget = (target: ClickTarget): boolean =>
+    target.native !== null ||
+    target.container !== null ||
+    isButtonLike(target.widget) ||
+    target.gestures.some((gesture) => hasClickHandlers(gesture));
+
+const deliverClick = async (state: UserEventState, widget: Gtk.Widget, nPress: number): Promise<boolean> => {
+    let isHandled = false;
+
+    await wrapPointerEvent(widget, () => {
         const targets = collectClickTargets(widget);
         const sites = targets.flatMap((target) => targetSites(widget, target));
-        emitClickSequence(sites, nPress);
-        applyClickOutcomes(targets, nPress);
+        emitClickSequence(sites, nPress, state.modifierState);
+        applyClickOutcomes(targets, nPress, state.modifierState);
+        isHandled = targets.some((target) => isHandlingTarget(target));
     });
+
+    return isHandled;
+};
 
 const tryActivate = async (widget: Gtk.Widget): Promise<boolean> => {
     if (widget.getAccessibleRole() === Gtk.AccessibleRole.LABEL) {
@@ -257,26 +391,26 @@ const tryActivate = async (widget: Gtk.Widget): Promise<boolean> => {
 
     let isActivated = false;
 
-    await wrapEvent(widget, () => {
+    await wrapPointerEvent(widget, () => {
         isActivated = Gtk.Widget.prototype.activate.call(widget);
     });
 
     return isActivated;
 };
 
-/** Activates or presses and releases a widget. */
-const click = async (widget: Gtk.Widget): Promise<void> => {
+/** Activates or presses and releases a widget, and returns whether anything is known to have handled the click. */
+const click = async (state: UserEventState, widget: Gtk.Widget): Promise<boolean> => {
     if (!isSelfClickTarget(widget) && (await tryActivate(widget))) {
-        return;
+        return true;
     }
 
-    await deliverClick(widget, 1);
+    return deliverClick(state, widget, 1);
 };
 
 /** Delivers a double-click gesture. */
-const dblClick = (widget: Gtk.Widget): Promise<void> => deliverClick(widget, 2);
+const dblClick = (state: UserEventState, widget: Gtk.Widget): Promise<boolean> => deliverClick(state, widget, 2);
 /** Delivers a triple-click gesture. */
-const tripleClick = (widget: Gtk.Widget): Promise<void> => deliverClick(widget, 3);
+const tripleClick = (state: UserEventState, widget: Gtk.Widget): Promise<boolean> => deliverClick(state, widget, 3);
 
-export { directClickFor, emitSitePhase, click, dblClick, tripleClick };
-export type { DirectClick };
+export { buttonSitesFor, directClickFor, emitSitePhase, click, dblClick, tripleClick };
+export type { ClickSite, DirectClick };

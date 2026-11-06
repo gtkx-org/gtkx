@@ -17,7 +17,11 @@ const runCleanupCallbacks = async (callbacks: Iterable<CleanupFunction>): Promis
         }
     }
 
-    if (failures.length > 0) {
+    if (failures.length === 1) {
+        throw failures[0];
+    }
+
+    if (failures.length > 1) {
         throw new AggregateError(failures, "Cleanup failed");
     }
 };

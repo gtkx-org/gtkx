@@ -27,7 +27,7 @@ type RenderResult<Q extends QueryMap = Record<never, never>> = BoundQueries &
         container: Gtk.Widget;
         /** The root the queries are scoped to (defaults to all toplevels). */
         baseElement: Container;
-        /** Unmounts the rendered tree and disposes its resources. */
+        /** Unmounts the rendered tree, disposes its resources and quits the application the render started. */
         unmount: () => Promise<void>;
         /** Re-renders the tree with a new element, reusing the same root. */
         rerender: (element: ReactNode) => Promise<void>;
