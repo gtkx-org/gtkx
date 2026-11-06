@@ -145,7 +145,7 @@ const useCoercedValue = <Widget, Value>(
 
         if (process.env.NODE_ENV !== "production") {
             log.warn(
-                `Form field "${name}" holds ${JSON.stringify(shown.value)}, but its row shows ${JSON.stringify(shownValue)}; the row is marked invalid until an edit replaces the value`,
+                `Form field "${name}" holds a value its row cannot show; the row is marked invalid until an edit replaces the value`,
             );
         }
     });
