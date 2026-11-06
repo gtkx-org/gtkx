@@ -319,11 +319,17 @@ type RegisteredConstructor<TClass, TArgs extends unknown[], TInstance> = {
 type RegisteredParts<TClass, TArgs extends unknown[], TInstance> = Omit<TClass, "prototype"> &
     RegisteredConstructor<TClass, TArgs, TInstance>;
 
+/** A props bag that also takes a registered class's declared properties. */
+type RegisteredProps<TProps, TInstance, TProperties> = NonNullable<TProps> &
+    Partial<Pick<TInstance, InstalledNames<TProperties> & keyof TInstance>>;
+
 /** Construct arguments of a registered class: a props bag inherited from its parent also takes the declared properties. */
 type RegisteredConstructorArgs<TArgs extends unknown[], TInstance, TProperties> = TArgs extends [props?: infer TProps]
     ? unknown extends TProps
         ? TArgs
-        : [props?: NonNullable<TProps> & Partial<Pick<TInstance, InstalledNames<TProperties> & keyof TInstance>>]
+        : [] extends TArgs
+          ? [props?: RegisteredProps<TProps, TInstance, TProperties>]
+          : [props: RegisteredProps<TProps, TInstance, TProperties>]
     : TArgs;
 
 /** The registered class with its declared properties and signals. */

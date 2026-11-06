@@ -15,6 +15,7 @@ import { describe, expect, expectTypeOf, it } from "vitest";
 import { createTypeNameFactory } from "../helpers/unique-name.js";
 
 type Reading = InstanceType<typeof Reading>;
+type Thermometer = InstanceType<typeof Thermometer>;
 type Gauge = InstanceType<typeof Gauge>;
 type Humidity = InstanceType<typeof Humidity>;
 type Annotated = InstanceType<typeof Annotated>;
@@ -55,6 +56,21 @@ const Reading = registerClass(
             celsius: paramSpecInt("celsius", null, null, 0, 255, 0, ParamFlags.READWRITE),
             dewPoint: paramSpecInt("dew-point", null, null, 0, 255, 0, ParamFlags.READWRITE),
         },
+    },
+);
+
+const Thermometer = registerClass(
+    class Thermometer extends GObject.Object {
+        declare celsius: number;
+
+        constructor(props: { celsius: number }) {
+            super();
+            this.celsius = props.celsius;
+        }
+    },
+    {
+        typeName: uniqueName("GtkxUsePropertyThermometer"),
+        properties: { celsius: paramSpecInt("celsius", null, null, 0, 255, 0, ParamFlags.READWRITE) },
     },
 );
 
@@ -347,14 +363,19 @@ describe("useProperty (registered classes)", () => {
     it("reads installed properties passed to the constructor", async () => {
         const gauge = new Gauge({ caption: "inside", label: "Hello" });
         const reading = new Reading({ celsius: 21, dewPoint: 14 });
+        const thermometer: Thermometer = new Thermometer({ celsius: 30 });
+        // @ts-expect-error a props bag the constructor requires stays required once registered
+        const unconfigured = () => new Thermometer();
 
         const { result } = await renderHook(() => ({
             caption: useProperty(gauge, "caption"),
             celsius: useProperty(reading, "celsius"),
             dewPoint: useProperty(reading, "dewPoint"),
+            outside: useProperty(thermometer, "celsius"),
         }));
 
-        expect(result.current).toEqual({ caption: "inside", celsius: 21, dewPoint: 14 });
+        expect(result.current).toEqual({ caption: "inside", celsius: 21, dewPoint: 14, outside: 30 });
+        expectTypeOf(unconfigured).toBeFunction();
     });
 });
 
