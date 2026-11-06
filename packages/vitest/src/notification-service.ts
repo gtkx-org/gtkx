@@ -81,6 +81,7 @@ const startNotificationService = async (busAddress: string): Promise<() => void>
             }
         });
     });
+    bus.connection.stream.unref();
 
     return () => {
         isReporting = false;

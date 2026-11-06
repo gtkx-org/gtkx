@@ -46,6 +46,7 @@ type HeadlessRuntime = {
 type RuntimeProcesses = {
     live: Set<string>;
     helpers: Map<string, ProcessIdentity[]>;
+    users: Map<string, ProcessIdentity[]>;
     members: ProcessSnapshot[];
 };
 
@@ -213,6 +214,16 @@ const addRuntimeArguments = (live: Set<string>, processArgs: string[]): void => 
     }
 };
 
+const addRuntimeProcess = (
+    processes: Map<string, ProcessIdentity[]>,
+    runtimeDir: string,
+    identity: ProcessIdentity,
+): void => {
+    const existing = processes.get(runtimeDir) ?? [];
+    existing.push(identity);
+    processes.set(runtimeDir, existing);
+};
+
 const addProcessRuntimes = (processes: RuntimeProcesses, identity: ProcessIdentity): void => {
     const processArgs = readProcessArguments(identity.pid);
 
@@ -226,10 +237,9 @@ const addProcessRuntimes = (processes: RuntimeProcesses, identity: ProcessIdenti
 
     if (runtime !== undefined) {
         references.add(runtime.runtimeDir);
+        addRuntimeProcess(processes.users, runtime.runtimeDir, identity);
         if (runtime.helper) {
-            const helpers = processes.helpers.get(runtime.runtimeDir) ?? [];
-            helpers.push(identity);
-            processes.helpers.set(runtime.runtimeDir, helpers);
+            addRuntimeProcess(processes.helpers, runtime.runtimeDir, identity);
         }
     }
     for (const runtimeDir of references) {
@@ -238,7 +248,7 @@ const addProcessRuntimes = (processes: RuntimeProcesses, identity: ProcessIdenti
 };
 
 const findRuntimeProcesses = (userId: number): RuntimeProcesses => {
-    const processes: RuntimeProcesses = { live: new Set(), helpers: new Map(), members: [] };
+    const processes: RuntimeProcesses = { live: new Set(), helpers: new Map(), users: new Map(), members: [] };
     const processEntries = readdirSync("/proc");
 
     for (const entry of processEntries) {
@@ -436,8 +446,10 @@ const stopHeadlessRuntime = ({ cleanupDirectory, owner, helpers: recorded }: Hea
     const captured = new Map<number, ProcessIdentity>();
     const helpers = (): ProcessIdentity[] => {
         const processes = findRuntimeProcesses(userId);
-        for (const helper of runtimeHelpers(recorded, processes, isOriginalDirectory() ? runtimeDir : undefined)) {
-            captured.set(helper.pid, helper);
+        const current = isOriginalDirectory() ? runtimeDir : undefined;
+        const users = current === undefined ? [] : (processes.users.get(current) ?? []);
+        for (const helper of [...runtimeHelpers(recorded, processes, current), ...users]) {
+            if (helper.pid !== process.pid) captured.set(helper.pid, helper);
         }
         return [...captured.values()].filter(isCurrentOwner);
     };
