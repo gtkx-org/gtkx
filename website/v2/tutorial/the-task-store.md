@@ -130,7 +130,7 @@ export const useStore = create<Store>()((set) => ({
 
 ## Connect the entry row
 
-Replace `src/components/task-list.tsx` with this component. The store supplies `tasks` and `addTask`, replacing the file's sample array.
+Replace `src/components/task-list.tsx` with this component. The store supplies `tasks` and `addTask`, replacing the file's sample array. The rows now show titles only: notes move to the task editor in [Edit Tasks](/v2/tutorial/the-task-editor), and the row's second line will show the due date.
 
 ```tsx [src/components/task-list.tsx]
 import * as Gtk from "@gtkx/gi/gtk";
