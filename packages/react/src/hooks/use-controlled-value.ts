@@ -2,7 +2,7 @@ import type * as Gio from "@gtkx/gi/gio";
 import type * as GObject from "@gtkx/gi/gobject";
 import { offSignal, onSignal } from "@gtkx/runtime";
 import { type RefObject, useCallback, useLayoutEffect, useRef } from "react";
-import { applyWrite } from "../reconciler/signals.js";
+import { applyWrite, settleQueuedNotifies } from "../reconciler/signals.js";
 import { describeElement, isDevelopment, typeNameOf, warnDismissal } from "../utils/dismissal.js";
 import { useLatestRef } from "./use-latest-ref.js";
 
@@ -22,7 +22,13 @@ const applyControlledValue = <P extends GObject.Object, V>(
     prop: string,
     operations: ControlledValue<P, V>,
 ): boolean => {
-    if (object === null || value === undefined || Object.is(operations.read(object), value)) {
+    if (object === null || value === undefined) {
+        return false;
+    }
+
+    if (Object.is(operations.read(object), value)) {
+        settleQueuedNotifies(object, prop);
+
         return false;
     }
 

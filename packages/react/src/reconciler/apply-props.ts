@@ -471,7 +471,7 @@ const restoreDependentProps = (node: ElementNode): void => {
             const current: unknown = Reflect.get(node.object, name);
 
             if (Object.is(current, value)) {
-                settleQueuedNotifies(node, name);
+                settleQueuedNotifies(node.object, name);
             } else if (isChangedByPlacement(before, name, current)) {
                 writeValue(node.object, name, value);
             }

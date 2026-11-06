@@ -120,14 +120,16 @@ const applyPlacement = <T>(target: SignalTarget, write: () => T): T => {
 };
 
 /**
- * Drops the notifications of `property` that child placement queued for `target`, for a property the commit leaves at
+ * Drops the notifications of `property` that child placement queued for `object`, for a property the commit leaves at
  * the value its prop asks for.
  */
-const settleQueuedNotifies = (target: SignalTarget, property: string): void => {
+const settleQueuedNotifies = (object: GObject.Object, property: string): void => {
     const name = canonicalName(property);
 
-    for (const record of target.handlers.values()) {
-        dropQueuedNotify(record, name);
+    for (const record of queuedNotifies.keys()) {
+        if (record.object === object) {
+            dropQueuedNotify(record, name);
+        }
     }
 };
 

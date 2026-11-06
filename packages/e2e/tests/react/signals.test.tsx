@@ -788,6 +788,13 @@ describe("user event signals", () => {
         expect(handleName.calls).toEqual([]);
     });
 
+    it("does not report the first page a controlled stack mounts on when the app asked for it", async () => {
+        const handleName = recordCalls();
+        await render(<StackProbe names={["a", "b"]} visibleChildName="a" onNotifyVisibleChildName={handleName} />);
+        await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+        expect(handleName.calls).toEqual([]);
+    });
+
     it("suppresses the notify of a written property whose prop name is not already camelCase", async () => {
         const handlers = { onNotify: recordCalls(), onNotifyDewPoint: recordCalls() };
         const { rerender } = await render(<DewPointProbe dew-point={1} {...handlers} />);
