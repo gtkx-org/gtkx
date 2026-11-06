@@ -1,4 +1,4 @@
-import { type ExternalObject, getHandle, type Handle, read, t } from "@gtkx/runtime";
+import { type ExternalObject, getHandle, type Handle, read, t, wrapHandle } from "@gtkx/runtime";
 import type { PathData, Point } from "./types.js";
 import { PathDataType, type Status } from "./enums.js";
 import { checkStatus } from "./status.js";
@@ -61,8 +61,8 @@ const parsePath = (pathHandle: PathBuffer): PathData[] => {
 };
 
 /**
- * A cairo path (`cairo_path_t`). Instances come from the bindings that hand one back, and the bindings that take
- * one, such as `Gsk.PathBuilder.addCairoPath`, accept it as is.
+ * A cairo path (`cairo_path_t`). `Context.copyPath()` and `Context.copyPathFlat()` return one, and
+ * `Context.appendPath` and bindings that take one, such as `Gsk.PathBuilder.addCairoPath`, accept it as is.
  */
 abstract class Path {
     /** Reads the segments of the path in drawing order. */
@@ -71,4 +71,10 @@ abstract class Path {
     }
 }
 
-export { parsePath, Path };
+const wrapPath = (pathHandle: PathBuffer): Path => {
+    checkStatus(INT.read(pathHandle, 0) as Status, "path");
+
+    return wrapHandle(pathHandle, Path);
+};
+
+export { parsePath, Path, wrapPath };

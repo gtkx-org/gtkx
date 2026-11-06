@@ -11,6 +11,7 @@ import {
     type WrapperClassResolver,
     write,
 } from "@gtkx/runtime";
+import { reportExternalMemory } from "@gtkx/runtime/internal";
 import type { DeviceOffset, DeviceScale, FallbackResolution, InkExtents, RectangleData } from "./types.js";
 import { Device } from "./device.js";
 import { type Content, type Format, type Status, SurfaceType } from "./enums.js";
@@ -109,6 +110,17 @@ const cairoRecordingSurfaceGetExtents = bindCairo(
 
 const wrapSurface = (handle: unknown): Surface => wrapHandle(handle as ExternalObject<Handle>, Surface);
 
+const ownSurface = (handle: ExternalObject<Handle>): ExternalObject<Handle> => {
+    const surface = checkSurface(handle);
+
+    if (cairoSurfaceGetType(surface) === SurfaceType.IMAGE) {
+        const bytes = (cairoImageSurfaceGetStride(surface) as number) * (cairoImageSurfaceGetHeight(surface) as number);
+        reportExternalMemory(surface, bytes);
+    }
+
+    return surface;
+};
+
 const readPair = <T>(boundFn: BoundFunction, self: object, build: (first: number, second: number) => T): T => {
     const first = { value: 0 };
     const second = { value: 0 };
@@ -169,7 +181,7 @@ abstract class Surface {
     static createSimilar(other: Surface, content: Content, width: number, height: number): Surface {
         const handle = cairoSurfaceCreateSimilar(getHandle(other), content, width, height) as ExternalObject<Handle>;
 
-        return wrapSurface(checkSurface(handle));
+        return wrapSurface(ownSurface(handle));
     }
 
     /** Creates an image surface of the given `format` and size as compatible as possible with `other`. */
@@ -181,7 +193,7 @@ abstract class Surface {
             height,
         ) as ExternalObject<Handle>;
 
-        return wrapHandle(checkSurface(handle), ImageSurface);
+        return wrapHandle(ownSurface(handle), ImageSurface);
     }
 
     /** Creates a surface that draws onto the given rectangle of `target`. */
@@ -312,18 +324,18 @@ abstract class Surface {
 class ImageSurface extends Surface {
     /** Creates an image surface of the given pixel `format` and size, the same as `new ImageSurface(...)`. */
     static create(format: Format, width: number, height: number): ImageSurface {
-        return wrapHandle(checkSurface(cairoImageSurfaceCreate(format, width, height) as ExternalObject<Handle>), this);
+        return wrapHandle(ownSurface(cairoImageSurfaceCreate(format, width, height) as ExternalObject<Handle>), this);
     }
 
     /** Loads a PNG file into a new image surface; throws when the file is missing or invalid. */
     static createFromPng(filename: string): ImageSurface {
-        return wrapHandle(checkSurface(cairoImageSurfaceCreateFromPng(filename) as ExternalObject<Handle>), this);
+        return wrapHandle(ownSurface(cairoImageSurfaceCreateFromPng(filename) as ExternalObject<Handle>), this);
     }
 
     /** Creates an image surface of the given pixel `format` and size. */
     constructor(format: Format, width: number, height: number) {
         super();
-        setHandle(this, checkSurface(cairoImageSurfaceCreate(format, width, height) as ExternalObject<Handle>));
+        setHandle(this, ownSurface(cairoImageSurfaceCreate(format, width, height) as ExternalObject<Handle>));
     }
 
     /** Returns the width of the surface in pixels. */

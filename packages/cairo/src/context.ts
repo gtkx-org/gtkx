@@ -9,6 +9,7 @@ import {
     t,
     wrapHandle,
 } from "@gtkx/runtime";
+import { releaseHandle } from "@gtkx/runtime/internal";
 import type {
     Antialias,
     Content,
@@ -47,6 +48,7 @@ import {
     FONT_OPTIONS_T,
     GLYPH_T,
     MATRIX_T,
+    PATH_FULL_T,
     PATH_T,
     PATTERN_FULL_T,
     PATTERN_T,
@@ -57,7 +59,7 @@ import {
     TEXT_EXTENTS_T,
 } from "./lib.js";
 import { allocMatrix, Matrix } from "./matrix.js";
-import { parsePath } from "./path.js";
+import { Path, wrapPath } from "./path.js";
 import { Pattern } from "./pattern.js";
 import { ScaledFont } from "./scaled-font.js";
 import { checkStatus } from "./status.js";
@@ -198,8 +200,9 @@ const cairoGetScaledFont = bindCairo("cairo_get_scaled_font", [CONTEXT_T], SCALE
 const cairoShowGlyphs = bindCairo("cairo_show_glyphs", [CONTEXT_T, GLYPH_T, t.int32], t.void);
 const cairoGlyphPath = bindCairo("cairo_glyph_path", [CONTEXT_T, GLYPH_T, t.int32], t.void);
 const cairoGlyphExtents = bindCairo("cairo_glyph_extents", [CONTEXT_T, GLYPH_T, t.int32, TEXT_EXTENTS_T], t.void);
-const cairoCopyPath = bindCairo("cairo_copy_path", [CONTEXT_T], PATH_T);
-const cairoCopyPathFlat = bindCairo("cairo_copy_path_flat", [CONTEXT_T], PATH_T);
+const cairoCopyPath = bindCairo("cairo_copy_path", [CONTEXT_T], PATH_FULL_T);
+const cairoCopyPathFlat = bindCairo("cairo_copy_path_flat", [CONTEXT_T], PATH_FULL_T);
+const cairoAppendPath = bindCairo("cairo_append_path", [CONTEXT_T, PATH_T], t.void);
 const cairoTagBegin = bindCairo("cairo_tag_begin", [CONTEXT_T, t.string("borrowed"), t.string("borrowed")], t.void);
 const cairoTagEnd = bindCairo("cairo_tag_end", [CONTEXT_T, t.string("borrowed")], t.void);
 
@@ -315,6 +318,22 @@ class Context {
         const handle = cairoCreate(getHandle(target)) as ExternalObject<Handle>;
         checkStatus(cairoStatus(handle) as Status, "context");
         setHandle(this, handle);
+    }
+
+    /**
+     * Drops this context's reference to its `cairo_t` now instead of when the garbage collector
+     * reclaims the wrapper, as `cairo_destroy` does in C and `$dispose()` does in GJS. Call it once
+     * drawing is done on a context the app obtains itself, such as one from
+     * `Gtk.Snapshot.appendCairo` or `Context.create` on a long-lived surface: until then the context
+     * keeps its target alive, and Cairo copies a backing surface into each recording that still
+     * holds it when the app draws into it again.
+     *
+     * Every later call on the context throws. Calling `$dispose()` again does nothing, and on the
+     * context a draw callback receives it only ends that context early, because GTKX releases it
+     * when the callback returns anyway.
+     */
+    $dispose(): void {
+        releaseHandle(getHandle(this));
     }
 
     /** Begins a new sub-path at `(x, y)`, which becomes the current point. */
@@ -846,19 +865,25 @@ class Context {
         return readTextExtents(extents);
     }
 
-    /** Returns a copy of the current path as segments. */
-    copyPath(): PathData[] {
-        return parsePath(cairoCopyPath(getHandle(this)) as ExternalObject<Handle>);
+    /** Returns a copy of the current path; `toData()` reads its segments. */
+    copyPath(): Path {
+        return wrapPath(cairoCopyPath(getHandle(this)) as ExternalObject<Handle>);
     }
 
     /** Returns a copy of the current path with curves flattened into line segments. */
-    copyPathFlat(): PathData[] {
-        return parsePath(cairoCopyPathFlat(getHandle(this)) as ExternalObject<Handle>);
+    copyPathFlat(): Path {
+        return wrapPath(cairoCopyPathFlat(getHandle(this)) as ExternalObject<Handle>);
     }
 
-    /** Appends segments, as returned by `copyPath`, to the current path. */
-    appendPath(data: PathData[]): void {
-        for (const segment of data) {
+    /** Appends a path returned by `copyPath`, or its segments, to the current path. */
+    appendPath(path: Path | PathData[]): void {
+        if (path instanceof Path) {
+            cairoAppendPath(getHandle(this), getHandle(path));
+
+            return;
+        }
+
+        for (const segment of path) {
             appendSegment(this, segment);
         }
     }
