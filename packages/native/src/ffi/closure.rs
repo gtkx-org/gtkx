@@ -1018,6 +1018,8 @@ impl ClosureData {
     }
 
     /// Releases a one-shot callback that was skipped on another thread, on the thread that owns it.
+    /// The owner may free this data as soon as the release is posted, so the caller must not touch
+    /// it afterwards.
     fn release_skipped_oneshot(&self) {
         if !self.is_oneshot {
             return;
@@ -1068,8 +1070,8 @@ unsafe extern "C" fn closure_entry(
         }
         if !data.owner.is_current_thread() {
             unsafe { data.warn_foreign_thread(&logical_args) };
-            data.release_skipped_oneshot();
             unsafe { call_native_parent(cif, result, args, data) };
+            data.release_skipped_oneshot();
             return;
         }
         if release_queue::is_retiring() || data.js_fn.borrow().is_none() {
