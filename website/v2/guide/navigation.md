@@ -74,7 +74,9 @@ const loadState = async (): Promise<InitialState | undefined> => {
 const saveState = (state: object | undefined) => {
     GLib.mkdirWithParents(dataDir, 0o755);
     const bytes = new TextEncoder().encode(JSON.stringify(state));
-    void stateFile.replaceContentsAsync(bytes, null, false, Gio.FileCreateFlags.NONE, null);
+    stateFile.replaceContentsAsync(bytes, null, false, Gio.FileCreateFlags.NONE, null).catch((error: unknown) => {
+        console.error(error);
+    });
 };
 
 export const App = () => {
