@@ -169,7 +169,8 @@ const queryWidgetsShape = {
     ...describeParams(queryParams.shape, {
         by:
             'What to compare value with: "role" the accessible role (such as "button" or "checkbox"), "text" ' +
-            'the text the widget renders, "labelText" its label, and "name" all of these plus the widget name.',
+            'the text the widget renders, "labelText" its label, and "name" the widget name (the GType name when ' +
+            "none was set), the accessible name, the label and the rendered text.",
         value: "Value to search for, matched whole unless options.exact is false",
         options: "Query options",
     }),
