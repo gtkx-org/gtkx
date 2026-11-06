@@ -86,26 +86,86 @@ describe("native story explorer", () => {
         expect(screen.getByName("storybook-story-components-counter--default")).toBeVisible();
     });
 
+    it("keeps story groups that share a title path together in first-occurrence order", async () => {
+        const titles = [
+            "Recipes/Card",
+            "Pantry/Spices/Cumin",
+            "Recipes/Grid",
+            "Pantry/Tins/Olives",
+            "Pantry/Spices/Pepper",
+            "Recipes",
+        ];
+        const catalog = new StoryCatalog();
+        await catalog.load(
+            titles.map((title) => ({
+                id: `${title}.stories.tsx`,
+                title,
+                load: () =>
+                    Promise.resolve({
+                        default: { ...counterStories.default, title },
+                        Default: counterStories.Default,
+                    }),
+            })),
+        );
+        await showExplorer(catalog);
+
+        const rows = screen.getAllByName(/^storybook-story-/).map((row) => row.getName());
+        expect(rows).toEqual([
+            "storybook-story-recipes--default",
+            "storybook-story-recipes-card--default",
+            "storybook-story-recipes-grid--default",
+            "storybook-story-pantry-spices-cumin--default",
+            "storybook-story-pantry-spices-pepper--default",
+            "storybook-story-pantry-tins-olives--default",
+        ]);
+    });
+
     it("starts empty and updates after stories are loaded and removed", async () => {
         const catalog = new StoryCatalog();
         await showExplorer(catalog);
         expect(screen.queryByName("count")).toBeNull();
+        expect(screen.getByText("0 stories")).toBeVisible();
 
         await act(() =>
             catalog.load([
                 {
                     id: "counter.stories.tsx",
                     title: "Counter",
-                    load: () => Promise.resolve(counterStories),
+                    load: () => Promise.resolve({ default: counterStories.default, Default: counterStories.Default }),
                 },
             ]),
         );
+        expect(screen.getByText("1 story")).toBeVisible();
         await userEvent.click(screen.getByName("storybook-story-components-counter--default"));
         expect(screen.getByName("count")).toHaveTextContent(/^2$/);
 
         await act(() => catalog.load([]));
         expect(screen.queryByName("count")).toBeNull();
         expect(screen.queryByName("storybook-story-components-counter--default")).toBeNull();
+        expect(screen.getByText("0 stories")).toBeVisible();
+    });
+
+    it("opens a restarted explorer on its previous story and reports each selection", async () => {
+        const catalog = new StoryCatalog();
+        const selections: string[] = [];
+        await render(
+            <Storybook
+                catalog={catalog}
+                initialStoryId="components-counter--with-step"
+                onStorySelected={(id) => selections.push(id)}
+            />,
+            { container: rootElement },
+        );
+
+        await act(() =>
+            catalog.load([
+                { id: "counter.stories.tsx", title: "Counter", load: () => Promise.resolve(counterStories) },
+            ]),
+        );
+        expect(screen.getByName("story-context")).toHaveTextContent(/^components-counter--with-step\|/);
+        await userEvent.click(screen.getByName("storybook-story-components-counter--default"));
+        expect(screen.getByName("story-context")).toHaveTextContent(/^components-counter--default\|/);
+        expect(selections).toEqual(["components-counter--with-step", "components-counter--default"]);
     });
 
     it("recomposes the selected story after metadata replacement", async () => {
@@ -224,6 +284,37 @@ describe("native story explorer", () => {
         expect(screen.queryByRole(Gtk.AccessibleRole.WINDOW, { name: "Story window" })).toBeNull();
     });
 
+    it("scrolls content stories larger than the explorer window while requesting their natural size", async () => {
+        const catalog = new StoryCatalog();
+        await catalog.load([
+            {
+                id: "large.stories.tsx",
+                title: "Large",
+                load: () =>
+                    Promise.resolve({
+                        default: { title: "Large" },
+                        Form: {
+                            render: () => (
+                                <GtkBox orientation={Gtk.Orientation.VERTICAL} widthRequest={4000} heightRequest={4000}>
+                                    <GtkButton label="Save" vexpand valign={Gtk.Align.END} />
+                                </GtkBox>
+                            ),
+                        },
+                    }),
+            },
+        ]);
+        await showExplorer(catalog);
+        const explorer = screen.getByRole(Gtk.AccessibleRole.WINDOW, { name: "GTKX Storybook" });
+        const [minimumWidth, naturalWidth] = explorer.measure(Gtk.Orientation.HORIZONTAL, -1);
+        const [minimumHeight, naturalHeight] = explorer.measure(Gtk.Orientation.VERTICAL, -1);
+
+        expect(minimumWidth).toBeLessThan(4000);
+        expect(minimumHeight).toBeLessThan(4000);
+        expect(naturalWidth).toBeGreaterThan(4000);
+        expect(naturalHeight).toBeGreaterThan(4000);
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Save" }));
+    });
+
     it("keeps navigation usable after a selected story throws during rendering", async () => {
         const catalog = new StoryCatalog();
         await catalog.load([
@@ -242,9 +333,9 @@ describe("native story explorer", () => {
                     }),
             },
         ]);
-        const result = await showExplorer(catalog);
+        await showExplorer(catalog);
         await userEvent.click(screen.getByName("storybook-story-recovery--broken"));
-        await expect(result.rerender(<Storybook catalog={catalog} />)).rejects.toThrow();
+        expect(await screen.findByName("storybook-preview-error")).toBeVisible();
 
         await userEvent.click(screen.getByName("storybook-story-recovery--healthy"));
         expect(screen.getByName("healthy-story")).toBeVisible();

@@ -147,6 +147,41 @@ describe("native story catalog updates", () => {
         expect(screen.queryByText("Second")).toBeNull();
     });
 
+    it("lists only stories whose composed tags include dev", async () => {
+        const catalog = new StoryCatalog();
+        await catalog.load([
+            {
+                id: "visible.stories.tsx",
+                title: "Visible",
+                load: () =>
+                    Promise.resolve({
+                        ...moduleWithLabel("Visible preview"),
+                        Draft: { tags: ["!dev"] },
+                    }),
+            },
+            {
+                id: "internal.stories.tsx",
+                title: "Internal",
+                load: () =>
+                    Promise.resolve({
+                        default: {
+                            tags: ["!dev"],
+                            render: () => <GtkLabel>Internal preview</GtkLabel>,
+                        } satisfies Meta,
+                        Default: {},
+                        Showcase: { tags: ["dev"] },
+                    }),
+            },
+        ]);
+        await render(<Storybook catalog={catalog} />, { container: rootElement });
+
+        expect(screen.getByText("2 stories")).toBeVisible();
+        expect(screen.getByName("storybook-story-visible--default")).toBeVisible();
+        expect(screen.queryByName("storybook-story-visible--draft")).toBeNull();
+        expect(screen.queryByName("storybook-story-internal--default")).toBeNull();
+        expect(screen.getByName("storybook-story-internal--showcase")).toBeVisible();
+    });
+
     it.each([42, false, { label: "Invalid" }])("rejects invalid display names during loading", async (name) => {
         const catalog = new StoryCatalog();
 

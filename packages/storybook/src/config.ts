@@ -1,6 +1,9 @@
 /** Story discovery and preview configuration for the native explorer. */
 type StorybookConfig = {
-    /** Project-relative globs; defaults to CSF story files under src. */
+    /**
+     * Project-relative globs; defaults to CSF story files under src. A glob may reach a sibling workspace
+     * package through `..` segments when every file it matches lies inside the workspace root.
+     */
     stories?: string[];
     /** Additional project-relative globs excluded from discovery. */
     exclude?: string[];
