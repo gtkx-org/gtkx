@@ -31,9 +31,8 @@ const YARN_PREAPPROVED_PACKAGES = "npmPreapprovedPackages";
 const NPM_RELEASE_AGE_EXCLUDE = "min-release-age-exclude[]";
 const NPM_RELEASE_AGE_EXCLUDE_PATTERN = /^\s*min-release-age-exclude(?:\[\])?\s*=\s*(["']?)(.*?)\1\s*$/;
 const NEGATION_PREFIX = "!";
-const YARN_USER_AGENT_PATTERN = /^yarn\/((\d+)\.\d+\.\d+\S*)/;
+const YARN_USER_AGENT_PATTERN = /^yarn\/(\d+\.\d+\.\d+\S*)/;
 const FIRST_PINNED_YARN_MAJOR = 2;
-const YARN_PIN_PATTERN = /^yarn@(\d+)\./;
 const YARN_PIN_PREFIX = "yarn@";
 const YARN_RELEASE_PATTERN = /^(\d+)\.(\d+)\./;
 const FIRST_PREAPPROVING_YARN = { major: 4, minor: 10 };
@@ -146,11 +145,18 @@ const installingYarnRelease = (root: string): string | null =>
     YARN_USER_AGENT_PATTERN.exec(process.env.npm_config_user_agent ?? "")?.[1] ?? reportedYarnRelease(root);
 
 /**
- * The Yarn release that installs the project at `root`: the release its `packageManager` field pins, otherwise
- * the Yarn running the scaffold, otherwise the one `yarn --version` reports there through Corepack, as the
- * install runs it.
+ * The Yarn release that `yarn` runs in the project or workspace at `root`: the one `yarn --version` reports
+ * there when its `.yarnrc.yml` sets `yarnPath`, which overrides a pin, otherwise the release its
+ * `packageManager` field pins, otherwise the Yarn running the scaffold, otherwise the one `yarn --version`
+ * reports there through Corepack.
  */
 const yarnRelease = (root: string): string | null => {
+    const settings = readSettings(join(root, YARN_CONFIG_FILE), parse);
+
+    if (isRecord(settings) && typeof settings.yarnPath === "string") {
+        return reportedYarnRelease(root);
+    }
+
     const manifest = readSettings(join(root, PACKAGE_JSON_FILE), JSON.parse);
     const pin = isRecord(manifest) && typeof manifest.packageManager === "string" ? manifest.packageManager : "";
 
@@ -497,28 +503,13 @@ const enclosingWorkspace = (root: string, packageManager: PackageManager): Works
 };
 
 /**
- * Whether `yarn` in the workspace at `root` is Yarn 1: the major its `packageManager` pin names, otherwise
- * Yarn 2 or newer when its `.yarnrc.yml` sets `yarnPath`, otherwise the Yarn running the scaffold, and Yarn 1,
- * which an unpinned `yarn` runs through Corepack, when none of these says.
+ * Whether `yarn` in the workspace at `root` is Yarn 1, judged by the release it runs there, and Yarn 1 when no
+ * release can be determined.
  */
 const isClassicYarn = (root: string): boolean => {
-    const manifest = readSettings(join(root, PACKAGE_JSON_FILE), JSON.parse);
-    const pin = isRecord(manifest) && typeof manifest.packageManager === "string" ? manifest.packageManager : "";
-    const pinnedMajor = YARN_PIN_PATTERN.exec(pin)?.[1];
+    const major = Number(YARN_RELEASE_PATTERN.exec(yarnRelease(root) ?? "")?.[1]);
 
-    if (pinnedMajor !== undefined) {
-        return Number(pinnedMajor) < FIRST_PINNED_YARN_MAJOR;
-    }
-
-    const settings = readSettings(join(root, YARN_CONFIG_FILE), parse);
-
-    if (isRecord(settings) && typeof settings.yarnPath === "string") {
-        return false;
-    }
-
-    const runningMajor = YARN_USER_AGENT_PATTERN.exec(process.env.npm_config_user_agent ?? "")?.[2];
-
-    return runningMajor === undefined || Number(runningMajor) < FIRST_PINNED_YARN_MAJOR;
+    return Number.isNaN(major) || major < FIRST_PINNED_YARN_MAJOR;
 };
 
 export {

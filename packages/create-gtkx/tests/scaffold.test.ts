@@ -155,6 +155,24 @@ describe("scaffold command", () => {
         expect(parse(read(target, ".yarnrc.yml"))).toEqual({ nodeLinker: "node-modules" });
     });
 
+    it("leaves out the preapproval when the yarnPath release overriding the pin rejects it", async () => {
+        vi.stubEnv("npm_config_user_agent", yarnUserAgent("4.18.1"));
+        using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-yarn-path-"));
+        const bin = join(directory.path, "bin");
+        mkdirSync(bin);
+        writeFileSync(join(bin, "corepack"), `#!${process.execPath}\nconsole.log("4.9.4");\n`, { mode: 0o755 });
+        vi.stubEnv("PATH", `${bin}:${process.env.PATH ?? ""}`);
+        const target = join(directory.path, "example");
+        mkdirSync(target);
+        writeFileSync(join(target, "package.json"), JSON.stringify({ name: "keep", packageManager: "yarn@4.18.1" }));
+        writeFileSync(join(target, ".yarnrc.yml"), "yarnPath: .yarn/releases/yarn-4.9.4.cjs\n");
+        expect((await create(target, ["--overwrite", "--package-manager", "yarn"])).status).toBe(0);
+        expect(parse(read(target, ".yarnrc.yml"))).toEqual({
+            yarnPath: ".yarn/releases/yarn-4.9.4.cjs",
+            nodeLinker: "node-modules",
+        });
+    });
+
     it("protects an occupied target and preserves unrelated files when overwriting", async () => {
         using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-existing-"));
         const target = join(directory.path, "example");
@@ -338,27 +356,42 @@ describe("scaffold command", () => {
     it.each([
         {
             userAgent: "yarn/4.18.1 npm/? node/v26.7.0 linux x64",
+            corepackYarn: "1.22.22",
             pin: {},
             server: { command: "yarn", args: ["workspace", "example", "exec", "gtkx", "mcp"] },
             hasPreapproval: true,
         },
         {
             userAgent: "npm/11.20.0 node/v26.7.0 linux x64",
+            corepackYarn: "1.22.22",
             pin: { packageManager: "yarn@4.18.1" },
             server: { command: "yarn", args: ["workspace", "example", "exec", "gtkx", "mcp"] },
             hasPreapproval: true,
         },
         {
+            userAgent: "npm/11.20.0 node/v26.7.0 linux x64",
+            corepackYarn: "4.18.1",
+            pin: {},
+            server: { command: "yarn", args: ["workspace", "example", "exec", "gtkx", "mcp"] },
+            hasPreapproval: true,
+        },
+        {
             userAgent: "yarn/1.22.22 npm/? node/v26.7.0 linux x64",
+            corepackYarn: "4.18.1",
             pin: {},
             server: { command: "yarn", args: ["--silent", "--cwd", "apps/example", "gtkx", "mcp"] },
             hasPreapproval: false,
         },
     ])(
-        "leaves the linker and build scripts of an app in a Yarn workspace to the workspace root ($userAgent)",
-        async ({ userAgent, pin, server, hasPreapproval }) => {
+        "leaves the linker and build scripts of an app in a Yarn workspace to the workspace root ($userAgent with Corepack's Yarn $corepackYarn)",
+        async ({ userAgent, corepackYarn, pin, server, hasPreapproval }) => {
             vi.stubEnv("npm_config_user_agent", userAgent);
             using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-yarn-workspace-"));
+            const bin = join(directory.path, "bin");
+            mkdirSync(bin);
+            const corepack = `#!${process.execPath}\nconsole.log(${JSON.stringify(corepackYarn)});\n`;
+            writeFileSync(join(bin, "corepack"), corepack, { mode: 0o755 });
+            vi.stubEnv("PATH", `${bin}:${process.env.PATH ?? ""}`);
             const root = JSON.stringify({
                 name: "kitchen",
                 private: true,
