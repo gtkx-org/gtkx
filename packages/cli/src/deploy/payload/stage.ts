@@ -7,6 +7,7 @@ import { I18N_RUNTIME_CONFIG_FILENAME, renderI18nRuntimeConfig } from "../../i18
 import { BUILD_METADATA_FILENAMES } from "../../internal/build-manifest.js";
 import { listFilesRecursive } from "../../internal/list-files.js";
 import { COMPILED_SCHEMAS_FILENAME } from "../../settings/compile.js";
+import { SCHEMA_SUFFIX } from "../../settings/schema.js";
 import { BUNDLE_FILENAME } from "../../vite-plugins/esm-extension.js";
 import { renderCopyright } from "../freedesktop/copyright.js";
 import { renderDbusService } from "../freedesktop/dbus-service.js";
@@ -56,6 +57,8 @@ const licenseDestination = (settings: DeploySettings): string => `${licenseDirFo
 const noticesDestination = (settings: DeploySettings): string => `${licenseDirFor(settings)}/${NOTICES_FILENAME}`;
 const isIconAsset = (rel: string): boolean => rel === DIST_ICONS_DIR || rel.startsWith(`${DIST_ICONS_DIR}/`);
 const isLocaleAsset = (rel: string): boolean => rel === LOCALE_DIRNAME || rel.startsWith(`${LOCALE_DIRNAME}/`);
+const isSchemaAsset = (rel: string): boolean =>
+    rel === COMPILED_SCHEMAS_FILENAME || (!rel.includes("/") && rel.endsWith(SCHEMA_SUFFIX));
 
 const nodeLicenseDestination = (settings: DeploySettings): string =>
     `${licenseDirFor(settings)}/${NODE_FILENAME}/${NODE_LICENSE_FILENAME}`;
@@ -73,16 +76,15 @@ const stageRuntimeFiles = (settings: DeploySettings, root: string): StagedFile[]
                 !isIconAsset(file.rel) &&
                 !BUILD_METADATA_FILENAMES.has(file.rel) &&
                 !isLocaleAsset(file.rel) &&
-                file.rel !== COMPILED_SCHEMAS_FILENAME,
+                !isSchemaAsset(file.rel),
         )
         .map((file) => copyInto(root, join(libDirFor(settings), file.rel), file.absPath));
 };
 
-const stageCompiledSchemas = (settings: DeploySettings, root: string): StagedFile[] => {
-    const compiled = join(settings.paths.dist, COMPILED_SCHEMAS_FILENAME);
-
-    return existsSync(compiled) ? [copyInto(root, join(libDirFor(settings), COMPILED_SCHEMAS_FILENAME), compiled)] : [];
-};
+const stageBuiltSchemas = (settings: DeploySettings, root: string): StagedFile[] =>
+    listFilesRecursive(settings.paths.dist)
+        .filter((file) => isSchemaAsset(file.rel))
+        .map((file) => copyInto(root, join(libDirFor(settings), file.rel), file.absPath));
 
 const stageAddon = (settings: DeploySettings, root: string, addon: string | null): StagedFile[] =>
     addon === null ? [] : [copyInto(root, join(libDirFor(settings), BINDING_FILENAME), addon)];
@@ -265,7 +267,7 @@ const stageOverlay = (
 
     return [
         ...activation,
-        ...(target === "appimage" ? stageCompiledSchemas(settings, root) : []),
+        ...(target === "appimage" ? stageBuiltSchemas(settings, root) : []),
         ...(licenseFile === null ? [] : [copyInto(root, licenseDestination(settings), licenseFile)]),
         writeInto(root, noticesDestination(settings), renderNotices(settings, notices)),
     ];

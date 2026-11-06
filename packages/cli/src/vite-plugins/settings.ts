@@ -202,6 +202,10 @@ const emitBuildSchemas = (
         source: compiled,
     });
 
+    for (const filePath of schemaFiles) {
+        ctx.emitFile({ type: "asset", fileName: basename(filePath), source: readFileSync(filePath) });
+    }
+
     info(`Compiled ${String(schemaFiles.length)} GSettings schema(s)`);
 };
 

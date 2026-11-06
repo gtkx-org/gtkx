@@ -284,6 +284,37 @@ describe("CLI commands", () => {
         expect(JSON.parse(result.stdout)).toEqual({ matched: true, matches: ["hello", "hello"], replaced: "[hello]" });
     });
 
+    it("keeps settings schema summaries readable in a production bundle", async () => {
+        using project = createProject({ codegen: true, libraries: ["Gio-2.0"] });
+        project.write(
+            "data/org.gtkx.example.gschema.xml",
+            `<schemalist>
+                <schema id="org.gtkx.example" path="/org/gtkx/example/">
+                    <key name="font" type="s">
+                        <default>'Monospace 12'</default>
+                        <summary>Editor font</summary>
+                        <description>The font used to show documents</description>
+                    </key>
+                </schema>
+            </schemalist>`,
+        );
+        project.write(
+            "src/index.ts",
+            `import { SettingsSchemaSource } from "@gtkx/gi/gio";
+            import schema from "../data/org.gtkx.example.gschema.xml";
+            const key = SettingsSchemaSource.getDefault()?.lookup(schema.id, true)?.getKey("font");
+            process.stdout.write(JSON.stringify([key?.getSummary(), key?.getDescription()]));`,
+        );
+
+        await invoke(["build", "--cwd", project.root]);
+        const result = await promisify(execFile)(process.execPath, [join(project.root, "dist/bundle.mjs")], {
+            env: { ...process.env, GSETTINGS_BACKEND: "memory" },
+            timeout: 30_000,
+        });
+
+        expect(JSON.parse(result.stdout)).toEqual(["Editor font", "The font used to show documents"]);
+    });
+
     it("names the program after the application when a library parses options while the app loads", async () => {
         using project = createProject({ codegen: true, libraries: ["Gio-2.0", "Gst-1.0"] });
         project.write(
@@ -1845,8 +1876,10 @@ describe("CLI commands", () => {
         expect(flatpak.modules.at(-1)?.["post-install"]).toEqual([
             "glib-compile-schemas ${FLATPAK_DEST}/share/glib-2.0/schemas",
         ]);
-        expect(existsSync(join(build, "stage/lib/cli-example/gschemas.compiled"))).toBe(false);
-        expect(existsSync(join(build, "overlay/appimage/lib/cli-example/gschemas.compiled"))).toBe(true);
+        for (const schemaFile of ["gschemas.compiled", "org.gtkx.example.gschema.xml"]) {
+            expect(existsSync(join(build, "stage/lib/cli-example", schemaFile))).toBe(false);
+            expect(existsSync(join(build, "overlay/appimage/lib/cli-example", schemaFile))).toBe(true);
+        }
         const files = readdirSync(join(project.root, "build"), { recursive: true }).map(String);
         expect(files).toEqual(
             expect.arrayContaining([

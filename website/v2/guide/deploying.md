@@ -160,7 +160,8 @@ directory when a package is installed, and the Flatpak manifest runs `glib-compi
 the app. Vendor `.gschema.override` files that a distribution or administrator places there therefore change
 the application's defaults, as they do for other GNOME applications. The AppImage and `node dist/bundle.mjs`
 read the `gschemas.compiled` that `gtkx build` writes beside the bundle, so vendor overrides do not apply to
-them.
+them. Copies of the schema files sit beside it, where GLib reads key summaries and descriptions, as every
+package does.
 
 ### Additional native addons
 
