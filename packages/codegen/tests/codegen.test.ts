@@ -819,6 +819,94 @@ describe("generated bindings", () => {
         expect(JSON.parse(output)).toEqual(["from a value", "from JavaScript"]);
     });
 
+    it("adds and removes tables of action entries on every action map like GJS", async () => {
+        using directory = createProject();
+        const { gi } = resolveStore(directory.path);
+        await runCodegen({ libraries: ["Gio-2.0"], girPath: resolveGirPath(undefined, directory.path), gi });
+        const consumer = `import { type ActionEntryObj, Application, SimpleAction, SimpleActionGroup } from "@gtkx/gi/gio";
+            import { Variant, VariantType } from "@gtkx/gi/glib";
+            import { registerClass } from "@gtkx/runtime";
+            const calls: unknown[] = [];
+            const group = new SimpleActionGroup();
+            const entries: ActionEntryObj[] = [
+                {
+                    name: "zoom-in",
+                    activate(action, parameter) {
+                        calls.push(["zoom-in", this === action, action instanceof SimpleAction, parameter]);
+                    },
+                },
+                {
+                    name: "open",
+                    parameterType: "s",
+                    activate: (_action, parameter) => calls.push(["open", parameter?.unpack()]),
+                },
+                {
+                    name: "size",
+                    state: "'large'",
+                    changeState(action, value) {
+                        calls.push(["size", value?.unpack()]);
+                        if (value !== null) action.setState(value);
+                    },
+                },
+                { name: "hidden", state: true },
+                { name: "depth", parameterType: new VariantType("i"), state: new Variant("i", 2) },
+            ];
+            const result: void = group.addActionEntries(entries);
+            group.activateAction("zoom-in", null);
+            group.activateAction("open", new Variant("s", "README"));
+            group.changeActionState("size", new Variant("s", "small"));
+            group.changeActionState("hidden", new Variant("b", false));
+            const states = {
+                size: group.getActionState("size")?.unpack(),
+                hidden: group.getActionState("hidden")?.unpack(),
+                depth: [group.lookupAction("depth")?.getParameterType()?.dupString(), group.getActionState("depth")?.unpack()],
+            };
+            // @ts-expect-error entry fields are camelCase
+            group.addActionEntries([{ name: "bad-type", parameter_type: "s" }]);
+            const failures: string[] = [];
+            const invalid: ActionEntryObj[] = [
+                { name: "invalid-type", parameterType: "zz" },
+                { name: "invalid-state", state: "large" },
+                // @ts-expect-error every entry is named
+                { activate: () => undefined },
+            ];
+            for (const entry of invalid) {
+                try {
+                    group.addActionEntries([entry]);
+                } catch (error) {
+                    failures.push(String(error));
+                }
+            }
+            const added = group.listActions().toSorted();
+            group.removeActionEntries(entries);
+            group.removeActionEntries([{ name: "bad-type" }]);
+            const AppBase = class extends Application {};
+            const App = registerClass(AppBase, { typeName: "ConsumerActionApp" });
+            const app = new App({ applicationId: "org.gtkx.ConsumerActionApp" });
+            app.addActionEntries([{ name: "quit", activate: () => calls.push(["quit"]) }]);
+            app.lookupAction("quit")?.activate(null);
+            console.log(JSON.stringify({ result: result === undefined, calls, states, failures, added, left: group.listActions() }));`;
+        expect(diagnostics(directory.path, consumer)).toEqual([]);
+        const output = execFileSync(process.execPath, ["consumer.ts"], {
+            cwd: directory.path,
+            encoding: "utf8",
+            stdio: "pipe",
+            timeout: 20_000,
+        });
+        expect(JSON.parse(output)).toEqual({
+            result: true,
+            calls: [["zoom-in", true, true, null], ["open", "README"], ["size", "small"], ["quit"]],
+            states: { size: "small", hidden: false, depth: ["i", 2] },
+            failures: [
+                expect.stringContaining('parameterType "zz" is not a valid VariantType'),
+                expect.stringContaining("unknown keyword"),
+                expect.stringContaining("action entry name must be a string"),
+            ],
+            added: ["bad-type", "depth", "hidden", "open", "size", "zoom-in"],
+            left: [],
+        });
+    });
+
     it("reads embedded records that hold pointers as read-only views like GJS", async () => {
         using directory = createProject();
         const libraries = ["PangoCairo-1.0"];

@@ -1,5 +1,6 @@
 const HIDDEN_SYMBOLS: Set<string> = new Set([
     "g_action_map_add_action_entries",
+    "g_action_map_remove_action_entries",
     "g_ascii_dtostr",
     "g_ascii_formatd",
     "g_bytes_get_region",
@@ -31,6 +32,7 @@ const HIDDEN_SYMBOLS: Set<string> = new Set([
     "g_ref_string_new_intern",
     "g_ref_string_new_len",
     "g_ref_string_release",
+    "g_simple_action_group_add_entries",
     "g_stpcpy",
     "g_strcanon",
     "g_strchomp",

@@ -329,6 +329,55 @@ Create the delegate in `vfuncConstructed`: reading or writing an editable proper
 
 Throw from a vfunc that reports errors through `GError`. GTKX preserves a thrown `GLib.Error`, such as `new GLib.Error(Gio.IOErrorEnum, Gio.IOErrorEnum.PERMISSION_DENIED, "Read-only")`, and converts other exceptions into a native error. A virtual function without an error channel cannot report failure that way; see [Error Handling](/v2/guide/error-handling).
 
+## Adding actions
+
+A window or application that React renders declares its actions with the `actions` prop, as the [tutorial](/v2/tutorial/actions-menus-shortcuts#define-the-window-actions) shows. A class that builds its own action group, such as a widget with a context menu, adds a table of actions with `addActionEntries`, GJS's `add_action_entries` and C's `g_action_map_add_action_entries`. Every `Gio.ActionMap` has it, including `Gio.SimpleActionGroup`, `Gtk.Application`, `Adw.Application`, `Gtk.ApplicationWindow` and the classes registered from them:
+
+```ts
+import * as Gio from "@gtkx/gi/gio";
+import * as Gtk from "@gtkx/gi/gtk";
+
+class ChartBase extends Gtk.Widget {
+    declare private chartActions: Gio.SimpleActionGroup;
+    declare depth: number;
+
+    override vfuncConstructed(): void {
+        super.vfuncConstructed();
+        this.depth = 5;
+        this.chartActions = new Gio.SimpleActionGroup();
+        this.chartActions.addActionEntries([
+            { name: "zoom-in", activate: () => this.setDepth(this.depth - 1) },
+            { name: "zoom-out", activate: () => this.setDepth(this.depth + 1) },
+            { name: "set-depth", parameterType: "i", activate: (_action, depth) => this.setDepth(depth?.getInt32() ?? 5) },
+            {
+                name: "show-hidden",
+                state: "false",
+                changeState: (action, value) => {
+                    if (value !== null) action.setState(value);
+                    this.queueDraw();
+                },
+            },
+        ]);
+        this.insertActionGroup("chart", this.chartActions);
+    }
+
+    setDepth(depth: number): void {
+        this.depth = Math.max(1, depth);
+        this.queueDraw();
+    }
+}
+```
+
+A menu item with the action `chart.zoom-in` then activates the first entry. Each entry, typed as `Gio.ActionEntryObj`, takes GJS's fields in camelCase:
+
+- `name`, the action's name.
+- `activate(action, parameter)`, connected to the action's `activate` signal.
+- `parameterType`, a GVariant type string such as `"s"` or a `GLib.VariantType`. Without it, the action takes no parameter.
+- `state`, the initial state in GVariant text such as `"'large'"` or `"true"`, a boolean or a `GLib.Variant`. Without it, the action is stateless.
+- `changeState(action, value)`, connected to `change-state`. Without it, a change request sets the state directly.
+
+As in GJS and C, both callbacks receive the action first and run with `this` set to it; a handler passed to `connect` receives only the signal's arguments. An entry without a string name, an invalid `parameterType` or a `state` that does not parse throws, and the entries before it stay added. `removeActionEntries` takes the same entries and removes the actions they name.
+
 ## Elements that cannot be children
 
 Express native object relationships through JSX props and supported child slots. For an object that needs React ownership without native child placement, use [a portal](/v2/guide/modals-and-portals). Add native placement rules through [element configuration](/v2/guide/configuration-and-codegen#advanced-customizing-elements).

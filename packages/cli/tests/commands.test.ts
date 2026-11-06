@@ -318,6 +318,29 @@ describe("CLI commands", () => {
         expect(JSON.parse(result.stdout)).toEqual({ matched: true, matches: ["hello", "hello"], replaced: "[hello]" });
     });
 
+    it("keeps action entries working when a production bundle imports only an action group", async () => {
+        using project = createProject({ codegen: true, libraries: ["Gio-2.0"] });
+        project.write(
+            "src/index.ts",
+            `import { SimpleActionGroup } from "@gtkx/gi/gio";
+            const group = new SimpleActionGroup();
+            const calls: unknown[] = [];
+            group.addActionEntries([
+                { name: "open", parameterType: "s", activate: (_action, parameter) => calls.push(parameter?.unpack()) },
+                { name: "size", state: "'large'" },
+            ]);
+            group.activateAction("open", group.getActionState("size"));
+            process.stdout.write(JSON.stringify({ calls, actions: group.listActions().toSorted() }));`,
+        );
+
+        await invoke(["build", "--cwd", project.root]);
+        const result = await promisify(execFile)(process.execPath, [join(project.root, "dist/bundle.mjs")], {
+            timeout: 30_000,
+        });
+
+        expect(JSON.parse(result.stdout)).toEqual({ calls: ["large"], actions: ["open", "size"] });
+    });
+
     it("keeps settings schema summaries readable in a production bundle", async () => {
         using project = createProject({ codegen: true, libraries: ["Gio-2.0"] });
         project.write(

@@ -526,6 +526,61 @@ describe("render - PopoverMenu actions", () => {
         expect(activationCount).toBe(1);
     });
 
+    it("invokes actions a window adds with addActionEntries", async () => {
+        const windowRef = createRef<Gtk.ApplicationWindow>();
+        const calls: unknown[] = [];
+
+        await render(
+            <GtkApplication applicationId={uniqueAppId()} flags={APP_FLAGS}>
+                <GtkApplicationWindow ref={windowRef}>
+                    <GtkMenuButton
+                        label="Actions"
+                        menuModel={
+                            <GMenu
+                                items={[
+                                    { label: "Zoom In", action: "win.zoom-in" },
+                                    { label: "Show Hidden", action: "win.show-hidden" },
+                                ]}
+                            />
+                        }
+                    />
+                </GtkApplicationWindow>
+            </GtkApplication>,
+            { container: rootElement },
+        );
+        const window = requireWidget(windowRef);
+        window.addActionEntries([
+            {
+                name: "zoom-in",
+                activate(action, parameter) {
+                    calls.push([this === action, action.getName(), parameter]);
+                },
+            },
+            {
+                name: "show-hidden",
+                state: "false",
+                changeState(action, value) {
+                    calls.push(["show-hidden", value?.unpack()]);
+                    if (value !== null) action.setState(value);
+                },
+            },
+        ]);
+
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Actions" }));
+        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.MENU_ITEM, { name: "Zoom In" }));
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Actions" }));
+        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.MENU_ITEM, { name: "Show Hidden" }));
+
+        expect(calls).toEqual([
+            [true, "zoom-in", null],
+            ["show-hidden", true],
+        ]);
+        expect(window.getActionState("show-hidden")?.unpack()).toBe(true);
+        window.removeActionEntries([{ name: "zoom-in" }, { name: "show-hidden" }]);
+        expect(window.listActions()).not.toContain("zoom-in");
+        expect(window.hasAction("show-hidden")).toBe(false);
+    });
+
     it("removes a menu item's action when it unmounts", async () => {
         const windowRef = createRef<Gtk.ApplicationWindow>();
         const appId = uniqueAppId();
