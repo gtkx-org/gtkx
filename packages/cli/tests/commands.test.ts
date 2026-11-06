@@ -2180,6 +2180,42 @@ describe("CLI commands", () => {
         ]);
     });
 
+    it("asks a Yarn 4 project to pin Yarn before vendoring its dependencies", async () => {
+        using project = createProject({
+            applicationIcon: "icon.svg",
+            deploy: {
+                name: "CLI Example",
+                summary: "Exercises the source Flatpak manifest",
+                categories: ["Utility"],
+                description: ["An example application used to exercise a Flathub source manifest."],
+                developer: { id: "dev.gtkx", name: "GTKX", email: "hello@gtkx.dev" },
+                license: "MIT",
+                homepage: "https://gtkx.dev",
+                releases: [{ version: "1.0.0", date: "2026-11-06" }],
+                contentRating: {},
+                flatpak: {
+                    mode: "source",
+                    source: { url: "https://example.org/cli-example.git", commit: "0".repeat(40) },
+                },
+            },
+        });
+        project.write(
+            "yarn.lock",
+            '__metadata:\n  version: 10\n  cacheKey: 10c0\n\n"cli-example@workspace:.":\n  version: 0.0.0-use.local\n' +
+                '  resolution: "cli-example@workspace:."\n  dependencies:\n    gtkx-unpublished-package: "npm:^1.0.0"\n' +
+                '  languageName: unknown\n  linkType: soft\n\n"gtkx-unpublished-package@npm:^1.0.0":\n' +
+                '  version: 1.0.0\n  resolution: "gtkx-unpublished-package@npm:1.0.0"\n' +
+                `  checksum: 10c0/${"0".repeat(128)}\n  languageName: node\n  linkType: hard\n`,
+        );
+        project.write(
+            "icon.svg",
+            '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="blue"/></svg>',
+        );
+        const deploy = invoke(["deploy", "--cwd", project.root, "--print-manifests", "--target", "flatpak"]);
+        await expect(deploy).rejects.toThrow('package.json has no "packageManager" field');
+        await expect(deploy).rejects.toThrow("corepack use yarn@<version>");
+    });
+
     it("stops a source Flatpak of a workspace member and points to a standalone project", async () => {
         using project = createProject();
         project.write(
