@@ -8,7 +8,7 @@ You have a project that runs. Replace its contents with the first piece of Tasks
 
 ## What the scaffolder made
 
-`gtkx.config.ts` configures the application and generated bindings. `src/index.tsx` mounts the component tree, and `src/app.tsx` contains the counter you will replace. `src/gtkx-env.d.ts` connects TypeScript to the generated declarations.
+`gtkx.config.ts` configures the application and generated bindings. `src/index.tsx` mounts the component tree, and `src/app.tsx` contains the counter you will replace. `src/gtkx-env.d.ts` types asset imports and `import.meta.env`, and `tsconfig.json` resolves the generated bindings and declarations.
 
 `gtkx.config.ts`:
 
@@ -18,10 +18,18 @@ import { defineConfig } from "@gtkx/config";
 export default defineConfig({
     applicationId: "com.gtkx.tutorial",
     applicationIcon: "data/icons",
+    deploy: {
+        name: "Tasks",
+        summary: "A Linux application built with GTKX",
+        description: [
+            "Tasks is built with GTKX. Replace this paragraph with a description of what your application does.",
+        ],
+        categories: ["Utility"],
+    },
 });
 ```
 
-GTKX generates Adwaita and GTK4 bindings by default. The `libraries` option lists additional native libraries; see [Configuration and Codegen](/v2/guide/configuration-and-codegen).
+GTKX generates Adwaita and GTK4 bindings by default. The `libraries` option lists additional native libraries; see [Configuration and Codegen](/v2/guide/configuration-and-codegen). The `deploy` block holds the package metadata that [Package the App](/v2/tutorial/packaging) completes.
 
 Keep the application ID you chose in the introduction, and use it wherever later examples show `com.gtkx.tutorial`.
 
@@ -66,7 +74,9 @@ export function App() {
 
 Generated JSX elements use their GObject type names: `AdwApplicationWindow`, `GtkListBox`, and so on. The available elements come from your project's configured GIR libraries. Use the [generated element reference](/v2/guide/configuration-and-codegen#generating-element-reference-docs) for their props and signals.
 
-GObject properties become camelCase props, such as `widthRequest`. Signals become handlers such as `onCloseRequest`; here, closing the window calls `quit()` to unmount the application.
+GObject properties become camelCase props, such as `widthRequest`. Signals become handlers such as `onCloseRequest`; here, closing the window calls `quit()` to unmount the application and quit it.
+
+After `quit()`, the process exits once nothing else keeps Node's event loop busy, as with any Node program. A request still in flight or an interval still running keeps the process alive without a window, so abort requests and clear timers when the component that started them unmounts, and avoid timers at module level. `gtkx dev` warns, naming the kinds of pending work, when the process is still running a few seconds after the application quits; see [Async Operations](/v2/guide/async-operations#ending-work-on-unmount).
 
 `AdwApplication` takes its application ID from `gtkx.config.ts` and starts the application when it mounts. Rendering `AdwApplicationWindow` opens the window; removing it from the tree closes it.
 
