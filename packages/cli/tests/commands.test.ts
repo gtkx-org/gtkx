@@ -2991,6 +2991,60 @@ describe("CLI commands", () => {
         });
     });
 
+    it("says an MCP click on the label of a check button or menu item was handled", async () => {
+        using project = createProject();
+        const readyPath = join(project.root, "ready.txt");
+        writeWidgetApp(
+            project,
+            readyPath,
+            `import { GMenu, GSimpleAction, GSimpleActionGroup } from "@gtkx/jsx/gio";
+            import { GtkBox, GtkCheckButton, GtkLabel, GtkMenuButton } from "@gtkx/jsx/gtk";
+            import { useState } from "react";
+            export const Content = () => {
+                const [picks, setPicks] = useState(0);
+                return (
+                    <GtkBox
+                        actionGroups={
+                            <GSimpleActionGroup
+                                prefix="menu"
+                                actions={<GSimpleAction name="pick" onActivate={() => setPicks((count) => count + 1)} />}
+                            />
+                        }
+                    >
+                        <GtkCheckButton name="grid" label="Grid" />
+                        <GtkMenuButton name="more" label="More" menuModel={<GMenu items={[{ label: "Pick", action: "menu.pick" }]} />} />
+                        <GtkLabel label={\`Picked \${picks}\`} />
+                    </GtkBox>
+                );
+            };`,
+        );
+        await withMcpClient(project.root, async (client) => {
+            await withSession("dev", project.root, readyPath, async () => {
+                const [grid] = await queryWidgets(client, { by: "name", value: "grid" });
+                const [gridLabel] = await queryWidgets(client, { by: "text", value: "Grid" });
+                expect(await callTool(client, "gtkx_click", { widgetId: gridLabel?.id })).toEqual({
+                    isError: false,
+                    text: "Clicked",
+                });
+                const { text } = await callTool(client, "gtkx_get_widget_props", {
+                    widgetId: grid?.id,
+                    properties: ["active"],
+                    maxDepth: 0,
+                });
+                expect(JSON.parse(text)).toMatchObject({ properties: { active: { value: true } } });
+
+                const [more] = await queryWidgets(client, { by: "name", value: "more" });
+                await callTool(client, "gtkx_click", { widgetId: more?.id });
+                const [pickLabel] = await queryWidgets(client, { by: "text", value: "Pick" });
+                expect(await callTool(client, "gtkx_click", { widgetId: pickLabel?.id })).toEqual({
+                    isError: false,
+                    text: "Clicked",
+                });
+                expect(await queryWidgets(client, { by: "text", value: "Picked 1" })).toHaveLength(1);
+            });
+        });
+    });
+
     it("presses right and middle pointer buttons through MCP on the gestures listening for them", async () => {
         using project = createProject();
         const readyPath = join(project.root, "ready.txt");

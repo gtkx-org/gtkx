@@ -1,7 +1,7 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { hasSignalListener } from "@gtkx/runtime/internal";
-import { callBooleanGetter, getCallableMethod, hasWidgetMethod } from "../widget-getters.js";
+import { callBooleanGetter, getCallableMethod, getWidgetTypeName, hasWidgetMethod } from "../widget-getters.js";
 import { queryAllControllers } from "./controller.js";
 import { wrapPointerEvent } from "./event-wrapper.js";
 import { hasIndexedChildren, selectContainerChild, SELECTED_PROBE, unselectOtherChildren } from "./indexed-children.js";
@@ -29,6 +29,7 @@ type ClickTarget = {
 
 const CLICK_SIGNALS = ["pressed", "released"];
 const PRIMARY_BUTTONS: Set<number> = new Set([0, Gdk.BUTTON_PRIMARY]);
+const MENU_ITEM_TYPE_NAME = "GtkModelButton";
 
 const getCenterPoint = (widget: Gtk.Widget): PressPoint => {
     const width = widget.getWidth();
@@ -352,15 +353,21 @@ const applyClickOutcomes = (targets: ClickTarget[], nPress: number, modifiers: G
     }
 };
 
+/** Whether GTK's own click gesture on the widget acts without the real pointer event, as on buttons and menu items. */
+const isButtonLike = (widget: Gtk.Widget): boolean =>
+    widget instanceof Gtk.Button ||
+    widget instanceof Gtk.CheckButton ||
+    getWidgetTypeName(widget) === MENU_ITEM_TYPE_NAME;
+
 /**
  * Whether a click target is known to handle the click: app code listens to its gestures, GTKX applies the outcome a
- * real click has, or it is a button. GTK's other gestures read the real pointer event, so a click that reaches only
- * them may do nothing.
+ * real click has, or it is a button, check button or menu item. GTK's other gestures read the real pointer event, so
+ * a click that reaches only them may do nothing.
  */
 const isHandlingTarget = (target: ClickTarget): boolean =>
     target.native !== null ||
     target.container !== null ||
-    target.widget instanceof Gtk.Button ||
+    isButtonLike(target.widget) ||
     target.gestures.some((gesture) => hasClickHandlers(gesture));
 
 const deliverClick = async (state: UserEventState, widget: Gtk.Widget, nPress: number): Promise<boolean> => {
