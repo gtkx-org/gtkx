@@ -30,6 +30,7 @@ export {
     SplitViewNavigator,
     type SplitViewTypeBag,
 } from "./split-view/create-split-view-navigator.js";
+export { useSplitViewCollapsed } from "./split-view/split-view-collapsed.js";
 export type {
     SplitViewDescriptor,
     SplitViewDescriptorMap,
