@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
 import * as Adw from "@gtkx/gi/adw";
+import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwActionRow } from "@gtkx/jsx/adw";
-import { GtkBox, GtkButton, GtkLabel, GtkListBox } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkButton, GtkEntry, GtkLabel, GtkListBox } from "@gtkx/jsx/gtk";
 import { act, findByText, render, screen, userEvent, waitFor, waitForElementToBeRemoved, within } from "@gtkx/testing";
 import { clearTimeout as cancel, setTimeout as schedule } from "node:timers";
 import { setTimeout as delay } from "node:timers/promises";
@@ -126,6 +127,16 @@ describe("act", () => {
             }),
         ).rejects.toThrow();
     });
+
+    it.each([
+        ["synchronously", failingCallback],
+        ["asynchronously", async () => Promise.resolve().then(failingCallback)],
+    ])("keeps rendering updates made outside act after a callback throws %s", async (_mode, callback) => {
+        await render(<DebouncedLabel />);
+
+        await expect(Promise.try(() => act(callback))).rejects.toThrow();
+        await expect(screen.findByText("Settled")).resolves.toBeDefined();
+    });
 });
 
 describe("waitFor", () => {
@@ -192,6 +203,23 @@ describe("waitFor", () => {
         expect(attempts).toBeGreaterThan(1);
     });
 
+    it("lets idle callbacks run while a focused entry blinks its caret", async () => {
+        await render(<GtkEntry accessibleLabel="Name" />);
+        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { name: "Name" });
+        entry.grabFocus();
+        let isIdleRun = false;
+
+        GLib.idleAdd(GLib.PRIORITY_DEFAULT_IDLE, () => {
+            isIdleRun = true;
+
+            return false;
+        });
+
+        await waitFor(() => {
+            expect(isIdleRun).toBe(true);
+        });
+    });
+
     it("rejects when custom polling attempts never succeed", async () => {
         await expect(waitFor(failingCallback, { timeout: 300, interval: 50 })).rejects.toThrow();
     });
@@ -210,6 +238,27 @@ describe("waitFor", () => {
         const { container } = await render(<GtkLabel>Present</GtkLabel>);
 
         await expect(findByText(container, "Missing", { timeout: 100, onTimeout })).rejects.toThrow();
+        expect(timeoutCalls).toBe(2);
+    });
+
+    it("takes Testing Library's wait options as a find query's third argument", async () => {
+        let timeoutCalls = 0;
+
+        const onTimeout = (): Error => {
+            timeoutCalls += 1;
+
+            return new Error("custom");
+        };
+
+        await render(<DebouncedLabel />);
+        await expect(screen.findByText("Settled", undefined, { timeout: TEST_TIMEOUT })).resolves.toBeDefined();
+        await expect(
+            screen.findAllByRole(Gtk.AccessibleRole.LABEL, { name: "Settled" }, { interval: 10 }),
+        ).resolves.toHaveLength(1);
+        await expect(screen.findByText("Missing", { onTimeout }, { timeout: 100 })).rejects.toThrow("custom");
+        await expect(
+            screen.findAllByText("Missing", { timeout: TEST_TIMEOUT }, { timeout: 100, onTimeout }),
+        ).rejects.toThrow("custom");
         expect(timeoutCalls).toBe(2);
     });
 });

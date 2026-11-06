@@ -1,4 +1,5 @@
 import * as Adw from "@gtkx/gi/adw";
+import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
 import {
@@ -85,14 +86,32 @@ const readFirstText = (widget: object, getters: string[]): string | null => {
     return null;
 };
 
+const textDecoder = new TextDecoder();
+const TRAILING_NULS = /\0+$/;
+
+const readGetterText = (widget: Gtk.Accessible): string | null =>
+    widget instanceof Gtk.Label ? widget.getText() || null : readFirstText(widget, DEFAULT_TEXT_GETTERS);
+
+const readAccessibleTextContents = (widget: Gtk.Accessible): string | null => {
+    if (!(widget instanceof Gtk.AccessibleText)) {
+        return null;
+    }
+
+    const contents = widget.vfuncGetContents(0, GLib.MAXUINT32).getData();
+    const text = contents ? textDecoder.decode(contents).replace(TRAILING_NULS, "") : "";
+
+    return text.length > 0 ? text : null;
+};
+
 /**
  * Returns a widget's own text by trying its label, text, and title getters in
- * order, or null when none produce a value.
+ * order, then the contents it exposes through `Gtk.AccessibleText`, or null
+ * when none produce a value.
  *
  * @param widget The widget to read text from.
  */
 const getWidgetText = (widget: Gtk.Accessible): string | null =>
-    widget instanceof Gtk.Label ? widget.getText() || null : readFirstText(widget, DEFAULT_TEXT_GETTERS);
+    readGetterText(widget) ?? readAccessibleTextContents(widget);
 
 const namingLabelText = (widget: Gtk.Widget): string | null => {
     if (widget instanceof Gtk.Label) {
@@ -111,11 +130,26 @@ const namingLabelText = (widget: Gtk.Widget): string | null => {
 const isNamingLabelRole = (role: Gtk.AccessibleRole, shouldIncludePresentation: boolean): boolean =>
     role === Gtk.AccessibleRole.LABEL || (shouldIncludePresentation && role === Gtk.AccessibleRole.PRESENTATION);
 
+const accessibleDescendants = function* (widget: Gtk.Widget): Generator<Gtk.Widget> {
+    for (const child of children(widget)) {
+        if (readAccessibleBoolean(child, Gtk.AccessibleState.HIDDEN) !== true) {
+            yield child;
+            yield* accessibleDescendants(child);
+        }
+    }
+};
+
+const MENU_ITEM_ROLES: Set<Gtk.AccessibleRole> = new Set<Gtk.AccessibleRole>([
+    Gtk.AccessibleRole.MENU_ITEM,
+    Gtk.AccessibleRole.MENU_ITEM_CHECKBOX,
+    Gtk.AccessibleRole.MENU_ITEM_RADIO,
+]);
+
 const collectLabels = (widget: Gtk.Widget): string[] => {
-    const isIncludePresentation = widget.getAccessibleRole() === Gtk.AccessibleRole.MENU_ITEM;
+    const isIncludePresentation = MENU_ITEM_ROLES.has(widget.getAccessibleRole());
     const labels: string[] = [];
 
-    for (const descendant of descendants(widget)) {
+    for (const descendant of accessibleDescendants(widget)) {
         if (!isNamingLabelRole(descendant.getAccessibleRole(), isIncludePresentation)) {
             continue;
         }
@@ -131,11 +165,11 @@ const collectLabels = (widget: Gtk.Widget): string[] => {
 };
 
 const getWidgetLabelText = (widget: Gtk.Widget): string | null => {
-    if (widget.getAccessibleRole() !== Gtk.AccessibleRole.LABEL) {
+    if (!(widget instanceof Gtk.Label) && widget.getAccessibleRole() !== Gtk.AccessibleRole.LABEL) {
         return null;
     }
 
-    return namingLabelText(widget);
+    return namingLabelText(widget) ?? readAccessibleTextContents(widget);
 };
 
 const textContentParts = (widget: Gtk.Widget): string[] => {
@@ -204,12 +238,12 @@ const tabPanelTitle = (widget: Gtk.Widget): string | null => {
 };
 
 const nameFromAuthor = (widget: Gtk.Widget): string | null =>
-    getWidgetLabelledByText(widget) ??
+    getWidgetLabelledByName(widget) ??
     readAccessibleString(widget, Gtk.AccessibleProperty.LABEL) ??
     readFirstText(widget, ["getTitle"]);
 
 const nameFromContent = (widget: Gtk.Widget): string | null => {
-    const ownText = getWidgetText(widget);
+    const ownText = readGetterText(widget);
 
     if (ownText) {
         return ownText;
@@ -302,21 +336,34 @@ const hasDisplayValue = (widget: Gtk.Widget): boolean => {
 
 const isWidgetDisabled = (widget: Gtk.Widget): boolean => !widget.isSensitive();
 
-const hasZeroOpacityAncestor = (widget: Gtk.Widget): boolean => {
+/**
+ * Why a widget does not count as visible: the nearest widget, itself or an ancestor, that is hidden,
+ * that its container does not show, such as a collapsed revealer's child or an inactive stack page,
+ * or that is fully transparent.
+ */
+type HiddenCause = { widget: Gtk.Widget; cause: "hidden" | "unshown" | "transparent" };
+
+const findHiddenCause = (widget: Gtk.Widget): HiddenCause | null => {
     let current: Gtk.Widget | null = widget;
 
     while (current) {
+        if (!current.getVisible()) {
+            return { widget: current, cause: "hidden" };
+        }
+
+        if (!current.getChildVisible()) {
+            return { widget: current, cause: "unshown" };
+        }
+
         if (current.getOpacity() === 0) {
-            return true;
+            return { widget: current, cause: "transparent" };
         }
 
         current = current.getParent();
     }
 
-    return false;
+    return null;
 };
-
-const isWidgetVisible = (widget: Gtk.Widget): boolean => widget.isVisible() && !hasZeroOpacityAncestor(widget);
 
 const getWidgetRequiredState = (widget: Gtk.Widget): boolean | null =>
     readAccessibleBooleanProperty(widget, Gtk.AccessibleProperty.REQUIRED);
@@ -445,10 +492,24 @@ const isSelfLabelling = (widget: Gtk.Widget, targets: Gtk.Widget[]): boolean => 
     return targets.every((target) => own.has(target));
 };
 
-const labelledByText = (targets: Gtk.Widget[]): string | null => {
-    const texts = collectAccessibleNames(targets);
+const joinTexts = (texts: string[]): string | null => (texts.length > 0 ? texts.join(" ") : null);
 
-    return texts.length > 0 ? texts.join(" ") : null;
+const labelledByText = (targets: Gtk.Widget[]): string | null => joinTexts(collectAccessibleNames(targets));
+
+const referencedName = (target: Gtk.Widget, isPresentationIncluded: boolean): string =>
+    getWidgetAccessibleName(target) ||
+    (isPresentationIncluded ? namingLabelText(target) : null) ||
+    collectLabels(target).join(" ");
+
+const getWidgetLabelledByName = (widget: Gtk.Widget): string | null => {
+    const targets = readAccessibleWidgets(widget, Gtk.AccessibleRelation.LABELLED_BY);
+    const isPresentationIncluded = MENU_ITEM_ROLES.has(widget.getAccessibleRole());
+
+    return targets === null
+        ? null
+        : joinTexts(
+              targets.map((target) => referencedName(target, isPresentationIncluded)).filter((text) => text !== ""),
+          );
 };
 
 const getWidgetLabelledByText = (widget: Gtk.Widget): string | null => {
@@ -465,7 +526,7 @@ const getWidgetExternalLabelText = (widget: Gtk.Widget): string | null => {
 
 const isTooltipUsedAsName = (widget: Gtk.Widget): boolean =>
     readAccessibleString(widget, Gtk.AccessibleProperty.LABEL) === null &&
-    getWidgetText(widget) === null &&
+    readGetterText(widget) === null &&
     collectLabels(widget).length === 0;
 
 const getWidgetDescribedByText = (widget: Gtk.Widget): string | null => {
@@ -529,7 +590,7 @@ export {
     getWidgetDisplayValue,
     hasDisplayValue,
     isWidgetDisabled,
-    isWidgetVisible,
+    findHiddenCause,
     getWidgetRequiredState,
     getWidgetSelection,
     getWidgetDescribedByText,

@@ -2,8 +2,11 @@ import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { EDITABLE_ROLES, type EditableTarget, getEditableDelegate, isEditable, readEditableText } from "../editable.js";
 import { formatRoleList } from "../role-helpers.js";
+import type { UserEventState } from "./state.js";
 import { callBooleanGetter } from "../widget-getters.js";
 import { wrapEvent } from "./event-wrapper.js";
+import { applyKeyActions, characterActions, parseTypedInput, type TypedStep } from "./keyboard.js";
+import { usageError } from "../usage-error.js";
 
 type SignalWatchTarget = {
     on(signal: string, handler: (...args: unknown[]) => unknown, isAfter?: boolean): unknown;
@@ -27,6 +30,7 @@ const CLEAR_REFUSED = "Cannot clear element: the widget refuses to delete part o
 const SELECTION_DELETE_COUNT = 1;
 const SINGLE_CHARACTER_LENGTH = 1;
 const TEXT_END_POSITION = -1;
+const SHORTCUT_MODIFIERS = Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.ALT_MASK | Gdk.ModifierType.META_MASK;
 
 const isWidgetEditable = (widget: Gtk.Widget): boolean => callBooleanGetter(widget, "getEditable") ?? true;
 const hasSelectedText = (widget: Gtk.Editable): boolean => widget.getSelectionBounds()[0];
@@ -186,26 +190,48 @@ const resetClipboard = (): void => {
 const runEditableEvent = (
     widget: Gtk.Widget,
     failure: string,
-    action: (editable: EditableTarget) => void,
+    action: (editable: EditableTarget) => void | Promise<void>,
 ): Promise<void> =>
     wrapEvent(widget, () => {
         if (!isEditable(widget)) {
-            throw new Error(`${failure}: ${EDITABLE_REQUIRED}`);
+            throw usageError(new Error(`${failure}: ${EDITABLE_REQUIRED}`));
         }
 
-        action(widget);
+        return action(widget);
     });
 
-/** Types into an editable widget. */
-const type = (widget: Gtk.Widget, text: string, options?: TypeOptions): Promise<void> =>
-    runEditableEvent(widget, "Cannot type into element", (editable) => {
+const typeStep = async (editable: EditableTarget, state: UserEventState, step: TypedStep): Promise<void> => {
+    if ("actions" in step) {
+        await applyKeyActions(editable, state, step.actions);
+
+        return;
+    }
+
+    if ((state.modifierState & SHORTCUT_MODIFIERS) !== 0) {
+        await applyKeyActions(editable, state, characterActions(step.text));
+
+        return;
+    }
+
+    insertEditableText(editable, step.text, "typing");
+};
+
+/** Types into an editable widget, pressing the keys named in braces such as `{Enter}`; a doubled opening brace types a literal `{`. */
+const type = (state: UserEventState, widget: Gtk.Widget, text: string, options?: TypeOptions): Promise<void> => {
+    const steps = parseTypedInput(text);
+
+    return runEditableEvent(widget, "Cannot type into element", async (editable) => {
         if (options?.shouldFocus ?? true) {
             focusEditable(editable);
         }
 
         applyInitialSelection(editable, options ?? {});
-        insertEditableText(editable, text, "typing");
+
+        for (const step of steps) {
+            await typeStep(editable, state, step);
+        }
     });
+};
 
 const hasNonEditableChar = (iter: Gtk.TextIter, isDefaultEditable: boolean): boolean => {
     while (!iter.isEnd()) {
@@ -226,11 +252,11 @@ const hasProtectedText = (widget: EditableTarget): boolean =>
 
 const requireClearableText = (editable: EditableTarget): void => {
     if (!isWidgetEditable(editable)) {
-        throw new Error("Cannot clear element: the widget is not editable");
+        throw usageError(new Error("Cannot clear element: the widget is not editable"));
     }
 
     if (hasProtectedText(editable)) {
-        throw new Error(CLEAR_REFUSED);
+        throw usageError(new Error(CLEAR_REFUSED));
     }
 };
 
@@ -272,7 +298,7 @@ const clearEditable = (editable: EditableTarget): void => {
     }
 
     if (!didDeleteAllText(editable)) {
-        throw new Error(CLEAR_REFUSED);
+        throw usageError(new Error(CLEAR_REFUSED));
     }
 };
 
@@ -290,7 +316,7 @@ const runClipboardEvent = (widget: Gtk.Widget, signal: "copy-clipboard" | "cut-c
         const target = editable instanceof Gtk.TextView ? editable : getDelegateText(editable);
 
         if (target === null) {
-            throw new TypeError("The editable widget has no native clipboard action");
+            throw usageError(new TypeError("The editable widget has no native clipboard action"));
         }
 
         target.emit(signal);
@@ -299,7 +325,7 @@ const runClipboardEvent = (widget: Gtk.Widget, signal: "copy-clipboard" | "cut-c
 /** Pastes text or clipboard contents. */
 const paste = async (widget: Gtk.Widget, text?: string): Promise<void> => {
     if (!isEditable(widget)) {
-        throw new Error(`Cannot paste: ${EDITABLE_REQUIRED}`);
+        throw usageError(new Error(`Cannot paste: ${EDITABLE_REQUIRED}`));
     }
 
     const content = text ?? (await widget.getClipboard().readTextAsync(null)) ?? "";

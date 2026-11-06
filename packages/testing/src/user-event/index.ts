@@ -1,14 +1,15 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { delay } from "../timers.js";
+import { usageError } from "../usage-error.js";
 import { requireWidget } from "../widget-target.js";
 import { scroll, slide } from "./adjustment.js";
 import { click, dblClick, tripleClick } from "./click.js";
 import { drag, dragAndDrop, drop, hover, longPress, rotate, swipe, unhover, zoom } from "./gesture.js";
-import { keyboard, tab } from "./keyboard.js";
+import { focusedKeyWidget, heldModifiers, keyboard, tab } from "./keyboard.js";
 import { pointer, type PointerInput } from "./pointer.js";
 import { deselectOptions, selectOptions } from "./selection.js";
 import { createInitialState, type UserEventState } from "./state.js";
-import { clear, copy, cut, paste, type } from "./text.js";
+import { clear, copy, cut, paste, type, type TypeOptions } from "./text.js";
 
 /** Options shared by every helper on a {@link UserEvent} instance. */
 type UserEventOptions = {
@@ -21,30 +22,21 @@ type UserEvent = {
     /** Creates an instance with shared keyboard and pointer state. */
     setup: (options?: UserEventOptions) => UserEvent;
     /** Activates or presses and releases a widget. */
-    click: (
-        widget: Gtk.Accessible,
-        ...args: Parameters<typeof click> extends [Gtk.Widget, ...infer Args] ? Args : never
-    ) => Promise<void>;
+    click: (widget: Gtk.Accessible) => Promise<void>;
     /** Delivers a double-click gesture. */
-    dblClick: (
-        widget: Gtk.Accessible,
-        ...args: Parameters<typeof dblClick> extends [Gtk.Widget, ...infer Args] ? Args : never
-    ) => Promise<void>;
+    dblClick: (widget: Gtk.Accessible) => Promise<void>;
     /** Delivers a triple-click gesture. */
-    tripleClick: (
-        widget: Gtk.Accessible,
-        ...args: Parameters<typeof tripleClick> extends [Gtk.Widget, ...infer Args] ? Args : never
-    ) => Promise<void>;
+    tripleClick: (widget: Gtk.Accessible) => Promise<void>;
     /** Moves focus forward or backward within the root. */
     tab: (
         widget: Gtk.Accessible,
         ...args: Parameters<typeof tab> extends [Gtk.Widget, ...infer Args] ? Args : never
     ) => Promise<void>;
-    /** Types into an editable widget. */
-    type: (
-        widget: Gtk.Accessible,
-        ...args: Parameters<typeof type> extends [Gtk.Widget, ...infer Args] ? Args : never
-    ) => Promise<void>;
+    /**
+     * Types into an editable widget. Keys named in braces, such as `{Enter}`, `{Backspace}` or `{Tab}`, are pressed
+     * as `keyboard` presses them, and a doubled opening brace types a literal `{`.
+     */
+    type: (widget: Gtk.Accessible, text: string, options?: TypeOptions) => Promise<void>;
     /** Deletes all text from an editable widget. */
     clear: (
         widget: Gtk.Accessible,
@@ -79,37 +71,43 @@ type UserEvent = {
         widget: Gtk.Accessible,
         ...args: Parameters<typeof unhover> extends [Gtk.Widget, ...infer Args] ? Args : never
     ) => Promise<void>;
-    /** Emits `angle-changed` on the widget's rotate gestures. */
+    /** Emits `angle-changed` on the rotate gestures of the widget or its nearest ancestor that has one. */
     rotate: (
         widget: Gtk.Accessible,
         ...args: Parameters<typeof rotate> extends [Gtk.Widget, ...infer Args] ? Args : never
     ) => Promise<void>;
-    /** Emits `scale-changed` on the widget's zoom gestures. */
+    /** Emits `scale-changed` on the zoom gestures of the widget or its nearest ancestor that has one. */
     zoom: (
         widget: Gtk.Accessible,
         ...args: Parameters<typeof zoom> extends [Gtk.Widget, ...infer Args] ? Args : never
     ) => Promise<void>;
-    /** Emits `swipe` with the given velocity on the widget's swipe gestures. */
+    /** Emits `swipe` with the given velocity on the swipe gestures of the widget or its nearest ancestor that has one. */
     swipe: (
         widget: Gtk.Accessible,
         ...args: Parameters<typeof swipe> extends [Gtk.Widget, ...infer Args] ? Args : never
     ) => Promise<void>;
-    /** Emits `pressed` at the given point on the widget's long-press gestures. */
+    /** Emits `pressed` at the given point on the long-press gestures of the widget or its nearest ancestor that has one. */
     longPress: (
         widget: Gtk.Accessible,
         ...args: Parameters<typeof longPress> extends [Gtk.Widget, ...infer Args] ? Args : never
     ) => Promise<void>;
-    /** Runs a begin, update, and end sequence on the widget's drag gestures, ending at the given offset. */
+    /**
+     * Runs a begin, update, and end sequence on the drag gestures of the widget or its nearest ancestor that has one,
+     * ending at the given offset.
+     */
     drag: (
         widget: Gtk.Accessible,
         ...args: Parameters<typeof drag> extends [Gtk.Widget, ...infer Args] ? Args : never
     ) => Promise<void>;
-    /** Emits `drop` with the given content on the widget's drop targets. */
+    /** Emits `drop` with the given content on the drop targets of the widget or its nearest ancestor that has one. */
     drop: (
         widget: Gtk.Accessible,
         ...args: Parameters<typeof drop> extends [Gtk.Widget, ...infer Args] ? Args : never
     ) => Promise<void>;
-    /** Requires a drag source on the source widget, then emits `drop` with the content on the target's drop targets. */
+    /**
+     * Begins a drag from the drag sources of the source widget or its nearest ancestor that has one, then emits `drop`
+     * with the content on the drop targets of the target widget or its nearest ancestor that has one.
+     */
     dragAndDrop: (
         source: Gtk.Accessible,
         target: Gtk.Accessible,
@@ -125,10 +123,33 @@ type UserEvent = {
         widget: Gtk.Accessible,
         ...args: Parameters<typeof scroll> extends [Gtk.Widget, ...infer Args] ? Args : never
     ) => Promise<void>;
-    /** Sends a key sequence through GTK's propagation chain. */
-    keyboard: (widget: Gtk.Accessible, input: string) => Promise<void>;
-    /** Applies a pointer token while preserving held-button state. */
+    /**
+     * Sends a key sequence through GTK's propagation chain, to the given widget or, without one, to the focused widget
+     * of the active window. A given widget that can take focus, or passes it to a child as a menu button does to its
+     * button, is focused first unless the focus is already inside it.
+     */
+    keyboard: {
+        (input: string): Promise<void>;
+        (widget: Gtk.Accessible, input: string): Promise<void>;
+    };
+    /** Applies a pointer token, such as `[MouseLeft]` or `[MouseRight>]`, while preserving held-button state. */
     pointer: (widget: Gtk.Accessible, input: PointerInput) => Promise<void>;
+};
+
+type KeyboardArgs = [input: string] | [widget: Gtk.Accessible, input: string];
+
+const resolveKeyboardArgs = (args: KeyboardArgs): [Gtk.Widget, string] => {
+    const [first, input] = args;
+
+    if (typeof first === "string") {
+        return [focusedKeyWidget(), first];
+    }
+
+    if (input === undefined) {
+        throw usageError(new TypeError("Expected a key sequence after the widget"));
+    }
+
+    return [requireWidget(first), input];
 };
 
 const onWidget =
@@ -141,10 +162,38 @@ const onWidgetPair =
     (source: Gtk.Accessible, target: Gtk.Accessible, ...args: Args): Promise<void> =>
         helper(requireWidget(source), requireWidget(target), ...args);
 
+const silently =
+    <Args extends unknown[]>(helper: (...args: Args) => Promise<unknown>) =>
+    async (...args: Args): Promise<void> => {
+        await helper(...args);
+    };
+
+/** Whether anything on the widget or its ancestors is known to have handled a click. */
+type ClickReport = { isHandled: boolean };
+/** The keys of a sequence whose presses nothing handled, named as `keyboard` input names them. */
+type KeyboardReport = { unhandledKeys: string[] };
+
+const defaultState = createInitialState();
+
 /** User interactions that dispatch GTK events and gestures. */
 const userEvent: UserEvent = {
-    ...createInstance(createInitialState(), {}),
+    ...createInstance(defaultState, {}),
     setup: (options?: UserEventOptions): UserEvent => createInstance(createInitialState(), options ?? {}),
+};
+
+/**
+ * `userEvent.click` and `userEvent.keyboard` with the default instance's state, reporting whether anything on the
+ * target or its ancestors handled the input, and the modifiers that state still holds, for tools that tell an agent
+ * when its input had no effect or will be modified.
+ */
+const userEventReports = {
+    click: async (target: Gtk.Accessible): Promise<ClickReport> => ({
+        isHandled: await click(defaultState, requireWidget(target)),
+    }),
+    keyboard: async (...args: KeyboardArgs): Promise<KeyboardReport> => ({
+        unhandledKeys: await keyboard(defaultState, ...resolveKeyboardArgs(args)),
+    }),
+    heldModifiers: (): string[] => heldModifiers(defaultState),
 };
 
 const settle = (ms: number | null | undefined): Promise<void> => {
@@ -165,11 +214,15 @@ function createInstance(state: UserEventState, options: UserEventOptions): UserE
 
     return {
         setup: (overrides?: UserEventOptions): UserEvent => createInstance(state, { ...options, ...overrides }),
-        click: after(onWidget(click)),
-        dblClick: after(onWidget(dblClick)),
-        tripleClick: after(onWidget(tripleClick)),
+        click: after(onWidget(silently((widget: Gtk.Widget) => click(state, widget)))),
+        dblClick: after(onWidget(silently((widget: Gtk.Widget) => dblClick(state, widget)))),
+        tripleClick: after(onWidget(silently((widget: Gtk.Widget) => tripleClick(state, widget)))),
         tab: after(onWidget(tab)),
-        type: after(onWidget(type)),
+        type: after(
+            onWidget((widget: Gtk.Widget, text: string, options?: TypeOptions): Promise<void> =>
+                type(state, widget, text, options),
+            ),
+        ),
         clear: after(onWidget(clear)),
         copy: after(onWidget(copy)),
         cut: after(onWidget(cut)),
@@ -187,7 +240,7 @@ function createInstance(state: UserEventState, options: UserEventOptions): UserE
         dragAndDrop: after(onWidgetPair(dragAndDrop)),
         slide: after(onWidget(slide)),
         scroll: after(onWidget(scroll)),
-        keyboard: after(onWidget((widget: Gtk.Widget, input: string): Promise<void> => keyboard(state, widget, input))),
+        keyboard: after(silently((...args: KeyboardArgs) => keyboard(state, ...resolveKeyboardArgs(args)))),
         pointer: after(
             onWidget((widget: Gtk.Widget, input: PointerInput): Promise<void> => pointer(state, widget, input)),
         ),
@@ -200,4 +253,4 @@ export type { TabOptions } from "./keyboard.js";
 export type { PointerInput } from "./pointer.js";
 export type { TypeOptions } from "./text.js";
 export { resetClipboard } from "./text.js";
-export { userEvent, type UserEvent, type UserEventOptions };
+export { userEvent, userEventReports, type ClickReport, type KeyboardReport, type UserEvent, type UserEventOptions };
