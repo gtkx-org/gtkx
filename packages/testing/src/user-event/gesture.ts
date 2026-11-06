@@ -258,25 +258,40 @@ const resolveDropSite = (target: Gtk.Widget, options: DropOptions): DropSite => 
 const preferredDropAction = (actions: Gdk.DragAction): Gdk.DragAction =>
     PREFERRED_DROP_ACTIONS.find((action) => (actions & action) !== 0) ?? Gdk.DragAction.NONE;
 
+/** Drops `value` with the actions both sides support; with none in common, GDK never offers the drop to the target. */
 const emitDrop = (
     site: DropSite,
     dropTarget: Gtk.DropTarget,
     value: GObject.Value,
     offeredActions: Gdk.DragAction,
 ): boolean => {
+    const actions = dropTarget.getActions() & offeredActions;
+
+    if (actions === 0) {
+        return false;
+    }
+
     if (isTabViewTab(site.owner)) {
-        return emitTabViewExtraDrop(site.owner, value, preferredDropAction(dropTarget.getActions() & offeredActions));
+        return emitTabViewExtraDrop(site.owner, value, preferredDropAction(actions));
     }
 
     return dropTarget.emit("drop", value, site.point.x, site.point.y);
 };
 
-const didEmitAcceptedDrop = (target: Gtk.Widget, content: DropContent, options: DropOptions): boolean => {
+/** Drops `content` on each drop target of `target`, offering `offeredActions`, or every action a target accepts. */
+const didEmitAcceptedDrop = (
+    target: Gtk.Widget,
+    content: DropContent,
+    options: DropOptions,
+    offeredActions?: Gdk.DragAction,
+): boolean => {
     const site = resolveDropSite(target, options);
     let isAccepted = false;
 
     for (const dropTarget of site.targets) {
-        isAccepted = emitDrop(site, dropTarget, buildDropValue(content), dropTarget.getActions()) || isAccepted;
+        isAccepted =
+            emitDrop(site, dropTarget, buildDropValue(content), offeredActions ?? dropTarget.getActions()) ||
+            isAccepted;
     }
 
     return isAccepted;
@@ -323,6 +338,9 @@ const beginDragSource = (source: Gtk.DragSource, environment: DragEnvironment): 
 
     return { source, drag };
 };
+
+const offeredActionsOf = (activeDrags: ActiveDrag[]): Gdk.DragAction =>
+    activeDrags.reduce((actions, { drag }) => actions | drag.getActions(), Gdk.DragAction.NONE);
 
 const endDragSources = (activeDrags: ActiveDrag[], isAccepted: boolean): void => {
     for (const { source, drag } of activeDrags) {
@@ -401,7 +419,7 @@ const dragAndDrop = async (
             isAccepted =
                 content === undefined
                     ? didEmitProviderDrop(target, activeDrags, options)
-                    : didEmitAcceptedDrop(target, content, options);
+                    : didEmitAcceptedDrop(target, content, options, offeredActionsOf(activeDrags));
         });
     } finally {
         await runInAct(() => {

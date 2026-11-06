@@ -1464,21 +1464,30 @@ describe("userEvent.dragAndDrop", () => {
         expect(handleDrop.calls[0]?.[0]).toBe(42);
     });
 
-    it("ends a drag without delivering a format the target does not accept", async () => {
+    it("ends a drag without delivering a format or an action the target does not accept", async () => {
         const drops = callCounter();
         const ends = callCounter();
-        const { source, target } = await renderDragAndDropPair({
-            onDrop: () => {
-                drops.callback();
+        const onDrop = () => {
+            drops.callback();
 
-                return true;
-            },
+            return true;
+        };
+        const unaccepted = await renderDragAndDropPair({
+            onDrop,
             onPrepare: () => Gdk.ContentProvider.newForValue(true),
             onDragEnd: ends.callback,
         });
-        await userEvent.dragAndDrop(source, target);
+        await userEvent.dragAndDrop(unaccepted.source, unaccepted.target);
+        const moved = await renderDragAndDropPair({
+            onDrop,
+            sourceActions: Gdk.DragAction.MOVE,
+            onPrepare: () => Gdk.ContentProvider.newForValue("moved"),
+            onDragEnd: ends.callback,
+        });
+        await userEvent.dragAndDrop(moved.source, moved.target);
+        await userEvent.dragAndDrop(moved.source, moved.target, "explicit");
         expect(drops.count).toBe(0);
-        expect(ends.count).toBe(1);
+        expect(ends.count).toBe(3);
     });
 
     it("throws when the source has no content", async () => {
@@ -1587,16 +1596,28 @@ describe("userEvent.dragAndDrop", () => {
                         />
                         <AdwTabView ref={setView}>
                             <AdwTabPage title="First">
-                                <GtkLabel
-                                    controllers={
-                                        <GtkDragSource
-                                            actions={Gdk.DragAction.MOVE}
-                                            onPrepare={() => Gdk.ContentProvider.newForValue("dragged")}
-                                        />
-                                    }
-                                >
-                                    First page
-                                </GtkLabel>
+                                <GtkBox>
+                                    <GtkLabel
+                                        controllers={
+                                            <GtkDragSource
+                                                actions={Gdk.DragAction.MOVE}
+                                                onPrepare={() => Gdk.ContentProvider.newForValue("dragged")}
+                                            />
+                                        }
+                                    >
+                                        First page
+                                    </GtkLabel>
+                                    <GtkLabel
+                                        controllers={
+                                            <GtkDragSource
+                                                actions={Gdk.DragAction.LINK}
+                                                onPrepare={() => Gdk.ContentProvider.newForValue("linked")}
+                                            />
+                                        }
+                                    >
+                                        Link
+                                    </GtkLabel>
+                                </GtkBox>
                             </AdwTabPage>
                             <AdwTabPage title="Second">
                                 <GtkLabel>Second page</GtkLabel>
@@ -1609,6 +1630,8 @@ describe("userEvent.dragAndDrop", () => {
         await render(<TabbedDrops />);
         const second = await screen.findByRole(Gtk.AccessibleRole.TAB, { name: "Second" });
         await userEvent.dragAndDrop(await screen.findByText("First page"), second);
+        await userEvent.dragAndDrop(await screen.findByText("First page"), second, "explicit");
+        await userEvent.dragAndDrop(await screen.findByText("Link"), second);
         await userEvent.drop(second, "dropped");
         overview.current?.setOpen(true);
         const thumbnail = (await screen.findAllByText("Second")).find((widget) => !widget.isAncestor(second));
@@ -1620,6 +1643,7 @@ describe("userEvent.dragAndDrop", () => {
         await userEvent.drop(pointerTargetAt(thumbnail), "thumbnail");
         expect(drops).toEqual([
             ["Second", "dragged", Gdk.DragAction.MOVE],
+            ["Second", "explicit", Gdk.DragAction.MOVE],
             ["Second", "dropped", Gdk.DragAction.COPY],
             ["Second", "thumbnail", Gdk.DragAction.COPY],
         ]);
