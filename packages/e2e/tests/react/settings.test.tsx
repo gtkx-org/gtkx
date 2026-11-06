@@ -451,10 +451,12 @@ describe("useSetting (variant types: invalid input)", () => {
 describe("GSettings", () => {
     it("rejects a schema that is not installed", async () => {
         await expect(renderSettings("com.gtkx.test.notInstalled")).rejects.toThrow();
+        expect(() => Gio.Settings.new("com.gtkx.test.notInstalled")).toThrow();
     });
 
     it("rejects a relocatable schema without a path", () => {
         expect(() => new Gio.Settings({ schemaId: profile.id })).toThrow();
+        expect(() => Gio.Settings.new(profile.id)).toThrow();
     });
 
     it("throws for keys and children the installed schema does not declare", async () => {

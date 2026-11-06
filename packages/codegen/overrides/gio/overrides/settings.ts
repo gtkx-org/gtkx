@@ -131,6 +131,28 @@ SettingsSchema.prototype.getKey = function (name) {
     return getKey.call(this, name);
 };
 
+const checkFactory =
+    <A extends unknown[], R>(
+        create: (...args: A) => R,
+        constructProps: (...args: A) => SettingsConstructorProps,
+    ): ((...args: A) => R) =>
+    (...args) => {
+        checkConstructProps(constructProps(...args));
+
+        return create(...args);
+    };
+
+const { new: create, newFull, newWithBackend, newWithBackendAndPath, newWithPath } = GeneratedSettings;
+
+GeneratedSettings.new = checkFactory(create, (schemaId) => ({ schemaId }));
+GeneratedSettings.newFull = checkFactory(newFull, (settingsSchema, _backend, path) => ({ settingsSchema, path }));
+GeneratedSettings.newWithBackend = checkFactory(newWithBackend, (schemaId) => ({ schemaId }));
+GeneratedSettings.newWithBackendAndPath = checkFactory(newWithBackendAndPath, (schemaId, _backend, path) => ({
+    schemaId,
+    path,
+}));
+GeneratedSettings.newWithPath = checkFactory(newWithPath, (schemaId, path) => ({ schemaId, path }));
+
 const wrapSettingsConstructor = <C extends WrapperClass<typeof GeneratedSettings, Settings>>(base: C): C => {
     const wrapped = new Proxy(base, {
         construct(target, args: [SettingsConstructorProps?], newTarget): Settings {
