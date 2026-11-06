@@ -3139,6 +3139,43 @@ describe("CLI commands", () => {
         });
     });
 
+    it("names modifiers MCP keys leave held and refuses to type while they are", async () => {
+        using project = createProject();
+        const readyPath = join(project.root, "ready.txt");
+        writeWidgetApp(
+            project,
+            readyPath,
+            `import { GtkEntry } from "@gtkx/jsx/gtk";
+            export const Content = () => <GtkEntry name="notes" text="Draft" />;`,
+        );
+        await withMcpClient(project.root, async (client) => {
+            await withSession("dev", project.root, readyPath, async () => {
+                const [entry] = await queryWidgets(client, { by: "name", value: "notes" });
+                const text = async () => {
+                    const { text: props } = await callTool(client, "gtkx_get_widget_props", {
+                        widgetId: entry?.id,
+                        properties: ["text"],
+                        maxDepth: 0,
+                    });
+                    return (JSON.parse(props) as { properties: { text: { value: string } } }).properties.text.value;
+                };
+
+                const held = await callTool(client, "gtkx_press_keys", { widgetId: entry?.id, keys: "{Control>}" });
+                expect(held.text).toContain("Control stays held");
+                expect(held.text).toContain("{/Control}");
+                const refused = await callTool(client, "gtkx_type", { widgetId: entry?.id, text: "a" });
+                expect(refused.isError).toBe(true);
+                expect(refused.text).toContain("{/Control}");
+                expect(await text()).toBe("Draft");
+                expect(
+                    (await callTool(client, "gtkx_press_keys", { widgetId: entry?.id, keys: "{/Control}" })).text,
+                ).toBe("Pressed keys");
+                await callTool(client, "gtkx_type", { widgetId: entry?.id, text: "Final", clear: true });
+                expect(await text()).toBe("Final");
+            });
+        });
+    });
+
     it("picks a color chooser swatch with keys through MCP and says when a click or key did nothing", async () => {
         using project = createProject();
         const readyPath = join(project.root, "ready.txt");

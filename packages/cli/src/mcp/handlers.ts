@@ -71,6 +71,12 @@ const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
         return { success: true, isHandled };
     }),
     "widget.type": targeted(ServerRequestParamsSchemas["widget.type"], async (ctx, { testing, widget }, params) => {
+        const held = testing.userEventReports.heldModifiers();
+
+        if (held.length > 0) {
+            throw new Error(heldModifiersTypingError(held));
+        }
+
         await interact(ctx, testing, async () => {
             if (params.clear) {
                 await testing.userEvent.clear(widget);
@@ -91,9 +97,12 @@ const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
                 : testing.userEventReports.keyboard(widget, params.keys),
         );
 
+        const heldModifiers = testing.userEventReports.heldModifiers();
+
         return {
             success: true,
             unhandledKeys,
+            ...(heldModifiers.length > 0 && { heldModifiers }),
             ...(misdirected !== null && {
                 focusWidgetId: ctx.registry.getOrCreateId(misdirected.focus),
                 ...(misdirected.ancestor !== null && {
@@ -244,6 +253,11 @@ const withPointerTargetId = (registry: WidgetRegistry, testing: TestingModule, c
 
     return new Error(`${errorMessage(cause)}. Its widget ID is "${registry.getOrCreateId(target)}".`, { cause });
 };
+
+const heldModifiersTypingError = (held: string[]): string =>
+    `${held.join(" and ")} ${held.length === 1 ? "is" : "are"} still held from an earlier gtkx_press_keys call, so ` +
+    "typing would press each key as a shortcut instead of entering text. Release " +
+    `${held.length === 1 ? "it" : "them"} first with gtkx_press_keys \`${held.map((name) => `{/${name}}`).join("")}\`.`;
 
 const interact = async <T>(ctx: HandlerContext, testing: TestingModule, run: () => Promise<T>): Promise<T> => {
     try {

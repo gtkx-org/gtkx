@@ -5,7 +5,7 @@ import { requireWidget } from "../widget-target.js";
 import { scroll, slide } from "./adjustment.js";
 import { click, dblClick, tripleClick } from "./click.js";
 import { drag, dragAndDrop, drop, hover, longPress, rotate, swipe, unhover, zoom } from "./gesture.js";
-import { focusedKeyWidget, keyboard, tab } from "./keyboard.js";
+import { focusedKeyWidget, heldModifiers, keyboard, tab } from "./keyboard.js";
 import { pointer, type PointerInput } from "./pointer.js";
 import { deselectOptions, selectOptions } from "./selection.js";
 import { createInitialState, type UserEventState } from "./state.js";
@@ -183,7 +183,8 @@ const userEvent: UserEvent = {
 
 /**
  * `userEvent.click` and `userEvent.keyboard` with the default instance's state, reporting whether anything on the
- * target or its ancestors handled the input, for tools that tell an agent when its input had no effect.
+ * target or its ancestors handled the input, and the modifiers that state still holds, for tools that tell an agent
+ * when its input had no effect or will be modified.
  */
 const userEventReports = {
     click: async (target: Gtk.Accessible): Promise<ClickReport> => ({
@@ -192,6 +193,7 @@ const userEventReports = {
     keyboard: async (...args: KeyboardArgs): Promise<KeyboardReport> => ({
         unhandledKeys: await keyboard(defaultState, ...resolveKeyboardArgs(args)),
     }),
+    heldModifiers: (): string[] => heldModifiers(defaultState),
 };
 
 const settle = (ms: number | null | undefined): Promise<void> => {

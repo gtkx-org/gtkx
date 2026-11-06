@@ -427,7 +427,12 @@ function buildInspectionTools(appRouter: AppRouter): Tool[] {
 }
 
 type ClickResult = { isHandled?: boolean };
-type PressKeysResult = { unhandledKeys?: string[]; focusWidgetId?: string; focusableAncestorId?: string };
+type PressKeysResult = {
+    unhandledKeys?: string[];
+    heldModifiers?: string[];
+    focusWidgetId?: string;
+    focusableAncestorId?: string;
+};
 
 const UNHANDLED_CLICK =
     "Clicked, but nothing on the widget or its ancestors handled the click. GTK's own handling of clicks, as on a " +
@@ -449,19 +454,32 @@ const focusRedirectText = ({ focusWidgetId, focusableAncestorId }: PressKeysResu
               "ancestor that can take focus.";
 };
 
-const pressKeysText = (result: PressKeysResult): string => {
-    const unhandledKeys = result.unhandledKeys ?? [];
-    const redirect = focusRedirectText(result);
-
-    if (unhandledKeys.length === 0) {
-        return redirect === null ? "Pressed keys" : `Pressed keys. ${redirect}`;
+const heldModifiersText = (held: string[] | undefined): string | null => {
+    if (held === undefined || held.length === 0) {
+        return null;
     }
 
-    const unhandled =
-        `Pressed keys, but nothing on the widget or its ancestors handled ${unhandledKeys.join(", ")}. Check ` +
-        "that the keys went to the intended widget, and use gtkx_type to enter text.";
+    return (
+        `${held.join(" and ")} ${held.length === 1 ? "stays" : "stay"} held for later key presses, clicks and ` +
+        `typing until released with \`${held.map((name) => `{/${name}}`).join("")}\`.`
+    );
+};
 
-    return redirect === null ? unhandled : `${unhandled} ${redirect}`;
+const pressKeysSummary = (unhandledKeys: string[]): string =>
+    unhandledKeys.length === 0
+        ? "Pressed keys"
+        : `Pressed keys, but nothing on the widget or its ancestors handled ${unhandledKeys.join(", ")}. Check ` +
+          "that the keys went to the intended widget, and use gtkx_type to enter text.";
+
+const pressKeysText = (result: PressKeysResult): string => {
+    const notes = [focusRedirectText(result), heldModifiersText(result.heldModifiers)].filter((note) => note !== null);
+    const summary = pressKeysSummary(result.unhandledKeys ?? []);
+
+    if (notes.length === 0) {
+        return summary;
+    }
+
+    return `${summary}${summary.endsWith(".") ? "" : "."} ${notes.join(" ")}`;
 };
 
 function buildInteractionTools(appRouter: AppRouter): Tool[] {
@@ -501,7 +519,8 @@ function buildInteractionTools(appRouter: AppRouter): Tool[] {
                 "not submit; use `gtkx_press_keys` with {Enter} to activate an entry. Typing replaces text that " +
                 "is already selected, as it does for a user: GTK selects an entry's whole text when focus moves " +
                 "into it, such as when a dialog opens on it. Pass `clear` with the full text to set a value. A " +
-                "widget behind an open dialog is refused with an error naming the dialog.",
+                "widget behind an open dialog is refused with an error naming the dialog, and typing while " +
+                "`gtkx_press_keys` holds a modifier is refused with an error naming it.",
             inputSchema: typeShape,
             handler: async ({ applicationId, appTimeout, ...params }) => {
                 await appRouter.sendToApp(applicationId, "widget.type", params, appTimeout);
@@ -520,7 +539,9 @@ function buildInteractionTools(appRouter: AppRouter): Tool[] {
                 "bindings first, such as arrows in a list or slider; otherwise {Tab}, `{Shift>}{Tab}{/Shift}` and " +
                 "arrows move focus between widgets. {Space} or {Enter} also selects or activates GTK's own " +
                 "widgets, such as a color chooser's swatches. The result names the keys that nothing on the " +
-                "widget or its ancestors handled. Use `gtkx_type` to enter text.",
+                "widget or its ancestors handled. A modifier pressed with `{Control>}` stays held across calls " +
+                "until released with `{/Control}`, and the result names the modifiers left held. Use `gtkx_type` " +
+                "to enter text.",
             inputSchema: pressKeysShape,
             handler: async ({ applicationId, appTimeout, ...params }) => {
                 const result = await appRouter.sendToApp<PressKeysResult>(

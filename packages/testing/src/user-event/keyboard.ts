@@ -76,6 +76,17 @@ const MODIFIER_KEYVAL_TO_MASK: Record<number, number> = {
     [Gdk.KEY_Meta_R]: Gdk.ModifierType.META_MASK,
 };
 
+const MODIFIER_NAMES: [string, number][] = [
+    ["Control", Gdk.ModifierType.CONTROL_MASK],
+    ["Shift", Gdk.ModifierType.SHIFT_MASK],
+    ["Alt", Gdk.ModifierType.ALT_MASK],
+    ["Meta", Gdk.ModifierType.META_MASK],
+];
+
+/** The modifier keys pressed and not yet released, named as `keyboard` input names them. */
+const heldModifiers = (state: UserEventState): string[] =>
+    MODIFIER_NAMES.filter(([, mask]) => (state.modifierState & mask) !== 0).map(([name]) => name);
+
 /** Moves focus within the widget's root. */
 const tab = (widget: Gtk.Widget, options?: TabOptions): Promise<void> =>
     wrapEvent(widget, () => {
@@ -736,6 +747,7 @@ export {
     applyKeyActions,
     characterActions,
     focusedKeyWidget,
+    heldModifiers,
     keyboard,
     parseTypedInput,
     tab,
