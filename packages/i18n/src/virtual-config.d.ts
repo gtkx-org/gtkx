@@ -1,5 +1,5 @@
 declare module "virtual:gtkx-config" {
-    const applicationId: string;
+    const translationDomain: string;
     const localeDir: string | null;
-    export { applicationId, localeDir };
+    export { localeDir, translationDomain };
 }
