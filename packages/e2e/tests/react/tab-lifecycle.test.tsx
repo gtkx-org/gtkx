@@ -33,6 +33,22 @@ const observeStderr = () => {
     return write;
 };
 
+const settle = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
+
+const collectUntilReleased = async (reference: WeakRef<object>): Promise<void> => {
+    if (globalThis.gc === undefined) {
+        throw new Error("Tab lifecycle tests require --expose-gc");
+    }
+
+    for (let round = 0; round < 30 && reference.deref() !== undefined; round++) {
+        await settle();
+        globalThis.gc();
+        await settle();
+    }
+
+    await settle();
+};
+
 const TitledPages = ({ titles }: { titles: string[] }) =>
     titles.map((title) => (
         <AdwTabPage key={title} title={title}>
@@ -318,6 +334,42 @@ describe("native tab lifecycle", () => {
         expect(returned.view).not.toBeNull();
         expect(returned.view?.getNPages()).toBe(1);
         expect(returned.view?.getNthPage(0).getTitle()).toBe("New window");
+    });
+
+    it("selects a page after removing a tab bar whose tabs are still referenced", async () => {
+        const view = createRef<Adw.TabView>();
+        const bar = createRef<Adw.TabBar>();
+        const App = ({ showBar }: { showBar: boolean }) => (
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                {showBar && <AdwTabBar ref={bar} view={view.current} />}
+                <AdwTabView ref={view}>
+                    <TitledPages titles={["One", "Two"]} />
+                </AdwTabView>
+            </GtkBox>
+        );
+        const { rerender } = await render(<App showBar={false} />);
+        await rerender(<App showBar />);
+        const retained = [
+            ...screen.getAllByRole(Gtk.AccessibleRole.TAB_LIST, { hidden: true }),
+            ...screen.getAllByRole(Gtk.AccessibleRole.TAB, { hidden: true }),
+        ];
+
+        if (bar.current === null) {
+            throw new Error("Expected a tab bar");
+        }
+
+        const removedBar = new WeakRef(bar.current);
+        await rerender(<App showBar={false} />);
+        await collectUntilReleased(removedBar);
+        expect(removedBar.deref()).toBeUndefined();
+
+        await act(() => {
+            view.current?.setSelectedPage(view.current.getNthPage(1));
+        });
+        expect(view.current?.getSelectedPage()?.getTitle()).toBe("Two");
+        for (const widget of retained) {
+            expect(widget).not.toBeRooted();
+        }
     });
 
     it("reorders JSX tabs within pin groups while retaining a transferred tab's position", async () => {

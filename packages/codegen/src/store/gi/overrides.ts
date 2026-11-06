@@ -17,6 +17,7 @@ const OVERRIDES: Record<string, Override[]> = {
         { module: "application", exports: ["Application"], needsBootstrap: true },
         { module: "sidebar", exports: "*", needsBootstrap: true },
         { module: "combo-row", exports: "*", needsBootstrap: true },
+        { module: "tab-bar", exports: "*", needsBootstrap: true },
     ],
     gio: [
         { module: "action-map", exports: ["type ActionEntryObj"], interfaces: { ActionMap: "extendActionMap" } },
