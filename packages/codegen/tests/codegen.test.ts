@@ -507,6 +507,24 @@ describe("generated bindings", () => {
         expect(page("layout-slot")).not.toContain("### `children`");
     });
 
+    it("documents configured accepted child types on elements that inherit their children slot", async () => {
+        using directory = createProject();
+        const outDir = join(directory.path, "reference");
+        const builtin = await readBuiltinElementsForDocs();
+        writeDocs({
+            ...builtin,
+            acceptedChildTypes: { ...builtin.acceptedChildTypes, GtkPaned: ["GtkLabel"] },
+            libraries: ["Adw-1"],
+            girPath: resolveGirPath(undefined, directory.path),
+            resolveFrom: directory.path,
+            outDir,
+        });
+        const block = readFileSync(join(outDir, "gtk", "paned.md"), "utf8")
+            .split("### `children`")[1]
+            ?.split("### ")[0];
+        expect(block).toContain("[GtkLabel](");
+    });
+
     it("marks deprecated slot props as deprecated", async () => {
         using directory = createProject();
         const outDir = join(directory.path, "reference");

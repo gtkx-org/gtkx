@@ -319,12 +319,50 @@ const ownerPropEntries = (
     return entries;
 };
 
+const inheritedChildrenProp = (entry: GlibNamedClass, context: ElementPageContext): HandwrittenProp | undefined => {
+    for (const ancestor of ancestorChain(context.library, entry.klass, entry.namespace.name)) {
+        const glibName = getGlibName(ancestor.klass);
+        const declared = glibName === undefined ? undefined : elementPropTypeFor(glibName);
+        const props = declared === undefined ? undefined : context.handwrittenProps.get(declared.type);
+        const children = props?.find((prop) => prop.name === "children");
+
+        if (children !== undefined) {
+            return children;
+        }
+    }
+
+    return undefined;
+};
+
+const inheritedChildrenEntries = (
+    entry: GlibNamedClass,
+    context: ElementPageContext,
+    seen: Set<string>,
+): MetaDocEntry[] => {
+    if (seen.has("children") || acceptedChildTypesFor(entry.glibName).length === 0) {
+        return [];
+    }
+
+    const children = inheritedChildrenProp(entry, context);
+
+    if (children === undefined) {
+        return [];
+    }
+
+    seen.add(children.name);
+    const owner = { klass: entry.klass, namespace: entry.namespace, origin: undefined, glibName: entry.glibName };
+
+    return [handwrittenPropEntry(context, owner, children, [])];
+};
+
 const propertyEntries = (entry: GlibNamedClass, context: ElementPageContext, seen: Set<string>): MetaDocEntry[] => {
     const entries: MetaDocEntry[] = [];
 
     for (const owner of memberOwners(entry, context)) {
         entries.push(...ownerPropEntries(context, owner, seen, entry.glibName));
     }
+
+    entries.push(...inheritedChildrenEntries(entry, context, seen));
 
     return entries;
 };
