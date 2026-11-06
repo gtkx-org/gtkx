@@ -1,6 +1,6 @@
 import type { BackendModule } from "i18next";
 import * as GLib from "@gtkx/gi/glib";
-import { applicationId } from "virtual:gtkx-config";
+import { translationDomain } from "virtual:gtkx-config";
 
 type GettextCatalog = {
     gettext(msgid: string): string;
@@ -14,14 +14,14 @@ const GETTEXT_RESOURCE_KEY = "__gtkx_gettext_catalog__";
 
 const gettextCatalog: GettextCatalog = {
     gettext(msgid) {
-        return GLib.dgettext(applicationId, msgid);
+        return GLib.dgettext(translationDomain, msgid);
     },
     ngettext(msgid, msgidPlural, count) {
-        return GLib.dngettext(applicationId, msgid, msgidPlural, normalizeCount(count));
+        return GLib.dngettext(translationDomain, msgid, msgidPlural, normalizeCount(count));
     },
     pgettext(context, msgid) {
         const contextual = contextualMsgid(context, msgid);
-        const translated = GLib.dgettext(applicationId, contextual);
+        const translated = GLib.dgettext(translationDomain, contextual);
 
         return translated === contextual ? undefined : translated;
     },
@@ -29,7 +29,12 @@ const gettextCatalog: GettextCatalog = {
         const contextualSingular = contextualMsgid(context, msgid);
         const contextualPlural = contextualMsgid(context, msgidPlural);
 
-        const translated = GLib.dngettext(applicationId, contextualSingular, contextualPlural, normalizeCount(count));
+        const translated = GLib.dngettext(
+            translationDomain,
+            contextualSingular,
+            contextualPlural,
+            normalizeCount(count),
+        );
 
         return translated === contextualSingular || translated === contextualPlural ? undefined : translated;
     },
