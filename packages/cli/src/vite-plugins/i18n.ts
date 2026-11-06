@@ -2,9 +2,9 @@ import type { ConfigLoader } from "@gtkx/config";
 import type { Plugin, ResolvedConfig, Rollup } from "vite";
 import { createConfigLoader } from "@gtkx/config/internal";
 import { isPathWithin, logger, toPosixPath } from "@gtkx/utils";
-import { existsSync, mkdirSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import { createRequire } from "node:module";
-import { dirname, join, posix, relative, resolve } from "node:path";
+import { dirname, posix, relative, resolve } from "node:path";
 import { I18N_RUNTIME_CONFIG_FILENAME, renderI18nRuntimeConfig } from "../i18n/runtime-config.js";
 import {
     type CatalogProject,
@@ -16,7 +16,7 @@ import {
 } from "../i18n/catalogs.js";
 import { extractSourceCatalog, SourceExtractionError } from "../i18n/source-messages.js";
 import { emitI18nTypes } from "../i18n/types.js";
-import { discoverSourceFiles, sourceLanguage } from "../internal/source-imports.js";
+import { discoverSourceFilesIn, sourceLanguage } from "../internal/source-imports.js";
 import { packageForModule } from "./build-manifest.js";
 import { ESM_EXTENSION } from "./esm-extension.js";
 import { stripQuery } from "./strip-query.js";
@@ -190,8 +190,7 @@ const extractProjectMessages = async (
         return;
     }
 
-    const srcDir = join(project.root, "src");
-    const sourceFiles = discoverSourceFiles(existsSync(srcDir) ? srcDir : project.root);
+    const sourceFiles = discoverSourceFilesIn(project.sourceDirs);
     await extractSourceCatalog(project, sourceFiles, shouldPreserveMetadataMessages);
 
     if (shouldSynchronizeCatalogs) {
@@ -232,10 +231,7 @@ const isProjectSource = (state: I18nState, path: string): boolean => {
         return false;
     }
 
-    const srcDir = join(project.root, "src");
-    const sourceRoot = existsSync(srcDir) ? srcDir : project.root;
-
-    return isPathWithin(sourceRoot, path);
+    return project.sourceDirs.some((dir) => isPathWithin(dir, path));
 };
 
 const refreshProjectMessages = async (

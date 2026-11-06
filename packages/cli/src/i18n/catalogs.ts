@@ -5,6 +5,7 @@ import { findPackageJSON } from "node:module";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { runCliTool } from "../internal/run-cli-tool.js";
+import { projectSourceDirs, sourcePackageRoots } from "../internal/source-imports.js";
 import { isUnchangedCatalog } from "./catalog-template.js";
 
 type Catalog = {
@@ -17,9 +18,11 @@ type CatalogProject = {
     domain: string;
     linguasPath: string;
     locales: string[];
+    packages: string[];
     poDir: string;
     poFiles: string[];
     root: string;
+    sourceDirs: string[];
     template: string;
 };
 
@@ -103,15 +106,18 @@ const resolveCatalogProject = (root: string, domain: string): CatalogProject | n
     requireFile(linguasPath);
     const locales = parseLocales(linguasPath);
     const catalogs = locales.map((locale) => ({ locale, path: join(poDir, `${locale}.po`) }));
+    const packages = sourcePackageRoots(projectRoot);
 
     return {
         catalogs,
         domain,
         linguasPath,
         locales,
+        packages,
         poDir,
         poFiles: catalogs.map((catalog) => catalog.path),
         root: projectRoot,
+        sourceDirs: projectSourceDirs(projectRoot, packages),
         template: join(poDir, `${domain}.pot`),
     };
 };

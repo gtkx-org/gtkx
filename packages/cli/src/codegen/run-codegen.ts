@@ -18,7 +18,7 @@ import { resolveCatalogProject, synchronizeCatalogs } from "../i18n/catalogs.js"
 import { extractSourceCatalog } from "../i18n/source-messages.js";
 import { clearI18nTypes, emitI18nTypes } from "../i18n/types.js";
 import { removeAgentRules, upsertAgentRules } from "../internal/agent-rules.js";
-import { discoverSourceFiles } from "../internal/source-imports.js";
+import { discoverSourceFilesIn } from "../internal/source-imports.js";
 import { emitSchemaEnv } from "../settings/schema.js";
 import { type ReferenceResult, writeReference } from "./reference.js";
 import { type CodegenContext, resolveCodegenContext } from "./store-resolver.js";
@@ -135,8 +135,7 @@ const syncI18n = async (root: string, domain: string, shouldPreserveMetadataMess
         return;
     }
 
-    const srcDir = join(root, "src");
-    const sourceFiles = discoverSourceFiles(existsSync(srcDir) ? srcDir : root);
+    const sourceFiles = discoverSourceFilesIn(project.sourceDirs);
     await extractSourceCatalog(project, sourceFiles, shouldPreserveMetadataMessages);
     synchronizeCatalogs(project);
     await emitI18nTypes(root);

@@ -1,6 +1,6 @@
 import { type ApplicationConfig, loadConfig } from "@gtkx/config";
 import { info, warn } from "@gtkx/utils";
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import type {
     DeployArchName,
@@ -25,7 +25,7 @@ import {
 } from "../i18n/catalogs.js";
 import { extractSourceCatalogTo } from "../i18n/source-messages.js";
 import { prepareBuildOutDir, resolveBuildOutDir } from "../internal/build-output.js";
-import { discoverSourceFiles } from "../internal/source-imports.js";
+import { discoverSourceFilesIn } from "../internal/source-imports.js";
 import { uncoveredDebLibraries } from "./depends.js";
 import { renderDesktopEntry } from "./freedesktop/desktop-entry.js";
 import { extractMetadataMessages, localizeMetadata } from "./freedesktop/localize.js";
@@ -452,8 +452,7 @@ const synchronizeMetadataCatalogs = async (
         return;
     }
 
-    const srcDir = join(project.root, "src");
-    const sourceFiles = discoverSourceFiles(existsSync(srcDir) ? srcDir : project.root);
+    const sourceFiles = discoverSourceFilesIn(project.sourceDirs);
     const stagingDir = mkdtempSync(join(project.poDir, ".gtkx-deploy-i18n-"));
     const stagedTemplate = join(stagingDir, `${project.domain}.pot`);
     const template = join(project.poDir, `${project.domain}.pot`);

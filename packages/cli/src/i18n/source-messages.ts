@@ -1,6 +1,6 @@
 import type { ExtractedKey, ExtractedKeysMap, Logger, Plugin } from "i18next-cli";
 import { type NodePath, parseSync as parseBabelSync, type Scope, traverse, types } from "@babel/core";
-import { isPathInside, isPathWithin, toPosixPath } from "@gtkx/utils";
+import { isPathWithin, toPosixPath } from "@gtkx/utils";
 import { type GetTextTranslation, type GetTextTranslationRecord, po } from "gettext-parser";
 import { runExtractor } from "i18next-cli";
 import { existsSync, mkdtempDisposableSync, readFileSync, writeFileSync } from "node:fs";
@@ -136,8 +136,9 @@ const sourceErrorMessage = (error: unknown): string => {
 
 const projectSourcePath = (root: string, path: string): string => {
     const absolute = isAbsolute(path) ? resolve(path) : resolve(root, path);
+    const projectRelative = relative(root, absolute);
 
-    return toPosixPath(isPathInside(root, absolute) ? relative(root, absolute) : path);
+    return toPosixPath(isAbsolute(projectRelative) ? path : projectRelative);
 };
 
 const sourceExtractionError = (
@@ -498,8 +499,11 @@ const inferLocations = (message: SourceMessage, sources: Map<string, string>): S
     return { ...message, locations };
 };
 
-const normalizedSourceFiles = (root: string, paths: string[]): string[] => {
-    const files = paths.map((path) => resolve(root, path)).filter((path) => isPathWithin(root, path));
+const isCatalogSourcePath = (project: CatalogProject, path: string): boolean =>
+    [project.root, ...project.packages].some((root) => isPathWithin(root, path));
+
+const normalizedSourceFiles = (project: CatalogProject, paths: string[]): string[] => {
+    const files = paths.map((path) => resolve(project.root, path)).filter((path) => isCatalogSourcePath(project, path));
 
     return new Set(files)
         .values()
@@ -1924,21 +1928,18 @@ const findSourceMessages = async (root: string, sourceFiles: string[]): Promise<
         .toSorted(compareMessages);
 };
 
-const projectPath = (root: string, path: string): string | null => {
-    const absolute = isAbsolute(path) ? resolve(path) : resolve(root, path);
-    const projectRelative = relative(root, absolute);
+const projectPath = (project: CatalogProject, path: string): string | null => {
+    const absolute = isAbsolute(path) ? resolve(path) : resolve(project.root, path);
 
-    if (!isPathInside(root, absolute)) {
+    if (absolute === project.root || !isCatalogSourcePath(project, absolute)) {
         return null;
     }
 
-    return toPosixPath(projectRelative);
+    return toPosixPath(relative(project.root, absolute));
 };
 
 const writePotfiles = (project: CatalogProject, sourceFiles: string[]): string => {
-    const paths = sourceFiles
-        .map((path) => projectPath(project.root, path))
-        .filter((path): path is string => path !== null);
+    const paths = sourceFiles.map((path) => projectPath(project, path)).filter((path): path is string => path !== null);
 
     const sorted = [...new Set(paths)].toSorted((left, right) => left.localeCompare(right));
     const target = resolve(project.poDir, POTFILES_FILENAME);
@@ -1970,7 +1971,7 @@ const sourceOwners = (project: CatalogProject, message: SourceMessage): SourceOw
     const owners = new Map<string, SourceOwner>();
 
     for (const location of message.locations) {
-        const path = projectPath(project.root, location.file);
+        const path = projectPath(project, location.file);
 
         if (path !== null) {
             const key = `${path}\0${String(location.line)}`;
@@ -2184,10 +2185,10 @@ const extractCatalogTemplate = ({
     replaceCatalogTemplate(template, output);
 };
 
-const projectStoryFiles = async (root: string): Promise<ReadonlySet<string>> => {
-    const { stories, skippedMdx } = await prepareStorybookFiles(root);
+const projectStoryFiles = async (project: CatalogProject): Promise<ReadonlySet<string>> => {
+    const files = await Promise.all([project.root, ...project.packages].map((root) => prepareStorybookFiles(root)));
 
-    return new Set([...stories.map((story) => story.id), ...skippedMdx]);
+    return new Set(files.flatMap(({ stories, skippedMdx }) => [...stories.map((story) => story.id), ...skippedMdx]));
 };
 
 const withoutStoryLocations = (
@@ -2203,16 +2204,16 @@ const withoutStoryLocations = (
         return locations.length === 0 && message.locations.length > 0 ? [] : [{ ...message, locations }];
     });
 
-const catalogSchemaFiles = (root: string): string[] =>
-    projectSchemaFiles(root)
-        .files.map((path) => projectPath(root, path))
+const catalogSchemaFiles = (project: CatalogProject): string[] =>
+    projectSchemaFiles(project.root)
+        .files.map((path) => projectPath(project, path))
         .filter((path): path is string => path !== null);
 
 const prepareSourceCatalog = async (project: CatalogProject, paths: string[]): Promise<SourceCatalog> => {
-    const sourceFiles = normalizedSourceFiles(project.root, paths);
-    const storyFiles = await projectStoryFiles(project.root);
+    const sourceFiles = normalizedSourceFiles(project, paths);
+    const storyFiles = await projectStoryFiles(project);
     const messages = await findSourceMessages(project.root, sourceFiles);
-    const schemaFiles = catalogSchemaFiles(project.root);
+    const schemaFiles = catalogSchemaFiles(project);
     writePotfiles(project, [...sourceFiles.filter((path) => !storyFiles.has(path)), ...schemaFiles]);
 
     return { messages: withoutStoryLocations(project.root, messages, storyFiles), schemaFiles };

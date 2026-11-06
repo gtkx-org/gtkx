@@ -39,6 +39,7 @@ export {
     gtkxDependencies,
     isGtkxPackage,
     MANIFEST_FILE,
+    type Manifest,
     manifestPath,
     parseManifest,
     readManifest,

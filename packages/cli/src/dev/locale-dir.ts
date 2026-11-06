@@ -3,13 +3,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type CatalogProject, compileCatalogs, resolveCatalogProject, synchronizeCatalogs } from "../i18n/catalogs.js";
 import { extractSourceCatalog } from "../i18n/source-messages.js";
-import { discoverSourceFiles } from "../internal/source-imports.js";
+import { discoverSourceFilesIn } from "../internal/source-imports.js";
 import { createRetainedStagingDir } from "../internal/staging-dir.js";
 
 const prepareCatalogs = async (project: CatalogProject, outputDir: string): Promise<void> => {
     if (!existsSync(project.template)) {
-        const srcDir = join(project.root, "src");
-        await extractSourceCatalog(project, discoverSourceFiles(existsSync(srcDir) ? srcDir : project.root));
+        await extractSourceCatalog(project, discoverSourceFilesIn(project.sourceDirs));
     }
 
     synchronizeCatalogs(project);

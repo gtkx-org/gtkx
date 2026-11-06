@@ -1,7 +1,10 @@
 import { runCommand } from "citty";
 import { po } from "gettext-parser";
-import { readFileSync, statSync, utimesSync } from "node:fs";
+import { execFile } from "node:child_process";
+import { mkdirSync, readFileSync, statSync, symlinkSync, utimesSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
 import { createCommand } from "../dist/command.js";
 import { createProject } from "./project.js";
@@ -382,6 +385,109 @@ msgstr "Durée d’un tour"
         expect(readFileSync(join(project.root, "po/POTFILES.in"), "utf8")).toBe(
             "data/org.gtkx.example.gschema.xml\nsrc/index.ts\n",
         );
+    });
+
+    it("extracts the messages, asset imports and schemas of workspace packages the application uses", async () => {
+        using project = createProject();
+        const app = join(project.root, "workspace/apps/recipes");
+        project.write(
+            "workspace/apps/recipes/package.json",
+            JSON.stringify({
+                name: "recipes",
+                type: "module",
+                dependencies: { "@lib/kit": "*", "@studio/ui": "*" },
+            }),
+        );
+        project.write(
+            "workspace/apps/recipes/gtkx.config.ts",
+            'export default { applicationId: "org.gtkx.example", codegen: false, agents: { reference: false, rules: false } };',
+        );
+        project.write(
+            "workspace/apps/recipes/tsconfig.json",
+            JSON.stringify({
+                compilerOptions: { module: "NodeNext", strict: true, skipLibCheck: true, types: [], noEmit: true },
+                files: ["node_modules/.gtkx/env.d.ts"],
+                include: ["src"],
+            }),
+        );
+        project.write("workspace/apps/recipes/po/LINGUAS", "");
+        project.write(
+            "workspace/apps/recipes/src/index.ts",
+            `${T_IMPORT}\nimport { confirmation } from "@studio/ui";\nexport const labels: string[] = [t("Recipes"), ...confirmation("Pasta")];`,
+        );
+        const packageManifest = (name: string, manifest: Record<string, unknown>) =>
+            JSON.stringify({ name, version: "0.1.0", type: "module", exports: "./src/index.ts", ...manifest });
+        project.write(
+            "workspace/packages/ui/package.json",
+            packageManifest("@studio/ui", {
+                dependencies: { "@studio/tokens": "*" },
+                peerDependencies: { "@gtkx/i18n": "*", "@gtkx/react": "*" },
+            }),
+        );
+        project.write(
+            "workspace/packages/ui/src/index.ts",
+            `${T_IMPORT}
+import { accent } from "@studio/tokens";
+import starIcon from "./icons/scalable/actions/studio-star-symbolic.svg?icon=studio-star-symbolic";
+import settings from "../data/org.studio.ui.gschema.xml";
+export { settings };
+export const confirmation = (name: string): string[] => [t("Delete {{name}}?", { name }), accent, starIcon];`,
+        );
+        project.write(
+            "workspace/packages/ui/src/index.stories.ts",
+            `${T_IMPORT}\nexport default { title: t("Story fixture") };`,
+        );
+        project.write(
+            "workspace/packages/ui/data/org.studio.ui.gschema.xml",
+            `<schemalist gettext-domain="org.gtkx.example">
+  <schema id="org.studio.ui" path="/org/studio/ui/">
+    <key name="show-ratings" type="b"><default>true</default><summary>Show ratings</summary></key>
+  </schema>
+</schemalist>
+`,
+        );
+        project.write(
+            "workspace/packages/tokens/package.json",
+            packageManifest("@studio/tokens", { peerDependencies: { "@gtkx/react": "*" } }),
+        );
+        project.write(
+            "workspace/packages/tokens/src/index.ts",
+            `${T_IMPORT}\nexport const accent: string = t("Accent");`,
+        );
+        project.write(
+            "workspace/node_modules/@lib/kit/package.json",
+            packageManifest("@lib/kit", { peerDependencies: { "@gtkx/i18n": "*" } }),
+        );
+        project.write(
+            "workspace/node_modules/@lib/kit/src/index.ts",
+            `${T_IMPORT}\nexport const kit = t("Published");`,
+        );
+        mkdirSync(join(project.root, "workspace/node_modules/@studio"));
+        for (const name of ["tokens", "ui"]) {
+            symlinkSync(`../../packages/${name}`, join(project.root, "workspace/node_modules/@studio", name), "dir");
+        }
+        const tsc = fileURLToPath(new URL("../../../node_modules/.bin/tsc", import.meta.url));
+
+        await extract(app);
+
+        expect(readMessages(app).map((message) => [message.msgid, message.comments?.reference])).toEqual([
+            ["Accent", "../../packages/tokens/src/index.ts:2"],
+            ["Delete {{name}}?", "../../packages/ui/src/index.ts:6"],
+            ["Recipes", "src/index.ts:3"],
+            ["Show ratings", "../../packages/ui/data/org.studio.ui.gschema.xml:3"],
+        ]);
+        expect(readFileSync(join(app, "po/POTFILES.in"), "utf8")).toBe(
+            [
+                "../../packages/tokens/src/index.ts",
+                "../../packages/ui/data/org.studio.ui.gschema.xml",
+                "../../packages/ui/src/index.ts",
+                "src/index.ts",
+                "",
+            ].join("\n"),
+        );
+        await expect(
+            promisify(execFile)(tsc, ["-p", ".", "--pretty", "false"], { cwd: app, timeout: 180_000 }),
+        ).resolves.toMatchObject({ stdout: "" });
     });
 
     it("extracts imported hooks and components while ignoring shadowed bindings", async () => {

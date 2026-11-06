@@ -1,30 +1,16 @@
 import { warn } from "@gtkx/utils";
 import type { ArgsDef, CommandDef } from "citty";
 import { existsSync, realpathSync } from "node:fs";
-import { dirname, join, sep } from "node:path";
 import { resolveCwd } from "../internal/entry-arg.js";
-import { type DependencyField, gtkxDependencies, isGtkxPackage, manifestPath, readManifest } from "./manifest.js";
+import {
+    installedDirectory,
+    linkedSourcePackages,
+    PACKAGE_FIELDS,
+    PROJECT_FIELDS,
+} from "../internal/linked-packages.js";
+import { gtkxDependencies, manifestPath, readManifest } from "./manifest.js";
 
 type InstalledPackage = { name: string; version: string };
-
-const PROJECT_FIELDS: readonly DependencyField[] = ["dependencies", "devDependencies", "optionalDependencies"];
-const PACKAGE_FIELDS: readonly DependencyField[] = ["dependencies", "optionalDependencies", "peerDependencies"];
-
-const installedDirectory = (from: string, name: string): string | null => {
-    for (let directory = from; ; directory = dirname(directory)) {
-        const candidate = join(directory, "node_modules", name);
-
-        if (existsSync(manifestPath(candidate))) {
-            return realpathSync(candidate);
-        }
-
-        if (dirname(directory) === directory) {
-            return null;
-        }
-    }
-};
-
-const isLinkedSource = (directory: string): boolean => !directory.split(sep).includes("node_modules");
 
 /**
  * Lists the GTKX packages Node resolves for the project at `root`, following each package's own GTKX
@@ -34,7 +20,6 @@ const isLinkedSource = (directory: string): boolean => !directory.split(sep).inc
  */
 const installedGtkxPackages = (root: string): InstalledPackage[] => {
     const installed: Map<string, InstalledPackage> = new Map();
-    const sources: Set<string> = new Set();
 
     const visit = (from: string, names: string[]): void => {
         for (const name of names) {
@@ -50,22 +35,15 @@ const installedGtkxPackages = (root: string): InstalledPackage[] => {
         }
     };
 
-    const visitSource = (directory: string, fields: readonly DependencyField[]): void => {
-        sources.add(directory);
-        const manifest = readManifest(directory);
-        visit(directory, gtkxDependencies(manifest, fields));
+    if (!existsSync(manifestPath(root))) {
+        return [];
+    }
 
-        for (const name of new Set(fields.flatMap((field) => Object.keys(manifest[field] ?? {})))) {
-            const linked = isGtkxPackage(name) ? null : installedDirectory(directory, name);
+    const project = realpathSync(root);
+    visit(project, gtkxDependencies(readManifest(project), PROJECT_FIELDS));
 
-            if (linked !== null && isLinkedSource(linked) && !sources.has(linked)) {
-                visitSource(linked, PACKAGE_FIELDS);
-            }
-        }
-    };
-
-    if (existsSync(manifestPath(root))) {
-        visitSource(realpathSync(root), PROJECT_FIELDS);
+    for (const directory of linkedSourcePackages(project)) {
+        visit(directory, gtkxDependencies(readManifest(directory), PACKAGE_FIELDS));
     }
 
     return [...installed.values()];
@@ -115,4 +93,4 @@ const withVersionSkewCheck = <T extends ArgsDef>(command: CommandDef<T>): Comman
     },
 });
 
-export { installedDirectory, installedGtkxPackages, withVersionSkewCheck };
+export { installedGtkxPackages, withVersionSkewCheck };

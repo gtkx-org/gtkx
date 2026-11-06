@@ -6,7 +6,7 @@ import { basename, dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import packageManifest from "../../package.json" with { type: "json" };
 import { WORKER_PRELOAD_ARGS } from "../internal/worker-preload-args.js";
-import { installedDirectory } from "../upgrade/version-skew.js";
+import { installedDirectory } from "../internal/linked-packages.js";
 import { DEV_RUNNER_READY, type DevRunnerBootstrap } from "./bootstrap.js";
 
 type DevWatch = {

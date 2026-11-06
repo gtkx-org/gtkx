@@ -372,6 +372,84 @@ describe("CLI commands", () => {
         expect(JSON.parse(result.stdout)).toEqual(["Editor font", "The font used to show documents"]);
     });
 
+    it("bundles and packages the GSettings schemas of a workspace package the application uses", async () => {
+        using project = createProject();
+        linkWorkspaceBindings(project.root);
+        const app = join(project.root, "workspace/apps/recipes");
+        project.write(
+            "workspace/apps/recipes/package.json",
+            JSON.stringify({ name: "recipes", version: "1.0.0", type: "module", dependencies: { "@studio/ui": "*" } }),
+        );
+        project.write(
+            "workspace/apps/recipes/gtkx.config.ts",
+            `export default ${JSON.stringify({
+                applicationId: "org.gtkx.example",
+                applicationIcon: "icon.svg",
+                codegen: false,
+                agents: { reference: false, rules: false },
+                deploy: {
+                    name: "Recipes",
+                    summary: "Packages a workspace package's schema",
+                    categories: ["Utility"],
+                    description: ["An example application whose settings schema lives in a workspace package."],
+                    developer: { id: "dev.gtkx", name: "GTKX" },
+                    license: "MIT",
+                    node: { source: "host" },
+                },
+            })};`,
+        );
+        project.write("workspace/apps/recipes/LICENSE", "MIT License\n");
+        project.write(
+            "workspace/apps/recipes/icon.svg",
+            '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64"/></svg>',
+        );
+        project.write(
+            "workspace/apps/recipes/src/index.ts",
+            `import { SettingsSchemaSource } from "@gtkx/gi/gio";
+            import { settings } from "@studio/ui";
+            const key = SettingsSchemaSource.getDefault()?.lookup(settings.id, true)?.getKey("show-ratings");
+            process.stdout.write(String(key?.getSummary()));`,
+        );
+        project.write(
+            "workspace/packages/ui/package.json",
+            JSON.stringify({
+                name: "@studio/ui",
+                type: "module",
+                exports: "./src/index.ts",
+                peerDependencies: { "@gtkx/react": "*" },
+            }),
+        );
+        project.write(
+            "workspace/packages/ui/src/index.ts",
+            'export { default as settings } from "../data/org.gtkx.example.ui.gschema.xml";',
+        );
+        project.write(
+            "workspace/packages/ui/data/org.gtkx.example.ui.gschema.xml",
+            `<schemalist>
+                <schema id="org.studio.ui" path="/org/studio/ui/">
+                    <key name="show-ratings" type="b"><default>true</default><summary>Show ratings</summary></key>
+                </schema>
+            </schemalist>`,
+        );
+        mkdirSync(join(project.root, "workspace/node_modules/@studio"), { recursive: true });
+        symlinkSync("../../packages/ui", join(project.root, "workspace/node_modules/@studio/ui"), "dir");
+
+        await invoke(["build", "--cwd", app]);
+        const result = await promisify(execFile)(process.execPath, [join(app, "dist/bundle.mjs")], {
+            env: { ...process.env, GSETTINGS_BACKEND: "memory" },
+            timeout: 30_000,
+        });
+        await invoke(["deploy", "--cwd", app, "--skip-build", "--print-manifests", "--target", "deb"]);
+        const manifest = parse(readFileSync(join(app, "build", process.arch, "targets/deb/nfpm.yaml"), "utf8")) as {
+            contents: { dst: string }[];
+        };
+
+        expect(result.stdout).toBe("Show ratings");
+        expect(manifest.contents.map((content) => content.dst)).toContain(
+            "/usr/share/glib-2.0/schemas/org.gtkx.example.ui.gschema.xml",
+        );
+    });
+
     it("names the program after the application when a library parses options while the app loads", async () => {
         using project = createProject({ codegen: true, libraries: ["Gio-2.0", "Gst-1.0"] });
         project.write(
@@ -2488,6 +2566,64 @@ describe("CLI commands", () => {
             "fr.po",
             "org.gtkx.example.pot",
         ]);
+    });
+
+    it("translates the messages of a workspace package and extracts them again when it is saved in dev", async () => {
+        using project = createProject();
+        linkWorkspaceBindings(project.root);
+        const app = join(project.root, "workspace/apps/recipes");
+        const readyPath = join(project.root, "ready.txt");
+        const greeting = "workspace/packages/ui/src/index.ts";
+        const greet = (message: string) =>
+            `import { t } from "@gtkx/i18n";\nexport const greet = (name: string): string => t(${JSON.stringify(message)}, { name });`;
+        project.write(
+            "workspace/apps/recipes/package.json",
+            JSON.stringify({ name: "recipes", type: "module", dependencies: { "@studio/ui": "*" } }),
+        );
+        project.write(
+            "workspace/apps/recipes/gtkx.config.ts",
+            'export default { applicationId: "org.gtkx.example", codegen: false, agents: { reference: false, rules: false } };',
+        );
+        project.write("workspace/apps/recipes/po/LINGUAS", "fr\n");
+        project.write(
+            "workspace/apps/recipes/po/fr.po",
+            readFileSync(new URL("../../i18n/tests/fixtures/fr.po", import.meta.url), "utf8"),
+        );
+        project.write(
+            "workspace/packages/ui/package.json",
+            JSON.stringify({
+                name: "@studio/ui",
+                type: "module",
+                exports: "./src/index.ts",
+                peerDependencies: { "@gtkx/i18n": "*", "@gtkx/react": "*" },
+            }),
+        );
+        project.write(greeting, greet("Hello, {{name}}!"));
+        mkdirSync(join(project.root, "workspace/node_modules/@studio"), { recursive: true });
+        symlinkSync("../../packages/ui", join(project.root, "workspace/node_modules/@studio/ui"), "dir");
+        project.write(
+            "workspace/apps/recipes/src/index.ts",
+            `import { Application } from "@gtkx/gi/gio";
+            import { greet } from "@studio/ui";
+            import { applicationId } from "virtual:gtkx-config";
+            import { writeFileSync } from "node:fs";
+            export const application = new Application({ applicationId });
+            application.setDefault();
+            application.register(null);
+            application.hold();
+            writeFileSync(${JSON.stringify(readyPath)}, greet("Ada"));`,
+        );
+        vi.stubEnv("LANG", "fr_FR.UTF-8");
+        vi.stubEnv("LC_ALL", "fr_FR.UTF-8");
+        vi.stubEnv("LANGUAGE", "fr");
+
+        await withSession("dev", app, readyPath, async () => {
+            expect(readFileSync(readyPath, "utf8")).toBe("Bonjour, Ada !");
+            project.write(greeting, greet("Goodbye, {{name}}!"));
+            await expect
+                .poll(() => readFileSync(join(app, "po/org.gtkx.example.pot"), "utf8"), { timeout: 30_000 })
+                .toContain('#: ../../packages/ui/src/index.ts:2\nmsgid "Goodbye, {{name}}!"');
+        });
     });
 
     it("keeps the dev session through malformed catalogs added while it runs", async () => {

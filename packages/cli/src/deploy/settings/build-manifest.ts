@@ -1,5 +1,5 @@
 import type { Config } from "@gtkx/config";
-import { isPathInside, sortStrings, toPosixPath } from "@gtkx/utils";
+import { sortStrings, toPosixPath } from "@gtkx/utils";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import type { DeploySettings } from "../types.js";
@@ -44,10 +44,6 @@ const resolveRecordedSchema = (root: string, manifestPath: string, entry: string
     }
 
     const filePath = resolve(root, entry);
-
-    if (!isPathInside(root, filePath)) {
-        throw new Error(`Cannot deploy: ${manifestPath} records a GSettings schema outside the project.`);
-    }
 
     if (!isFile(filePath)) {
         throw new Error(`Cannot deploy: the recorded GSettings schema ${filePath} is missing.`);
