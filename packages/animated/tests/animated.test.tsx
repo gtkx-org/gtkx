@@ -35,7 +35,12 @@ type SwitchProps = { labelRef: RefObject<Gtk.Label | null>; mode: "first" | "sec
 type ForwardingProps = { ref?: Ref<Gtk.Label | null>; opacity?: number; renders: number[] };
 type OpaqueProps = { opacity?: number; renders: number[] };
 type ForwardingTextProps = { ref?: Ref<Gtk.Label | null>; children?: ReactNode; renders: number[] };
-type PulseProps = { labelRef: RefObject<Gtk.Label | null>; onSpring?: (opacity: SpringValue<number>) => void };
+type PulseProps = {
+    labelRef: RefObject<Gtk.Label | null>;
+    loop?: object;
+    onRest?: () => void;
+    onSpring?: (opacity: SpringValue<number>) => void;
+};
 
 const ANIMATED = { areAnimationsEnabled: true };
 const AnimatedAdjustment = animated(GtkAdjustment);
@@ -60,11 +65,12 @@ const Fade = ({ labelRef, to, duration = SLOW.duration }: OpacityProps): ReactNo
     return <AnimatedLabel ref={labelRef} opacity={styles.opacity} label="fade" />;
 };
 
-const Pulse = ({ labelRef, onSpring }: PulseProps): ReactNode => {
+const Pulse = ({ labelRef, loop = { reverse: true }, onRest, onSpring }: PulseProps): ReactNode => {
     const styles = useSpring({
         from: { opacity: 0.2 },
         to: { opacity: 1 },
-        loop: { reverse: true },
+        loop,
+        onRest,
         config: { duration: 100 },
     });
 
@@ -286,6 +292,32 @@ describe("animated - spring values on widgets", () => {
             ANIMATED,
         );
         await expectInFlight(labelRef.current);
+        defaultSettings().gtkEnableAnimations = false;
+        await waitFor(() => {
+            expect(springs.opacity?.idle).toBe(true);
+        }, SETTLE);
+    });
+
+    it("ends a loop that restarts itself through its own loop override when animations are turned off", async () => {
+        const labelRef = createRef<Gtk.Label>();
+        const springs: { opacity?: SpringValue<number> } = {};
+        let passes = 0;
+        await render(
+            <Pulse
+                labelRef={labelRef}
+                loop={{ reset: true, loop: true }}
+                onRest={() => {
+                    passes += 1;
+                }}
+                onSpring={(opacity) => {
+                    springs.opacity = opacity;
+                }}
+            />,
+            ANIMATED,
+        );
+        await waitFor(() => {
+            expect(passes).toBeGreaterThan(1);
+        }, SETTLE);
         defaultSettings().gtkEnableAnimations = false;
         await waitFor(() => {
             expect(springs.opacity?.idle).toBe(true);

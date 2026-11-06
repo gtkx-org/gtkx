@@ -9,13 +9,13 @@ import {
 } from "@react-spring/core";
 import { is } from "@react-spring/shared";
 
-type LoopFunction = () => boolean | object;
-type Loop = boolean | object | LoopFunction;
 type LoopingUpdate = { loop?: Loop | undefined };
+type LoopFunction = () => boolean | LoopingUpdate;
+type Loop = boolean | LoopingUpdate | LoopFunction;
 
 const isLoopFunction = (loop: Loop): loop is LoopFunction => typeof loop === "function";
 
-const resolveLoop = (loop: Loop): boolean | object => (isLoopFunction(loop) ? loop() : loop);
+const resolveLoop = (loop: Loop): boolean | LoopingUpdate => (isLoopFunction(loop) ? loop() : loop);
 
 const guardLoop = <T extends LoopingUpdate>(update: T): T => {
     const { loop } = update;
@@ -24,7 +24,18 @@ const guardLoop = <T extends LoopingUpdate>(update: T): T => {
         return update;
     }
 
-    return { ...update, loop: () => !Globals.skipAnimation && resolveLoop(loop) };
+    return {
+        ...update,
+        loop: () => {
+            if (Globals.skipAnimation) {
+                return false;
+            }
+
+            const resolved = resolveLoop(loop);
+
+            return typeof resolved === "object" ? guardLoop(resolved) : resolved;
+        },
+    };
 };
 
 /* TODO: End each `loop` at the pass that finds animations skipped until React Spring stops restarting loops
