@@ -34,8 +34,6 @@ RUN apt-get update && \
         flatpak-builder appstream dpkg-dev rpm pipx fontconfig fonts-noto-core fonts-dejavu-core && \
     rm -rf /var/lib/apt/lists/* && \
     mkdir -p /opt/gtkx-toolchains && \
-    gst_gir="/usr/lib/$(dpkg-architecture -qDEB_HOST_MULTIARCH)/gir-1.0/Gst-1.0.gir" && \
-    if [ -f "$gst_gir" ]; then ln -sf "$gst_gir" /usr/share/gir-1.0/Gst-1.0.gir; fi && \
     for driver in /usr/share/vulkan/icd.d/lvp_icd*.json; do \
         if [ -f "$driver" ]; then ln -s "$driver" "$VK_DRIVER_FILES"; break; fi; \
     done && \

@@ -18,8 +18,9 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolveExecutable } from "@gtkx/utils";
 import ts from "typescript";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
 import {
     loadApiReference,
     readGeneratedElements,
@@ -1234,6 +1235,47 @@ describe("generated bindings", () => {
             { cwd: directory.path, encoding: "utf8", stdio: "pipe", timeout: 20_000 },
         );
         expect(JSON.parse(initialized)).toEqual([true, "function"]);
+    });
+
+    it("finds GIR files in the gir-1.0 directory under the introspection libdir", async () => {
+        using directory = createProject();
+        const bin = join(directory.path, "bin");
+        const libdir = join(directory.path, "lib", "multiarch");
+        mkdirSync(bin);
+        mkdirSync(join(libdir, "gir-1.0"), { recursive: true });
+        writeFileSync(
+            join(bin, "pkg-config"),
+            `#!${process.execPath}\nimport { execFileSync } from "node:child_process";\nconst args = process.argv.slice(2);\nprocess.stdout.write(args[0] === "--variable=libdir" ? ${JSON.stringify(libdir)} : execFileSync(${JSON.stringify(resolveExecutable("pkg-config"))}, args, { encoding: "utf8" }));\n`,
+            { mode: 0o755 },
+        );
+        writeFileSync(
+            join(libdir, "gir-1.0", "Multiarch-1.0.gir"),
+            `<?xml version="1.0"?>
+             <repository version="1.2" xmlns="http://www.gtk.org/introspection/core/1.0"
+               xmlns:c="http://www.gtk.org/introspection/c/1.0" xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+               <include name="GObject" version="2.0"/>
+               <namespace name="Multiarch" version="1.0" shared-library="libgio-2.0.so.0" c:prefix="G">
+                 <class name="Cancellable" parent="GObject.Object" glib:type-name="GCancellable"
+                   glib:get-type="g_cancellable_get_type">
+                   <constructor name="new" c:identifier="g_cancellable_new">
+                     <return-value transfer-ownership="full"><type name="Cancellable"/></return-value>
+                   </constructor>
+                 </class>
+               </namespace>
+             </repository>`,
+        );
+        vi.stubEnv("PATH", `${bin}:${process.env.PATH ?? ""}`);
+        onTestFinished(() => {
+            vi.unstubAllEnvs();
+        });
+        const { gi } = resolveStore(directory.path);
+        await runCodegen({ libraries: ["Multiarch-1.0"], girPath: resolveGirPath(undefined, directory.path), gi });
+        expect(
+            diagnostics(
+                directory.path,
+                `import { Cancellable } from "@gtkx/gi/multiarch"; export const cancellable: Cancellable = Cancellable.new();`,
+            ),
+        ).toEqual([]);
     });
 
     it("leaves library teardown to process exit", async () => {

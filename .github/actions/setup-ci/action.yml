@@ -42,10 +42,6 @@ runs:
           libasan8 adwaita-icon-theme gsettings-desktop-schemas shared-mime-info \
           hicolor-icon-theme librsvg2-common desktop-file-utils espeak-ng \
           flatpak-builder appstream dpkg-dev rpm pipx fontconfig fonts-noto-core fonts-dejavu-core
-        gst_gir="/usr/lib/$(dpkg-architecture -qDEB_HOST_MULTIARCH)/gir-1.0/Gst-1.0.gir"
-        if [ -f "$gst_gir" ]; then
-          sudo ln -sf "$gst_gir" /usr/share/gir-1.0/Gst-1.0.gir
-        fi
         pipx install 'git+https://github.com/flatpak/flatpak-builder-tools.git@de2225a6dee4818c1339b3cdbf29f90c471fcb7e#subdirectory=node'
         echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
