@@ -67,13 +67,25 @@ const previewMode = (story: ComposedStory): "content" | "window" | "dialog" => {
     return mode;
 };
 
+const mapValue = (value: unknown, mapping: Record<string, unknown>): unknown => {
+    const key = String(value);
+
+    return Object.hasOwn(mapping, key) ? mapping[key] : value;
+};
+
 const mapArgs = (args: Args, argTypes: ArgTypes): Args =>
     Object.fromEntries(
         Object.entries(args).map(([argument, value]) => {
             const mapping = argTypes[argument]?.mapping;
-            const key = String(value);
 
-            return [argument, mapping !== undefined && Object.hasOwn(mapping, key) ? mapping[key] : value];
+            if (mapping === undefined) {
+                return [argument, value];
+            }
+
+            return [
+                argument,
+                Array.isArray(value) ? value.map((item) => mapValue(item, mapping)) : mapValue(value, mapping),
+            ];
         }),
     );
 

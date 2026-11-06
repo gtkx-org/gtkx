@@ -1,5 +1,6 @@
 import type { ComponentProps, ReactNode } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
+import { GtkLabel } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
 import { Storybook, StoryCatalog } from "@gtkx/storybook/explorer";
 import { render, screen, userEvent, within } from "@gtkx/testing";
@@ -250,6 +251,24 @@ describe("native story controls", () => {
         expect(screen.getByName("inspector-choice")).toHaveTextContent(/^\{"tone":"blue"\}$/);
         await userEvent.selectOptions(screen.getByName("storybook-control-choice"), 2);
         expect(screen.getByName("inspector-choice")).toHaveTextContent(/^\{"tone":"yellow"\}$/);
+    });
+
+    it("passes arguments without an argTypes mapping through unchanged", async () => {
+        const settings = Object.create(null) as Record<string, string>;
+        settings.tone = "plain";
+        await showInspector({
+            default: {
+                title: "Unmapped",
+                args: { settings, tags: ["accent"] },
+                argTypes: { tags: { mapping: { accent: "Mapped accent" } } },
+                render: ({ settings: values, tags }: { settings: Record<string, string>; tags: string[] }) => (
+                    <GtkLabel name="inspector-unmapped">{`${values.tone ?? "unset"} ${tags.join(",")}`}</GtkLabel>
+                ),
+            },
+            Default: {},
+        });
+
+        expect(screen.getByName("inspector-unmapped")).toHaveTextContent(/^plain Mapped accent$/);
     });
 
     it("preserves fractional values and step increments in range controls", async () => {
