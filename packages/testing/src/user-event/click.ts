@@ -142,11 +142,15 @@ const emitSitePhase = (
     return reached;
 };
 
-const emitClickSequence = (sites: ClickSite[], nPress: number, modifiers: Gdk.ModifierType): void => {
+const emitClickSequence = (sites: ClickSite[], nPress: number, modifiers: Gdk.ModifierType): Set<ClickSite> => {
+    let reached: ClickSite[] = [];
+
     for (let i = 1; i <= nPress; i++) {
-        const reached = emitSitePhase(sites, i, "pressed", modifiers);
+        reached = emitSitePhase(sites, i, "pressed", modifiers);
         emitSitePhase(reached, i, "released", modifiers);
     }
+
+    return new Set(reached);
 };
 
 const containerFor = (widget: Gtk.Widget): Gtk.Widget | null => {
@@ -410,9 +414,15 @@ const deliverClick = async (state: UserEventState, widget: Gtk.Widget, nPress: n
     let isHandled = false;
 
     await wrapPointerEvent(widget, () => {
-        const targets = collectClickTargets(widget);
-        const sites = targets.flatMap((target) => targetSites(widget, target));
-        emitClickSequence(sites, nPress, state.modifierState);
+        const placed = collectClickTargets(widget).map((target) => ({ target, sites: targetSites(widget, target) }));
+        const reached = emitClickSequence(
+            placed.flatMap(({ sites }) => sites),
+            nPress,
+            state.modifierState,
+        );
+        const targets = placed
+            .filter(({ sites }) => sites.every((site) => reached.has(site)))
+            .map(({ target }) => target);
         applyClickOutcomes(targets, nPress, state.modifierState);
         isHandled = targets.some((target) => isHandlingTarget(target));
     });

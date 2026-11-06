@@ -51,6 +51,7 @@ import {
     GtkShortcutController,
     GtkShortcutTrigger,
     GtkSignalListItemFactory,
+    GtkSingleSelection,
     GtkSpinButton,
     GtkStringList,
     GtkSwitch,
@@ -116,6 +117,18 @@ const editableText = (entry: Gtk.Widget): string => {
 const setupStringRow = (item: GObject.Object): void => {
     if (item instanceof Gtk.ListItem) {
         item.setChild(new Gtk.Label());
+    }
+};
+
+const setupClaimingRow = (item: GObject.Object): void => {
+    if (item instanceof Gtk.ListItem) {
+        const label = new Gtk.Label();
+        const gesture = new Gtk.GestureClick();
+        gesture.on("pressed", () => {
+            gesture.setState(Gtk.EventSequenceState.CLAIMED);
+        });
+        label.addController(gesture);
+        item.setChild(label);
     }
 };
 
@@ -760,6 +773,18 @@ describe("userEvent.click", () => {
         await userEvent.click(pointerTargetAt(thumbnail));
         expect(view.getSelectedPage()?.getTitle()).toBe("Second");
         expect(overview.current?.getOpen()).toBe(false);
+    });
+
+    it("keeps a list row unselected when a gesture inside it claims the press", async () => {
+        const model = createRef<Gtk.SingleSelection>();
+        await render(
+            <GtkListView
+                model={<GtkSingleSelection ref={model} model={<GtkStringList strings={["Alpha", "Beta"]} />} />}
+                factory={<GtkSignalListItemFactory onSetup={setupClaimingRow} onBind={bindStringRow} />}
+            />,
+        );
+        await userEvent.click(await screen.findByText("Beta"));
+        expect(model.current?.getSelected()).toBe(0);
     });
 
     it("extends a list view selection with held Control and Shift like a pointer click", async () => {
