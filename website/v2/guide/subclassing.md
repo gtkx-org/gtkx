@@ -243,6 +243,8 @@ Use [`callParent`](/v2/reference/@gtkx/runtime/functions/callParent) when the vi
 
 As in GJS, `vfuncDispose` runs only while the instance's JavaScript object is alive, such as after `runDispose()` or when a window is destroyed. An object released by GTK is usually disposed after its JavaScript object has been garbage-collected; GTKX then skips the override, which could no longer reach the instance's JavaScript state, and runs the parent implementation. Stop timers and other JavaScript-driven work where it is started, such as in `vfuncUnmap` or an effect cleanup, rather than relying on `vfuncDispose`.
 
+When the application quits, GTKX stops keeping objects alive for their JavaScript objects while JavaScript still runs. Objects that only JavaScript references are disposed then, widgets first, then instances of registered classes, then other objects, and the objects they own go with them, as in C. Their `vfuncDispose` overrides run with their JavaScript state, and vfuncs other objects call while they are torn down, such as a column view reading the size of a JavaScript list model, run as usual. Objects GTK itself still holds at that point, such as a window that was never destroyed, are not disposed, as in a C application.
+
 ## Implementing an interface
 
 List the generated interface value in `implements` and implement its required vfunc methods. The generated `Impl` type checks their signatures:

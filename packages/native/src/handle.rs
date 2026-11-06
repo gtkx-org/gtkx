@@ -153,6 +153,11 @@ impl ObjectLifetime {
     }
 }
 
+/// A flag that turns true once `object` is finalized, which stays readable after its memory is gone.
+pub(crate) fn finalization_flag(object: &glib::Object) -> Arc<AtomicBool> {
+    ObjectLifetime::track(object).0
+}
+
 impl Drop for ObjectLifetime {
     fn drop(&mut self) {
         self.ended.store(true, Ordering::Release);

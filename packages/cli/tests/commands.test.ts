@@ -573,6 +573,78 @@ describe("CLI commands", () => {
         }
     });
 
+    it("tears a column view over a JavaScript list model down while JavaScript runs when the app quits", async () => {
+        using project = createProject();
+        linkWorkspaceBindings(project.root);
+        project.write(
+            "src/index.tsx",
+            `import * as Gio from "@gtkx/gi/gio";
+            import * as GObject from "@gtkx/gi/gobject";
+            import * as Gtk from "@gtkx/gi/gtk";
+            import { AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
+            import { GtkColumnView, GtkColumnViewColumn, GtkSignalListItemFactory } from "@gtkx/jsx/gtk";
+            import { createRoot, quit } from "@gtkx/react";
+            import { registerClass } from "@gtkx/runtime";
+            import { useMemo } from "react";
+            class NamesBase extends GObject.Object implements Gio.ListModelImpl {
+                names = ["Ada", "Grace", "Linus", "Margaret", "Barbara"].map((name) => Gtk.StringObject.new(name));
+                vfuncGetItemType(): bigint {
+                    return Gtk.StringObject.__type__;
+                }
+                vfuncGetNItems(): number {
+                    return this.names.length;
+                }
+                vfuncGetItem(position: number): GObject.Object | null {
+                    return this.names[position] ?? null;
+                }
+                vfuncDispose(): void {
+                    process.stdout.write("model disposed");
+                }
+            }
+            const Names = registerClass(NamesBase, { typeName: "ExampleNames", implements: [Gio.ListModel] });
+            const People = () => {
+                const model = useMemo(() => Gtk.NoSelection.new(new Names()), []);
+                return (
+                    <AdwApplicationWindow onMap={() => setTimeout(quit, 300)}>
+                        <GtkColumnView model={model}>
+                            <GtkColumnViewColumn
+                                title="Name"
+                                factory={
+                                    <GtkSignalListItemFactory
+                                        onSetup={(cell) => (cell as Gtk.ColumnViewCell).setChild(new Gtk.Label())}
+                                        onBind={(cell) => {
+                                            const { child, item } = cell as Gtk.ColumnViewCell;
+                                            (child as Gtk.Label).label = (item as Gtk.StringObject).string;
+                                        }}
+                                    />
+                                }
+                            />
+                        </GtkColumnView>
+                    </AdwApplicationWindow>
+                );
+            };
+            createRoot().render(
+                <AdwApplication applicationId="org.gtkx.listmodelexit">
+                    <People />
+                </AdwApplication>
+            );`,
+        );
+        await invoke(["build", "--cwd", project.root]);
+        const stopDisplay = await startHeadlessDisplay(resolveHeadlessOptions({ size: "640x480" }));
+        try {
+            const { stdout, stderr } = await promisify(execFile)(
+                process.execPath,
+                [join(project.root, "dist/bundle.mjs")],
+                { timeout: 30_000 },
+            );
+
+            expect(stderr).not.toContain("still has children left");
+            expect(stdout).toBe("model disposed");
+        } finally {
+            stopDisplay();
+        }
+    });
+
     it("names the library to declare when a build imports bindings the store lacks", async () => {
         using project = createProject({ codegen: true, libraries: ["GLib-2.0"] });
         project.write(
