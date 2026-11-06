@@ -7,6 +7,7 @@ export {
     formatChildProcessError,
     normalizeError,
 } from "./error/index.ts";
+export { indentOf } from "./json/index.ts";
 export { createLogger, error, info, logger, Logger, warn } from "./log/index.ts";
 export { type DistributedOmit, omit, pickBy } from "./object/index.ts";
 export { isPathInside, isPathWithin, toPosixPath } from "./path.ts";

@@ -1,7 +1,6 @@
-import { errorMessage } from "@gtkx/utils";
+import { errorMessage, indentOf } from "@gtkx/utils";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { indentOf } from "../internal/json-indent.js";
 
 type ClientName = "claude" | "cursor" | "vscode" | "opencode" | "codex";
 type ServerEntry = Record<string, unknown>;

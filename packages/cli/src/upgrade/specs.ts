@@ -1,9 +1,9 @@
+import { indentOf } from "@gtkx/utils";
 import { readFileSync, writeFileSync } from "node:fs";
 import { relative } from "node:path";
 import { satisfies, valid, validRange } from "semver";
 import { isMap, isScalar, parseDocument, type Document } from "yaml";
 import { z } from "zod";
-import { indentOf } from "../internal/json-indent.js";
 import { type DependencyField, isGtkxPackage, manifestPath, parseManifest, readManifest } from "./manifest.js";
 import type { Workspace } from "./workspace.js";
 

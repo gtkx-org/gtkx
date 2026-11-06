@@ -392,11 +392,14 @@ describe("scaffold command", () => {
         writeFileSync(join(directory.path, "pnpm-workspace.yaml"), "packages:\n  - apps/*\n");
         writeFileSync(
             join(directory.path, ".mcp.json"),
-            JSON.stringify({ mcpServers: { docs: { command: "docs-server" } } }),
+            `${JSON.stringify({ mcpServers: { docs: { command: "docs-server" } } }, null, 2)}\n`,
         );
         const notes = { command: "pnpm", args: ["--dir", "apps/notes", "exec", "gtkx", "mcp"] };
 
         expect((await create(join(directory.path, "apps/notes"), ["--package-manager", "pnpm"])).status).toBe(0);
+        expect(read(directory.path, ".mcp.json")).toBe(
+            `${JSON.stringify({ mcpServers: { docs: { command: "docs-server" }, gtkx: notes } }, null, 2)}\n`,
+        );
         const { status, output } = await create(join(directory.path, "apps/clock"), ["--package-manager", "pnpm"]);
         expect(status).toBe(0);
         expect(output).toContain(`"gtkx" in ${join(directory.path, ".mcp.json")} drives every running GTKX app`);

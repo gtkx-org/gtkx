@@ -1,4 +1,4 @@
-import { errorMessage } from "@gtkx/utils";
+import { errorMessage, indentOf } from "@gtkx/utils";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
@@ -6,6 +6,8 @@ import { isClassicYarn, type Workspace } from "./build-allowance.js";
 import type { PackageManager } from "./package-managers.js";
 
 type McpServer = { command: string; args: string[] };
+
+type McpConfig = { config: Record<string, unknown>; indent: string };
 
 type WorkspaceMcpResult =
     | { kind: "added"; path: string; key: string }
@@ -17,6 +19,7 @@ const MCP_CONFIG_FILE = ".mcp.json";
 const SERVERS_KEY = "mcpServers";
 const SERVER_NAME = "gtkx";
 const SERVER_COMMAND = ["gtkx", "mcp"];
+const JSON_INDENT = "    ";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === "object" && value !== null && !Array.isArray(value);
@@ -32,14 +35,14 @@ const WORKSPACE_SERVERS: Record<PackageManager, (workspace: Workspace, name: str
     yarn: yarnServer,
 };
 
-const readConfig = (path: string): Record<string, unknown> => {
+const readConfig = (path: string): McpConfig => {
     let source: string;
 
     try {
         source = readFileSync(path, "utf8");
     } catch (error) {
         if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-            return {};
+            return { config: {}, indent: JSON_INDENT };
         }
 
         throw error;
@@ -51,7 +54,7 @@ const readConfig = (path: string): Record<string, unknown> => {
         throw new Error(`its contents are not an object with an object "${SERVERS_KEY}"`);
     }
 
-    return config;
+    return { config, indent: indentOf(source, JSON_INDENT) };
 };
 
 const isGtkxServer = (key: string, server: unknown): boolean => {
@@ -66,20 +69,22 @@ const isGtkxServer = (key: string, server: unknown): boolean => {
 
 /**
  * Adds a server that starts the app's own `gtkx mcp` through the workspace's package manager to the
- * workspace root's `.mcp.json`, where AI clients opened at the repository root look for it. Other servers
- * stay. When the file already has a GTKX server, such as an earlier app's, no second one is added: the GTKX
- * servers of a session share one socket, and that server drives every running app.
+ * workspace root's `.mcp.json`, where AI clients opened at the repository root look for it. Other servers and
+ * the file's indentation stay. When the file already has a GTKX server, such as an earlier app's, no second one
+ * is added: the GTKX servers of a session share one socket, and that server drives every running app.
  */
 const addWorkspaceMcpServer = (workspace: Workspace, name: string): WorkspaceMcpResult => {
     const path = join(workspace.root, MCP_CONFIG_FILE);
     const server = WORKSPACE_SERVERS[workspace.packageManager](workspace, name);
-    let config: Record<string, unknown>;
+    let document: McpConfig;
 
     try {
-        config = readConfig(path);
+        document = readConfig(path);
     } catch (error) {
         return { kind: "unreadable", path, key: SERVER_NAME, server, reason: errorMessage(error) };
     }
+
+    const { config, indent } = document;
 
     const servers = isRecord(config[SERVERS_KEY]) ? config[SERVERS_KEY] : {};
     const keys = Object.keys(servers);
@@ -97,7 +102,7 @@ const addWorkspaceMcpServer = (workspace: Workspace, name: string): WorkspaceMcp
 
     writeFileSync(
         path,
-        `${JSON.stringify({ ...config, [SERVERS_KEY]: { ...servers, [SERVER_NAME]: server } }, null, 4)}\n`,
+        `${JSON.stringify({ ...config, [SERVERS_KEY]: { ...servers, [SERVER_NAME]: server } }, null, indent)}\n`,
     );
 
     return { kind: "added", path, key: SERVER_NAME };
