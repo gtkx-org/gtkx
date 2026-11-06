@@ -335,7 +335,7 @@ Express native object relationships through JSX props and supported child slots.
 
 ## Initialization order
 
-`vfuncConstructed` runs after native construct properties are set, while `super()` is still executing. JavaScript field initializers and the constructor body have not run yet. Use declared fields or native properties for state this override needs; private fields are unavailable at that point.
+`vfuncConstructed` runs after native construct properties are set, while `super()` is still executing. JavaScript field initializers and the constructor body have not run yet. Other properties passed to the constructor, including element props, are set after it returns: a binding or `notify` handler connected there receives them, but reading them directly there returns their defaults. Use declared fields or native properties for state this override needs; private fields are unavailable at that point.
 
 Objects created by native code do not run the JavaScript constructor or its field initializers. Initialize state needed by those instances in `vfuncConstructed`, chaining to the parent. Keep ordinary component setup in React.
 

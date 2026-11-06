@@ -41,7 +41,6 @@ const PARAM_WRITABLE = 2;
 const PARAM_CONSTRUCT = 4;
 const PARAM_CONSTRUCT_ONLY = 8;
 const PARAM_LAX_VALIDATION = 16;
-const PARAM_EXPLICIT_NOTIFY = 1 << 30;
 const READ_FLAGS = PARAM_READABLE | PARAM_WRITABLE | PARAM_CONSTRUCT_ONLY | PARAM_LAX_VALIDATION;
 const FLAGS_BYTE_OFFSET = 16;
 const VALUE_TYPE_BYTE_OFFSET = 24;
@@ -152,7 +151,6 @@ const isParamReadable = (flags: number): boolean => (flags & PARAM_READABLE) !==
 const isParamConstructOnly = (flags: number): boolean => (flags & PARAM_CONSTRUCT_ONLY) !== 0;
 const isParamConstructed = (flags: number): boolean => (flags & (PARAM_CONSTRUCT | PARAM_CONSTRUCT_ONLY)) !== 0;
 const isParamLaxlyValidated = (flags: number): boolean => (flags & PARAM_LAX_VALIDATION) !== 0;
-const isParamExplicitlyNotified = (flags: number): boolean => (flags & PARAM_EXPLICIT_NOTIFY) !== 0;
 
 const wasParamValueModified = (pspec: ExternalObject<Handle>, value: ExternalObject<Handle>): boolean =>
     paramValueValidate(pspec, value) as boolean;
@@ -300,7 +298,6 @@ export {
     isParamConstructOnly,
     isParamReadable,
     isStringArray,
-    isParamExplicitlyNotified,
     isParamLaxlyValidated,
     isParamWritable,
     resolveGtype,

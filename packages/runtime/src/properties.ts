@@ -10,7 +10,6 @@ import {
     getParamValueType,
     isParamConstructed,
     isParamConstructOnly,
-    isParamExplicitlyNotified,
     isParamLaxlyValidated,
     isParamReadable,
     isParamWritable,
@@ -579,16 +578,12 @@ function readStored(instance: Record<symbol, unknown>, accessor: PropertyAccesso
     return instance[accessor.storage];
 }
 
-function storeValue(instance: Record<symbol, unknown>, accessor: PropertyAccessor, value: unknown): void {
-    instance[accessor.storage] = heldValue(value);
-}
-
 function writeStored(instance: Record<symbol, unknown>, accessor: PropertyAccessor, value: unknown): void {
     if (readStored(instance, accessor) === heldValue(value)) {
         return;
     }
 
-    storeValue(instance, accessor, value);
+    instance[accessor.storage] = heldValue(value);
     (instance as NotifyingObject).notify?.(accessor.propertyName);
 }
 
@@ -828,14 +823,6 @@ function readCurrent(instance: object, accessor: PropertyAccessor): unknown {
         : (instance as Record<string, unknown>)[member];
 }
 
-function storeCurrent(instance: Record<symbol, unknown>, accessor: PropertyAccessor, value: unknown): void {
-    if (isParamExplicitlyNotified(accessor.flags)) {
-        writeStored(instance, accessor, value);
-    } else {
-        storeValue(instance, accessor, value);
-    }
-}
-
 function assertWriteIsRead(instance: object, accessor: InterfaceAccessor): void {
     const getter = accessor.delegate?.getter;
 
@@ -879,7 +866,7 @@ function writeCurrent(instance: object, accessor: PropertyAccessor, value: unkno
     const member = backingMemberFor(instance, accessor);
 
     if (member === undefined) {
-        storeCurrent(instance as Record<symbol, unknown>, accessor, value);
+        writeStored(instance as Record<symbol, unknown>, accessor, value);
 
         return;
     }

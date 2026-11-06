@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { ParamFlags, paramSpecString } from "@gtkx/gi/gobject";
+import { BindingFlags, ParamFlags, paramSpecString } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
     GtkAdjustment,
@@ -33,6 +33,33 @@ registerClass(TaggedScale, {
     properties: { tag: paramSpecString("tag", null, null, "none", ParamFlags.READWRITE) },
 });
 
+class CaptionedBinBase extends Gtk.Widget {
+    declare caption: string;
+    declare label: Gtk.Label;
+
+    override vfuncConstructed(): void {
+        super.vfuncConstructed();
+        this.label = new Gtk.Label();
+        this.label.setParent(this);
+        this.bindProperty("caption", this.label, "label", BindingFlags.SYNC_CREATE);
+    }
+}
+
+const CaptionedBin = registerClass(CaptionedBinBase, {
+    typeName: "GtkxCaptionedBin",
+    properties: { caption: paramSpecString("caption", null, null, "none", ParamFlags.READWRITE) },
+    classInit(klass: Gtk.WidgetClass) {
+        klass.setLayoutManagerType(Gtk.BinLayout);
+    },
+});
+
+type CaptionedBin = InstanceType<typeof CaptionedBin>;
+
+const CaptionedBinElement = createElementComponent<GtkWidgetProps<CaptionedBin> & { caption?: string }>(
+    "GtkxCaptionedBin",
+    CaptionedBin,
+);
+
 describe("createElementComponent for a type codegen does not cover", () => {
     it("renders a registered subclass with its own props", async () => {
         await render(<TaggedScaleElement name="tagged" tag="mine" />);
@@ -48,6 +75,15 @@ describe("createElementComponent for a type codegen does not cover", () => {
 
         const found = await screen.findByName("slotted");
         expect((found as Gtk.Scale).getAdjustment().getValue()).toBe(7);
+    });
+
+    it("notifies a binding made in vfuncConstructed of the props it was created with", async () => {
+        const ref = createRef<CaptionedBin>();
+        const { rerender } = await render(<CaptionedBinElement ref={ref} caption="Forecast" />);
+        expect(ref.current?.label.getLabel()).toBe("Forecast");
+
+        await rerender(<CaptionedBinElement ref={ref} caption="Hourly" />);
+        expect(ref.current?.label.getLabel()).toBe("Hourly");
     });
 
     it("rejects an element whose GType has not been registered", async () => {
