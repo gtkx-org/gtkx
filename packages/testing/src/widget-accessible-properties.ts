@@ -87,6 +87,7 @@ const readFirstText = (widget: object, getters: string[]): string | null => {
 };
 
 const textDecoder = new TextDecoder();
+const TRAILING_NULS = /\0+$/;
 
 const readGetterText = (widget: Gtk.Accessible): string | null =>
     widget instanceof Gtk.Label ? widget.getText() || null : readFirstText(widget, DEFAULT_TEXT_GETTERS);
@@ -97,8 +98,9 @@ const readAccessibleTextContents = (widget: Gtk.Accessible): string | null => {
     }
 
     const contents = widget.vfuncGetContents(0, GLib.MAXUINT32).getData();
+    const text = contents ? textDecoder.decode(contents).replace(TRAILING_NULS, "") : "";
 
-    return contents && contents.length > 0 ? textDecoder.decode(contents) : null;
+    return text.length > 0 ? text : null;
 };
 
 /**

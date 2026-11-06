@@ -54,6 +54,7 @@ describe("rendered label text", () => {
             <GtkBox>
                 <DrawnTextElement name="drawn" />
                 <GtkTextView name="notes" buffer={<GtkTextBuffer text="Buffered notes" />} />
+                <GtkTextView name="empty" />
             </GtkBox>,
         );
         const drawn = screen.getByName("drawn");
@@ -61,6 +62,8 @@ describe("rendered label text", () => {
         expect(getWidgetText(drawn)).toBe("Drawn reading");
         expect(drawn).toHaveTextContent("Drawn reading");
         expect(screen.getByName("notes")).toHaveTextContent("Buffered notes");
+        expect(getWidgetText(screen.getByName("notes"))).toBe("Buffered notes");
+        expect(getWidgetText(screen.getByName("empty"))).toBeNull();
     });
 
     it.each([
