@@ -10,7 +10,9 @@ const website = join(here, "..");
 const manifestPath = join(website, "versions.json");
 const staging = join(website, ".promote-version");
 const SECTIONS = ["guide", "tutorial", "reference"];
+const AUTHORED_SECTIONS = ["guide", "tutorial"];
 const LINK_PATTERN = /\]\((\/[^)\s]*)\)/g;
+const SOURCE_LINK_PATTERN = /(https:\/\/github\.com\/gtkx-org\/gtkx\/(?:tree|blob))\/main(?=[/#)])/g;
 
 const readManifest = () => JSON.parse(readFileSync(manifestPath, "utf8"));
 
@@ -76,6 +78,22 @@ const rewriteLinks = (rewrite) => {
 
             return rewritten === target ? match : `](${rewritten})`;
         });
+
+        if (updated !== source) {
+            writeFileSync(file, updated);
+            changed += 1;
+        }
+    }
+
+    return changed;
+};
+
+const pinSourceLinks = (directory, ref) => {
+    let changed = 0;
+
+    for (const file of AUTHORED_SECTIONS.flatMap((section) => markdownFiles(join(directory, section)))) {
+        const source = readFileSync(file, "utf8");
+        const updated = source.replaceAll(SOURCE_LINK_PATTERN, `$1/${ref}`);
 
         if (updated !== source) {
             writeFileSync(file, updated);
@@ -215,6 +233,7 @@ unstageSections(incoming, "");
 pruneEmptyDirectory(incoming.prefix);
 
 const changed = rewriteLinks(createRewriter(moves));
+const pinned = pinSourceLinks(website, values["examples-ref"]);
 
 outgoing.aliases = (outgoing.aliases ?? []).filter((alias) => alias !== values.to);
 outgoing.prefix = values.to;
@@ -236,4 +255,5 @@ rmSync(staging, { force: true, recursive: true });
 
 console.log(`Promoted GTKX ${incoming.id} to the site root and moved ${outgoing.id} to ${values.to}.`);
 console.log(`Rewrote documentation links in ${changed} files.`);
+console.log(`Pinned source links on main to ${values["examples-ref"]} in ${pinned} files.`);
 console.log("Regenerate the API references, then rebuild the site.");

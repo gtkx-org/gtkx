@@ -1,5 +1,5 @@
 import type { DeployPayload, DeploySettings } from "../types.js";
-import { optional } from "../nfpm/optional.js";
+import { optional, when } from "../nfpm/optional.js";
 import { flatpakPrebuiltModule } from "./flatpak-prebuilt.js";
 import { flatpakSourceModule } from "./flatpak-source.js";
 import { nodeExtensionFor } from "./flatpak-sources.js";
@@ -89,9 +89,9 @@ const sdkExtensionsFor = (settings: DeploySettings): string[] => {
     return [...nodeExtension, ...(flatpak.sdkExtensions ?? [])];
 };
 
-const modulesFor = (payload: DeployPayload): unknown[] => {
+const modulesFor = async (payload: DeployPayload): Promise<unknown[]> => {
     const settings = payload.settings;
-    const own = isSourceMode(settings) ? flatpakSourceModule(payload) : flatpakPrebuiltModule(payload);
+    const own = isSourceMode(settings) ? await flatpakSourceModule(payload) : flatpakPrebuiltModule(payload);
 
     return [...(settings.deploy.flatpak?.modules ?? []), own];
 };
@@ -116,7 +116,7 @@ const runtimeLabelFor = (settings: DeploySettings): string => {
     return `${flatpak.runtime ?? DEFAULT_RUNTIME}//${flatpak.runtimeVersion ?? DEFAULT_RUNTIME_VERSION}`;
 };
 
-const renderFlatpakManifest = (payload: DeployPayload): FlatpakManifest => {
+const renderFlatpakManifest = async (payload: DeployPayload): Promise<FlatpakManifest> => {
     const settings = payload.settings;
 
     return {
@@ -125,7 +125,8 @@ const renderFlatpakManifest = (payload: DeployPayload): FlatpakManifest => {
         command: settings.binaryName,
         "finish-args": finishArgsFor(settings),
         cleanup: cleanupFor(settings),
-        modules: modulesFor(payload),
+        ...when(!isSourceMode(settings), { "separate-locales": false }),
+        modules: await modulesFor(payload),
     };
 };
 

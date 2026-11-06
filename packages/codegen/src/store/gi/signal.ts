@@ -72,7 +72,7 @@ const renderSignalMembers = (context: ModuleContext, klass: GirClass): string[] 
     context.addRuntimeInternalImport("connectSignalByName");
     context.addRuntimeInternalImport("emitSignalByName");
     const receiver = context.addRuntimeInternalTypeImport("SignalMethodReceiver");
-    const handlerMap = context.addRuntimeInternalTypeImport("SignalMap");
+    const handler = context.addRuntimeInternalTypeImport("SignalHandlerFor");
     const handlerId = context.addRuntimeInternalTypeImport("SignalHandlerId");
     const signalName = context.addRuntimeInternalTypeImport("SignalName");
     const emissionName = context.addRuntimeInternalTypeImport("SignalEmitName");
@@ -83,7 +83,7 @@ const renderSignalMembers = (context: ModuleContext, klass: GirClass): string[] 
         renderBlock(
             `connect<TThis, K extends ${signalName}<TThis>>(` +
                 `this: TThis & ${receiver}<TThis, "connect">, ` +
-                `signal: K, handler: ${handlerMap}<TThis>[K], isAfter?: boolean): ${handlerId}`,
+                `signal: K, handler: ${handler}<TThis, K>, isAfter?: boolean): ${handlerId}`,
             "return connectSignalByName(this, signal, handler, isAfter);",
         ),
         renderBlock(

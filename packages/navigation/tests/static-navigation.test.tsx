@@ -1,5 +1,6 @@
 import type { NavigationState } from "@gtkx/navigation";
 import * as Gtk from "@gtkx/gi/gtk";
+import { GtkLabel } from "@gtkx/jsx/gtk";
 import {
     CommonActions,
     createDrawerNavigator,
@@ -60,6 +61,14 @@ const StaticSplit = createSplitViewNavigator({
     },
 });
 
+const DecoratedSplit = createSplitViewNavigator({
+    screenOptions: ({ route }) => ({ title: `${route.name} Pane` }),
+    screens: {
+        Home: StaticHome,
+        Details: { screen: StaticDetails, options: ({ route }) => ({ title: `Details ${route.name}` }) },
+    },
+}).with(({ Navigator }) => <Navigator contentPlaceholder={<GtkLabel>Nothing Selected</GtkLabel>} />);
+
 const GatedStack = createStackNavigator({
     screens: {
         Home: StaticHome,
@@ -81,6 +90,7 @@ const DrawerApp = createStaticNavigation(StaticDrawer);
 const SplitApp = createStaticNavigation(StaticSplit);
 const GatedApp = createStaticNavigation(GatedStack);
 const NestedApp = createStaticNavigation(NestedStack);
+const DecoratedSplitApp = createStaticNavigation(DecoratedSplit);
 
 describe("static - navigation", () => {
     it("renders the static stack and navigates from a screen", async () => {
@@ -132,6 +142,12 @@ describe("static - screen factories", () => {
         await act(() => ref.goBack());
         expect(screen.queryByText("Details 42")).toBeNull();
         expect(screen.getByText("Home Content")).toBeVisible();
+    });
+
+    it("types option callbacks and passes props added with with()", async () => {
+        await render(<DecoratedSplitApp />);
+        await expectText("Home Pane");
+        await expectText("Nothing Selected");
     });
 
     it("applies a createStackScreen config", async () => {

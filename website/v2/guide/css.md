@@ -34,6 +34,16 @@ import { GtkButton } from "@gtkx/jsx/gtk";
 />;
 ```
 
+Keys starting with `--` set CSS custom properties, which the widget and its descendants read through `var()`. Overriding Adwaita's variables recolors a subtree:
+
+```tsx
+import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
+
+<GtkBox style={{ "--accent-bg-color": "#26a269", "--accent-color": "#1b8553" }}>
+    <GtkButton label="Save" cssClasses={["suggested-action"]} />
+</GtkBox>;
+```
+
 A declaration in `style` takes precedence over the same declaration supplied through `cssClasses`. GTKX adds a generated class to apply the style; leave that class under GTKX's control.
 
 Use `style` for values that change with an individual widget. GTKX batches these updates through a shared style provider, but frequent changes still make GTK recalculate styles. Prefer native animated properties or CSS transitions when they express the effect. See [Animations](/v2/guide/animations) for animated styles.
@@ -73,7 +83,27 @@ const action = css({ minWidth: 96 });
 <GtkButton label="Save" cssClasses={cx(action, canSave && "suggested-action")} />;
 ```
 
-When several generated classes are combined, `cx` merges their declarations into one class. Later arguments win on conflicting properties.
+When several generated classes are combined, `cx` merges their declarations into one class. Later arguments win on conflicting declarations. As within one `css` call, nested selectors and `@media` blocks follow all plain declarations, so an earlier argument's `@media` rule still overrides a later argument's plain declaration while its query matches. Give the later class its own `@media` rule when it must win there too:
+
+```ts
+import { css, cx } from "@gtkx/css";
+
+const chip = css`
+    background: alpha(var(--accent-bg-color), 0.15);
+    @media (prefers-color-scheme: dark) {
+        background: alpha(var(--accent-bg-color), 0.35);
+    }
+`;
+
+const warning = css`
+    background: alpha(var(--warning-bg-color), 0.2);
+    @media (prefers-color-scheme: dark) {
+        background: alpha(var(--warning-bg-color), 0.35);
+    }
+`;
+
+const unsaved = cx(chip, warning);
+```
 
 ## Apply global rules
 
@@ -89,7 +119,16 @@ injectGlobal`
 `;
 ```
 
-A plain `.css` import also works: the GTKX CLI turns it into an `injectGlobal` call. Global rules remain installed for the application's lifetime.
+A plain `.css` import also works: the GTKX CLI turns it into an `injectGlobal` call. Global rules remain installed for the application's lifetime. Relative `url()` references in the file, such as `background-image: url("../data/paper.png")`, are bundled as [`?resource`](/v2/guide/assets#import-project-data) files, and a relative `@import` loads that stylesheet before the file's own rules. Other `url()` values reach GTK unchanged: a `resource://` or `file://` URI loads, but an absolute path such as `url("/com/example/Tasks/paper.png")` draws nothing, because the installed stylesheet has no location to resolve it against; `gtkx dev` and `gtkx build` warn about it. In `css` and `style`, interpolate a `?resource` import instead: `url("resource://${paperPath}")`. During `gtkx dev`, editing a stylesheet replaces the rules that file installed, so removed rules stop applying, and the app keeps its state. Editing a module's `injectGlobal` rules re-runs the module, which adds the edited rules after the earlier ones, as Emotion does: a changed value takes effect, but a removed rule or a selector you moved keeps applying until the app restarts.
+
+A stylesheet imported with [`?resource`](/v2/guide/assets#import-project-data) is bundled unchanged rather than installed. Use this for the `style.css` that [Adwaita loads](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/class.Application.html#automatic-resources) from the application's resource base path, as in a ported GNOME application:
+
+```ts
+import "../data/style.css?resource=/com/example/Tasks/style.css";
+import "../data/paper.png?resource=/com/example/Tasks/paper.png";
+```
+
+GTK resolves `url()` values in that file against its resource path, so `url("paper.png")` and `url("/com/example/Tasks/paper.png")` both load the image imported beside it. Import each image the stylesheet references at its matching path, since GTKX bundles only imported files. `gtkx build` warns about a `url()` or `@import` under the application's resource base path that names no bundled file.
 
 ## Follow appearance preferences
 

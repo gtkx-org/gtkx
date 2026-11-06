@@ -8,6 +8,8 @@ type WatchContext = { addWatchFile: (file: string) => void };
 
 const URL_QUERY_RE = /\?url(?:&t=\d+)?$/;
 
+const fileUrlModule = (file: string): string => `export default ${JSON.stringify(file)};`;
+
 const bundleRelativeUrl = (filename: string): string => {
     const specifier = JSON.stringify(`./${filename}`);
 
@@ -49,7 +51,7 @@ const loadDevFileUrl = (ctx: WatchContext, state: PluginState, id: string): stri
 
     ctx.addWatchFile(file);
 
-    return `export default ${JSON.stringify(file)};`;
+    return fileUrlModule(file);
 };
 
 function gtkxBuiltUrl(): Plugin {
@@ -75,4 +77,4 @@ function gtkxBuiltUrl(): Plugin {
     };
 }
 
-export { gtkxBuiltUrl };
+export { fileUrlModule, gtkxBuiltUrl, URL_QUERY_RE };

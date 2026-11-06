@@ -8,11 +8,21 @@ import * as GObject from "@gtkx/gi/gobject";
 
 import * as Regress from "@gtkx/gi/regress";
 
-import { expect, test } from "vitest";
+import { assert, expect, test } from "vitest";
 
 const marshallingDomain = () => GLib.quarkFromString(GIMarshallingTests.CONSTANT_GERROR_DOMAIN);
 
 const ioDomain = () => GLib.quarkFromString("g-io-error-quark");
+
+const thrownBy = (run: () => unknown): unknown => {
+    try {
+        run();
+    } catch (error) {
+        return error;
+    }
+
+    return undefined;
+};
 
 test("a failing call throws", () => {
     expect(() => {
@@ -75,6 +85,13 @@ test("a returned gerror is an owned value with working error methods", () => {
     expect(error.matches(marshallingDomain(), GIMarshallingTests.CONSTANT_GERROR_CODE)).toBe(true);
     expect(error.matches(marshallingDomain(), 6)).toBe(false);
     expect(error.matches(ioDomain(), GIMarshallingTests.CONSTANT_GERROR_CODE)).toBe(false);
+    expect(error.matches(Gio.IOErrorEnum, GIMarshallingTests.CONSTANT_GERROR_CODE)).toBe(false);
+    expect(
+        GLib.Error.newLiteral(ioDomain(), Gio.IOErrorEnum.FAILED, "boom").matches(
+            Gio.IOErrorEnum,
+            Gio.IOErrorEnum.FAILED,
+        ),
+    ).toBe(true);
 
     const copy = error.copy();
     expect(copy.code).toBe(GIMarshallingTests.CONSTANT_GERROR_CODE);
@@ -82,6 +99,36 @@ test("a returned gerror is an owned value with working error methods", () => {
     copy.code = 11;
     expect(error.code).toBe(GIMarshallingTests.CONSTANT_GERROR_CODE);
     expect(GIMarshallingTests.gerrorReturn()).not.toBe(error);
+});
+
+test("new GLib.Error and newLiteral build an error from a domain or its quark", () => {
+    const missing = new GLib.Error(Gio.IOErrorEnum, Gio.IOErrorEnum.NOT_FOUND, "missing");
+    expect(missing instanceof GLib.Error).toBeTruthy();
+    expect(missing instanceof Gio.IOErrorEnum).toBeTruthy();
+    expect(missing instanceof Error).toBeTruthy();
+    expect([missing.domain, missing.code, missing.message]).toEqual([ioDomain(), Gio.IOErrorEnum.NOT_FOUND, "missing"]);
+
+    const fromQuark = new GLib.Error(marshallingDomain(), GIMarshallingTests.CONSTANT_GERROR_CODE, "quark");
+    expect(fromQuark.matches(marshallingDomain(), GIMarshallingTests.CONSTANT_GERROR_CODE)).toBe(true);
+    expect(fromQuark.message).toBe("quark");
+
+    const literal = GLib.Error.newLiteral(Gio.IOErrorEnum, Gio.IOErrorEnum.FAILED, "boom");
+    expect(literal.matches(ioDomain(), Gio.IOErrorEnum.FAILED)).toBe(true);
+    expect(GIMarshallingTests.nullableGerror(missing)).toBe(true);
+});
+
+test("an error built with new GLib.Error reaches the task's callback", async () => {
+    const result = await new Promise<Gio.AsyncResult>((resolve) => {
+        const task = Gio.Task.new(null, null, (_source, asyncResult) => {
+            resolve(asyncResult);
+        });
+        task.returnError(new GLib.Error(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED, "stopped"));
+    });
+
+    assert(result instanceof Gio.Task);
+    const error = thrownBy(() => result.propagateBoolean());
+    assert(error instanceof Gio.IOErrorEnum);
+    expect([error.code, error.message]).toEqual([Gio.IOErrorEnum.CANCELLED, "stopped"]);
 });
 
 test("a constructor that fails throws instead of returning an instance", () => {
@@ -192,16 +239,16 @@ test("a string field written repeatedly on a gtkx-allocated struct still round-t
     expect(boxed.string).toBe("second");
 });
 
-test("a callee that rejects its argument fails the call instead of the process", () => {
-    expect(() => Regress.testIntValueArg(42n)).toThrow();
+test("a callee that rejects its argument returns its fallback value", () => {
+    expect(Regress.testIntValueArg(42n)).toBe(0);
 
     const text = new GObject.Value();
     text.init(GObject.typeFromName("gchararray"));
-    expect(() => text.getInt()).toThrow();
+    expect(text.getInt()).toBe(0);
 });
 
 test("a rejected call leaves the binding usable", () => {
-    expect(() => Regress.testIntValueArg(42n)).toThrow();
+    expect(Regress.testIntValueArg(42n)).toBe(0);
 
     const value = new GObject.Value();
     value.init(GObject.typeFromName("gint"));

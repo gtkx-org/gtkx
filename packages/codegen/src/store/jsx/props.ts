@@ -15,6 +15,7 @@ import { ancestorChain } from "../../gir/ancestry.js";
 import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { annotationSpec, selfHandlerSpec } from "../gi/doc-spec.js";
+import { isNullableProperty } from "../gi/property-accessor.js";
 import { getGlibName, giNamespaceAlias, isIntrinsicElementClass, signalHandlerName } from "./intrinsic-elements.js";
 import { isOmittedProp } from "./omitted-props.js";
 
@@ -104,7 +105,9 @@ const renderObjectPropType = (
 };
 
 const appendPropertyLines = (state: PropCollectorState, property: GirProperty, jsName: string): void => {
-    const readType = renderReactPropType(state.types, property.type);
+    const readType = renderReactPropType(state.types, property.type, {
+        isNullable: isNullableProperty(state.types, property),
+    });
     const writeType = renderReactPropType(state.types, property.type, {
         isInput: true,
         canAcceptTypedArrayViews: property.transferOwnership === "none",
@@ -118,15 +121,11 @@ const appendPropertyLines = (state: PropCollectorState, property: GirProperty, j
     if (isObjectProp(state.owner.library, property)) {
         const objectType = renderObjectPropType(state, property, jsName, writeType);
         state.propLines.push(`${doc}${name}: ${objectType}${nullable};`);
-
-        return;
-    }
-
-    if (isConstructableProperty(property)) {
+    } else if (isConstructableProperty(property)) {
         state.propLines.push(`${doc}${name}: ${writeType}${nullable};`);
     }
 
-    const handlerType = `((value: ${readType} | null, self: Self) => void) | null | undefined`;
+    const handlerType = `((value: ${readType}, self: Self) => void) | null | undefined`;
 
     state.propLines.push(`${notifyDoc(property, jsName, spec)}onNotify${upperFirst(jsName)}?: ${handlerType};`);
 };
@@ -266,7 +265,7 @@ const isGObjectType = (library: Library, ref: TypeId | undefined): boolean => {
 };
 
 const isObjectProp = (library: Library, property: GirProperty): boolean => {
-    if (!property.writable || property.constructOnly) {
+    if (!property.writable) {
         return false;
     }
 

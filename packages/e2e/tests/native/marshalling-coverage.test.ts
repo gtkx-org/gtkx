@@ -145,6 +145,8 @@ test("each structured union record preserves its tagged inline and pointer field
     );
     boxed.type = type.BOXED_STRUCT;
     expect(boxed.type).toBe(type.BOXED_STRUCT);
+    expect([boxed.parent.long, boxed.parent.string]).toEqual([42n, "hello"]);
+    boxed.parent.inv();
     const boxedPointer = wrapHandle(
         getHandle(GIMarshallingTests.StructuredUnion.new(type.NONE)),
         GIMarshallingTests.StructuredUnionBoxedStructPtr,

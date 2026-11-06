@@ -1,7 +1,8 @@
-import type { CaughtErrorInfo, Root, RootElement } from "@gtkx/react";
+import type { Root, RootElement } from "@gtkx/react";
+import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { createRoot } from "@gtkx/react";
-import { isRootElement, settleAccessible } from "@gtkx/react/internal";
+import { isRootElement, ParentWindowContext, settleAccessible } from "@gtkx/react/internal";
 import { type ErrorInfo, type ReactNode, StrictMode } from "react";
 import type { RenderResult } from "./bound-queries.js";
 import type { QueryMap, RenderOptions, ScreenshotOptions } from "./types.js";
@@ -9,7 +10,7 @@ import { runInAct, runWithActEnvironment } from "./act.js";
 import { addToCleanupQueue, runCleanup, runCleanupCallbacks } from "./cleanup-registry.js";
 import { getConfig } from "./config.js";
 import { scheduleWhenWindowReady } from "./frame-sync.js";
-import { createHarnessWindow, presentHarnessWindow } from "./harness-window.js";
+import { createHarnessWindow, presentHarnessTransients, presentHarnessWindow } from "./harness-window.js";
 import { logWidget, type PrettyWidgetOptions } from "./pretty-widget.js";
 import { logRoles } from "./role-helpers.js";
 import { clearScreen, setScreen } from "./screen.js";
@@ -24,6 +25,7 @@ type ActiveRender = {
     root: Root;
     window: Gtk.Window | null;
     errors: RenderErrorState;
+    application: Gio.Application | null;
 };
 
 type ResolvedContainer = {
@@ -90,6 +92,7 @@ const disposeActiveRender = async (active: ActiveRender): Promise<void> => {
         await flushRender(active, active.root.unmount);
     } finally {
         active.window?.destroy();
+        active.application?.quit();
     }
 };
 
@@ -171,28 +174,22 @@ const settleRender = async (
     await settleWindow(settleTarget(resolved, container), findFailure, action);
 };
 
-const renderErrorHandlers = <Q extends QueryMap>(errors: RenderErrorState, options: RenderOptions<Q> | undefined) => {
-    const handleError = (error: unknown): void => {
+const renderErrorHandlers = <Q extends QueryMap>(errors: RenderErrorState, options: RenderOptions<Q> | undefined) => ({
+    onUncaughtError: (error: unknown): void => {
         errors.lastError = error instanceof Error ? error : new Error(String(error));
-    };
+    },
+    onCaughtError: options?.onCaughtError,
+    onRecoverableError: (error: unknown, errorInfo: ErrorInfo): void => {
+        options?.onRecoverableError?.(error, errorInfo);
+    },
+});
 
-    return {
-        onUncaughtError: handleError,
-        onCaughtError: (error: unknown, errorInfo: CaughtErrorInfo): void => {
-            handleError(error);
-            options?.onCaughtError?.(error, errorInfo);
-        },
-        onRecoverableError: (error: unknown, errorInfo: ErrorInfo): void => {
-            options?.onRecoverableError?.(error, errorInfo);
-        },
-    };
-};
-
-const applyEnableAnimations = (areAnimationsEnabled: boolean): void => {
+const applyDisplaySettings = (areAnimationsEnabled: boolean): void => {
     const settings = Gtk.Settings.getDefault();
 
     if (settings) {
         settings.gtkEnableAnimations = areAnimationsEnabled;
+        settings.gtkCursorBlink = false;
     }
 };
 
@@ -200,27 +197,34 @@ const applyEnableAnimations = (areAnimationsEnabled: boolean): void => {
  * Renders React into native widgets and returns queries, debug helpers, and lifecycle controls.
  *
  * @remarks
- * Without a container, creates and presents a harness window. Its initially focused editable
- * keeps its text unselected, with the caret at the end.
+ * Without a container, creates and presents a harness window, which the tree sees as its parent
+ * window. Windows the tree opens over it, such as an Adwaita dialog rendered on its own, are shown
+ * again after it, so the topmost one is active as in a running application. Initially focused
+ * editables keep their text unselected, with the caret at the end. Carets do not blink, so a focused
+ * editable does not keep the display redrawing and GLib idle callbacks still run.
  *
  * Waits for layout and activation before resolving, so focus and other platform state can be
- * read immediately. A new harness waits for its own activation; a caller-owned or rendered
+ * read immediately. A new harness waits for its topmost window's activation; a caller-owned or rendered
  * window waits for application activation, since only presentation can claim it. A container
  * that is not shown requires no activation wait.
  *
  * Widgets outside all toplevels or inside a hidden window cannot receive pointer or keyboard
  * input. `userEvent` rejects after `actionabilityTimeout`; use `fireEvent` to drive them directly.
  *
+ * Errors an error boundary catches go to `onCaughtError` and do not fail the test. An error no boundary
+ * catches rejects this render, or the next rerender, unmount or cleanup, with that error.
+ *
  * @param element React element to render.
  * @param options Container, wrapper, custom queries, and render settings.
  * @returns Bound queries, debug helpers, and rerender/unmount controls.
- * @throws If a shown window is not laid out and activated within `windowActivationTimeout`.
+ * @throws If a shown window is not laid out and activated within `windowActivationTimeout`, or the tree
+ * throws an error no boundary catches.
  */
 const render = async <Q extends QueryMap = Record<never, never>>(
     element: ReactNode,
     options?: RenderOptions<Q>,
 ): Promise<RenderResult<Q>> => {
-    applyEnableAnimations(options?.areAnimationsEnabled === true);
+    applyDisplaySettings(options?.areAnimationsEnabled === true);
     const baseElement: Container = options?.baseElement ?? TOPLEVELS;
     const Wrapper = options?.wrapper;
     const resolved = resolveContainer(options?.container);
@@ -228,7 +232,7 @@ const render = async <Q extends QueryMap = Record<never, never>>(
     const errors: RenderErrorState = { lastError: null };
     const root = createRoot(resolved.containerInfo, renderErrorHandlers(errors, options));
 
-    const active: ActiveRender = { root, window: resolved.window, errors };
+    const active: ActiveRender = { root, window: resolved.window, errors, application: null };
     activeRenders.add(active);
     addToCleanupQueue(disposeAllActiveRenders);
     addToCleanupQueue(clearScreen);
@@ -236,15 +240,30 @@ const render = async <Q extends QueryMap = Record<never, never>>(
 
     const wrap = (node: ReactNode): ReactNode => {
         const wrapped = Wrapper ? <Wrapper>{node}</Wrapper> : node;
+        const hosted =
+            resolved.window === null ? (
+                wrapped
+            ) : (
+                <ParentWindowContext.Provider value={resolved.window}>{wrapped}</ParentWindowContext.Provider>
+            );
 
-        return options?.isReactStrictMode ? <StrictMode>{wrapped}</StrictMode> : wrapped;
+        return options?.isReactStrictMode ? <StrictMode>{hosted}</StrictMode> : hosted;
     };
 
-    await flushRender(active, () => {
-        root.render(wrap(element));
-    });
-    presentHarnessWindow(resolved.window);
+    const previousApplication = Gio.Application.getDefault();
+
+    try {
+        await flushRender(active, () => {
+            root.render(wrap(element));
+        });
+    } finally {
+        const application = Gio.Application.getDefault();
+        active.application = application === previousApplication ? null : application;
+    }
+
+    const transients = presentHarnessWindow(resolved.window);
     await settleRender(resolved, options?.container, "render");
+    await settleWindow(realizedWindow(presentHarnessTransients(transients)), findPresentedWindowFailure, "render");
     const container = resolveResultContainer(resolved, options?.container, baseElement);
 
     const result: RenderResult<Q> = {
@@ -275,8 +294,8 @@ const render = async <Q extends QueryMap = Record<never, never>>(
 };
 
 /**
- * Unmounts every active render and runs all registered cleanup callbacks,
- * resetting the screen and clipboard. Called automatically after each test.
+ * Unmounts every active render, quits the applications those renders started, and runs all
+ * registered cleanup callbacks, resetting the screen and clipboard. Called automatically after each test.
  */
 const cleanup = async (): Promise<void> => {
     await runCleanup();

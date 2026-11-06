@@ -27,15 +27,13 @@ RUN apt-get update && \
         ca-certificates curl git openssh-client procps tar unzip util-linux xz-utils \
         build-essential meson ninja-build gettext locales-all pkg-config shellcheck file \
         libgtk-4-dev libadwaita-1-dev libgtksourceview-5-dev libwebkitgtk-6.0-dev \
-        libgstreamer1.0-dev libgirepository1.0-dev libostree-dev gobject-introspection \
+        libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgirepository1.0-dev libostree-dev gobject-introspection \
         gvfs libgles2 libgl1-mesa-dri mesa-vulkan-drivers sway dbus \
         libasan8 adwaita-icon-theme gsettings-desktop-schemas shared-mime-info \
         hicolor-icon-theme librsvg2-common desktop-file-utils espeak-ng \
         flatpak-builder appstream dpkg-dev rpm pipx fontconfig fonts-noto-core fonts-dejavu-core && \
     rm -rf /var/lib/apt/lists/* && \
     mkdir -p /opt/gtkx-toolchains && \
-    gst_gir="/usr/lib/$(dpkg-architecture -qDEB_HOST_MULTIARCH)/gir-1.0/Gst-1.0.gir" && \
-    if [ -f "$gst_gir" ]; then ln -sf "$gst_gir" /usr/share/gir-1.0/Gst-1.0.gir; fi && \
     for driver in /usr/share/vulkan/icd.d/lvp_icd*.json; do \
         if [ -f "$driver" ]; then ln -s "$driver" "$VK_DRIVER_FILES"; break; fi; \
     done && \

@@ -41,6 +41,14 @@ describe("FontFace", () => {
         expect(face.getWeight()).toBe(FontWeight.NORMAL);
     });
 
+    it("constructs a toy font face with new, as FontFace.create does", () => {
+        const face = new ToyFontFace("Serif", FontSlant.ITALIC, FontWeight.BOLD);
+        expect(face.status()).toBe(Status.SUCCESS);
+        expect(face.getFamily()).toBe("Serif");
+        expect(face.getSlant()).toBe(FontSlant.ITALIC);
+        expect(face.getWeight()).toBe(FontWeight.BOLD);
+    });
+
     it("wraps the face selected on a context as a toy font face", () => {
         const ctx = createContext();
         ctx.selectFontFace("Sans", FontSlant.NORMAL, FontWeight.NORMAL);
@@ -69,7 +77,7 @@ describe("ScaledFont", () => {
         context.showGlyphs(glyphs);
         expect(surface.getData().some((byte) => byte !== 0)).toBe(true);
         context.glyphPath(glyphs);
-        expect(context.copyPath().length).toBeGreaterThan(0);
+        expect(context.copyPath().toData().length).toBeGreaterThan(0);
         expect(context.status()).toBe(Status.SUCCESS);
     });
 

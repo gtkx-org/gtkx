@@ -6,6 +6,7 @@ import { existsSync, mkdtempDisposableSync, writeFileSync } from "node:fs";
 import { createConnection } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
 import { ProtocolConnection } from "../src/internal.js";
 import { createMcpServer, type CreateMcpServerOptions } from "../src/server.js";
@@ -90,10 +91,184 @@ describe("MCP server", () => {
             ]);
             expect(await textResult(session.client, "gtkx_get_widget_tree")).toBe("Application > Button");
             expect(await textResult(session.client, "gtkx_click", { widgetId: "button" })).toBe("Clicked");
+            expect(
+                await textResult(session.client, "gtkx_pointer", { widgetId: "button", input: "[MouseRight]" }),
+            ).toBe("Applied [MouseRight]");
             await connection.send("app.unregister");
             expect(JSON.parse(await textResult(session.client, "gtkx_list_apps"))).toEqual([]);
         } finally {
             await connection.close();
+        }
+    });
+
+    it("says when nothing on the target handled a click or a key press", async () => {
+        await using session = await openServer();
+        const socket = createConnection(session.socketPath);
+        await once(socket, "connect");
+        const connection = ProtocolConnection.fromSocket(socket, {
+            onClose: () => undefined,
+            onError: () => undefined,
+        });
+        connection.fallbackRequestHandler = (request) => {
+            const isHandled = request.params?.widgetId === "button";
+            if (request.method === "widget.click") return Promise.resolve({ success: true, isHandled });
+            return Promise.resolve({ success: true, unhandledKeys: isHandled ? [] : ["{Space}", "a"] });
+        };
+        try {
+            await connection.send("app.register", { applicationId: "org.gtkx.test", pid: process.pid });
+            expect(await textResult(session.client, "gtkx_click", { widgetId: "button" })).toBe("Clicked");
+            expect(await textResult(session.client, "gtkx_press_keys", { widgetId: "button", keys: " " })).toBe(
+                "Pressed keys",
+            );
+            const click = await textResult(session.client, "gtkx_click", { widgetId: "swatch" });
+            expect(click).not.toBe("Clicked");
+            expect(click).toContain("gtkx_press_keys");
+            const keys = await textResult(session.client, "gtkx_press_keys", { widgetId: "label", keys: " a" });
+            expect(keys).not.toBe("Pressed keys");
+            expect(keys).toContain("{Space}, a");
+        } finally {
+            await connection.close();
+        }
+    });
+
+    it("lists the project's app when it reconnects during the first call of a new session", async () => {
+        await using session = await openServer();
+        const socket = createConnection(session.socketPath);
+        await once(socket, "connect");
+        const connection = ProtocolConnection.fromSocket(socket, {
+            onClose: () => undefined,
+            onError: () => undefined,
+        });
+        connection.fallbackRequestHandler = () => Promise.resolve({ windows: [] });
+        try {
+            const [apps] = await Promise.all([
+                textResult(session.client, "gtkx_list_apps"),
+                delay(200).then(() =>
+                    connection.send("app.register", {
+                        applicationId: "org.gtkx.project",
+                        projectRoot: session.root,
+                        pid: process.pid,
+                    }),
+                ),
+            ]);
+            expect(JSON.parse(apps)).toEqual([expect.objectContaining({ applicationId: "org.gtkx.project" })]);
+        } finally {
+            await connection.close();
+        }
+    });
+
+    it("lists a Storybook explorer that reconnects after the project's app during the first call", async () => {
+        await using session = await openServer();
+        const connect = async () => {
+            const socket = createConnection(session.socketPath);
+            await once(socket, "connect");
+            const connection = ProtocolConnection.fromSocket(socket, {
+                onClose: () => undefined,
+                onError: () => undefined,
+            });
+            connection.fallbackRequestHandler = () => Promise.resolve({ windows: [] });
+            return connection;
+        };
+        const register = (connection: ProtocolConnection, applicationId: string) =>
+            connection.send("app.register", { applicationId, projectRoot: session.root, pid: process.pid });
+        const app = await connect();
+        let explorer: ProtocolConnection | undefined;
+        try {
+            const [apps] = await Promise.all([
+                textResult(session.client, "gtkx_list_apps"),
+                delay(100).then(() => register(app, "org.gtkx.project")),
+                delay(1500).then(async () => {
+                    explorer = await connect();
+                    await register(explorer, "org.gtkx.project.Storybook");
+                }),
+            ]);
+            expect(JSON.parse(apps)).toEqual([
+                expect.objectContaining({ applicationId: "org.gtkx.project" }),
+                expect.objectContaining({ applicationId: "org.gtkx.project.Storybook" }),
+            ]);
+        } finally {
+            await Promise.all([app.close(), explorer?.close()]);
+        }
+    });
+
+    it("rejects arguments a tool does not declare instead of ignoring them", async () => {
+        await using session = await openServer();
+        const socket = createConnection(session.socketPath);
+        await once(socket, "connect");
+        const connection = ProtocolConnection.fromSocket(socket, {
+            onClose: () => undefined,
+            onError: () => undefined,
+        });
+        connection.fallbackRequestHandler = () => Promise.resolve({ widgets: [] });
+        try {
+            await connection.send("app.register", { applicationId: "org.gtkx.test", pid: process.pid });
+            await textResult(session.client, "gtkx_query_widgets", { by: "role", value: "button" });
+            for (const args of [
+                { by: "role", value: "button", name: "Increment" },
+                { by: "role", value: "button", options: { label: "Increment" } },
+            ]) {
+                expect(await session.client.callTool({ name: "gtkx_query_widgets", arguments: args })).toMatchObject({
+                    isError: true,
+                });
+            }
+            expect(await session.client.callTool({ name: "gtkx_list_apps", arguments: { wait: true } })).toMatchObject({
+                isError: true,
+            });
+        } finally {
+            await connection.close();
+        }
+    });
+
+    it("routes requests without an application ID to the app from the server's project, waiting for it while it reconnects", async () => {
+        await using session = await openServer();
+        const other = mkdtempDisposableSync(join(tmpdir(), "gtkx-mcp-other-"));
+        const apps = [
+            { applicationId: "org.gtkx.other", projectRoot: other.path },
+            { applicationId: "org.gtkx.project.Storybook", projectRoot: session.root },
+            { applicationId: "org.gtkx.project", projectRoot: session.root },
+        ];
+        const connections = await Promise.all(
+            apps.map(async (app) => {
+                const socket = createConnection(session.socketPath);
+                await once(socket, "connect");
+                const connection = ProtocolConnection.fromSocket(socket, {
+                    onClose: () => undefined,
+                    onError: () => undefined,
+                });
+                connection.fallbackRequestHandler = () => Promise.resolve({ tree: app.applicationId });
+                return connection;
+            }),
+        );
+        const registerProjectApp = async () => {
+            await delay(200);
+            await connections[2]?.send("app.register", { ...apps[2], pid: process.pid });
+        };
+        try {
+            await connections[0]?.send("app.register", { ...apps[0], pid: process.pid });
+            await connections[1]?.send("app.register", { ...apps[1], pid: process.pid });
+            const [atStartup] = await Promise.all([
+                textResult(session.client, "gtkx_get_widget_tree"),
+                registerProjectApp(),
+            ]);
+            expect(atStartup).toBe("org.gtkx.project");
+            expect(await textResult(session.client, "gtkx_get_widget_tree", { applicationId: "org.gtkx.other" })).toBe(
+                "org.gtkx.other",
+            );
+            await connections[2]?.send("app.unregister");
+            const [afterRestart] = await Promise.all([
+                textResult(session.client, "gtkx_get_widget_tree"),
+                registerProjectApp(),
+            ]);
+            expect(afterRestart).toBe("org.gtkx.project");
+            await connections[2]?.send("app.unregister");
+            expect(await textResult(session.client, "gtkx_get_widget_tree", { appTimeout: 0 })).toBe(
+                "org.gtkx.project.Storybook",
+            );
+            await connections[1]?.send("app.unregister");
+            expect(await textResult(session.client, "gtkx_get_widget_tree", { appTimeout: 0 })).toBe("org.gtkx.other");
+        } finally {
+            await Promise.all(connections.map((connection) => connection.close()));
+            other[Symbol.dispose]();
         }
     });
 
@@ -110,15 +285,21 @@ describe("MCP server", () => {
         ).toMatchObject({ isError: true });
     });
 
-    it("serves upstream API reference tools and resources from project configuration", async () => {
+    it("serves upstream API reference tools and resources from a component library's configuration", async () => {
         await using session = await openServer();
-        writeFileSync(
-            join(session.root, "gtkx.config.mjs"),
-            'export default { applicationId: "org.gtkx.reference", libraries: ["Gio-2.0"] };',
-        );
+        writeFileSync(join(session.root, "gtkx.config.mjs"), 'export default { libraries: ["Gio-2.0"] };');
         const docs = await textResult(session.client, "gtkx_get_api_docs", { symbol: "Gio.File", kind: "interface" });
         expect(docs).toContain("Gio");
         expect(docs).toContain("File");
+        expect(await textResult(session.client, "gtkx_search_api", { query: "replaceContentsAsync" })).toContain(
+            '"name": "File.replaceContentsAsync",\n    "kind": "method"',
+        );
+        expect(
+            await textResult(session.client, "gtkx_get_api_docs", {
+                symbol: "Gio.File.replaceContentsAsync",
+                kind: "method",
+            }),
+        ).toContain("# Gio.File.replaceContentsAsync");
         expect((await session.client.listResourceTemplates()).resourceTemplates.length).toBeGreaterThan(0);
     });
 

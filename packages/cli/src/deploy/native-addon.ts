@@ -1,21 +1,14 @@
 import { readFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import { join } from "node:path";
 import type { DeployArchName, DeploySettings } from "./types.js";
-import { resolveBinding } from "../internal/native-binding.js";
+import { resolveBinding, resolveNativeManifest } from "../internal/native-binding.js";
 import { runCliTool } from "../internal/run-cli-tool.js";
 import { cacheDir, downloadFile, readCachedDigest, writeAtomically } from "./download.js";
+import { DEFAULT_REGISTRY, publishedTarball, type Tarball } from "./npm-registry.js";
 import { isHostArch } from "./settings/arch.js";
 
-type ProjectRequire = ReturnType<typeof createRequire>;
-type Tarball = { url: string; digest: string };
-
 const BINDING_FILENAME = "gtkx.node";
-const DEFAULT_REGISTRY = "https://registry.npmjs.org";
-const NATIVE_MANIFEST = "@gtkx/native/package.json";
 const PACKAGE_ROOT = "package";
-const REQUEST_TIMEOUT = 30_000;
-const SRI_PREFIX = "sha512-";
 const STRIP_COMPONENTS = "1";
 const VERSION_PATTERN = /^[\w.+-]+$/;
 
@@ -39,8 +32,6 @@ const registryUrl = (): string => {
     return withoutTrailingSlash(configured !== undefined && configured.length > 0 ? configured : DEFAULT_REGISTRY);
 };
 
-const projectRequireFor = (root: string): ProjectRequire => createRequire(join(root, "package.json"));
-
 const manifestVersion = (manifest: unknown): string | null => {
     if (typeof manifest !== "object" || manifest === null || !("version" in manifest)) {
         return null;
@@ -51,8 +42,8 @@ const manifestVersion = (manifest: unknown): string | null => {
     return typeof version === "string" && VERSION_PATTERN.test(version) ? version : null;
 };
 
-const nativeVersion = (projectRequire: ProjectRequire): string => {
-    const parsed: unknown = JSON.parse(readFileSync(projectRequire.resolve(NATIVE_MANIFEST), "utf8"));
+const nativeVersion = (root: string): string => {
+    const parsed: unknown = JSON.parse(readFileSync(resolveNativeManifest(root), "utf8"));
     const version = manifestVersion(parsed);
 
     if (version === null) {
@@ -62,53 +53,13 @@ const nativeVersion = (projectRequire: ProjectRequire): string => {
     return version;
 };
 
-const hexFromIntegrity = (integrity: unknown, subject: string): string => {
-    if (typeof integrity !== "string" || !integrity.startsWith(SRI_PREFIX)) {
-        throw new Error(`The npm registry publishes no sha512 integrity for ${subject}`);
-    }
-
-    return Buffer.from(integrity.slice(SRI_PREFIX.length), "base64").toString("hex");
-};
-
-const fetchVersionDocument = async (url: string, subject: string): Promise<Record<string, unknown>> => {
-    const response = await fetch(url, { signal: AbortSignal.timeout(REQUEST_TIMEOUT) });
-
-    if (!response.ok) {
-        throw new Error(
-            `Cannot fetch ${subject}: HTTP ${String(response.status)} ${response.statusText}. ` +
-                `Install ${subject} directly, or drop that architecture from --arch.`,
-        );
-    }
-
-    const document: unknown = await response.json();
-
-    if (typeof document !== "object" || document === null) {
-        throw new Error(`The npm registry returned no metadata for ${subject}`);
-    }
-
-    return document as Record<string, unknown>;
-};
-
-const publishedTarball = async (arch: DeployArchName, version: string): Promise<Tarball> => {
-    const registry = registryUrl();
-    const subject = `${platformPackage(arch)}@${version}`;
-    const url = `${registry}/${encodeURIComponent(platformPackage(arch))}/${version}`;
-    const document = await fetchVersionDocument(url, subject);
-    const dist: unknown = document.dist;
-
-    if (typeof dist !== "object" || dist === null) {
-        throw new Error(`The npm registry returned no tarball for ${subject}`);
-    }
-
-    const entry = dist as Record<string, unknown>;
-    const tarball = entry.tarball;
-
-    if (typeof tarball !== "string" || new URL(tarball).origin !== new URL(registry).origin) {
-        throw new Error(`The npm registry returned an unusable tarball URL for ${subject}`);
-    }
-
-    return { url: tarball, digest: hexFromIntegrity(entry.integrity, subject) };
-};
+const platformTarball = (arch: DeployArchName, version: string): Promise<Tarball> =>
+    publishedTarball({
+        registry: registryUrl(),
+        name: platformPackage(arch),
+        version,
+        remedy: `Install ${platformPackage(arch)}@${version} directly, or drop that architecture from --arch.`,
+    });
 
 const extractAddon = (archive: string, dir: string, arch: DeployArchName): void => {
     runCliTool({
@@ -136,7 +87,7 @@ const tarballFor = async (arch: DeployArchName, version: string, sidecar: string
         return { url: cachedTarballUrl(arch, version), digest: cached };
     }
 
-    const published = await publishedTarball(arch, version);
+    const published = await platformTarball(arch, version);
     writeAtomically(sidecar, published.digest);
 
     return published;
@@ -167,10 +118,9 @@ const resolveStagedAddon = async (settings: DeploySettings): Promise<string | nu
         return null;
     }
 
-    const projectRequire = projectRequireFor(settings.paths.root);
-    const resolved = resolveBinding(join(settings.paths.root, "package.json"), arch);
+    const resolved = resolveBinding(settings.paths.root, arch);
 
-    return resolved ?? (await downloadedBinary(arch, nativeVersion(projectRequire)));
+    return resolved ?? (await downloadedBinary(arch, nativeVersion(settings.paths.root)));
 };
 
 export { BINDING_FILENAME, resolveStagedAddon };

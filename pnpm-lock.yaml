@@ -485,10 +485,10 @@ importers:
   packages/animated:
     dependencies:
       '@gtkx/react':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../react
       '@gtkx/runtime':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../runtime
       '@react-spring/core':
         specifier: ^10.1.2
@@ -522,7 +522,7 @@ importers:
   packages/cairo:
     dependencies:
       '@gtkx/runtime':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../runtime
     devDependencies:
       '@gtkx/vitest':
@@ -544,29 +544,32 @@ importers:
         specifier: ^2.0.12
         version: 2.0.12
       '@gtkx/codegen':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../codegen
       '@gtkx/config':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../config
       '@gtkx/mcp':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../mcp
       '@gtkx/native':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../native
       '@gtkx/runtime':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../runtime
       '@gtkx/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
       '@gtkx/vitest':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../vitest
       '@swc/core':
         specifier: ^1.16.20
         version: 1.16.20
+      '@types/react':
+        specifier: ^19.3
+        version: 19.3.0
       '@types/react-refresh':
         specifier: ^0.14.7
         version: 0.14.7
@@ -580,7 +583,7 @@ importers:
         specifier: ^0.2.2
         version: 0.2.2
       create-gtkx:
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../create-gtkx
       fast-xml-builder:
         specifier: ^1.3.1
@@ -594,6 +597,18 @@ importers:
       i18next-cli:
         specifier: 1.80.5
         version: 1.80.5(@types/node@26.5.1)(react@19.3.1)(typescript@6.0.3)
+      markdown-table:
+        specifier: ^3.1.0
+        version: 3.1.0
+      mrmime:
+        specifier: ^2.0.1
+        version: 2.0.1
+      nypm:
+        specifier: ^0.6.12
+        version: 0.6.12
+      postcss:
+        specifier: ^8.5.32
+        version: 8.5.32
       react:
         specifier: ^19.3
         version: 19.3.1
@@ -609,6 +624,9 @@ importers:
       vite:
         specifier: 'catalog:'
         version: 8.3.5(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1)
+      vitefu:
+        specifier: ^1.1.3
+        version: 1.1.3(vite@8.3.5(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
       yaml:
         specifier: 'catalog:'
         version: 2.9.1
@@ -649,6 +667,9 @@ importers:
       '@types/test-console':
         specifier: ^2.0.3
         version: 2.0.3
+      oxfmt:
+        specifier: 0.75.0
+        version: 0.75.0
       test-console:
         specifier: ^2.0.0
         version: 2.0.0
@@ -659,19 +680,19 @@ importers:
   packages/codegen:
     dependencies:
       '@gtkx/cairo':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../cairo
       '@gtkx/config':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../config
       '@gtkx/native':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../native
       '@gtkx/runtime':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../runtime
       '@gtkx/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
       '@types/node':
         specifier: 'catalog:'
@@ -705,13 +726,13 @@ importers:
   packages/components:
     dependencies:
       '@gtkx/react':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../react
       '@gtkx/runtime':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../runtime
       '@gtkx/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
       react:
         specifier: ^19.3
@@ -736,7 +757,7 @@ importers:
   packages/config:
     dependencies:
       '@gtkx/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
       c12:
         specifier: ^3.3.4
@@ -764,10 +785,10 @@ importers:
         specifier: ^1.8.1
         version: 1.8.1
       '@gtkx/config':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../config
       '@gtkx/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
       citty:
         specifier: ^0.2.2
@@ -791,9 +812,15 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 26.5.1
+      '@types/semver':
+        specifier: ^7.8.0
+        version: 7.8.0
       '@types/test-console':
         specifier: ^2.0.3
         version: 2.0.3
+      semver:
+        specifier: ^7.8.5
+        version: 7.8.5
       test-console:
         specifier: ^2.0.0
         version: 2.0.0
@@ -810,7 +837,7 @@ importers:
         specifier: ^1.3.3
         version: 1.3.3
       '@gtkx/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
       postcss:
         specifier: ^8.5.32
@@ -868,13 +895,13 @@ importers:
   packages/forms:
     dependencies:
       '@gtkx/components':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../components
       '@gtkx/react':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../react
       '@gtkx/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
       react:
         specifier: ^19.3
@@ -902,10 +929,10 @@ importers:
   packages/gl:
     dependencies:
       '@gtkx/native':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../native
       '@gtkx/runtime':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../runtime
     devDependencies:
       '@gtkx/codegen':
@@ -939,7 +966,7 @@ importers:
   packages/i18n:
     dependencies:
       '@gtkx/runtime':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../runtime
       i18next:
         specifier: ^26.5.11
@@ -970,20 +997,26 @@ importers:
   packages/mcp:
     dependencies:
       '@gtkx/codegen':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../codegen
       '@gtkx/config':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../config
       '@gtkx/react':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../react
       '@gtkx/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
       '@modelcontextprotocol/sdk':
         specifier: ^1.32.2
         version: 1.32.2(supports-color@7.2.0)(zod@4.6.7)
+      '@types/react':
+        specifier: ^19.3
+        version: 19.3.0
+      react:
+        specifier: ^19.3
+        version: 19.3.1
       zod:
         specifier: 'catalog:'
         version: 4.6.7
@@ -1004,7 +1037,7 @@ importers:
   packages/navigation:
     dependencies:
       '@gtkx/react':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../react
       '@react-navigation/core':
         specifier: ^7.24.0
@@ -1035,20 +1068,23 @@ importers:
   packages/react:
     dependencies:
       '@gtkx/config':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../config
       '@gtkx/css':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../css
       '@gtkx/runtime':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../runtime
       '@gtkx/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
       '@types/react-reconciler':
         specifier: ^0.34.1
         version: 0.34.1(@types/react@19.3.0)
+      leven:
+        specifier: ^4.1.0
+        version: 4.1.0
       react:
         specifier: ^19.3
         version: 19.3.1
@@ -1066,22 +1102,22 @@ importers:
   packages/runtime:
     dependencies:
       '@gtkx/native':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../native
       '@gtkx/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
 
   packages/storybook:
     dependencies:
       '@gtkx/components':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../components
       '@gtkx/react':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../react
       '@gtkx/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
       react:
         specifier: ^19.3
@@ -1109,13 +1145,13 @@ importers:
   packages/testing:
     dependencies:
       '@gtkx/react':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../react
       '@gtkx/runtime':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../runtime
       '@gtkx/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
       '@vitest/pretty-format':
         specifier: 5.0.5
@@ -1165,10 +1201,10 @@ importers:
   packages/vitest:
     dependencies:
       '@gtkx/config':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../config
       '@gtkx/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
       '@homebridge/dbus-native':
         specifier: ^0.7.9
@@ -6122,6 +6158,10 @@ packages:
   keyv@5.6.0:
     resolution: {integrity: sha512-CYDD3SOtsHtyXeEORYRx2qBtpDJFjRTGXUtmNEMGyzYOKj1TE3tycdlho7kA1Ufx9OYWZzg52QFBGALTirzDSw==}
 
+  leven@4.1.0:
+    resolution: {integrity: sha512-KZ9W9nWDT7rF7Dazg8xyLHGLrmpgq2nVNFUckhqdW3szVP6YhCpp/RAnpmVExA9JvrMynjwSLVrEj3AepHR6ew==}
+    engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
+
   levn@0.4.1:
     resolution: {integrity: sha512-+bT2uH4E5LGE7h/n3evcS/sQlJXCpIp6ym8OWJ5eV6+67Dsql/LaaT7qJBAt2rzfoa/5QBGBhxDix1dMt2kQKQ==}
     engines: {node: '>= 0.8.0'}
@@ -6307,6 +6347,9 @@ packages:
     resolution: {integrity: sha512-sHHjZ5fJKlgrG4qns2YwVcdNep35h5fERrfkD2YNsb9UFk0UIHarbiTaHKVMlPuWAoiilyK8Fv/jAm11slsY7Q==}
     hasBin: true
 
+  markdown-table@3.1.0:
+    resolution: {integrity: sha512-xpeSCdM+B+6P3ncfgaB7FoDbtJ30xAe6Z18TGT7AgXJsHqCElCICZovQqdRMm7kHgpTyYv36EupqewoFFSB8vw==}
+
   math-intrinsics@1.1.0:
     resolution: {integrity: sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==}
     engines: {node: '>= 0.4'}
@@ -6427,6 +6470,10 @@ packages:
     resolution: {integrity: sha512-vVqVZQyf3WLx2Shd0qJ9xuvqgAyKPLAiqITEtqW0oIUjzo3PePDd6fW9iFz30ef7Ysp/oiWqbhszeGWW2T6Gzw==}
     engines: {node: '>=10'}
     hasBin: true
+
+  mrmime@2.0.1:
+    resolution: {integrity: sha512-Y3wQdFg2Va6etvQ5I82yUhGdsKrcYox6p7FfL1LbK2J4V01F9TGlepTIhnK24t7koZibmg82KGglhA1XK5IsLQ==}
+    engines: {node: '>=10'}
 
   ms@2.0.0:
     resolution: {integrity: sha512-Tpp60P6IUJDTuOq/5Z8cdskzJujfwqfOTkrwIwj7IRISpnkJnT6SyJ4PCPnGMoFjC9ddhal5KVIYtAt97ix05A==}
@@ -7583,6 +7630,14 @@ packages:
       tsx:
         optional: true
       yaml:
+        optional: true
+
+  vitefu@1.1.3:
+    resolution: {integrity: sha512-ub4okH7Z5KLjb6hDyjqrGXqWtWvoYdU3IGm/NorpgHncKoLTCfRIbvlhBm7r0YstIaQRYlp4yEbFqDcKSzXSSg==}
+    peerDependencies:
+      vite: ^3.0.0 || ^4.0.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0
+    peerDependenciesMeta:
+      vite:
         optional: true
 
   vitepress@2.0.0-alpha.21:
@@ -12784,6 +12839,8 @@ snapshots:
     dependencies:
       '@keyv/serialize': 1.1.1
 
+  leven@4.1.0: {}
+
   levn@0.4.1:
     dependencies:
       prelude-ls: 1.2.1
@@ -12951,6 +13008,8 @@ snapshots:
       punycode.js: 2.3.1
       uc.micro: 2.1.0
 
+  markdown-table@3.1.0: {}
+
   math-intrinsics@1.1.0: {}
 
   mdast-util-to-hast@13.2.1:
@@ -13053,6 +13112,8 @@ snapshots:
 
   mkdirp@1.0.4:
     optional: true
+
+  mrmime@2.0.1: {}
 
   ms@2.0.0:
     optional: true
@@ -14542,6 +14603,10 @@ snapshots:
       jiti: 2.7.0
       tsx: 4.23.15
       yaml: 2.9.1
+
+  vitefu@1.1.3(vite@8.3.5(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1)):
+    optionalDependencies:
+      vite: 8.3.5(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1)
 
   vitepress@2.0.0-alpha.21(@types/node@26.5.1)(@typescript/typescript6@6.0.2)(axios@1.20.0(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0))(change-case@5.4.4)(esbuild@0.28.2)(fuse.js@7.3.0)(jiti@2.7.0)(postcss@8.5.32)(tsx@4.23.15)(yaml@2.9.1):
     dependencies:

@@ -11,7 +11,6 @@ typedef struct {
     guint fail_next_set;
     gboolean invoke_during_get;
     gboolean invoke_on_every_get;
-    gboolean fail_next_get;
     gboolean emitting_nested;
     guint nested_return_id;
 } GtkxCallbackObject;
@@ -60,11 +59,6 @@ static void gtkx_callback_object_get_property(GObject *object, guint property_id
     GtkxCallbackObject *self = (GtkxCallbackObject *)object;
 
     if (property_id == 1) {
-        if (self->fail_next_get) {
-            self->fail_next_get = FALSE;
-            g_critical("fixture callback getter failed");
-            return;
-        }
         GtkxIntCallback callback = self->callback;
         if ((self->invoke_during_get || self->invoke_on_every_get) && callback != NULL) {
             self->invoke_during_get = FALSE;
@@ -219,11 +213,6 @@ void gtkx_callback_object_invoke_on_every_get(GtkxCallbackObject *self)
     self->invoke_on_every_get = TRUE;
 }
 
-void gtkx_callback_object_fail_next_get(GtkxCallbackObject *self)
-{
-    self->fail_next_get = TRUE;
-}
-
 void gtkx_callback_object_invoke_before_next_set(GtkxCallbackObject *self)
 {
     self->invoke_before_set = TRUE;
@@ -247,4 +236,54 @@ void gtkx_callback_object_release(void)
 gint gtkx_callback_object_invoke_held(gint value)
 {
     return held == NULL ? -1 : gtkx_callback_object_invoke(held, value);
+}
+
+typedef struct {
+    gint ref_count;
+    gint value;
+} GtkxSharedBox;
+
+typedef void (*GtkxSharedBoxCallback)(GtkxSharedBox *box);
+
+static guint shared_boxes_alive;
+
+static GtkxSharedBox *gtkx_shared_box_ref(GtkxSharedBox *self)
+{
+    g_atomic_int_inc(&self->ref_count);
+    return self;
+}
+
+static void gtkx_shared_box_unref(GtkxSharedBox *self)
+{
+    if (g_atomic_int_dec_and_test(&self->ref_count)) {
+        shared_boxes_alive--;
+        g_free(self);
+    }
+}
+
+G_DEFINE_BOXED_TYPE(GtkxSharedBox, gtkx_shared_box, gtkx_shared_box_ref, gtkx_shared_box_unref)
+
+gint gtkx_shared_box_lend(GtkxSharedBoxCallback callback, gint value)
+{
+    GtkxSharedBox *box = g_new0(GtkxSharedBox, 1);
+    gint kept;
+
+    box->ref_count = 1;
+    box->value = value;
+    shared_boxes_alive++;
+    callback(box);
+    kept = box->ref_count - 1;
+    box->value = -value;
+    gtkx_shared_box_unref(box);
+    return kept;
+}
+
+gint gtkx_shared_box_value(GtkxSharedBox *box)
+{
+    return box->value;
+}
+
+guint gtkx_shared_boxes_alive(void)
+{
+    return shared_boxes_alive;
 }

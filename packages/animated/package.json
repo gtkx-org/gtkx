@@ -40,7 +40,9 @@
         "./src/index.ts",
         "./dist/index.js",
         "./src/bootstrap.ts",
-        "./dist/bootstrap.js"
+        "./dist/bootstrap.js",
+        "./src/loop-guard.ts",
+        "./dist/loop-guard.js"
     ],
     "files": [
         "dist",
@@ -53,8 +55,8 @@
         "node": ">=26.7.0"
     },
     "dependencies": {
-        "@gtkx/react": "workspace:*",
-        "@gtkx/runtime": "workspace:*",
+        "@gtkx/react": "workspace:^",
+        "@gtkx/runtime": "workspace:^",
         "@react-spring/core": "^10.1.2",
         "@react-spring/shared": "^10.1.2",
         "@react-spring/types": "^10.1.2"

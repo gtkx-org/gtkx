@@ -1,8 +1,8 @@
-import type { SettingsSchema, SettingValue } from "@gtkx/react/internal";
+import type { SettingValue } from "@gtkx/react/internal";
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as GObject from "@gtkx/gi/gobject";
-import { useSetting } from "@gtkx/react";
+import { type SettingsSchema, useSetting } from "@gtkx/react";
 import { act, renderHook, waitFor } from "@gtkx/testing";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import schema, { com_gtkx_test_useSetting_profile as profile } from "../fixtures/com.gtkx.test.useSetting.gschema.xml";
@@ -249,6 +249,41 @@ describe("useSetting (typed refs: relocatable paths)", () => {
     });
 });
 
+describe("useSetting (hand-written schema objects)", () => {
+    const handWritten = {
+        id: "com.gtkx.test.useSetting",
+        path: null,
+        keys: { label: "s", "wrap-mode": "enum" },
+        values: { "wrap-mode": { none: 0, word: 7, char: 42 } },
+    } as const satisfies SettingsSchema;
+
+    it("types reads of a schema the project does not import", async () => {
+        await resetSettingsKey(handWritten.id, "label");
+        await resetSettingsKey(handWritten.id, "wrap-mode");
+        const settings = await renderSettings(handWritten.id);
+        const { result } = await renderHook(() => ({
+            label: useSetting(settings, handWritten, "label"),
+            wrapMode: useSetting(settings, handWritten, "wrap-mode"),
+        }));
+
+        expectTypeOf(result.current.label[0]).toEqualTypeOf<string>();
+        expectTypeOf(result.current.wrapMode[0]).toEqualTypeOf<0 | 7 | 42>();
+        expect(result.current.label[0]).toBe("initial");
+        expect(result.current.wrapMode[0]).toBe(handWritten.values["wrap-mode"].none);
+    });
+
+    it("rejects keys the hand-written object does not declare", async () => {
+        const settings = await renderSettings(handWritten.id);
+
+        await expect(
+            renderHook(() =>
+                // @ts-expect-error "count" is installed but the hand-written object does not declare it
+                useSetting(settings, handWritten, "count"),
+            ),
+        ).rejects.toThrow();
+    });
+});
+
 describe("useSetting (variant types: arrays)", () => {
     it("reads and writes byte arrays as Uint8Array", async () => {
         expectTypeOf<Value<"payload">>().toEqualTypeOf<Uint8Array>();
@@ -410,5 +445,26 @@ describe("useSetting (variant types: invalid input)", () => {
         const untyped: SettingsSchema = schema;
 
         await expect(renderSetting(untyped, "missing")).rejects.toThrow();
+    });
+});
+
+describe("GSettings", () => {
+    it("rejects a schema that is not installed", async () => {
+        await expect(renderSettings("com.gtkx.test.notInstalled")).rejects.toThrow();
+        expect(() => Gio.Settings.new("com.gtkx.test.notInstalled")).toThrow();
+    });
+
+    it("rejects a relocatable schema without a path", () => {
+        expect(() => new Gio.Settings({ schemaId: profile.id })).toThrow();
+        expect(() => Gio.Settings.new(profile.id)).toThrow();
+    });
+
+    it("throws for keys and children the installed schema does not declare", async () => {
+        const settings = await renderSettings(SCHEMA_ID);
+
+        expect(() => settings.getBoolean("missing")).toThrow();
+        expect(() => settings.reset("missing")).toThrow();
+        expect(() => settings.getChild("missing")).toThrow();
+        expect(() => settings.settingsSchema?.getKey("missing")).toThrow();
     });
 });

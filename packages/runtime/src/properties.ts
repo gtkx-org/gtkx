@@ -1,4 +1,4 @@
-import { type ExternalObject, type Handle, getTypeClass } from "./native.js";
+import { type ExternalObject, getObjectProperty, getTypeClass, type Handle, setObjectProperty } from "./native.js";
 import { type AnyClass, camelCase, kebabCase, toCamelIdentifier } from "@gtkx/utils";
 import type { Descriptor } from "./descriptor-types.js";
 import type { ElementPropertyEntry } from "./element-metadata.js";
@@ -8,8 +8,8 @@ import { LIB, PARAM_T, VALUE_T } from "./library.js";
 import {
     getParamFlags,
     getParamValueType,
+    isParamConstructed,
     isParamConstructOnly,
-    isParamExplicitlyNotified,
     isParamLaxlyValidated,
     isParamReadable,
     isParamWritable,
@@ -61,6 +61,7 @@ type PropertyCheck = {
 type AccessorBase = PropertyCheck & {
     storage: symbol;
     delegate?: InterfaceProperty;
+    target?: PropertyTargetResolver;
 };
 
 type DeclaredAccessor = AccessorBase & {
@@ -69,14 +70,27 @@ type DeclaredAccessor = AccessorBase & {
     hasMemberAccessor: boolean;
 };
 
-type InterfaceAccessor = AccessorBase & { isInterfaceProperty: true };
+type InterfaceAccessor = AccessorBase & { isInterfaceProperty: true; memberName?: string };
 type PropertyAccessor = DeclaredAccessor | InterfaceAccessor;
 /** A `GObject.ParamSpec` wrapper describing one property's name, type, flags and default. */
 type PropertySpec = object;
 
+/**
+ * Returns the object whose same-named properties back an interface's properties on `instance`, or
+ * `null` when it has none.
+ */
+type PropertyTargetResolver = (instance: object) => object | null;
+
+type InterfacePropertyTarget = {
+    method: string;
+    resolve: PropertyTargetResolver;
+};
+
 type PropertyDispatch = {
     accessors: PropertyAccessor[];
     delegates: Map<string, InterfaceProperty>;
+    targets: Map<string, PropertyTargetResolver>;
+    memberAccessors: Set<string>;
     elementProperties: Record<string, ElementPropertyEntry>;
 };
 
@@ -84,6 +98,7 @@ type PropertyDispatchSource = {
     klass: AnyClass;
     properties: Record<string, PropertySpec>;
     adoptedTypes: bigint[];
+    methods: ReadonlyMap<string, unknown>;
 };
 
 type ConstructProperty = {
@@ -108,6 +123,7 @@ const OVERRIDE_PARAM_T = fundamentalT(LIB, "g_param_spec_ref_sink", "g_param_spe
 });
 
 const interfaceStorages: Map<string, symbol> = new Map();
+const interfacePropertyTargets: Map<bigint, InterfacePropertyTarget> = new Map();
 const paramSpecDefaultValue = bind(LIB, "g_param_spec_get_default_value", [PARAM_T], VALUE_T);
 const paramSpecName = bind(LIB, "g_param_spec_get_name", [PARAM_T], stringT("borrowed"));
 const propertyChecks: Map<bigint, Map<string, PropertyCheck | null>> = new Map();
@@ -243,6 +259,10 @@ const newParamSpecOverride = (name: string, source: bigint | AnyClass): External
 function describeValue(value: unknown): string {
     if (typeof value === "string") {
         return JSON.stringify(value);
+    }
+
+    if (typeof value === "function") {
+        return "a function";
     }
 
     if (typeof value === "object" && value !== null) {
@@ -381,6 +401,44 @@ function propertyCheckFor(gtype: bigint, name: string): PropertyCheck | null {
     return checks.getOrInsertComputed(name, () => lookupPropertyCheck(gtype, name));
 }
 
+/**
+ * Runs a descriptor conversion of a property value, reporting a value the property cannot hold by
+ * the object and property it was meant for rather than by the conversion that rejected it.
+ */
+function convertPropertyValue<T>(instance: object, gtype: bigint, name: string, value: unknown, convert: () => T): T {
+    try {
+        return convert();
+    } catch (error) {
+        const check = propertyCheckFor(gtype, name);
+
+        if (check === null || check.canHoldValue(value)) {
+            throw error;
+        }
+
+        throw new TypeError(propertyMessage(instance, check, refusalTail(check, value, holdsReason(check))), {
+            cause: error,
+        });
+    }
+}
+
+/**
+ * Rejects a converted construct value the property's ParamSpec would replace, so construction never
+ * runs without a property the type relies on.
+ */
+function assertConstructValueValidates(
+    wrapper: object,
+    gtype: bigint,
+    name: string,
+    value: unknown,
+    gValue: ExternalObject<Handle>,
+): void {
+    const check = propertyCheckFor(gtype, name);
+
+    if (check !== null) {
+        assertValueValidates(wrapper, check, value, gValue);
+    }
+}
+
 function propertyValueType(gtype: bigint, name: string): bigint {
     const check = propertyCheckFor(gtype, name);
     if (check === null) throw new TypeError(`No GObject property named '${name}'`);
@@ -496,6 +554,18 @@ function coerceObjectProperty(obj: object, propertyName: string, value: unknown)
     return gtype === TYPE_INVALID ? value : coercePropertyValue(gtype, propertyName, value);
 }
 
+/**
+ * Reads the default value a native property's `GObject.ParamSpec` declares.
+ *
+ * @param obj Object whose class declares the property.
+ * @param propertyName Dashed or camelCased property name.
+ * @returns The default value converted to JavaScript.
+ * @throws {TypeError} When the object has no GObject property of that name.
+ */
+function getObjectPropertyDefault(obj: object, propertyName: string): unknown {
+    return fromValue(defaultValueFor(objectPropertyCheckFor(obj, propertyName).handle));
+}
+
 function constructPropertyFor(
     gtype: bigint,
     name: string,
@@ -505,7 +575,11 @@ function constructPropertyFor(
     const klass = getTypeClass(gtype);
     const pspec = findPropertySpec(klass, name);
 
-    return pspec === null ? undefined : constructValueFor(wrapper, checkFor(pspec, name), value);
+    if (pspec === null) {
+        throw new TypeError(`No property ${name} on ${typeLabel(gtype)}`);
+    }
+
+    return value === undefined ? undefined : constructValueFor(wrapper, checkFor(pspec, name), value);
 }
 
 function readStored(instance: Record<symbol, unknown>, accessor: PropertyAccessor): unknown {
@@ -516,16 +590,12 @@ function readStored(instance: Record<symbol, unknown>, accessor: PropertyAccesso
     return instance[accessor.storage];
 }
 
-function storeValue(instance: Record<symbol, unknown>, accessor: PropertyAccessor, value: unknown): void {
-    instance[accessor.storage] = heldValue(value);
-}
-
 function writeStored(instance: Record<symbol, unknown>, accessor: PropertyAccessor, value: unknown): void {
     if (readStored(instance, accessor) === heldValue(value)) {
         return;
     }
 
-    storeValue(instance, accessor, value);
+    instance[accessor.storage] = heldValue(value);
     (instance as NotifyingObject).notify?.(accessor.propertyName);
 }
 
@@ -653,7 +723,17 @@ function interfaceAccessorFor(dispatch: PropertyDispatch, pspec: PropertySpec): 
         isInterfaceProperty: true,
     };
 
-    if (delegate !== undefined) {
+    const target = dispatch.targets.get(propertyName);
+
+    if (target !== undefined) {
+        accessor.target = target;
+    }
+
+    const memberName = camelCase(propertyName);
+
+    if (dispatch.memberAccessors.has(memberName)) {
+        accessor.memberName = memberName;
+    } else if (delegate !== undefined) {
         accessor.delegate = delegate;
     }
 
@@ -697,7 +777,43 @@ function backingMemberFor(instance: object, accessor: DeclaredAccessor): string 
     return accessor.memberName;
 }
 
+function targetOf(instance: object, accessor: PropertyAccessor, target: PropertyTargetResolver): object {
+    const resolved = target(instance);
+
+    if (resolved === null) {
+        throw new TypeError(
+            `registerClass: ${instanceClassName(instance)} has no object to forward its ` +
+                `'${accessor.propertyName}' property to yet`,
+        );
+    }
+
+    return resolved;
+}
+
+function readTarget(instance: object, accessor: PropertyAccessor, target: PropertyTargetResolver): unknown {
+    const object = targetOf(instance, accessor, target);
+    const property = readableObjectPropertyFor(object, accessor.propertyName);
+    getObjectProperty(getHandle(object), property.name, property.value);
+
+    return fromValue(property.value);
+}
+
+function writeTarget(
+    instance: object,
+    accessor: PropertyAccessor,
+    target: PropertyTargetResolver,
+    value: unknown,
+): void {
+    const object = targetOf(instance, accessor, target);
+    const property = writableObjectPropertyFor(object, accessor.propertyName, value);
+    setObjectProperty(getHandle(object), property.name, property.value);
+}
+
 function readCurrent(instance: object, accessor: PropertyAccessor): unknown {
+    if (accessor.target !== undefined) {
+        return readTarget(instance, accessor, accessor.target);
+    }
+
     const getter = accessor.delegate?.getter;
 
     if (getter !== undefined) {
@@ -705,7 +821,9 @@ function readCurrent(instance: object, accessor: PropertyAccessor): unknown {
     }
 
     if (accessor.isInterfaceProperty === true) {
-        return readStored(instance as Record<symbol, unknown>, accessor);
+        return accessor.memberName === undefined
+            ? readStored(instance as Record<symbol, unknown>, accessor)
+            : (instance as Record<string, unknown>)[accessor.memberName];
     }
 
     const member = backingMemberFor(instance, accessor);
@@ -715,15 +833,27 @@ function readCurrent(instance: object, accessor: PropertyAccessor): unknown {
         : (instance as Record<string, unknown>)[member];
 }
 
-function storeCurrent(instance: Record<symbol, unknown>, accessor: PropertyAccessor, value: unknown): void {
-    if (isParamExplicitlyNotified(accessor.flags)) {
-        writeStored(instance, accessor, value);
-    } else {
-        storeValue(instance, accessor, value);
+function assertWriteIsRead(instance: object, accessor: InterfaceAccessor): void {
+    const getter = accessor.delegate?.getter;
+
+    if (getter === undefined || isParamConstructed(accessor.flags)) {
+        return;
     }
+
+    throw new TypeError(
+        `registerClass: ${instanceClassName(instance)} reads the '${accessor.propertyName}' property through ` +
+            `'${getter}', which no write reaches; define a '${camelCase(accessor.propertyName)}' getter and setter ` +
+            "on the class to handle both",
+    );
 }
 
 function writeCurrent(instance: object, accessor: PropertyAccessor, value: unknown): void {
+    if (accessor.target !== undefined) {
+        writeTarget(instance, accessor, accessor.target, value);
+
+        return;
+    }
+
     const setter = accessor.delegate?.setter;
 
     if (setter !== undefined) {
@@ -733,7 +863,12 @@ function writeCurrent(instance: object, accessor: PropertyAccessor, value: unkno
     }
 
     if (accessor.isInterfaceProperty === true) {
-        writeStored(instance as Record<symbol, unknown>, accessor, value);
+        if (accessor.memberName === undefined) {
+            assertWriteIsRead(instance, accessor);
+            writeStored(instance as Record<symbol, unknown>, accessor, value);
+        } else {
+            (instance as Record<string, unknown>)[accessor.memberName] = value;
+        }
 
         return;
     }
@@ -741,7 +876,7 @@ function writeCurrent(instance: object, accessor: PropertyAccessor, value: unkno
     const member = backingMemberFor(instance, accessor);
 
     if (member === undefined) {
-        storeCurrent(instance as Record<symbol, unknown>, accessor, value);
+        writeStored(instance as Record<symbol, unknown>, accessor, value);
 
         return;
     }
@@ -811,6 +946,70 @@ function addInterfaceDelegates(delegates: Map<string, InterfaceProperty>, gtype:
     }
 }
 
+function interfaceMemberAccessorsFor(klass: AnyClass, adoptedTypes: bigint[]): Set<string> {
+    const prototype = (klass as { prototype: object }).prototype;
+    const members: Set<string> = new Set();
+
+    for (const gtype of adoptedTypes) {
+        const pspecs = interfaceListProperties(defaultInterfaceRef(gtype), { value: 0 }) as ExternalObject<Handle>[];
+
+        for (const pspec of pspecs) {
+            const memberName = camelCase(paramSpecName(pspec) as string);
+
+            if (isMemberAccessor(memberDescriptorFor(prototype, memberName))) {
+                members.add(memberName);
+            }
+        }
+    }
+
+    return members;
+}
+
+function interfacePropertyNames(gtype: bigint): string[] {
+    const pspecs = interfaceListProperties(defaultInterfaceRef(gtype), { value: 0 }) as ExternalObject<Handle>[];
+
+    return pspecs.map((pspec) => paramSpecName(pspec) as string);
+}
+
+function interfaceTargetsFor(source: PropertyDispatchSource): Map<string, PropertyTargetResolver> {
+    const targets: Map<string, PropertyTargetResolver> = new Map();
+
+    for (const gtype of source.adoptedTypes) {
+        const target = interfacePropertyTargets.get(gtype);
+
+        if (target === undefined || !source.methods.has(target.method)) {
+            continue;
+        }
+
+        for (const name of interfacePropertyNames(gtype)) {
+            if (!targets.has(name)) {
+                targets.set(name, target.resolve);
+            }
+        }
+    }
+
+    return targets;
+}
+
+/**
+ * Forwards the properties an interface declares to another object, for each class that adopts the
+ * interface through `registerClass` and defines `method`: reads and writes of those properties go to
+ * the same-named properties of the object `resolve` returns for the instance, as GTK's
+ * `gtk_editable_delegate_get_property` and `gtk_editable_delegate_set_property` do for a
+ * `Gtk.Editable` that returns a delegate from `get_delegate`.
+ *
+ * @param iface The interface's generated class.
+ * @param method The instance method that opts a class in, such as `vfuncGetDelegate`.
+ * @param resolve Returns the object backing the properties, or `null` while there is none.
+ */
+function registerInterfacePropertyTarget<T extends object>(
+    iface: AnyClass & { [Symbol.hasInstance](value: unknown): value is T },
+    method: string,
+    resolve: (instance: T) => object | null,
+): void {
+    interfacePropertyTargets.set(getClassType(iface), { method, resolve: resolve as PropertyTargetResolver });
+}
+
 function interfaceDelegatesFor(adoptedTypes: bigint[]): Map<string, InterfaceProperty> {
     const delegates: Map<string, InterfaceProperty> = new Map();
 
@@ -847,7 +1046,13 @@ function buildPropertyDispatch(source: PropertyDispatchSource): PropertyDispatch
         }),
     );
 
-    return { accessors: [...declared], delegates: interfaceDelegatesFor(source.adoptedTypes), elementProperties };
+    return {
+        accessors: [...declared],
+        delegates: interfaceDelegatesFor(source.adoptedTypes),
+        targets: interfaceTargetsFor(source),
+        memberAccessors: interfaceMemberAccessorsFor(source.klass, source.adoptedTypes),
+        elementProperties,
+    };
 }
 
 function installPropertyDispatch(klass: AnyClass, dispatch: PropertyDispatch): void {
@@ -901,15 +1106,19 @@ export {
     buildPropertyDispatch,
     coerceObjectProperty,
     getDeclaredPropertyName,
+    getObjectPropertyDefault,
     isReadableProperty,
+    assertConstructValueValidates,
     coerceConstructPropertyValue,
     constructPropertyFor,
+    convertPropertyValue,
     GET_PROPERTY_VFUNC,
     makeGetProperty,
     makeSetProperty,
     newParamSpecOverride,
     readableObjectPropertyFor,
     propertyValueType,
+    registerInterfacePropertyTarget,
     SET_PROPERTY_VFUNC,
     installClassProperties,
     installPropertyDispatch,

@@ -30,7 +30,7 @@ mod void;
 pub(crate) use admission::{validate_call_signature, validate_callback_signature};
 pub use array::{ArrayBounds, ArrayCodec, ArrayKind, ElementOwnership};
 pub use bigint::BigIntCodec;
-pub use boxed::{BoxedCodec, BoxedTypeSource};
+pub use boxed::{BoxedCodec, BoxedTypeSource, Lending};
 pub use buffer::BufferCodec;
 pub use bytes::{BytesCodec, bytes_to_glib_full, read_bytes};
 pub use callback::{CallbackCodec, CallbackScope, DestroyNotifyKind};

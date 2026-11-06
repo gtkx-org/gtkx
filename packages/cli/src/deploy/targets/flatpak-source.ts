@@ -3,10 +3,12 @@ import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { posix, relative, resolve } from "node:path";
 import type { DeployPayload, DeploySettings } from "../types.js";
 import { LOCALE_DIRNAME } from "../../i18n/catalogs.js";
+import { I18N_RUNTIME_CONFIG_FILENAME } from "../../i18n/runtime-config.js";
 import { BUILD_NOTICES_FILENAME } from "../../internal/build-manifest.js";
 import { FONTS_DIR } from "../../internal/font-path.js";
 import { listFilesRecursive } from "../../internal/list-files.js";
 import { BUNDLE_FILENAME } from "../../vite-plugins/esm-extension.js";
+import { WORKER_DIR } from "../../vite-plugins/worker.js";
 import { renderDbusService } from "../freedesktop/dbus-service.js";
 import { BINDING_FILENAME } from "../native-addon.js";
 import { optional } from "../nfpm/optional.js";
@@ -14,8 +16,15 @@ import { renderNotices } from "../notices/render.js";
 import { executableModeFor } from "../payload/copy-tree.js";
 import { iconPathFor } from "../payload/icons.js";
 import { renderLauncher } from "../payload/launcher.js";
-import { licenseDestination, nodeLicenseDestination, NOTICES_FILENAME, noticesDestination } from "../payload/stage.js";
-import { pnpmPathFor, type PnpmPin, pnpmSources } from "./flatpak-pnpm.js";
+import {
+    i18nConfigDestination,
+    licenseDestination,
+    nodeLicenseDestination,
+    NOTICES_FILENAME,
+    noticesDestination,
+    renderInstalledI18nConfig,
+} from "../payload/stage.js";
+import { pnpmPathFor, type PnpmPin, pnpmSetupCommands, pnpmSources } from "./flatpak-pnpm.js";
 import { DESTINATION, type FlatpakModule, postInstallCommands, validationCommands } from "./flatpak-prebuilt.js";
 import {
     detectPackageManager,
@@ -25,7 +34,9 @@ import {
     type PackageManager,
     pnpmPinFor,
     resolveGitSource,
+    yarnPinFor,
 } from "./flatpak-sources.js";
+import { yarnOfflineEnv, yarnPathFor, type YarnPin, yarnSetupCommands, yarnSources } from "./flatpak-yarn.js";
 
 type InstalledFile = {
     destination: string;
@@ -68,11 +79,12 @@ const runtimeInstallCommands = (settings: DeploySettings, nodeExtensionPath: str
         installCommand(`dist/${BUNDLE_FILENAME}`, `${lib}/${BUNDLE_FILENAME}`, "m644"),
         installCommand(`dist/${BINDING_FILENAME}`, `${lib}/${BINDING_FILENAME}`, "m755"),
         "test ! -f dist/gtkx.gresource || " + installCommand("dist/gtkx.gresource", `${lib}/gtkx.gresource`, "m644"),
-        "test ! -f dist/gschemas.compiled || " +
-            installCommand("dist/gschemas.compiled", `${lib}/gschemas.compiled`, "m644"),
         `test ! -d dist/assets || cp -a dist/assets ${lib}/assets`,
+        `test ! -d dist/${WORKER_DIR} || cp -a dist/${WORKER_DIR} ${lib}/${WORKER_DIR}`,
         `test ! -d dist/${FONTS_DIR} || cp -a dist/${FONTS_DIR} ${lib}/${FONTS_DIR}`,
         `test ! -d dist/${LOCALE_DIRNAME} || { mkdir -p ${locale} && cp -a dist/${LOCALE_DIRNAME}/. ${locale}/; }`,
+        `test ! -f dist/${I18N_RUNTIME_CONFIG_FILENAME} || ` +
+            installCommand(I18N_RUNTIME_CONFIG_FILENAME, `${DESTINATION}/${i18nConfigDestination(settings)}`, "m644"),
         installCommand(LAUNCHER_FILENAME, `${DESTINATION}/bin/${settings.binaryName}`, "m755"),
     ];
 };
@@ -239,9 +251,17 @@ const extraFileInstallCommands = (settings: DeploySettings): string[] =>
 
 const moduleDirFor = (settings: DeploySettings): string => `${MODULE_BUILD_ROOT}/${settings.binaryName}`;
 
-const offlineEnvFor = (manager: PackageManager, settings: DeploySettings): Record<string, string> => {
+const offlineEnvFor = (
+    manager: PackageManager,
+    settings: DeploySettings,
+    yarnPin: YarnPin | null,
+): Record<string, string> => {
     if (manager === "pnpm") {
         return {};
+    }
+
+    if (yarnPin !== null) {
+        return yarnOfflineEnv(moduleDirFor(settings));
     }
 
     if (manager === "yarn") {
@@ -251,8 +271,16 @@ const offlineEnvFor = (manager: PackageManager, settings: DeploySettings): Recor
     return { npm_config_cache: `${moduleDirFor(settings)}/${NPM_CACHE_DIR}`, npm_config_offline: "true" };
 };
 
-const appendPathFor = (settings: DeploySettings, pin: PnpmPin | null, nodeExtensionPath: string): string =>
-    pin === null ? `${nodeExtensionPath}/bin` : `${pnpmPathFor(moduleDirFor(settings))}:${nodeExtensionPath}/bin`;
+const vendoredPathFor = (settings: DeploySettings, pin: PnpmPin | null, yarnPin: YarnPin | null): string | null => {
+    if (pin !== null) {
+        return pnpmPathFor(moduleDirFor(settings));
+    }
+
+    return yarnPin === null ? null : yarnPathFor(moduleDirFor(settings));
+};
+
+const appendPathFor = (vendoredPath: string | null, nodeExtensionPath: string): string =>
+    vendoredPath === null ? `${nodeExtensionPath}/bin` : `${vendoredPath}:${nodeExtensionPath}/bin`;
 
 const sourceBuildCommand = (settings: DeploySettings): string => {
     const configFile = projectRelative(settings, settings.configFile);
@@ -265,10 +293,11 @@ const sourceBuildCommand = (settings: DeploySettings): string => {
     return `npx gtkx build --config ${pathArgument(configFile)}`;
 };
 
-const flatpakSourceModule = (payload: DeployPayload): FlatpakModule => {
+const flatpakSourceModule = async (payload: DeployPayload): Promise<FlatpakModule> => {
     const settings = payload.settings;
     const manager = detectPackageManager(settings);
     const pin = pnpmPinFor(settings, manager);
+    const yarnPin = yarnPinFor(settings, manager);
     const postInstall = postInstallCommands(payload);
     const nodeExtensionPath = nodeExtensionPathFor(settings);
 
@@ -276,17 +305,19 @@ const flatpakSourceModule = (payload: DeployPayload): FlatpakModule => {
         name: settings.binaryName,
         buildsystem: "simple",
         "build-options": {
-            "append-path": appendPathFor(settings, pin, nodeExtensionPath),
-            env: { npm_config_nodedir: nodeExtensionPath, ...offlineEnvFor(manager, settings) },
+            "append-path": appendPathFor(vendoredPathFor(settings, pin, yarnPin), nodeExtensionPath),
+            env: { npm_config_nodedir: nodeExtensionPath, ...offlineEnvFor(manager, settings, yarnPin) },
             strip: false,
             "no-debuginfo": true,
         },
         sources: [
             resolveGitSource(settings),
-            ...(pin === null ? [] : pnpmSources(pin, moduleDirFor(settings))),
+            ...(pin === null ? [] : await pnpmSources(pin, moduleDirFor(settings))),
+            ...(yarnPin === null ? [] : await yarnSources(yarnPin, moduleDirFor(settings))),
             GENERATED_SOURCES,
             ...stagedMetadataSources(payload),
             inlineSource(LAUNCHER_FILENAME, renderLauncher(settings)),
+            inlineSource(I18N_RUNTIME_CONFIG_FILENAME, renderInstalledI18nConfig(settings)),
             inlineSource(
                 NOTICES_FILENAME,
                 renderNotices(settings, payload.notices.flatpak) +
@@ -295,6 +326,8 @@ const flatpakSourceModule = (payload: DeployPayload): FlatpakModule => {
             ...activationSource(settings),
         ],
         "build-commands": [
+            ...(pin === null ? [] : pnpmSetupCommands(pin)),
+            ...(yarnPin === null ? [] : yarnSetupCommands(moduleDirFor(settings), nodeExtensionPath)),
             installCommandFor(settings, manager),
             sourceBuildCommand(settings),
             ...runtimeInstallCommands(settings, nodeExtensionPath),

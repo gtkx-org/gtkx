@@ -1,4 +1,4 @@
-/// <reference types="vite/client" />
+/// <reference types="vite/types/importMeta.d.ts" />
 /// <reference types="@gtkx/react/env" />
 
 declare module "*?resource" {
@@ -31,3 +31,23 @@ declare module "*.css?url" {
     const styleSheetUrl: string;
     export default styleSheetUrl;
 }
+
+declare module "*?url" {
+    /** Absolute filesystem path of the source file under `gtkx dev` and Vitest, or of the emitted copy once built. */
+    const url: string;
+    export default url;
+}
+
+declare module "*?raw" {
+    /** Text content of the file. */
+    const text: string;
+    export default text;
+}
+
+declare module "*?inline" {
+    /** Content of the file inlined into the bundle: a stylesheet's text, or a data URL for any other file. */
+    const content: string;
+    export default content;
+}
+
+declare module "*.css" {}

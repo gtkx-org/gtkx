@@ -137,6 +137,7 @@ impl ArrayCodec {
         matches!(
             self.container,
             ArrayContainerCodec::NullTerminated(_)
+                | ArrayContainerCodec::Input(_)
                 | ArrayContainerCodec::Sized(_)
                 | ArrayContainerCodec::Fixed(_)
                 | ArrayContainerCodec::Cursor(_)

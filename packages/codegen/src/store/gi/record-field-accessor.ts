@@ -133,18 +133,41 @@ type InlineArrayAccessorOptions = {
     resolution: InlineArrayResolution;
 };
 
+const embeddedRecordType = (
+    context: ModuleContext,
+    field: GirField,
+): Extract<GirType, { kind: "record" }> | undefined => {
+    if (field.cType?.endsWith("*") === true || field.type === undefined) {
+        return undefined;
+    }
+
+    const type = context.library.typeFor(field.type);
+
+    return type?.kind === "record" ? type : undefined;
+};
+
+const isViewableRecord = (record: GirRecord): boolean =>
+    !record.isVtable && !record.opaque && !record.disguised && record.fields.length > 0;
+
+/**
+ * Whether a field embeds by value a record or union that holds pointers. Like GJS (`gi/boxed.cpp`), GTKX reads
+ * such a field as a view into the parent's memory that keeps the parent alive. The field itself cannot be
+ * assigned: copying the bytes would alias pointers the parent already owns.
+ */
+const isEmbeddedPointerRecordField = (context: ModuleContext, field: GirField): boolean => {
+    const type = embeddedRecordType(context, field);
+
+    return type !== undefined && !isValueMarshalable(context, type.namespace.name, type.value);
+};
+
 const isMarshalableField = (context: ModuleContext, field: GirField): boolean => {
-    if (field.cType?.endsWith("*") === true) {
-        return true;
-    }
+    const type = embeddedRecordType(context, field);
 
-    const type = field.type === undefined ? undefined : context.library.typeFor(field.type);
-
-    if (type?.kind !== "record") {
-        return true;
-    }
-
-    return isValueMarshalable(context, type.namespace.name, type.value);
+    return (
+        type === undefined ||
+        isValueMarshalable(context, type.namespace.name, type.value) ||
+        isViewableRecord(type.value)
+    );
 };
 
 const isVisibleField = (field: GirField): field is GirField & { type: TypeId } =>
@@ -248,7 +271,10 @@ const admitAccessibleField = (
     const target: StructArrayTarget = { field, jsName, slot: slot.slot, siblingFields };
     const hasArray = hasArrayAccessor(context, target);
     const hasAccessor = hasArray || isAccessibleFieldType(context, field.type);
-    const isSettable = field.writable && (hasArray || isStorableFieldType(context, field.type));
+    const isSettable =
+        field.writable &&
+        !isEmbeddedPointerRecordField(context, field) &&
+        (hasArray || isStorableFieldType(context, field.type));
 
     return hasAccessor ? { ...admitted, isSettable } : undefined;
 };
@@ -911,6 +937,7 @@ const setterBlock = (options: AccessorOptions): string =>
 
 export {
     hasOwnedFieldStorage,
+    isEmbeddedPointerRecordField,
     isEmittableField,
     isInlineField,
     isPublicField,

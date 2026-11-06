@@ -8,6 +8,7 @@
         "NativeRenderer",
         "RequiredStoryArgs",
         "StoryAnnotations",
+        "StoryArgs",
         "StorybookProps",
         "StoryKeys",
         "StoryModule"

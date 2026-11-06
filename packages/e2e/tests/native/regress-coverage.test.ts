@@ -299,6 +299,27 @@ test("interface properties retain values and emit their native notification", ()
     expect(object.number).toBe(7);
     expect(changes).toEqual(["number"]);
     expect(object.emitSignal()).toBeUndefined();
+
+    class Accessed extends GObject.Object {
+        declare stored: number;
+
+        get number(): number {
+            return this.stored ?? 0;
+        }
+
+        set number(value: number) {
+            this.stored = value;
+        }
+    }
+    const RegisteredAccessed = registerClass(Accessed, {
+        typeName: "GtkxRegressNumberInterfaceAccessor",
+        implements: [Regress.TestInterface],
+    });
+    const accessed = new RegisteredAccessed({});
+    GObject.setProperty(accessed, "number", 3);
+    expect(accessed.stored).toBe(3);
+    accessed.number = 5;
+    expect(GObject.getProperty(accessed, "number")).toBe(5);
 });
 
 test("pointer-array aliases validate borrowed addresses", () => {

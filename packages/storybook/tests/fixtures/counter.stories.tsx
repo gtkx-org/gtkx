@@ -58,5 +58,17 @@ const Decorated = {
     ],
 } satisfies Story;
 
+type PairArgs = { first: number; second: number };
+
+const Pair: StoryObj<PairArgs> = {
+    args: { first: 1, second: 2 },
+    render: ({ first, second }) => (
+        <GtkBox>
+            <Counter initialCount={first} label="First" step={1} />
+            <Counter initialCount={second} label="Second" step={1} />
+        </GtkBox>
+    ),
+};
+
 export default meta;
-export { Default, Decorated, Named, WithStep };
+export { Default, Decorated, Named, Pair, WithStep };

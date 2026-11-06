@@ -6,6 +6,7 @@ import type { GirType } from "../../gir/type.js";
 import type { ModuleContext } from "../../writer/context.js";
 import {
     isSkippedPrimaryReturn,
+    preserveNullableArray,
     renderCallbackType,
     renderByValueRecordDescriptor,
     renderDescriptor,
@@ -26,7 +27,7 @@ import {
 import { renderParameterTsType, renderTsType } from "../../analysis/ts-type.js";
 import { primitiveCategoryFor } from "../../analysis/type-shape.js";
 import { type GirParameter, isCallerAllocatedOut, isInoutParameter, isOutParameter } from "../../gir/parameter.js";
-import { hasUnknownArrayLength, type TypeId } from "../../gir/type-id.js";
+import type { TypeId } from "../../gir/type-id.js";
 import { areClosuresInvoked } from "./closure-invocation.js";
 import { itemComparatorArgDescriptors, itemComparatorTsType } from "./item-comparators.js";
 import {
@@ -704,12 +705,16 @@ const paramDescriptorLiteral = (descriptor: string, options: ParamDescriptorOpti
 const renderReturnDescriptor = (context: ModuleContext, fn: GirFunction): ReturnDescriptorPlan => {
     const instanceOffset = fn.instance === undefined ? 0 : 1;
 
-    const descriptor = renderDescriptor(context, fn.returnValue.type, fn.returnValue.transferOwnership, {
-        argIndexOffset: instanceOffset,
-        argIndexMap: emittedArgIndices(fn, instanceOffset),
-        isNewlyCreated: fn.instance === undefined,
-        isReceived: true,
-    });
+    const descriptor = preserveNullableArray(
+        context,
+        fn.returnValue,
+        renderDescriptor(context, fn.returnValue.type, fn.returnValue.transferOwnership, {
+            argIndexOffset: instanceOffset,
+            argIndexMap: emittedArgIndices(fn, instanceOffset),
+            isNewlyCreated: fn.instance === undefined,
+            isReceived: true,
+        }),
+    );
 
     return {
         descriptor,
@@ -835,11 +840,15 @@ const planOutParam = (
     argIndex: ArgIndexOptions,
     isConsumed: boolean,
 ): CallArgPlan => {
-    const descriptor = renderDescriptor(context, parameter.type, parameter.transferOwnership, {
-        ...argIndex,
-        hasOutIndirection: true,
-        isReceived: true,
-    });
+    const descriptor = preserveNullableArray(
+        context,
+        parameter,
+        renderDescriptor(context, parameter.type, parameter.transferOwnership, {
+            ...argIndex,
+            hasOutIndirection: true,
+            isReceived: true,
+        }),
+    );
 
     return {
         paramLiteral: paramDescriptorLiteral(
@@ -1045,7 +1054,7 @@ const collectionArgument = (options: MarshalledArgumentOptions & { type: GirType
 
 const mappableElement = (context: ModuleContext, type: GirType | undefined): TypeId | undefined => {
     if (type?.kind === "carray") {
-        return hasUnknownArrayLength(type) ? undefined : mappableRef(context, type.element);
+        return mappableRef(context, type.element);
     }
 
     return type?.kind === "list" ? mappableRef(context, type.element) : undefined;

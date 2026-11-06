@@ -18,6 +18,48 @@ type GroupProps = Pick<NavigatorProps, "selectedId" | "onSelect"> & {
     entries: StoryEntry[];
 };
 
+type Group = {
+    title: string;
+    entries: StoryEntry[];
+    path: number[];
+};
+
+const TITLE_SEPARATOR = "/";
+
+const titlePrefixes = (title: string): string[] =>
+    title.split(TITLE_SEPARATOR).map((_, index, segments) => segments.slice(0, index + 1).join(TITLE_SEPARATOR));
+
+const compareIndexPaths = (left: number[], right: number[]): number => {
+    for (const [index, value] of left.entries()) {
+        const other = right[index];
+
+        if (other === undefined) {
+            return 1;
+        }
+
+        if (value !== other) {
+            return value - other;
+        }
+    }
+
+    return left.length - right.length;
+};
+
+/**
+ * Groups stories by title, keeping titles that share a path prefix together as Storybook's sidebar nests
+ * them: the first title under each prefix decides where the prefix appears.
+ */
+const groupStoriesByTitle = (stories: StoryEntry[]): Group[] => {
+    const firstOccurrence: Map<string, number> = new Map();
+    const groups = [...Map.groupBy(stories, (entry) => entry.title)].map(([title, entries], order) => ({
+        title,
+        entries,
+        path: titlePrefixes(title).map((prefix) => firstOccurrence.getOrInsert(prefix, order)),
+    }));
+
+    return groups.toSorted((left, right) => compareIndexPaths(left.path, right.path));
+};
+
 const StoryGroup = ({ title, entries, selectedId, onSelect }: GroupProps): ReactNode => (
     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
         <GtkLabel label={title} xalign={0} marginStart={18} marginEnd={18} cssClasses={["heading"]} wrap />
@@ -68,9 +110,8 @@ const LoadErrors = ({ errors }: Pick<NavigatorProps, "errors">): ReactNode =>
 const StoryNavigator = ({ stories, errors, selectedId, onSelect }: NavigatorProps): ReactNode => {
     const [search, setSearch] = useState("");
     const query = search.trim().toLocaleLowerCase();
-    const groups = Map.groupBy(
+    const groups = groupStoriesByTitle(
         stories.filter((entry) => `${entry.title} ${entry.name}`.toLocaleLowerCase().includes(query)),
-        (entry) => entry.title,
     );
 
     return (
@@ -87,7 +128,7 @@ const StoryNavigator = ({ stories, errors, selectedId, onSelect }: NavigatorProp
             />
             <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER} vexpand>
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={18} marginBottom={18}>
-                    {[...groups].map(([title, entries]) => (
+                    {groups.map(({ title, entries }) => (
                         <StoryGroup
                             key={title}
                             title={title}
@@ -96,7 +137,7 @@ const StoryNavigator = ({ stories, errors, selectedId, onSelect }: NavigatorProp
                             onSelect={onSelect}
                         />
                     ))}
-                    {groups.size === 0 && (
+                    {groups.length === 0 && (
                         <AdwStatusPage
                             name="storybook-no-matches"
                             title={query ? "No matching stories" : "No stories"}

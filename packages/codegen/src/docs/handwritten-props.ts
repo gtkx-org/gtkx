@@ -1,13 +1,28 @@
 import { join } from "node:path";
 import ts from "typescript";
+import type { JsDocDeprecation } from "../writer/doc-tags.js";
 import { propsDependencies, type PropsDependencies } from "./props-dependencies.js";
 import { VIRTUAL_GI_ROOT } from "./props-modules.js";
 import { createPropsProgram, type PropsExport, type PropsProgramOptions } from "./props-program.js";
+
+type PropTypeField = {
+    name: string;
+    type: string;
+    doc: string;
+    isOptional: boolean;
+};
+
+type PropTypeShape = {
+    name: string;
+    fields: PropTypeField[];
+};
 
 type HandwrittenProp = {
     name: string;
     type: string;
     doc: string;
+    deprecation?: JsDocDeprecation | undefined;
+    shapes: PropTypeShape[];
 };
 
 type PropsCatalog = {
@@ -23,6 +38,7 @@ type ExportContext = {
 
 const WHITESPACE_RUN = /\s+/g;
 const TYPE_FORMAT = ts.TypeFormatFlags.NoTruncation | ts.TypeFormatFlags.UseAliasDefinedOutsideCurrentScope;
+const COMMENT_FREE_PRINTER = ts.createPrinter({ removeComments: true });
 
 const exportContext = (program: ts.Program, entry: PropsExport): ExportContext => {
     const source = program.getSourceFile(entry.fileName);
@@ -66,6 +82,114 @@ const formatType = (context: ExportContext, type: ts.Type): string =>
 
 const formatDoc = (doc: string): string => doc.replaceAll(WHITESPACE_RUN, " ").trim();
 
+const isDerivedType = (checker: ts.TypeChecker, node: ts.Node): boolean =>
+    ts.isIndexedAccessTypeNode(node) ||
+    (ts.isTypeReferenceNode(node) &&
+        ((checker.getSymbolAtLocation(node.typeName)?.flags ?? 0) & ts.SymbolFlags.TypeParameter) !== 0) ||
+    ts.forEachChild(node, (child) => isDerivedType(checker, child) || undefined) === true;
+
+const propertyTypeText = (context: ExportContext, property: ts.Symbol, type: ts.Type): string => {
+    const declaration = property.valueDeclaration;
+    const node = declaration !== undefined && ts.isPropertySignature(declaration) ? declaration.type : undefined;
+
+    return node === undefined || isDerivedType(context.checker, node)
+        ? formatType(context, type)
+        : COMMENT_FREE_PRINTER.printNode(ts.EmitHint.Unspecified, node, node.getSourceFile())
+              .replaceAll(WHITESPACE_RUN, " ")
+              .trim();
+};
+
+const spellsOutFields = (node: ts.TypeNode, checker: ts.TypeChecker, file: ts.SourceFile): boolean => {
+    if (ts.isTypeLiteralNode(node)) {
+        return true;
+    }
+
+    if (ts.isIntersectionTypeNode(node)) {
+        return node.types.every((member) => spellsOutFields(member, checker, file));
+    }
+
+    if (!ts.isTypeReferenceNode(node) || node.typeArguments !== undefined) {
+        return false;
+    }
+
+    const declaration = checker.getSymbolAtLocation(node.typeName)?.declarations?.[0];
+
+    return (
+        declaration !== undefined &&
+        ts.isTypeAliasDeclaration(declaration) &&
+        declaration.getSourceFile() === file &&
+        spellsOutFields(declaration.type, checker, file)
+    );
+};
+
+const describedAlias = (context: ExportContext, type: ts.Type): ts.TypeAliasDeclaration | undefined => {
+    const declaration = type.aliasSymbol?.declarations?.[0];
+    const file = context.declaration.getSourceFile();
+
+    return declaration !== undefined &&
+        ts.isTypeAliasDeclaration(declaration) &&
+        declaration.typeParameters === undefined &&
+        declaration.getSourceFile() === file &&
+        spellsOutFields(declaration.type, context.checker, file)
+        ? declaration
+        : undefined;
+};
+
+const fieldOf = (context: ExportContext, field: ts.Symbol): PropTypeField => {
+    const { checker } = context;
+
+    return {
+        name: field.name,
+        type: propertyTypeText(context, field, checker.getTypeOfSymbol(field)),
+        doc: formatDoc(ts.displayPartsToString(field.getDocumentationComment(checker))),
+        isOptional: (field.flags & ts.SymbolFlags.Optional) !== 0,
+    };
+};
+
+const propTypeShapes = (context: ExportContext, type: ts.Type): PropTypeShape[] => {
+    const { checker } = context;
+    const shapes: Map<string, PropTypeShape> = new Map();
+    const visit = (candidate: ts.Type): void => {
+        if (candidate.isUnion()) {
+            candidate.types.forEach(visit);
+            return;
+        }
+
+        const element = checker.isArrayType(candidate)
+            ? checker.getIndexTypeOfType(candidate, ts.IndexKind.Number)
+            : undefined;
+
+        if (element !== undefined) {
+            visit(element);
+            return;
+        }
+
+        const alias = describedAlias(context, candidate);
+
+        if (alias === undefined || shapes.has(alias.name.text)) {
+            return;
+        }
+
+        const fields = checker.getPropertiesOfType(candidate).filter((field) => !isSymbolProperty(checker, field));
+        shapes.set(alias.name.text, { name: alias.name.text, fields: fields.map((field) => fieldOf(context, field)) });
+
+        for (const field of fields) {
+            visit(checker.getTypeOfSymbol(field));
+        }
+    };
+    visit(type);
+
+    return [...shapes.values()];
+};
+
+const deprecationOf = (checker: ts.TypeChecker, properties: ts.Symbol[]): JsDocDeprecation | undefined => {
+    const tag = properties
+        .flatMap((property) => property.getJsDocTags(checker))
+        .find((candidate) => candidate.name === "deprecated");
+
+    return tag === undefined ? undefined : { since: undefined, doc: formatDoc(ts.displayPartsToString(tag.text)) };
+};
+
 const indexDoc = (declaration: ts.IndexSignatureDeclaration | undefined): string => {
     if (declaration === undefined) {
         return "";
@@ -83,11 +207,17 @@ const declaredProps = (context: ExportContext): HandwrittenProp[] => {
     const properties = checker
         .getPropertiesOfType(type)
         .filter((property) => !isSymbolProperty(checker, property))
-        .map((property) => ({
-            name: property.name,
-            type: formatType(context, checker.getTypeOfSymbolAtLocation(property, declaration)),
-            doc: formatDoc(ts.displayPartsToString(property.getDocumentationComment(checker))),
-        }));
+        .map((property) => {
+            const propertyType = checker.getTypeOfSymbolAtLocation(property, declaration);
+
+            return {
+                name: property.name,
+                type: propertyTypeText(context, property, propertyType),
+                doc: formatDoc(ts.displayPartsToString(property.getDocumentationComment(checker))),
+                deprecation: deprecationOf(checker, [property]),
+                shapes: propTypeShapes(context, propertyType),
+            };
+        });
     const indices = checker
         .getIndexInfosOfType(type)
         .filter((info) => (info.keyType.flags & ts.TypeFlags.ESSymbolLike) === 0)
@@ -95,6 +225,7 @@ const declaredProps = (context: ExportContext): HandwrittenProp[] => {
             name: formatType(context, info.keyType).replaceAll("`", ""),
             type: formatType(context, info.type),
             doc: indexDoc(info.declaration),
+            shapes: propTypeShapes(context, info.type),
         }));
 
     return [...properties, ...indices];
@@ -103,6 +234,7 @@ const declaredProps = (context: ExportContext): HandwrittenProp[] => {
 type UnionProp = {
     name: string;
     doc: string;
+    deprecation?: JsDocDeprecation | undefined;
     keyType?: ts.TypeNode | undefined;
 };
 
@@ -136,6 +268,7 @@ const unionProps = (context: ExportContext, variants: readonly ts.Type[]): Union
                     ),
                 ].join(" "),
             ),
+            deprecation: deprecationOf(checker, members),
         })),
         ...[...indices].map(([name, members]) => {
             const [first] = members;
@@ -222,7 +355,13 @@ const contextualProps = (
                     throw new Error("Cannot resolve a configured element prop context");
                 }
 
-                return { name: prop.name, type: formatType(context, type), doc: prop.doc };
+                return {
+                    name: prop.name,
+                    type: formatType(context, type),
+                    doc: prop.doc,
+                    deprecation: prop.deprecation,
+                    shapes: propTypeShapes(context, type),
+                };
             }),
         ];
     });
@@ -263,4 +402,4 @@ const createPropsCatalog = (options: PropsProgramOptions): PropsCatalog => {
     return { byType: new Map([...byType, ...resolveUnionProps(unions, withSource)]), dependencies };
 };
 
-export { createPropsCatalog, type HandwrittenProp, type PropsCatalog };
+export { createPropsCatalog, type HandwrittenProp, type PropsCatalog, type PropTypeShape };

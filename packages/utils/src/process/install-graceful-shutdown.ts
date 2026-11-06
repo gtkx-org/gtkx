@@ -7,6 +7,7 @@ type GracefulShutdownOptions = {
     forceKillAfterMs?: number;
     coalesceWindowMs?: number;
     exitCode?: (signal: NodeJS.Signals, isGraceful: boolean) => number;
+    exit?: (code: number) => void;
 };
 
 type ShutdownState = {
@@ -43,9 +44,15 @@ const finish = (state: ShutdownState, signal: NodeJS.Signals, isGraceful: boolea
 
     state.hasExited = true;
     clearTimers(state);
-    const { exitCode } = state.options;
+    const { exitCode, exit } = state.options;
     const defaultCode = isGraceful ? 0 : exitCodeForSignal(signal);
-    process.exit(exitCode ? exitCode(signal, isGraceful) : defaultCode);
+    const code = exitCode ? exitCode(signal, isGraceful) : defaultCode;
+
+    if (exit) {
+        exit(code);
+    } else {
+        process.exit(code);
+    }
 };
 
 const runShutdown = async (state: ShutdownState, signal: NodeJS.Signals): Promise<void> => {

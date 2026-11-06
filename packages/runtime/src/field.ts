@@ -59,7 +59,7 @@ const fieldAt = (descriptor: Descriptor): StridedField => {
 
 /**
  * Compiles a struct field descriptor once and binds it to a fixed byte offset.
- * Use `read` and `write` when the descriptor is only known at each access; they compile it each time.
+ * `read` and `write` take the descriptor and offset at each access and compile each descriptor once.
  *
  * @param descriptor Describes how the field's bytes are marshalled.
  * @param offset Byte offset of the field within its owner's memory.
@@ -80,11 +80,15 @@ const field = (descriptor: Descriptor, offset: number): Field => {
     };
 };
 
+const compiledFields = new WeakMap<Descriptor, StridedField>();
+
+const compiledField = (descriptor: Descriptor): StridedField => compiledFields.getOrInsertComputed(descriptor, fieldAt);
+
 const read = (handle: ExternalObject<Handle>, descriptor: Descriptor, offset: number): unknown =>
-    fieldAt(descriptor).read(handle, offset);
+    compiledField(descriptor).read(handle, offset);
 
 const write = (handle: ExternalObject<Handle>, descriptor: Descriptor, offset: number, value: unknown): void => {
-    fieldAt(descriptor).write(handle, offset, value);
+    compiledField(descriptor).write(handle, offset, value);
 };
 
 export { read, write, field, type Field, fieldAt, fixedArrayEntries, type StridedField };

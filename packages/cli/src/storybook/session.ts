@@ -1,5 +1,6 @@
 import type { ModuleNode, ViteDevServer } from "vite";
 import type { WatchedChange } from "../dev/change-queue.js";
+import { isRepeatedRegistration } from "../dev/type-registration.js";
 import { withExclusiveLoad } from "../internal/module-loads.js";
 import {
     discoverStorybookFiles,
@@ -21,14 +22,21 @@ type StorybookSession = {
     handleChange: (change: WatchedChange) => Promise<boolean>;
 };
 
+type StorybookHooks = {
+    log: (message: string) => void;
+    isRefreshBoundary: (module: Record<string, unknown>) => boolean;
+    restartForRegistration: (changedPath: string) => Promise<void>;
+};
+
 type StorybookState = {
     server: ViteDevServer;
     handle: StorybookHandle;
     configured: string | undefined;
     files: StorybookFiles;
     modules: Map<string, Promise<Record<string, unknown>>>;
+    reloadCauses: Map<string, string>;
     hasFailedLoad: boolean;
-    isRefreshBoundary: (module: Record<string, unknown>) => boolean;
+    hooks: StorybookHooks;
 };
 
 const explorerHandle = (module: Record<string, unknown>): StorybookHandle => {
@@ -47,8 +55,20 @@ const invalidate = (server: ViteDevServer, path: string): void => {
     }
 };
 
+const restartForRepeatedRegistration = async (state: StorybookState, path: string, cause: unknown): Promise<never> => {
+    const changedPath = state.reloadCauses.get(path);
+
+    if (changedPath !== undefined && isRepeatedRegistration(cause)) {
+        await state.hooks.restartForRegistration(changedPath);
+    }
+
+    throw cause;
+};
+
 const loadModule = (state: StorybookState, path: string): Promise<Record<string, unknown>> =>
-    state.modules.getOrInsertComputed(path, () => state.server.ssrLoadModule(path));
+    state.modules.getOrInsertComputed(path, () =>
+        state.server.ssrLoadModule(path).catch((cause: unknown) => restartForRepeatedRegistration(state, path, cause)),
+    );
 
 const pruneModules = (state: StorybookState): void => {
     const paths = new Set([
@@ -111,6 +131,7 @@ const invalidateChangedModules = (state: StorybookState, changedPath: string): v
 
     for (const path of paths) {
         state.modules.delete(path);
+        state.reloadCauses.set(path, changedPath);
         invalidate(state.server, path);
     }
 };
@@ -181,7 +202,9 @@ const shouldReload = (state: StorybookState, change: WatchedChange): boolean => 
 
     return (
         hasDependency(state, path, stories) &&
-        (module?.ssrModule === undefined || module.ssrModule === null || !state.isRefreshBoundary(module.ssrModule))
+        (module?.ssrModule === undefined ||
+            module.ssrModule === null ||
+            !state.hooks.isRefreshBoundary(module.ssrModule))
     );
 };
 
@@ -189,16 +212,17 @@ const createStorybookSession = (
     server: ViteDevServer,
     entry: Record<string, unknown>,
     configured: string,
-    isRefreshBoundary: (module: Record<string, unknown>) => boolean,
+    hooks: StorybookHooks,
 ): StorybookSession => {
     const state: StorybookState = {
         server,
         handle: explorerHandle(entry),
         configured: configured === "" ? undefined : configured,
-        files: { configPath: undefined, previewPath: undefined, stories: [] },
+        files: { configPath: undefined, previewPath: undefined, stories: [], skippedMdx: [] },
         modules: new Map(),
+        reloadCauses: new Map(),
         hasFailedLoad: false,
-        isRefreshBoundary,
+        hooks,
     };
 
     return {
@@ -208,7 +232,15 @@ const createStorybookSession = (
                 return false;
             }
 
+            if (change.event === "change") {
+                state.hooks.log(`File changed: ${change.path}`);
+            }
+
             await reload(state, change.path);
+
+            if (change.event === "change" && !state.hasFailedLoad) {
+                state.hooks.log("Stories reloaded");
+            }
 
             return true;
         },

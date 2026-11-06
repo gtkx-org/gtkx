@@ -1,7 +1,7 @@
-import type * as GObject from "@gtkx/gi/gobject";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
+import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import type {
     ActionAccel,
@@ -17,7 +17,14 @@ import type {
     ScaleMark,
     TabExtraDropTarget,
 } from "./prop-types.js";
-import { BUILTIN_ELEMENTS, CONTENT_SETTER_TYPES, SINGLE_CHILD_TYPES } from "@gtkx/config/elements";
+import {
+    BUILTIN_ELEMENTS,
+    CONTENT_SETTER_TYPES,
+    MENU_ITEM_ATTRIBUTES,
+    SINGLE_CHILD_TYPES,
+} from "@gtkx/config/elements";
+import { onceSignal, type SignalHandlerId } from "@gtkx/runtime";
+import { customChildId } from "./components/menu.js";
 import {
     applicationCreator,
     boxSlot,
@@ -25,7 +32,9 @@ import {
     childSetterSlot,
     contentSetterSlot,
     controlledText,
+    holdingOneChild,
     indexedSlot,
+    keyedList,
     list,
     methodSlot,
     rowSlot,
@@ -37,10 +46,12 @@ import {
     type ElementBehavior,
     type ElementConfig,
     type PlaceInfo,
+    type Props,
     forTypes,
     registerElements,
 } from "./reconciler/registry.js";
-import { applyWrite } from "./reconciler/signals.js";
+import { applyWrite, isApplyingWrite } from "./reconciler/signals.js";
+import { describeElement, isDevelopment, typeNameOf, warnDismissal, watchDismissal } from "./utils/dismissal.js";
 
 type AdwChildSetter =
     | Adw.Bin
@@ -57,6 +68,14 @@ type AdwChildSetter =
 type AdwContentSetter = Adw.ApplicationWindow | Adw.BottomSheet | Adw.OverlaySplitView | Adw.Window;
 type BreakpointHost = Adw.ApplicationWindow | Adw.Window | Adw.Dialog;
 type PrefixSuffixRow = Adw.ActionRow | Adw.EntryRow | Adw.ExpanderRow;
+
+const ROW_LAYOUTS = [
+    childMatcher(Adw.ActionRow),
+    childMatcher(Adw.EntryRow),
+    childMatcher(Adw.ExpanderRow),
+    childMatcher(Adw.ButtonRow),
+];
+const isPlainRow = (row: Gtk.ListBoxRow): boolean => !ROW_LAYOUTS.some((isLayoutRow) => isLayoutRow(row));
 
 const SLOT_SUFFIX = "Slot";
 const childSetter = childSetterSlot<AdwChildSetter>();
@@ -76,10 +95,15 @@ const preferencesDialogChildren = methodSlot<Adw.PreferencesDialog, Adw.Preferen
 );
 
 const alertDialogExtraChild = setterSlot<Adw.AlertDialog, Gtk.Widget>("children", Gtk.Widget, "setExtraChild");
+const applyResponseState = (dialog: Adw.AlertDialog, response: AlertDialogResponse): void => {
+    dialog.setResponseAppearance(response.id, response.appearance ?? Adw.ResponseAppearance.DEFAULT);
+    dialog.setResponseEnabled(response.id, response.isEnabled ?? true);
+};
 const sidebarSections = indexedSlot<Adw.Sidebar, Adw.SidebarSection>("children", Adw.SidebarSection);
 const sidebarItems = indexedSlot<Adw.SidebarSection, Adw.SidebarItem>("children", Adw.SidebarItem);
 const isWidget = childMatcher(Gtk.Widget);
 const TEXT_CHILD_ANCHOR_PROP = "textChildAnchor";
+const ACTION_GROUP_PREFIX_PROP = "prefix";
 const tabExtraDropTarget = value<Adw.TabBar | Adw.TabOverview, TabExtraDropTarget | null>(
     "extraDropTarget",
     (tabs, target) => tabs.setupExtraDropTarget(target?.actions ?? 0, target?.types ?? null),
@@ -123,6 +147,98 @@ const tabInsertionPosition = (view: Adw.TabView, info: PlaceInfo): number => {
     return successor instanceof Gtk.Widget ? view.getPagePosition(view.getPage(successor)) : view.getNPages();
 };
 
+const selectedReplacedPages: WeakSet<Props> = new WeakSet();
+
+const renderedTabPages: WeakSet<Adw.TabPage> = new WeakSet();
+const refusingTabViews: WeakSet<Adw.TabView> = new WeakSet();
+
+const warnRefusedTabClose = (view: Adw.TabView, page: Adw.TabPage): void => {
+    if (!isDevelopment()) {
+        return;
+    }
+
+    warnDismissal(
+        "AdwTabView:close-page",
+        `<AdwTabPage title="${page.getTitle()}"> was asked to close, but its ${describeElement(view, {})} has no ` +
+            "onClosePage handler, so the tab stays. Remove the page from your state in onClosePage and call " +
+            "closePageFinish(page, true), or return false to let libadwaita close it.",
+    );
+};
+
+const hasOtherClosePageHandler = (view: Adw.TabView, ownHandler: SignalHandlerId): boolean => {
+    GObject.signalHandlerBlock(view, ownHandler);
+
+    try {
+        const match = GObject.SignalMatchType.ID | GObject.SignalMatchType.UNBLOCKED;
+
+        return (
+            GObject.signalHandlerFind(
+                view,
+                match,
+                GObject.signalLookup("close-page", Adw.TabView),
+                0,
+                null,
+                null,
+                null,
+            ) !== 0n
+        );
+    } finally {
+        GObject.signalHandlerUnblock(view, ownHandler);
+    }
+};
+
+const refuseUnansweredTabCloses = (view: Adw.TabView): void => {
+    if (refusingTabViews.has(view)) {
+        return;
+    }
+
+    refusingTabViews.add(view);
+    const ownHandler = view.connect("close-page", (page) => {
+        if (isApplyingWrite() || !renderedTabPages.has(page) || page.getPinned()) {
+            return false;
+        }
+
+        if (hasOtherClosePageHandler(view, ownHandler)) {
+            return false;
+        }
+
+        view.closePageFinish(page, false);
+        warnRefusedTabClose(view, page);
+
+        return true;
+    });
+};
+
+const attachTabPage = (view: Adw.TabView, child: Gtk.Widget, info: PlaceInfo): Adw.TabPage => {
+    const page =
+        info.props.parent instanceof Adw.TabPage
+            ? view.addPage(child, info.props.parent)
+            : view.insert(child, tabInsertionPosition(view, info));
+
+    if (selectedReplacedPages.delete(info.props)) {
+        view.setSelectedPage(page);
+    }
+
+    refuseUnansweredTabCloses(view);
+    renderedTabPages.add(page);
+
+    return page;
+};
+
+const closeTabPage = (view: Adw.TabView, page: Adw.TabPage, props: Props): void => {
+    if (view.getSelectedPage() === page) {
+        selectedReplacedPages.add(props);
+    }
+
+    renderedTabPages.delete(page);
+    view.setPagePinned(page, false);
+    view.closePage(page);
+
+    if (tabViewParent(page.getChild()) === view) {
+        view.closePageFinish(page, true);
+    }
+};
+
 const reorderTabPages = (view: Adw.TabView, children: readonly GObject.Object[]): void => {
     const pages = children
         .filter((child): child is Gtk.Widget => child instanceof Gtk.Widget && tabViewParent(child) === view)
@@ -137,6 +253,19 @@ const reorderTabPages = (view: Adw.TabView, children: readonly GObject.Object[])
         const page = ordered[index];
         if (page !== undefined && view.getPagePosition(page) !== position) {
             view.reorderPage(page, position);
+        }
+    }
+};
+
+// GTK 4.22 places the header and cells of a column moved to a later position, or inserted before others, one
+// widget too far, so their focus and accessible order disagree with the column order. Moving a column to an
+// earlier position orders them correctly, so columns are only appended or moved toward the start.
+const orderColumns = (view: Gtk.ColumnView, children: readonly GObject.Object[]): void => {
+    const columns = view.getColumns();
+
+    for (const [index, child] of children.entries()) {
+        if (child instanceof Gtk.ColumnViewColumn && columns.getItem(index) !== child) {
+            view.insertColumn(index, child);
         }
     }
 };
@@ -216,10 +345,265 @@ const multiLayoutLayouts = slot<Adw.MultiLayoutView, Gtk.Widget>("layouts", Gtk.
     },
 });
 
-const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
-    ...forTypes(SINGLE_CHILD_TYPES, {
-        behaviors: [childSetterSlot()],
+const menuAttributeValue = (value: string | boolean | null): GLib.Variant | null => {
+    if (value === null) {
+        return null;
+    }
+
+    return typeof value === "boolean" ? GLib.Variant.newBoolean(value) : GLib.Variant.newString(value);
+};
+
+const menuItemAttributes = Object.entries(MENU_ITEM_ATTRIBUTES).map(([prop, attribute]) =>
+    value<Gio.MenuItem, string | boolean | null>(prop, (item, next) => {
+        item.setAttributeValue(attribute, menuAttributeValue(next));
     }),
+);
+
+type CustomChildHost = Gtk.PopoverMenu | Gtk.PopoverMenuBar | Gtk.MenuButton;
+type CustomChildMenu = Gtk.PopoverMenu | Gtk.PopoverMenuBar;
+
+type CustomChildren = {
+    ids: Map<Gtk.Widget, string>;
+    connections: [GObject.Object, SignalHandlerId][];
+    models: Set<Gio.MenuModel>;
+    isSyncing: boolean;
+};
+
+const MENU_LINKS = [Gio.MENU_LINK_SECTION, Gio.MENU_LINK_SUBMENU];
+const customChildren: WeakMap<CustomChildHost, CustomChildren> = new WeakMap();
+
+const customChildMenu = (host: CustomChildHost): CustomChildMenu | null => {
+    if (!(host instanceof Gtk.MenuButton)) {
+        return host;
+    }
+
+    const popover = host.getPopover();
+
+    return popover instanceof Gtk.PopoverMenu ? popover : null;
+};
+
+const linkedMenuModels = (model: Gio.MenuModel, index: number): Gio.MenuModel[] =>
+    MENU_LINKS.flatMap((link) => model.getItemLink(index, link) ?? []);
+
+const itemRange = (position: number, count: number): number[] =>
+    Array.from({ length: count }, (_, offset) => position + offset);
+
+const hasCustomItem = (model: Gio.MenuModel, position: number, count: number): boolean =>
+    itemRange(position, count).some(
+        (index) =>
+            model.getItemAttributeValue(index, MENU_ITEM_ATTRIBUTES.custom, null) !== null ||
+            linkedMenuModels(model, index).some((linked) => hasCustomItem(linked, 0, linked.getNItems())),
+    );
+
+const disconnectAll = (state: CustomChildren): void => {
+    for (const [object, handlerId] of state.connections.splice(0)) {
+        object.disconnect(handlerId);
+    }
+
+    state.models.clear();
+};
+
+const watchLinkedModels = (
+    host: CustomChildHost,
+    state: CustomChildren,
+    model: Gio.MenuModel,
+    position: number,
+    count: number,
+): void => {
+    for (const index of itemRange(position, count)) {
+        for (const linked of linkedMenuModels(model, index)) {
+            watchMenuModel(host, state, linked);
+        }
+    }
+};
+
+const watchMenuModel = (host: CustomChildHost, state: CustomChildren, model: Gio.MenuModel): void => {
+    if (state.models.has(model)) {
+        return;
+    }
+
+    state.models.add(model);
+    const handlerId = model.connect("items-changed", (position, _removed, added) => {
+        if (hasCustomItem(model, position, added)) {
+            syncCustomChildren(host, state);
+        } else {
+            watchLinkedModels(host, state, model, position, added);
+        }
+    });
+    state.connections.push([model, handlerId]);
+    watchLinkedModels(host, state, model, 0, model.getNItems());
+};
+
+/**
+ * TODO: GTK 4.22 never prunes its table of custom item slots: removing a `custom` item from a shown model frees
+ * the slot and its ID but leaves both in the table, and the next lookup reads freed memory. The `items-changed`
+ * handlers connected here run before GTK's own, so a change that adds custom items rebuilds the menu with a new
+ * table before GTK applies it. Remove once a GTK release prunes the table and GTKX requires it.
+ * https://gitlab.gnome.org/GNOME/gtk/-/blob/4.22.4/gtk/gtkmenusectionbox.c#L210
+ */
+const syncCustomChildren = (host: CustomChildHost, state: CustomChildren): void => {
+    if (state.isSyncing) {
+        return;
+    }
+
+    state.isSyncing = true;
+
+    try {
+        disconnectAll(state);
+
+        for (const child of state.ids.keys()) {
+            child.unparent();
+        }
+
+        rebuildCustomChildMenu(host, state);
+    } finally {
+        state.isSyncing = false;
+    }
+};
+
+const rebuildCustomChildMenu = (host: CustomChildHost, state: CustomChildren): void => {
+    const menu = customChildMenu(host);
+    const model = menu?.getMenuModel() ?? null;
+    const onReplaced = () => {
+        if (customChildMenu(host) !== menu || menu?.getMenuModel() !== model) {
+            syncCustomChildren(host, state);
+        }
+    };
+
+    state.connections.push([
+        host,
+        host instanceof Gtk.MenuButton
+            ? host.connect("notify::popover", onReplaced)
+            : host.connect("notify::menu-model", onReplaced),
+    ]);
+
+    if (menu === null) {
+        return;
+    }
+
+    if (menu !== host) {
+        state.connections.push([menu, menu.connect("notify::menu-model", onReplaced)]);
+    }
+
+    if (model === null) {
+        return;
+    }
+
+    applyWrite("menuModel", () => {
+        menu.setMenuModel(null);
+        watchMenuModel(host, state, model);
+        menu.setMenuModel(model);
+    });
+
+    for (const [child, id] of state.ids) {
+        menu.addChild(child, id);
+    }
+};
+
+const customChildSlots: ElementBehavior<CustomChildHost> = {
+    attach: (host, child, info) => {
+        const id = customChildId(info.slot);
+
+        if (id === null || !isWidget(child)) {
+            return;
+        }
+
+        const state = customChildren.getOrInsertComputed(host, () => ({
+            ids: new Map(),
+            connections: [],
+            models: new Set(),
+            isSyncing: false,
+        }));
+        state.ids.set(child, id);
+        syncCustomChildren(host, state);
+
+        return true;
+    },
+    detach: (host, child) => {
+        const state = customChildren.get(host);
+
+        if (state === undefined || !isWidget(child)) {
+            return;
+        }
+
+        state.ids.delete(child);
+        child.unparent();
+
+        if (state.ids.size === 0) {
+            disconnectAll(state);
+        }
+    },
+};
+
+const openPopovers: WeakSet<Gtk.Popover> = new WeakSet();
+const waitingPopovers: WeakSet<Gtk.Popover> = new WeakSet();
+
+const showOnceOnScreen = (popover: Gtk.Popover): void => {
+    if (!openPopovers.has(popover) || waitingPopovers.has(popover)) {
+        return;
+    }
+
+    const parent = popover.getParent();
+    const clock = parent?.getMapped() === true ? parent.getFrameClock() : null;
+
+    if (parent === null) {
+        showAfter(popover, popover, "notify::parent");
+    } else if (clock === null) {
+        showAfter(popover, parent, "map");
+    } else if (clock.getFrameCounter() < 0n) {
+        showAfter(popover, clock, "after-paint");
+    } else {
+        applyWrite("visible", () => {
+            popover.setVisible(true);
+        });
+    }
+};
+
+const showAfterCommit = (popover: Gtk.Popover): void => {
+    queueMicrotask(() => {
+        showOnceOnScreen(popover);
+    });
+};
+
+function showAfter(popover: Gtk.Popover, instance: GObject.Object, signal: string): void {
+    waitingPopovers.add(popover);
+    onceSignal(instance, signal, () => {
+        waitingPopovers.delete(popover);
+        showAfterCommit(popover);
+    });
+}
+
+/**
+ * GTK can only show a popover whose parent's window is on screen: a popover shown without a parent crashes, and one
+ * shown before its window has painted a frame never gets placed by the compositor. A popover also closes when its
+ * content outgrows the size it was placed at, so it opens after the commit has applied its content.
+ */
+const popoverVisibility: ElementBehavior<Gtk.Popover> = {
+    update: (popover, prev, next) => {
+        if (next.visible === true && prev.visible !== true) {
+            openPopovers.add(popover);
+            showAfterCommit(popover);
+        } else if (next.visible !== true && prev.visible !== undefined) {
+            openPopovers.delete(popover);
+            applyWrite("visible", () => {
+                popover.setVisible(false);
+            });
+        }
+
+        return ["visible"];
+    },
+};
+
+const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
+    ...forTypes(
+        SINGLE_CHILD_TYPES.filter((type) => type !== "GtkListBoxRow"),
+        {
+            behaviors: [childSetterSlot()],
+        },
+    ),
+    GtkListBoxRow: {
+        behaviors: [childSetterSlot<Gtk.ListBoxRow>(isPlainRow)],
+    },
     ...forTypes(["GtkHeaderBar", "GtkActionBar"], {
         behaviors: [
             methodSlot<Gtk.HeaderBar | Gtk.ActionBar, Gtk.Widget>("start", Gtk.Widget, "packStart", "remove"),
@@ -227,13 +611,34 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
         ],
     }),
     GtkWindow: {
-        behaviors: [childSetterSlot()],
+        behaviors: [
+            childSetterSlot(),
+            holdingOneChild(
+                slot<Gtk.Window, Gtk.Widget>("titlebar", Gtk.Widget, {
+                    attach: (window, titlebar) => {
+                        window.setTitlebar(titlebar);
+                    },
+                    detach: (window, _titlebar, info) => {
+                        if (!info.isParentRemoved) {
+                            window.setTitlebar(info.remaining.at(-1) ?? null);
+                        }
+                    },
+                }),
+            ),
+        ],
     },
     GtkMenuButton: {
         behaviors: [
             setterSlot<Gtk.MenuButton, Gtk.Popover>("children", Gtk.Popover, "setPopover"),
             childSetterSlot<Gtk.MenuButton>(),
+            customChildSlots,
         ],
+    },
+    GtkPopoverMenu: {
+        behaviors: [customChildSlots],
+    },
+    GtkPopoverMenuBar: {
+        behaviors: [customChildSlots],
     },
     GtkCheckButton: {
         behaviors: [checkButtonUnderline, childSetterSlot<Gtk.CheckButton>()],
@@ -265,12 +670,19 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
             setterSlot<Gtk.Widget, Gtk.LayoutManager>("layoutManager", Gtk.LayoutManager, "setLayoutManager"),
             slot<Gtk.Widget, Gio.ActionGroup>("actionGroups", Gio.ActionGroup, {
                 attach: (widget, group, info) => {
-                    widget.insertActionGroup((info.props.prefix as string | null) ?? "", group);
+                    widget.insertActionGroup((info.props[ACTION_GROUP_PREFIX_PROP] as string | null) ?? "", group);
                 },
                 detach: (widget, _group, info) => {
-                    widget.insertActionGroup((info.props.prefix as string | null) ?? "", null);
+                    widget.insertActionGroup((info.props[ACTION_GROUP_PREFIX_PROP] as string | null) ?? "", null);
                 },
             }),
+        ],
+    },
+    GActionGroup: {
+        behaviors: [
+            {
+                update: () => [ACTION_GROUP_PREFIX_PROP],
+            },
         ],
     },
     GtkBox: {
@@ -366,6 +778,15 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
                 attach: (menu, item, info) => {
                     menu.insertItem(info.index, item);
                 },
+                reorder: (menu, _item, info) => {
+                    menu.removeAll();
+
+                    for (const item of info.children) {
+                        if (item instanceof Gio.MenuItem) {
+                            menu.appendItem(item);
+                        }
+                    }
+                },
                 detach: (menu, _item, info) => {
                     menu.remove(info.index);
                 },
@@ -384,6 +805,7 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
                     item.setDetailedAction(action);
                 }
             }),
+            ...menuItemAttributes,
             setterSlot<Gio.MenuItem, Gio.MenuModel>("submenu", Gio.MenuModel, "setSubmenu"),
             setterSlot<Gio.MenuItem, Gio.MenuModel>("section", Gio.MenuModel, "setSection"),
         ],
@@ -392,7 +814,11 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
         behaviors: [
             slot<Gtk.ColumnView, Gtk.ColumnViewColumn>("children", Gtk.ColumnViewColumn, {
                 attach: (view, column, info) => {
+                    view.appendColumn(column);
                     view.insertColumn(info.index, column);
+                },
+                reorder: (view, _column, info) => {
+                    orderColumns(view, info.children);
                 },
                 detach: (view, column) => {
                     view.removeColumn(column);
@@ -695,10 +1121,7 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     AdwTabView: {
         behaviors: [
             slot<Adw.TabView, Gtk.Widget>("children", Gtk.Widget, {
-                attach: (view, child, info) =>
-                    info.props.parent instanceof Adw.TabPage
-                        ? view.addPage(child, info.props.parent)
-                        : view.insert(child, tabInsertionPosition(view, info)),
+                attach: attachTabPage,
                 reorder: (view, _child, info) => {
                     reorderTabPages(view, info.children);
 
@@ -708,8 +1131,7 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
                     const owner = tabViewParent(child);
 
                     if (info.adopted instanceof Adw.TabPage && owner !== null) {
-                        owner.setPagePinned(info.adopted, false);
-                        owner.closePage(info.adopted);
+                        closeTabPage(owner, info.adopted, info.props);
                     }
                 },
                 resolve: (_view, child) => tabViewParent(child)?.getPage(child) ?? null,
@@ -751,22 +1173,71 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     AdwAlertDialog: {
         behaviors: [
             alertDialogExtraChild,
-            list<Adw.AlertDialog, AlertDialogResponse>("responses", {
+            keyedList<Adw.AlertDialog, AlertDialogResponse>("responses", {
+                key: (response) => response.id,
                 add: (dialog, response) => {
                     dialog.addResponse(response.id, response.label);
-
-                    if (response.appearance !== undefined) {
-                        dialog.setResponseAppearance(response.id, response.appearance);
-                    }
-
-                    if (response.isEnabled !== undefined) {
-                        dialog.setResponseEnabled(response.id, response.isEnabled);
-                    }
+                    applyResponseState(dialog, response);
+                },
+                update: (dialog, response) => {
+                    dialog.setResponseLabel(response.id, response.label);
+                    applyResponseState(dialog, response);
                 },
                 remove: (dialog, response) => {
                     dialog.removeResponse(response.id);
                 },
             }),
+        ],
+    },
+};
+
+const warnStaleOpenProp = <P extends Gtk.Widget>(
+    prop: string,
+    signal: string,
+    isOpen: (object: P) => boolean,
+    advice: string,
+): ElementBehavior<P> => {
+    const rendered: WeakMap<P, Props> = new WeakMap();
+    const check = (object: P): string | null =>
+        rendered.get(object)?.[prop] === true && !isOpen(object) && object.getParent() !== null
+            ? `${describeElement(object, {})} was dismissed by the user while the app still passes ${prop}={true}. ${advice}`
+            : null;
+
+    return {
+        update: (object, _prev, next) => {
+            if (isDevelopment()) {
+                if (!rendered.has(object)) {
+                    watchDismissal(object, signal, `${typeNameOf(object)}:${prop}`, () => check(object));
+                }
+
+                rendered.set(object, next);
+            }
+
+            return undefined;
+        },
+    };
+};
+
+const DISMISSAL_BEHAVIORS: Record<string, ElementConfig<never>> = {
+    GtkPopover: {
+        behaviors: [
+            popoverVisibility,
+            warnStaleOpenProp<Gtk.Popover>(
+                "visible",
+                "closed",
+                (popover) => popover.getVisible(),
+                "Set it to false from onClosed.",
+            ),
+        ],
+    },
+    GtkMenuButton: {
+        behaviors: [
+            warnStaleOpenProp<Gtk.MenuButton>(
+                "active",
+                "notify::active",
+                (button) => button.getActive(),
+                "Set it to false from onNotifyActive.",
+            ),
         ],
     },
 };
@@ -796,3 +1267,4 @@ function getSlotId(name: string): string | null {
 
 registerElements(BUILTIN_ELEMENTS);
 registerElements(BUILTIN_BEHAVIORS);
+registerElements(DISMISSAL_BEHAVIORS);

@@ -1,8 +1,9 @@
 import type { ESTree, ParseResult, ParserOptions } from "vite";
 import { sortStringsBy } from "@gtkx/utils";
-import { existsSync, globSync, readFileSync } from "node:fs";
-import { extname, join } from "node:path";
+import { existsSync, globSync, readFileSync, realpathSync } from "node:fs";
+import { extname, join, relative, resolve } from "node:path";
 import { parseSync, Visitor } from "vite";
+import { applicationSourcePackages } from "./linked-packages.js";
 
 type SourceImport = {
     importer: string;
@@ -51,6 +52,28 @@ const discoverSourceFiles = (dir: string): string[] =>
             .filter((path) => sourceLanguage(path) !== undefined),
         (path) => path,
     );
+
+/**
+ * Lists the roots of the workspace packages the application at `root` uses from source (see
+ * {@link applicationSourcePackages}), each spelled from `root` so paths relative to the application read as they
+ * do in the workspace.
+ */
+const sourcePackageRoots = (root: string): string[] => {
+    const project = realpathSync(root);
+
+    return applicationSourcePackages(project).map((directory) => resolve(root, relative(project, directory)));
+};
+
+/**
+ * Lists the source directories of the application at `root`: its own, then those of the workspace packages it
+ * uses from source.
+ */
+const projectSourceDirs = (root: string, packages: readonly string[] = sourcePackageRoots(root)): string[] => [
+    ...new Set([root, ...packages].map(sourceDirFor)),
+];
+
+const discoverSourceFilesIn = (dirs: readonly string[]): string[] =>
+    sortStringsBy([...new Set(dirs.flatMap(discoverSourceFiles))], (path) => path);
 
 const staticImportSources = (module: ParsedModule): string[] => [
     ...module.staticImports.map((statement) => statement.moduleRequest.value),
@@ -165,13 +188,15 @@ const sortSourceImports = (imports: SourceImport[]): SourceImport[] => sortStrin
 
 export {
     discoverSourceFiles,
+    discoverSourceFilesIn,
     importSourcesIn,
     importsIn,
     parseRuntimeImportsIn,
+    projectSourceDirs,
     readSource,
     SOURCE_ID_RE,
     sortSourceImports,
-    sourceDirFor,
     sourceLanguage,
+    sourcePackageRoots,
     type SourceImport,
 };

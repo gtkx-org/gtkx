@@ -20,7 +20,9 @@ test("absent type registration functions resolve to the invalid GType", () => {
 test("an absent symbol does not hide library-loading failures", () => {
     expect(resolveType(library, "gtkx_unavailable_get_type")).toBe(TYPE_INVALID);
 
-    expect(() => resolveType("libgtkx-missing.so", "gtkx_unavailable_get_type")).toThrow("Failed to load library");
+    expect(() => resolveType("libgtkx-missing.so", "gtkx_unavailable_get_type")).toThrow(
+        /Failed to load library 'libgtkx-missing\.so'.*cannot open shared object file/,
+    );
     expect(() => resolveType("libgtkx-missing.so", "gtkx_unavailable_get_type")).toThrow("Failed to load library");
 });
 

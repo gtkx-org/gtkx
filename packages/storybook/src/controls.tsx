@@ -4,8 +4,9 @@ import { markupEscapeText } from "@gtkx/gi/glib";
 import { AdwActionRow, AdwEntryRow, AdwPreferencesGroup, AdwSpinRow, AdwSwitchRow } from "@gtkx/jsx/adw";
 import { GtkAdjustment } from "@gtkx/jsx/gtk";
 import type { Args, ArgTypes } from "./types.js";
+import { isConditionalArgIncluded } from "./upstream.js";
 
-type ControlsProps = { argTypes: ArgTypes; args: Args; onChange: (update: Args) => void };
+type ControlsProps = { argTypes: ArgTypes; args: Args; globals: Args; onChange: (update: Args) => void };
 
 const NO_SELECTION_ID = "no-selection";
 const NO_SELECTION_LABEL = "Choose option...";
@@ -29,8 +30,8 @@ const isWithinBoundsOrAbsent = (value: unknown, min: number, max: number): boole
 
 const controlTitle = (name: unknown, argument: string): string => (typeof name === "string" ? name : argument);
 
-const numberDigits = (step: number): number => {
-    const [coefficient = "", exponent = "0"] = String(step).split("e", 2);
+const numberDigits = (value: number): number => {
+    const [coefficient = "", exponent = "0"] = String(value).split("e", 2);
     const fraction = coefficient.split(".", 2)[1]?.length ?? 0;
     const digits = Math.max(0, fraction - Number(exponent));
 
@@ -75,7 +76,7 @@ const NumberControl = ({
             title={markupEscapeText(title, -1)}
             sensitive={!isDisabled}
             value={currentValue}
-            digits={numberDigits(step)}
+            digits={Math.max(numberDigits(step), numberDigits(currentValue))}
             numeric
             widthChars={8}
             adjustment={
@@ -197,13 +198,18 @@ const Control = (props: ControlProps): ReactNode => {
     }
 };
 
-const Controls = ({ argTypes, args, onChange }: ControlsProps): ReactNode => (
+const Controls = ({ argTypes, args, globals, onChange }: ControlsProps): ReactNode => (
     <AdwPreferencesGroup title="Controls">
         {Object.entries(argTypes).map(([argument, annotation]) => {
             const control: unknown = annotation?.control;
             const table = isObject(annotation?.table) ? annotation.table : {};
 
-            if (control === undefined || control === false || table.disable === true) {
+            if (
+                control === undefined ||
+                control === false ||
+                table.disable === true ||
+                !isConditionalArgIncluded(annotation ?? {}, args, globals)
+            ) {
                 return null;
             }
 

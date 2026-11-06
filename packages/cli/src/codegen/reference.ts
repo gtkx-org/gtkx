@@ -1,10 +1,10 @@
 import type { Config } from "@gtkx/config";
 import { mergeOmittedProps } from "@gtkx/codegen";
-import { readBuiltinElementsForDocs, writeDocs } from "@gtkx/codegen/internal";
+import { readBuiltinElementsForDocs, removeDocs, writeDocs } from "@gtkx/codegen/internal";
 import {
-    isAgentReferenceEnabled,
     resolveAcceptedChildTypes,
     resolveElementProps,
+    resolveLazyElements,
     resolveOmittedProps,
 } from "@gtkx/config/internal";
 import { join } from "node:path";
@@ -15,6 +15,7 @@ type WriteReferenceOptions = {
     girPath: string[];
     libraries: string[];
     declarationDir: string;
+    isEnabled: boolean;
     isForced?: boolean;
 };
 
@@ -30,7 +31,13 @@ const SKIPPED: ReferenceResult = { isRegenerated: false, elements: 0, namespaces
 const writeReference = async (options: WriteReferenceOptions): Promise<ReferenceResult> => {
     const { root, config, girPath, libraries } = options;
 
-    if (!isAgentReferenceEnabled(config) || girPath.length === 0 || libraries.length === 0) {
+    if (!options.isEnabled) {
+        removeDocs(join(root, REFERENCE_PATH));
+
+        return SKIPPED;
+    }
+
+    if (girPath.length === 0 || libraries.length === 0) {
         return SKIPPED;
     }
 
@@ -44,9 +51,10 @@ const writeReference = async (options: WriteReferenceOptions): Promise<Reference
         declarationDir: options.declarationDir,
         basePath: REFERENCE_PATH,
         linkStyle: "file",
-        props: { ...builtin.props, ...resolveElementProps(config.elements) },
+        props: { ...builtin.props, ...resolveElementProps(config.elements, root) },
         acceptedChildTypes: { ...builtin.acceptedChildTypes, ...resolveAcceptedChildTypes(config.elements) },
         omittedProps: mergeOmittedProps(builtin.omittedProps, resolveOmittedProps(config.elements)),
+        lazyElements: [...builtin.lazyElements, ...resolveLazyElements(config.elements)],
         isForced: options.isForced === true,
     });
 

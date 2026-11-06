@@ -7,7 +7,7 @@ import { omittedTypeRef, prerequisiteConflicts } from "../../analysis/interface-
 import { isEmittableProperty } from "../../analysis/property-admission.js";
 import { resolveClassOrInterface, resolveInterfaces } from "../../gir/ancestry.js";
 import { isEmittableEntity } from "../../gir/emittable.js";
-import { declaredTypeNames, type GirNamespace } from "../../gir/namespace.js";
+import { declaredTypeNames, type GirNamespace, namespaceDirectory } from "../../gir/namespace.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { renderBlock, renderBraced, renderBracedOrEmpty } from "../../writer/emit.js";
 import {
@@ -28,6 +28,7 @@ import { declareFoldedClass, localClassName } from "./folded.js";
 import { gtypeMemberDeclaration, renderSourceGtype } from "./gtype-binding.js";
 import { methodExportName } from "./method.js";
 import { nativeIdentityMember } from "./native-instance.js";
+import { interfaceExtension } from "./overrides.js";
 import { renderInterfacePropertyDeclarations } from "./properties.js";
 import {
     type PropertyAccessorArgs,
@@ -330,7 +331,9 @@ const implTypeNote = (className: string, implName: string): string =>
         "",
         "Every slot is optional: an unfilled one keeps whatever the interface installs by default, and a",
         "GIR update can add one. Declaring a slot pins its signature; declaring it as a class field rather",
-        "than a method satisfies this type but never reaches the vtable.",
+        "than a method satisfies this type but never reaches the vtable. A class that fills none of the",
+        `slots, such as one that only overrides the interface's properties, leaves out \`implements ${implName}\`:`,
+        "TypeScript rejects a class that shares no member with a type whose members are all optional.",
     ].join("\n");
 
 const implPrerequisiteRefs = (context: ModuleContext, iface: GirClass): string[] => {
@@ -483,8 +486,22 @@ const renderInterfaceMaker = (
     context.addRuntimeTypeImport("Mixin");
     const members = renderInterfaceInstanceMembers(context, iface, callables);
     const classExpression = renderBracedOrEmpty("class extends Base", members.join("\n\n"));
+    const layer = renderInterfaceExtension(context, className, classExpression);
 
-    return `${getDoc(iface)}export const ${makerName(className)}: Mixin = (Base) =>\n${classExpression};`;
+    return `${getDoc(iface)}export const ${makerName(className)}: Mixin = (Base) =>\n${layer};`;
+};
+
+const renderInterfaceExtension = (context: ModuleContext, className: string, classExpression: string): string => {
+    const extension = interfaceExtension(namespaceDirectory(context.namespace), className);
+
+    if (extension === undefined) {
+        return classExpression;
+    }
+
+    const local = `Override${context.namespace.name}${extension.name.charAt(0).toUpperCase()}${extension.name.slice(1)}`;
+    context.module.imports.addNamed(extension.module, extension.name, false, local);
+
+    return `${local}(${classExpression})`;
 };
 
 const renderInterfaceInstanceMembers = (context: ModuleContext, iface: GirClass, callables: Callables): string[] => [

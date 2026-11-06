@@ -1,7 +1,12 @@
 import { isPathInside } from "@gtkx/utils";
+import { type GetTextTranslationRecord, po } from "gettext-parser";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, statSync } from "node:fs";
+import { findPackageJSON } from "node:module";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { pathToFileURL } from "node:url";
 import { runCliTool } from "../internal/run-cli-tool.js";
+import { projectSourceDirs, sourcePackageRoots } from "../internal/source-imports.js";
+import { isUnchangedCatalog } from "./catalog-template.js";
 
 type Catalog = {
     locale: string;
@@ -13,9 +18,12 @@ type CatalogProject = {
     domain: string;
     linguasPath: string;
     locales: string[];
+    packages: string[];
     poDir: string;
     poFiles: string[];
     root: string;
+    sourceDirs: string[];
+    template: string;
 };
 
 type PreparedCatalog = {
@@ -36,6 +44,9 @@ const LINGUAS_FILENAME = "LINGUAS";
 const LOCALE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.@+-]*$/;
 const DOMAIN_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const MODE_MASK = 0o7777;
+const PLURAL_FORMS_PLACEHOLDER = "nplurals=INTEGER; plural=EXPRESSION;";
+const STRICT_CHECKS = ["--check"];
+const CHECKS_WITHOUT_PLURAL_RULE = ["--check-format", "--check-domain"];
 
 const parseLocales = (linguasPath: string): string[] => {
     const source = readFileSync(linguasPath, "utf8");
@@ -67,11 +78,19 @@ const requireFile = (path: string): void => {
 const requiresCatalogInitialization = (project: CatalogProject): boolean =>
     project.catalogs.some((catalog) => !existsSync(catalog.path));
 
+const hasI18nRuntime = (root: string): boolean => {
+    try {
+        return findPackageJSON("@gtkx/i18n", pathToFileURL(join(root, "package.json"))) !== undefined;
+    } catch {
+        return false;
+    }
+};
+
 const resolveCatalogProject = (root: string, domain: string): CatalogProject | null => {
     const projectRoot = resolve(root);
     const poDir = join(projectRoot, PO_DIRNAME);
 
-    if (!existsSync(poDir)) {
+    if (!existsSync(poDir) || !hasI18nRuntime(projectRoot)) {
         return null;
     }
 
@@ -87,16 +106,35 @@ const resolveCatalogProject = (root: string, domain: string): CatalogProject | n
     requireFile(linguasPath);
     const locales = parseLocales(linguasPath);
     const catalogs = locales.map((locale) => ({ locale, path: join(poDir, `${locale}.po`) }));
+    const packages = sourcePackageRoots(projectRoot);
 
     return {
         catalogs,
         domain,
         linguasPath,
         locales,
+        packages,
         poDir,
         poFiles: catalogs.map((catalog) => catalog.path),
         root: projectRoot,
+        sourceDirs: projectSourceDirs(projectRoot, packages),
+        template: join(poDir, `${domain}.pot`),
     };
+};
+
+const hasTranslatedPlural = (translations: GetTextTranslationRecord): boolean =>
+    Object.values(translations).some((context) =>
+        Object.values(context).some(
+            (message) => message.msgid_plural !== undefined && message.msgstr.some((value) => value.length > 0),
+        ),
+    );
+
+const catalogChecks = (path: string): string[] => {
+    const catalog = po.parse(readFileSync(path));
+    const isAwaitingPluralRule =
+        catalog.headers["Plural-Forms"] === PLURAL_FORMS_PLACEHOLDER && !hasTranslatedPlural(catalog.translations);
+
+    return isAwaitingPluralRule ? CHECKS_WITHOUT_PLURAL_RULE : STRICT_CHECKS;
 };
 
 const compileCatalogs = (project: CatalogProject, outputDir: string): string[] => {
@@ -112,7 +150,7 @@ const compileCatalogs = (project: CatalogProject, outputDir: string): string[] =
 
         runCliTool({
             tool: "msgfmt",
-            args: ["--check", "--output-file", output, catalog.path],
+            args: [...catalogChecks(catalog.path), "--output-file", output, catalog.path],
             target: catalog.path,
         });
 
@@ -140,7 +178,7 @@ const mergeCatalog = (catalog: Catalog, template: string, output: string): void 
 
     runCliTool({
         tool: "msgmerge",
-        args: ["--quiet", "--no-wrap", `--output-file=${output}`, catalog.path, template],
+        args: ["--quiet", "--no-wrap", "--force-po", `--output-file=${output}`, catalog.path, template],
         target: catalog.path,
     });
 
@@ -161,7 +199,7 @@ const prepareCatalog = (catalog: Catalog, index: number, template: string, stagi
 
     return {
         content,
-        isChanged: !isExisting || !content.equals(readFileSync(catalog.path)),
+        isChanged: !isExisting || !isUnchangedCatalog(readFileSync(catalog.path, "latin1"), content.toString("latin1")),
         output,
         target: catalog.path,
     };
@@ -178,12 +216,13 @@ const synchronizeCatalogs = (project: CatalogProject): WrittenCatalog[] => {
         return [];
     }
 
-    const template = join(project.poDir, `${project.domain}.pot`);
-    requireFile(template);
+    requireFile(project.template);
     const stagingDir = mkdtempSync(join(project.poDir, ".gtkx-catalog-"));
 
     try {
-        const merged = project.catalogs.map((catalog, index) => prepareCatalog(catalog, index, template, stagingDir));
+        const merged = project.catalogs.map((catalog, index) =>
+            prepareCatalog(catalog, index, project.template, stagingDir),
+        );
 
         return merged.filter((catalog) => catalog.isChanged).map((catalog) => replaceCatalog(catalog));
     } finally {

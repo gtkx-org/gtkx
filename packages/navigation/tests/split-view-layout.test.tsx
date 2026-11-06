@@ -17,6 +17,7 @@ describe("split view - layout", () => {
         expectVisible("Nothing Selected");
         expect(splitView()).toHaveObjectProperty("collapsed", false);
         expect(splitView()).toHaveObjectProperty("show-content", false);
+        expect(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Close" })).toBeVisible();
     });
 
     it("swaps the placeholder for the content route and keeps the sidebar", async () => {

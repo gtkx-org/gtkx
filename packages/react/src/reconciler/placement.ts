@@ -1,9 +1,11 @@
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { drain, indexBeforeOrEnd } from "@gtkx/utils";
-import type { DetachInfo, ElementBehavior, PlaceInfo } from "./registry.js";
-import { applyAdoptedProps, discardAccessible, markDependentPropsDirty } from "./apply-props.js";
-import { typeInfoFor } from "./metadata.js";
+import { getClassType } from "@gtkx/runtime";
+import { createLogger, drain, indexBeforeOrEnd, type Logger } from "@gtkx/utils";
+import type { DetachInfo, ElementBehavior, PlaceInfo, Props } from "./registry.js";
+import { applyAdoptedProps, discardAccessible, placeDependingProps, propChangeError } from "./apply-props.js";
+import { claimingSlot, holdsOneChild, slotAccepting, slotAcceptsType } from "./behaviors.js";
+import { isKnownProp, propertiesAccepting, typeInfoFor } from "./metadata.js";
 import {
     DEFAULT_SLOT,
     createElementNode,
@@ -16,12 +18,15 @@ import {
     type PlaceableNode,
     type PlacedChild,
 } from "./node.js";
-import { applyMutation, applyWrite, disconnectAllHandlers } from "./signals.js";
+import { applyPlacement, applyWrite, disconnectAllHandlers } from "./signals.js";
 import { markTextDirty } from "./text.js";
 
 type AttachContext = { parent: ElementNode; entry: PlacedChild; index: number; sibling: GObject.Object | null };
 
 const pendingAdoptions: Set<LazyNode> = new Set();
+const constructedSlots: WeakMap<ElementNode, Props> = new WeakMap();
+const pendingSlotChecks: Set<ElementNode> = new Set();
+const log: Logger = createLogger("react");
 
 const createEntry = (slot: string, node: PlaceableNode): PlacedChild | null => {
     const leaf = leafElement(node);
@@ -87,7 +92,7 @@ const replaceAdopted = (node: LazyNode, object: GObject.Object | null): void => 
     }
 
     if (node.propertyHost !== null) {
-        teardownPlacements(node.propertyHost);
+        teardownPlacements(node.propertyHost, false);
         discardAccessible(node.propertyHost);
     }
 
@@ -117,6 +122,67 @@ const flushAdoptions = (): void => {
     });
 };
 
+const isShownWidget = (entry: PlacedChild): boolean => entry.object instanceof Gtk.Widget && entry.object.getVisible();
+
+const singleChildGroups = (entries: readonly PlacedChild[]): PlacedChild[][] => {
+    const groups: Map<ElementBehavior | null, PlacedChild[]> = new Map();
+
+    for (const entry of entries) {
+        if (entry.behavior === null || holdsOneChild(entry.behavior)) {
+            groups.getOrInsertComputed(entry.behavior, () => []).push(entry);
+        }
+    }
+
+    return [...groups.values()];
+};
+
+const WRAP_ADVICE = "Wrap them in a container such as <GtkBox>";
+
+const hiddenChildAdvice = (parent: ElementNode, slot: string, group: readonly PlacedChild[]): string => {
+    const behavior = group[0]?.behavior ?? null;
+    const wraps = behavior === null || slotAcceptsType(behavior, getClassType(Gtk.Box));
+    const props = [
+        ...new Set(
+            group.flatMap((entry) =>
+                slotsAccepting(parent, entry.object)
+                    .filter((name) => name !== slot)
+                    .map((name) => `${name}={<${entry.typeName} />}`),
+            ),
+        ),
+    ];
+
+    if (props.length === 0) {
+        return `${WRAP_ADVICE}, or pass the others through the props that take them.`;
+    }
+
+    const passAdvice = `the props that take them: ${props.join(" or ")}.`;
+
+    return wraps ? `${WRAP_ADVICE}, or pass the others through ${passAdvice}` : `Pass the others through ${passAdvice}`;
+};
+
+const warnHiddenChildren = (parent: ElementNode, slot: string, entries: readonly PlacedChild[]): void => {
+    for (const group of singleChildGroups(entries)) {
+        const shown = group.filter((entry) => isShownWidget(entry));
+        const last = shown.at(-1);
+
+        if (shown.length > 1 && last !== undefined) {
+            const place = slot === DEFAULT_SLOT ? "as its child" : `in ${slot}`;
+            log.warn(
+                `<${parent.typeName}> shows one widget ${place} but was given ${String(shown.length)} visible ones; ` +
+                    `only the last, <${last.typeName}>, is shown. ${hiddenChildAdvice(parent, slot, shown.slice(0, -1))}`,
+            );
+        }
+    }
+};
+
+const flushSlotChecks = (): void => {
+    drain(pendingSlotChecks, (parent) => {
+        for (const [slot, entries] of parent.placements) {
+            warnHiddenChildren(parent, slot, entries);
+        }
+    });
+};
+
 const wireBufferView = (node: PlaceableNode, parent: ElementNode): void => {
     if (!(node.kind === ELEMENT_KIND && node.contentKind === "buffer" && parent.object instanceof Gtk.TextView)) {
         return;
@@ -127,14 +193,39 @@ const wireBufferView = (node: PlaceableNode, parent: ElementNode): void => {
 };
 
 const writeSlot = (parent: ElementNode, entry: PlacedChild, value: GObject.Object | null): void => {
-    applyWrite(entry.slot, () => {
-        Reflect.set(parent.object, entry.slot, value);
-        markDependentPropsDirty(parent);
+    placeDependingProps(parent, () => {
+        applyWrite(entry.slot, () => {
+            Reflect.set(parent.object, entry.slot, value);
+        });
     });
 };
 
+/**
+ * Records the objects of routed prop children that `parent` received at construction, keyed by
+ * prop, so placing those children into their construct-only slots afterwards writes nothing.
+ */
+const recordConstructedSlots = (parent: ElementNode, objects: Props): void => {
+    if (Object.keys(objects).length > 0) {
+        constructedSlots.set(parent, objects);
+    }
+};
+
+const isConstructOnlySlot = (parent: ElementNode, slot: string): boolean =>
+    typeInfoFor(parent.typeName).constructOnly.has(slot);
+
+const assertConstructedWith = (parent: ElementNode, entry: PlacedChild): void => {
+    if (constructedSlots.get(parent)?.[entry.slot] !== entry.object) {
+        throw propChangeError(parent.typeName, entry.slot);
+    }
+};
+
 const setObjectSlot = (parent: ElementNode, entry: PlacedChild): void => {
-    writeSlot(parent, entry, entry.object);
+    if (isConstructOnlySlot(parent, entry.slot)) {
+        assertConstructedWith(parent, entry);
+    } else {
+        writeSlot(parent, entry, entry.object);
+    }
+
     wireBufferView(entry.node, parent);
     entry.behavior = null;
 };
@@ -159,58 +250,116 @@ const didAttach = (ctx: AttachContext, behavior: ElementBehavior): boolean => {
     return true;
 };
 
-const unclaimedChildError = (parentTypeName: string, childTypeName: string): Error =>
-    new Error(
-        `<${childTypeName}> cannot be a child of <${parentTypeName}>. Pass it to the ` +
-            `<${parentTypeName}> prop that takes it, if there is one, portal it to rootElement with createPortal ` +
-            `if it does not belong inside <${parentTypeName}>, or register an attach behavior for ` +
-            `<${parentTypeName}> with defineElements from "@gtkx/react/config" if it belongs among its children.`,
+const slotsAccepting = (parent: ElementNode, child: GObject.Object): string[] => {
+    const behaviorSlots = typeInfoFor(parent.typeName).behaviors.flatMap(
+        (behavior) => slotAccepting(behavior, parent.object, child) ?? [],
     );
+    const slots = new Set([...behaviorSlots, ...propertiesAccepting(parent.object, child)]);
+
+    return [...slots].filter((name) => name !== DEFAULT_SLOT);
+};
+
+const unknownSlotReason = (parent: ElementNode, slot: string): string =>
+    typeof Reflect.get(parent.object, slot) === "function"
+        ? `it is a method of <${parent.typeName}>, not a prop.`
+        : `<${parent.typeName}> has no prop ${slot}.`;
+
+const unclaimedChildError = (parent: ElementNode, entry: PlacedChild): Error => {
+    const parentTag = `<${parent.typeName}>`;
+    const childTag = `<${entry.typeName}>`;
+    const slots = slotsAccepting(parent, entry.object);
+    const placement =
+        entry.slot === DEFAULT_SLOT
+            ? `${childTag} cannot be a child of ${parentTag}.`
+            : `${childTag} cannot be passed as ${entry.slot}: ${unknownSlotReason(parent, entry.slot)}`;
+
+    if (slots.length > 0) {
+        const props = slots.map((name) => `${name}={<${entry.typeName} />}`).join(" or ");
+
+        return new Error(`${placement} Pass it as a prop instead: ${props}.`);
+    }
+
+    return new Error(
+        `${placement} Pass it to the ` +
+            `${parentTag} prop that takes it, if there is one, portal it to rootElement with createPortal ` +
+            `if it does not belong inside ${parentTag}, or register an attach behavior for ` +
+            `${parentTag} with defineElements from "@gtkx/react/config" if it belongs among its children.`,
+    );
+};
 
 const runAttach = (parent: ElementNode, entry: PlacedChild, index: number, sibling: GObject.Object | null): void => {
     const ctx: AttachContext = { parent, entry, index, sibling };
+    const behaviors = typeInfoFor(parent.typeName).behaviors;
 
-    for (const behavior of typeInfoFor(parent.typeName).behaviors) {
-        if (didAttach(ctx, behavior)) {
+    for (const behavior of behaviors) {
+        const claiming =
+            slotAccepting(behavior, parent.object, entry.object) === entry.slot
+                ? claimingSlot(behaviors, entry.slot, parent.object, entry.object)
+                : undefined;
+
+        if (didAttach(ctx, claiming ?? behavior)) {
             return;
         }
     }
 
-    if (entry.slot === DEFAULT_SLOT) {
-        throw unclaimedChildError(parent.typeName, entry.typeName);
+    if (entry.slot === DEFAULT_SLOT || !isKnownProp(typeInfoFor(parent.typeName), parent.object, entry.slot)) {
+        throw unclaimedChildError(parent, entry);
     }
 
     setObjectSlot(parent, entry);
 };
 
 const attachEntry = (parent: ElementNode, entry: PlacedChild, index: number, sibling: GObject.Object | null): void => {
-    applyMutation(() => {
+    applyPlacement(parent, () => {
         runAttach(parent, entry, index, sibling);
     });
 };
 
-const detachInfo = (entry: PlacedChild, index: number): DetachInfo => ({
+const detachInfo = (
+    entry: PlacedChild,
+    index: number,
+    remaining: readonly PlacedChild[],
+    isParentRemoved: boolean,
+): DetachInfo => ({
     index,
     slot: entry.slot,
     adopted: entry.adopted,
     props: entry.node.props,
+    remaining: remaining.filter((other) => other.behavior === entry.behavior).map((other) => other.object),
+    isParentRemoved,
 });
 
-const runDetach = (parent: ElementNode, entry: PlacedChild, index: number): void => {
+const runDetach = (parent: ElementNode, entry: PlacedChild, info: DetachInfo): void => {
     const behavior = entry.behavior;
 
-    if (behavior === null) {
-        writeSlot(parent, entry, null);
+    if (behavior === null && isConstructOnlySlot(parent, entry.slot)) {
+        if (!info.isParentRemoved) {
+            throw propChangeError(parent.typeName, entry.slot);
+        }
 
         return;
     }
 
-    behavior.detach?.(parent.object, entry.object, detachInfo(entry, index));
+    if (behavior === null) {
+        writeSlot(parent, entry, info.remaining.at(-1) ?? null);
+
+        return;
+    }
+
+    behavior.detach?.(parent.object, entry.object, info);
 };
 
-const detachEntry = (parent: ElementNode, entry: PlacedChild, index: number): void => {
-    applyMutation(() => {
-        runDetach(parent, entry, index);
+const detachEntry = (
+    parent: ElementNode,
+    entry: PlacedChild,
+    index: number,
+    remaining: readonly PlacedChild[],
+    isParentRemoved: boolean,
+): void => {
+    const info = detachInfo(entry, index, remaining, isParentRemoved);
+
+    applyPlacement(parent, () => {
+        runDetach(parent, entry, info);
     });
 
     if (entry.node.kind === LAZY_KIND) {
@@ -220,8 +369,8 @@ const detachEntry = (parent: ElementNode, entry: PlacedChild, index: number): vo
 };
 
 const rebuild = (parent: ElementNode, entries: PlacedChild[]): void => {
-    for (const entry of entries) {
-        detachEntry(parent, entry, 0);
+    for (const [index, entry] of entries.entries()) {
+        detachEntry(parent, entry, 0, entries.slice(index + 1), false);
     }
 
     for (const [index, entry] of entries.entries()) {
@@ -253,7 +402,7 @@ const moveEntry = (parent: ElementNode, entry: PlacedChild, entries: PlacedChild
         return;
     }
 
-    const claim = applyMutation(() =>
+    const claim = applyPlacement(parent, () =>
         reorder(parent.object, entry.object, placeInfo(parent, entry, index, siblingAt(entries, index))),
     );
     adoptedFrom(parent, entry, behavior, claim);
@@ -296,6 +445,10 @@ const placeChild = (parent: ElementNode, slot: string, node: PlaceableNode, befo
     } else {
         placeNew(parent, entry, entries, index);
     }
+
+    if (process.env.NODE_ENV !== "production") {
+        pendingSlotChecks.add(parent);
+    }
 };
 
 const unplaceChild = (parent: ElementNode, slot: string, node: PlaceableNode): void => {
@@ -314,18 +467,18 @@ const unplaceChild = (parent: ElementNode, slot: string, node: PlaceableNode): v
     const [entry] = entries.splice(index, 1);
 
     if (entry !== undefined) {
-        detachEntry(parent, entry, index);
+        detachEntry(parent, entry, index, entries, false);
     }
 };
 
-const teardownPlacements = (parent: ElementNode): void => {
+const teardownPlacements = (parent: ElementNode, isParentRemoved: boolean): void => {
     for (const [slot, entries] of parent.placements) {
         const retained: PlacedChild[] = [];
-        for (const entry of entries) {
+        for (const [index, entry] of entries.entries()) {
             if (parent.externalChildren.has(entry.node)) {
                 retained.push(entry);
             } else {
-                detachEntry(parent, entry, 0);
+                detachEntry(parent, entry, 0, [...retained, ...entries.slice(index + 1)], isParentRemoved);
             }
         }
         if (retained.length === 0) {
@@ -336,4 +489,4 @@ const teardownPlacements = (parent: ElementNode): void => {
     }
 };
 
-export { flushAdoptions, placeChild, teardownPlacements, unplaceChild };
+export { flushAdoptions, flushSlotChecks, placeChild, recordConstructedSlots, teardownPlacements, unplaceChild };

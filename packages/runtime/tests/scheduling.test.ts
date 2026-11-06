@@ -27,11 +27,16 @@ test("runtime-supplied dispatch budgets yield to JavaScript timers under continu
 
 test.each([
     { mode: "timeout", title: "dispatches idle and delayed GLib sources", output: '["idle","timeout"]' },
+    {
+        mode: "throwing",
+        title: "keeps dispatching GLib sources after one throws to an uncaught exception listener",
+        output: '{"events":["first","second"],"errors":["first failed"]}',
+    },
     { mode: "quit", title: "quits safely from inside a GLib dispatch", output: "QUIT" },
     {
         mode: "descriptors",
-        title: "tracks removed, reused, and unwatchable descriptors",
-        output: '["first","reused","unwatchable"]',
+        title: "tracks removed, reused, closed, unwatchable, and duplicated descriptors",
+        output: '["first","reused","closed","unwatchable","duplicated"]',
     },
     {
         mode: "workers",

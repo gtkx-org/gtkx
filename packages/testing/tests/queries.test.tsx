@@ -1,7 +1,12 @@
 import type { ReactNode } from "react";
+import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
+import { AdwDialog, AdwEntryRow, AdwPreferencesGroup, AdwSpinRow, AdwWindow } from "@gtkx/jsx/adw";
+import { GMenu, GSimpleAction } from "@gtkx/jsx/gio";
 import {
     GtkAdjustment,
+    GtkApplication,
+    GtkApplicationWindow,
     GtkBox,
     GtkButton,
     GtkCheckButton,
@@ -10,6 +15,7 @@ import {
     GtkFrame,
     GtkLabel,
     GtkLevelBar,
+    GtkMenuButton,
     GtkProgressBar,
     GtkScale,
     GtkSearchEntry,
@@ -43,14 +49,18 @@ import {
     queryAllByRole,
     queryAllByText,
     queryByDisplayValue,
+    queryByLabelText,
     queryByName,
     queryByPlaceholderText,
     queryByRole,
     queryByText,
     render,
     screen,
+    userEvent,
     within,
 } from "@gtkx/testing";
+import { rootElement } from "@gtkx/react";
+import { useState } from "react";
 import { describe, expect, it } from "vitest";
 import { VBox } from "./widget-fixtures.js";
 
@@ -59,6 +69,30 @@ type LabelledRefs = {
     second: Gtk.Entry | null;
     labelled: Gtk.Entry | null;
     label: Gtk.Label | null;
+};
+
+const SignIn = (): ReactNode => {
+    const [isOpen, setIsOpen] = useState(false);
+
+    return (
+        <AdwWindow defaultWidth={400} defaultHeight={300}>
+            <VBox>
+                <GtkButton
+                    label="Sign In"
+                    onClicked={() => {
+                        setIsOpen(true);
+                    }}
+                />
+                {isOpen ? (
+                    <AdwDialog title="Sync Account">
+                        <AdwPreferencesGroup>
+                            <AdwEntryRow title="Email" />
+                        </AdwPreferencesGroup>
+                    </AdwDialog>
+                ) : null}
+            </VBox>
+        </AdwWindow>
+    );
 };
 
 const queryButtonsBesideHidden = async (hiddenButton: ReactNode) => {
@@ -178,6 +212,56 @@ describe("ByRole", () => {
         expect(await findByRole(container, Gtk.AccessibleRole.LABEL, { name: "visible" })).toHaveTextContent("visible");
     });
 
+    it("names a widget from the content of an unnamed widget labelling it, as an Adwaita spin row does", async () => {
+        const { container } = await render(
+            <VBox>
+                <AdwSpinRow title="Amount" adjustment={<GtkAdjustment upper={100} stepIncrement={1} />} />
+            </VBox>,
+        );
+
+        expect(await findByRole(container, Gtk.AccessibleRole.SPIN_BUTTON, { name: "Amount" })).toHaveAccessibleName(
+            "Amount",
+        );
+    });
+
+    it("names check and radio menu items from their presentation labels, as GTK names model buttons", async () => {
+        const { container } = await render(
+            <VBox>
+                <GtkBox accessibleRole={Gtk.AccessibleRole.MENU_ITEM_CHECKBOX}>
+                    <GtkLabel accessibleRole={Gtk.AccessibleRole.PRESENTATION}>Words</GtkLabel>
+                </GtkBox>
+                <GtkBox accessibleRole={Gtk.AccessibleRole.MENU_ITEM_RADIO}>
+                    <GtkLabel accessibleRole={Gtk.AccessibleRole.PRESENTATION}>By Name</GtkLabel>
+                </GtkBox>
+            </VBox>,
+        );
+
+        expect(await findByRole(container, Gtk.AccessibleRole.MENU_ITEM_CHECKBOX, { name: "Words" })).toBeDefined();
+        expect(await findByRole(container, Gtk.AccessibleRole.MENU_ITEM_RADIO, { name: "By Name" })).toBeDefined();
+    });
+
+    it("names a menu item from the label GTK relates it to, leaving out its accelerator", async () => {
+        await render(
+            <GtkApplication
+                applicationId="org.gtkx.menuaccelerators"
+                flags={Gio.ApplicationFlags.NON_UNIQUE}
+                actionAccels={[{ detailedActionName: "win.save", accels: ["<Control>s"] }]}
+            >
+                <GtkApplicationWindow actions={<GSimpleAction name="save" />}>
+                    <GtkMenuButton
+                        tooltipText="Main Menu"
+                        menuModel={<GMenu items={[{ label: "Save", action: "win.save" }]} />}
+                    />
+                </GtkApplicationWindow>
+            </GtkApplication>,
+            { container: rootElement },
+        );
+
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Main Menu" }));
+        expect(await screen.findByText("Ctrl+S")).toBeVisible();
+        expect(screen.getByRole(Gtk.AccessibleRole.MENU_ITEM, { name: "Save" })).toHaveAccessibleName("Save");
+    });
+
     it("skips accessibility-hidden widgets by default and never-mapped ones either way", async () => {
         const hidden = await queryButtonsBesideHidden(<GtkButton label="Hidden" accessibleHidden />);
         expect(hidden.defaultMatches).toHaveLength(1);
@@ -192,6 +276,15 @@ describe("ByRole", () => {
         await expect(findByRole(container, Gtk.AccessibleRole.SLIDER, { timeout: 100 })).rejects.toThrow();
         await expect(findAllByRole(container, Gtk.AccessibleRole.SLIDER, { timeout: 100 })).rejects.toThrow();
         expect(() => queryByRole(container, Gtk.AccessibleRole.BUTTON)).toThrow();
+    });
+});
+
+describe("ByRole on dialogs", () => {
+    it("finds an Adwaita dialog once its content is shown", async () => {
+        await render(<SignIn />, { container: rootElement });
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Sign In" }));
+        const dialog = await screen.findByRole(Gtk.AccessibleRole.DIALOG, { name: "Sync Account" });
+        expect(within(dialog).getByRole(Gtk.AccessibleRole.TEXT_BOX, { name: "Email" })).toBeRooted();
     });
 });
 
@@ -216,6 +309,16 @@ describe("ByText", () => {
         const match = await findByText(container, "rocket");
         expect(match).toHaveTextContent(/^rocket$/);
         expect(queryByText(container, "Searching for: rocket")).toBeNull();
+    });
+
+    it("matches labels whose role is presentation, as in GTK's popover menu items", async () => {
+        const { container } = await render(
+            <GtkBox accessibleRole={Gtk.AccessibleRole.MENU_ITEM}>
+                <GtkLabel accessibleRole={Gtk.AccessibleRole.PRESENTATION}>Dark</GtkLabel>
+            </GtkBox>,
+        );
+
+        expect(await findByText(container, "Dark")).toHaveTextContent("Dark");
     });
 
     it("returns every match, an empty list when there is none, and throws on ambiguity", async () => {
@@ -292,6 +395,7 @@ describe("ByLabelText", () => {
                     accessibleLabelledBy={refs.label ? [refs.label] : []}
                 />
                 <GtkEntry accessibleLabel="Email address" />
+                <GtkLabel accessibleLabel="Time remaining">25:00</GtkLabel>
             </VBox>
         );
 
@@ -300,6 +404,8 @@ describe("ByLabelText", () => {
         expect(await findByLabelText(container, "Full name")).toBe(refs.labelled);
         expect(await findAllByLabelText(container, "Field")).toEqual([refs.first, refs.second]);
         expect(getByLabelText(container, "Email address")).toHaveAccessibleName("Email address");
+        expect(getByLabelText(container, "Time remaining")).toHaveTextContent("25:00");
+        expect(queryByLabelText(container, "25:00")).toBeNull();
     });
 
     it("throws when no association exists", async () => {

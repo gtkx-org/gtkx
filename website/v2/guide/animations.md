@@ -120,7 +120,7 @@ Frames advance during the update phase of a mapped window's GTK frame clock, bef
 
 GTK exposes two settings with different effects:
 
-- `gtk-enable-animations` disables motion across the toolkit. When false, GTKX springs jump to their targets while still running their lifecycle callbacks.
+- `gtk-enable-animations` disables motion across the toolkit. When false, GTKX springs jump to their targets while still running their lifecycle callbacks, and a `loop` stops after its current pass. GTKX applies each change of this setting to React Spring's `Globals.skipAnimation`, so an in-app preference can set `skipAnimation` itself; the next change of the setting overrides it.
 - `gtk-interface-reduced-motion`, available in GTK 4.22 and later, asks applications to reduce motion. It also drives GTK's `prefers-reduced-motion` media query. Springs keep running; the component chooses an alternative, such as a fade instead of a slide.
 
 `useReducedMotion()` returns `true` when either preference calls for less motion, `false` otherwise, and `null` before a display is open. It updates when the settings change.

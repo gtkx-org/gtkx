@@ -1,5 +1,6 @@
 import { isPathInside, warn } from "@gtkx/utils";
 import { loadConfig as loadConfigFile } from "c12";
+import { defu } from "defu";
 import { existsSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import {
@@ -8,19 +9,36 @@ import {
     createConfigImporter,
     setConfigDependencies,
 } from "./config-dependencies.ts";
-import { missingConfigFileError } from "./config-error.ts";
-import { type ConfigResolutionOptions, localConfigSourcePath } from "./config-source.ts";
-import { type Config, graduatedFutureKeys, resolveConfig, type ResolvedConfig, validateConfig } from "./config.ts";
+import { isRecord, missingConfigFileError } from "./config-error.ts";
+import { configCandidatePaths, type ConfigResolutionOptions, localConfigSourcePaths } from "./config-source.ts";
+import {
+    type ApplicationConfig,
+    type Config,
+    graduatedFutureKeys,
+    resolveConfig,
+    type ResolvedConfig,
+    validateConfig,
+} from "./config.ts";
 import { assertSupportedNodeVersion } from "./node-version.ts";
 
 /** Result of loading a project's `gtkx.config.ts` file. */
 type LoadedConfig = {
-    /** The parsed and validated configuration. */
-    config: Config;
-    /** Absolute path of the configuration file that was loaded. */
+    /** The parsed and validated configuration, with the default application ID filled in when one stood in. */
+    config: ApplicationConfig;
+    /** Whether the configuration names its own `applicationId`, rather than a default standing in for it. */
+    isApplication: boolean;
+    /**
+     * Absolute path of the configuration file that was loaded, or of `gtkx.config.ts` in the project root
+     * when a default application ID stood in for a missing file.
+     */
     configFile: string;
     /** Absolute path of the project root the configuration was resolved against. */
     root: string;
+    /**
+     * The gettext domain: the `applicationId` production builds use, so a `$development` application ID
+     * shares the production catalogs.
+     */
+    translationDomain: string;
 };
 
 /** How a configuration file is read, shared by {@link loadConfig} and `createConfigLoader`. */
@@ -32,6 +50,12 @@ type LoadConfigOptions = {
     mode?: string | undefined;
     /** Whether to report graduated future flags; supervising processes can own these warnings. Defaults to true. */
     shouldWarnGraduatedFuture?: boolean | undefined;
+    /**
+     * Application ID for a project that is not an application, such as a component library running its
+     * tests: it stands in for a missing `applicationId`, and for a missing configuration file unless
+     * `configFile` names a file other than `gtkx.config.ts` in the project root.
+     */
+    defaultApplicationId?: string | undefined;
 } & Partial<Record<"configFile", string | undefined>>;
 
 /** Reads a project's configuration once per directory, caching what it loads and what it resolves. */
@@ -43,18 +67,53 @@ type ConfigLoader = {
 };
 
 const graduatedFutureWarnings: Map<string, string> = new Map();
+const PRODUCTION_MODE = "production";
+const EXTEND_KEY = "extends";
+const DEFAULT_CONFIG_FILE_NAME = "gtkx.config.ts";
 
-const rejectMissingLocalConfig = (source: string, options: ConfigResolutionOptions): undefined => {
-    const path = localConfigSourcePath(source, options);
+const recordOrEmpty = (value: unknown): Record<string, unknown> => (isRecord(value) ? value : {});
 
-    if (path === undefined) {
-        return;
+const modeOverrides = (layer: Record<string, unknown>, mode: string): Record<string, unknown> => ({
+    ...recordOrEmpty(layer[`$${mode}`]),
+    ...recordOrEmpty(recordOrEmpty(layer.$env)[mode]),
+});
+
+const configForMode = (layers: Record<string, unknown>[], mode: string | undefined): Record<string, unknown> => {
+    const merged: Record<string, unknown> = defu(
+        {},
+        ...layers.map((layer) => (mode ? defu(modeOverrides(layer, mode), layer) : layer)),
+    );
+
+    for (const key of Object.keys(merged)) {
+        if (key === EXTEND_KEY || key.startsWith("$")) {
+            Reflect.deleteProperty(merged, key);
+        }
     }
 
-    addConfigSource(path);
+    return merged;
+};
 
-    if (!existsSync(path)) {
-        throw new Error(`Extended configuration does not exist at ${path}`);
+const productionApplicationId = (layers: Record<string, unknown>[], config: ApplicationConfig): string => {
+    const { applicationId } = configForMode(layers, PRODUCTION_MODE);
+
+    return typeof applicationId === "string" ? applicationId : config.applicationId;
+};
+
+const withDefaultApplicationId = (
+    config: Record<string, unknown>,
+    applicationId: string | undefined,
+): Record<string, unknown> =>
+    applicationId === undefined || config.applicationId !== undefined ? config : { ...config, applicationId };
+
+const rejectMissingLocalConfig = (source: string, options: ConfigResolutionOptions): undefined => {
+    const paths = localConfigSourcePaths(source, options);
+
+    for (const path of paths) {
+        addConfigSource(path);
+    }
+
+    if (paths.length > 0 && !paths.some((path) => existsSync(path))) {
+        throw new Error(`Extended configuration ${source} does not exist in ${options.cwd ?? process.cwd()}`);
     }
 };
 
@@ -84,6 +143,11 @@ const selectedConfigFile = (root: string, configured: string | undefined): strin
     return relative(root, path);
 };
 
+const explicitConfigFile = (root: string, selected: string | undefined): string | undefined =>
+    selected !== undefined && configCandidatePaths(root).find((path) => existsSync(path)) === resolve(root, selected)
+        ? undefined
+        : selected;
+
 const warnGraduatedFuture = (config: unknown, root: string): void => {
     const keys = graduatedFutureKeys(config);
     const signature = keys.join(",");
@@ -106,6 +170,7 @@ const loadConfig = async (cwd: string, options: LoadConfigOptions = {}): Promise
     assertSupportedNodeVersion();
     const searched = resolve(cwd);
     const requestedConfigFile = selectedConfigFile(searched, options.configFile);
+    const c12ConfigFile = explicitConfigFile(searched, requestedConfigFile);
 
     const captured = await captureConfigDependencies(() =>
         loadConfigFile<Config>({
@@ -114,12 +179,11 @@ const loadConfig = async (cwd: string, options: LoadConfigOptions = {}): Promise
             rcFile: false,
             globalRc: false,
             packageJson: false,
-            omit$Keys: true,
+            envName: false,
             context: { mode: options.mode },
             jiti: createConfigImporter(),
             resolve: rejectMissingLocalConfig,
-            ...(requestedConfigFile !== undefined && { configFile: requestedConfigFile }),
-            ...(options.mode !== undefined && { envName: options.mode }),
+            ...(c12ConfigFile !== undefined && { configFile: c12ConfigFile }),
         }),
     );
     const result = captured.value;
@@ -130,22 +194,32 @@ const loadConfig = async (cwd: string, options: LoadConfigOptions = {}): Promise
         layer.configFile === undefined ? [] : [resolve(layer.cwd ?? root, layer.configFile)],
     );
     const dependencies = [...(configFile === undefined ? [] : [configFile]), ...layerFiles, ...captured.dependencies];
+    const foundConfigFile =
+        configFile !== undefined && existsSync(resolve(searched, configFile)) ? configFile : undefined;
+    const isConfigFileOptional =
+        options.defaultApplicationId !== undefined &&
+        (requestedConfigFile === undefined || requestedConfigFile === DEFAULT_CONFIG_FILE_NAME);
 
     return withConfigDependencies(dependencies, () => {
-        if (configFile === undefined || !existsSync(resolve(searched, configFile))) {
+        if (foundConfigFile === undefined && !isConfigFileOptional) {
             throw missingConfigFileError(searched, requestedConfigFile);
         }
 
-        const config = result.config;
-        validateConfig(config, configFile);
+        const layers = (result.layers ?? []).flatMap((layer) => (isRecord(layer.config) ? [layer.config] : []));
+        const authored = configForMode(layers, options.mode ?? process.env.NODE_ENV);
+        const config = withDefaultApplicationId(authored, options.defaultApplicationId);
+        const loadedConfigFile = foundConfigFile ?? resolve(searched, DEFAULT_CONFIG_FILE_NAME);
+        validateConfig(config, loadedConfigFile);
         if (options.shouldWarnGraduatedFuture !== false) {
             warnGraduatedFuture(config, root);
         }
 
         const loaded = {
             config,
-            configFile,
+            isApplication: authored.applicationId !== undefined,
+            configFile: loadedConfigFile,
             root,
+            translationDomain: productionApplicationId(layers, config),
         };
         setConfigDependencies(loaded, dependencies);
 
@@ -162,9 +236,9 @@ const createConfigLoader = (options: LoadConfigOptions = {}): ConfigLoader => {
         loaded.getOrInsertComputed(resolve(cwd), (root) => loadConfig(root, options));
 
     const resolveAt = async (root: string): Promise<ResolvedConfig> => {
-        const { config, root: configRoot } = await load(root);
+        const { config, root: configRoot, translationDomain } = await load(root);
 
-        return resolveConfig(config, configRoot);
+        return resolveConfig(config, translationDomain, configRoot);
     };
 
     return {

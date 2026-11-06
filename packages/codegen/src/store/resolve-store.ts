@@ -1,8 +1,10 @@
 import { isPathWithin } from "@gtkx/utils";
-import { existsSync, readFileSync, realpathSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { existsSync, lstatSync, readFileSync, readlinkSync, realpathSync } from "node:fs";
+import { basename, dirname, join, resolve } from "node:path";
 import type { StoreOptions } from "./store-fs.js";
+import { EXTERNAL_NAMESPACES } from "../gir/external-namespaces.js";
 import { sweepStagingDirs } from "../staging.js";
+import { sharedProjectRoots } from "./shared-store.js";
 
 /**
  * Locations for a project's generated stores. When `@gtkx/react` is absent, `jsx` is null; omit
@@ -15,7 +17,7 @@ type ResolvedStore = {
     jsx: StoreOptions | null;
 };
 
-type ResolvedPackage = { nodeModules: string; version: string };
+type ResolvedPackage = { nodeModules: string; directory: string; version: string };
 type StoreConsumer = { name: string; nodeModules: string };
 
 const STORE_DIR = ".gtkx";
@@ -35,55 +37,73 @@ const STORE_CONSUMERS: string[] = [
     "@gtkx/testing",
 ];
 
+const GI_DEPENDENCIES: string[] = ["@gtkx/runtime", ...EXTERNAL_NAMESPACES.map(({ packageName }) => packageName)];
+const JSX_DEPENDENCIES: string[] = ["@gtkx/react", "react", "@types/react"];
+
 const readManifest = (path: string): { version?: string } =>
     JSON.parse(readFileSync(path, "utf8")) as { version?: string };
 
-const loadPackage = (manifest: string, nodeModules: string): ResolvedPackage | null => {
-    if (!existsSync(manifest)) {
-        return null;
-    }
+const nodeModulesChain = (projectRoot: string): string[] => {
+    const chain: string[] = [];
 
-    const real = realpathSync(manifest);
+    for (let current = resolve(projectRoot); ; current = dirname(current)) {
+        chain.push(join(current, "node_modules"));
 
-    return { nodeModules, version: readManifest(real).version ?? "0.0.0" };
-};
-
-const nodeModulesChain = function* (projectRoot: string): Generator<string> {
-    let current = resolve(projectRoot);
-
-    for (;;) {
-        yield join(current, "node_modules");
-        const parent = dirname(current);
-
-        if (parent === current) {
-            return;
+        if (dirname(current) === current) {
+            return chain;
         }
-
-        current = parent;
     }
 };
+
+const installedNodeModules = (directory: string, chain: string[], linkedFrom: string): string =>
+    chain.find((nodeModules) => isPathWithin(nodeModules, directory)) ?? linkedFrom;
 
 const resolvePackage = (projectRoot: string, packageName: string): ResolvedPackage | null => {
-    for (const nodeModules of nodeModulesChain(projectRoot)) {
-        const found = loadPackage(join(nodeModules, packageName, "package.json"), nodeModules);
+    const chain = nodeModulesChain(projectRoot);
 
-        if (found !== null) {
-            return found;
+    for (const nodeModules of chain) {
+        const manifest = join(nodeModules, packageName, "package.json");
+
+        if (existsSync(manifest)) {
+            const real = realpathSync(manifest);
+            const directory = dirname(real);
+
+            return {
+                nodeModules: installedNodeModules(directory, chain, nodeModules),
+                directory,
+                version: readManifest(real).version ?? "0.0.0",
+            };
         }
     }
 
     return null;
 };
 
+const resolveDependencies = (projectRoot: string, names: string[]): Record<string, string> =>
+    Object.fromEntries(
+        names.flatMap((name) => {
+            const found = resolvePackage(projectRoot, name);
+
+            return found === null ? [] : [[name, found.directory]];
+        }),
+    );
+
 const canImport = (fromNodeModules: string, targetNodeModules: string): boolean =>
     isPathWithin(dirname(targetNodeModules), dirname(fromNodeModules));
 
-const storeOptions = (nodeModules: string, name: string, version: string, owner: string): StoreOptions => {
+const storeOptions = (
+    nodeModules: string,
+    name: string,
+    version: string,
+    owner: string,
+    dependencies: Record<string, string>,
+): StoreOptions => {
     return {
         storeDir: join(nodeModules, STORE_DIR, name),
         linkDir: join(nodeModules, SCOPE, name),
         version,
         owner,
+        dependencies,
     };
 };
 
@@ -144,7 +164,56 @@ const findStoreNodeModules = (projectRoot: string): string | null => {
     return storeNodeModules(runtime, resolvePackage(projectRoot, "@gtkx/react"));
 };
 
-const getShadowingStorePaths = (projectRoot: string): string[] => {
+type SharedDependency = { name: string; ours: string; theirs: string };
+
+const sharedDependencyMessage = (nodeModules: string, other: string, dependency: SharedDependency): string =>
+    `Cannot share the generated store in ${nodeModules} with ${other}: this project resolves ${dependency.name} ` +
+    `to ${dependency.ours}, but ${other} resolves it to ${dependency.theirs}. Projects that resolve the same store, ` +
+    "such as the apps of a pnpm workspace, have to install the same versions of the @gtkx packages, react and " +
+    "@types/react; align them, then run gtkx codegen again.";
+
+/** Whether the project's installed packages resolve the store written into `nodeModules`. */
+const resolvesStoreIn = (projectRoot: string, nodeModules: string): boolean => {
+    const anchored = findStoreNodeModules(projectRoot);
+
+    return anchored !== null && realpathSync(anchored) === realpathSync(nodeModules);
+};
+
+const checkSharedDependencies = (owner: string, nodeModules: string, dependencies: Record<string, string>): void => {
+    const sharing = sharedProjectRoots(join(nodeModules, STORE_DIR, "gi"), owner, (root) =>
+        resolvesStoreIn(root, nodeModules),
+    );
+
+    for (const other of sharing) {
+        const required = resolveDependencies(other, [...GI_DEPENDENCIES, ...JSX_DEPENDENCIES]);
+
+        for (const [name, directory] of Object.entries(dependencies)) {
+            const theirs = required[name];
+
+            if (theirs !== undefined && theirs !== directory) {
+                throw new Error(sharedDependencyMessage(nodeModules, other, { name, ours: directory, theirs }));
+            }
+        }
+    }
+};
+
+const isStoreView = (path: string): boolean => {
+    const entry = lstatSync(path, { throwIfNoEntry: false });
+
+    if (basename(dirname(path)) === STORE_DIR) {
+        return entry?.isDirectory() === true;
+    }
+
+    return entry?.isSymbolicLink() === true && readlinkSync(path) === join("..", STORE_DIR, basename(path));
+};
+
+/**
+ * Stores and links in a project's own `node_modules` that would shadow the store its packages resolve from
+ * another `node_modules`, such as one an earlier GTKX generated there.
+ *
+ * @param shouldKeepViews Leaves out the project's views of the shared store, which codegen keeps up to date.
+ */
+const getShadowingStorePaths = (projectRoot: string, shouldKeepViews: boolean): string[] => {
     const root = resolve(projectRoot);
     const nodeModules = join(root, "node_modules");
     const anchored = findStoreNodeModules(root);
@@ -153,7 +222,7 @@ const getShadowingStorePaths = (projectRoot: string): string[] => {
         return [];
     }
 
-    return storePaths(nodeModules);
+    return storePaths(nodeModules).filter((path) => !shouldKeepViews || !isStoreView(path));
 };
 
 const stagingRoots = (projectRoot: string): string[] => {
@@ -178,15 +247,19 @@ const sweepProjectStaging = (projectRoot: string): void => {
  * Pass the result to `runCodegen` alongside `libraries` and `girPath`, omitting `jsx` when null.
  *
  * @remarks
- * Both stores share one `node_modules` directory selected from the project's ancestor chain,
- * using the installed renderer and runtime. Hoisted packages can therefore give several
- * projects one shared store. Store versions follow `@gtkx/runtime` and `@gtkx/react`, so
- * upgrades invalidate generated output. Explicit `gi` or `jsx` options override this selection.
+ * Both stores share one `node_modules` directory selected from the project's ancestor chain:
+ * the one the installed renderer and runtime are installed in, which for pnpm's isolated layout
+ * is the workspace root holding `.pnpm`, not the directory their links sit in. Hoisted or
+ * workspace installs can therefore give several projects one shared store, generated with the
+ * union of their libraries. The store links the packages its bindings import to the copies
+ * the project resolves. Store versions follow `@gtkx/runtime` and `@gtkx/react`, so upgrades
+ * invalidate generated output. Explicit `gi` or `jsx` options override this selection.
  *
  * @param projectRoot Directory containing the project's `package.json`.
  * @returns Store locations and versions, with `jsx` set to null when React is absent.
- * @throws If runtime cannot be resolved, or a binding consumer is installed above the selected
- * store and cannot import it.
+ * @throws If runtime cannot be resolved, a binding consumer is installed above the selected
+ * store and cannot import it, or another project sharing the store resolves a different copy
+ * of a package the bindings import.
  */
 const resolveStore = (projectRoot: string): ResolvedStore => {
     const root = resolve(projectRoot);
@@ -195,11 +268,14 @@ const resolveStore = (projectRoot: string): ResolvedStore => {
     const react = resolvePackage(root, "@gtkx/react");
     const nodeModules = storeNodeModules(runtime, react);
     checkConsumers(root, nodeModules);
+    const giDependencies = resolveDependencies(root, GI_DEPENDENCIES);
+    const jsxDependencies = resolveDependencies(root, JSX_DEPENDENCIES);
+    checkSharedDependencies(owner, nodeModules, { ...giDependencies, ...jsxDependencies });
 
     return {
-        gi: storeOptions(nodeModules, "gi", runtime.version, owner),
-        jsx: react === null ? null : storeOptions(nodeModules, "jsx", react.version, owner),
+        gi: storeOptions(nodeModules, "gi", runtime.version, owner, giDependencies),
+        jsx: react === null ? null : storeOptions(nodeModules, "jsx", react.version, owner, jsxDependencies),
     };
 };
 
-export { getShadowingStorePaths, resolveStore, sweepProjectStaging, type ResolvedStore };
+export { getShadowingStorePaths, resolveStore, resolvesStoreIn, sweepProjectStaging, type ResolvedStore };

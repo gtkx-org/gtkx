@@ -21,8 +21,8 @@ const DarkTheme: AdwaitaTheme = { dark: true, highContrast: false };
 
 const useAdwaitaTheme = (): AdwaitaTheme => {
     const manager = Adw.StyleManager.getDefault();
-    const isDark = useProperty(manager, "dark") ?? manager.getDark();
-    const isHighContrast = useProperty(manager, "highContrast") ?? manager.getHighContrast();
+    const isDark = useProperty(manager, "dark");
+    const isHighContrast = useProperty(manager, "highContrast");
 
     return useMemo(() => ({ dark: isDark, highContrast: isHighContrast }), [isDark, isHighContrast]);
 };

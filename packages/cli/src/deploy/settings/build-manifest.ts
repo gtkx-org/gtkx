@@ -1,5 +1,5 @@
 import type { Config } from "@gtkx/config";
-import { isPathInside, sortStrings, toPosixPath } from "@gtkx/utils";
+import { sortStrings, toPosixPath } from "@gtkx/utils";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import type { DeploySettings } from "../types.js";
@@ -20,6 +20,7 @@ type ResolvedBuildManifest = {
 type ExpectedBuildConfig = {
     config: Config;
     configFile: string;
+    entry: string;
 };
 
 const invalidManifest = (path: string): Error =>
@@ -44,10 +45,6 @@ const resolveRecordedSchema = (root: string, manifestPath: string, entry: string
 
     const filePath = resolve(root, entry);
 
-    if (!isPathInside(root, filePath)) {
-        throw new Error(`Cannot deploy: ${manifestPath} records a GSettings schema outside the project.`);
-    }
-
     if (!isFile(filePath)) {
         throw new Error(`Cannot deploy: the recorded GSettings schema ${filePath} is missing.`);
     }
@@ -68,7 +65,25 @@ const assertBuildConfig = (
     const expectedFile = toPosixPath(relative(settings.paths.root, expected.configFile));
 
     if (manifest.configFile !== expectedFile || manifest.configDigest !== configDigest(expected.config)) {
-        throw new Error(`Cannot deploy: ${manifestPath} was built from a different GTKX configuration.`);
+        throw new Error(
+            `Cannot deploy: ${manifestPath} was built from a different GTKX configuration. Run \`gtkx build\` again.`,
+        );
+    }
+};
+
+const assertBuildEntry = (
+    settings: DeploySettings,
+    manifestPath: string,
+    manifest: BuildManifest,
+    expected: ExpectedBuildConfig,
+): void => {
+    const expectedEntry = toPosixPath(relative(settings.paths.root, expected.entry));
+
+    if (manifest.entry !== expectedEntry) {
+        throw new Error(
+            `Cannot deploy: ${manifestPath} was built from ${manifest.entry}, not the application entry ` +
+                `${expectedEntry}. Run \`gtkx build\` again, or drop --skip-build.`,
+        );
     }
 };
 
@@ -82,6 +97,7 @@ const readBuildManifest = (settings: DeploySettings, expected: ExpectedBuildConf
     const parsed: unknown = JSON.parse(readFileSync(manifestPath, "utf8"));
     const manifest = parseBuildManifest(parsed, manifestPath);
     assertBuildConfig(settings, manifestPath, manifest, expected);
+    assertBuildEntry(settings, manifestPath, manifest, expected);
     const files = manifest.schemas.map((entry) => resolveRecordedSchema(settings.paths.root, manifestPath, entry));
     const unique = sortStrings(new Set(files));
     assertUniqueSchemaBasenames(unique);

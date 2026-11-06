@@ -1,8 +1,10 @@
+import type { ClickSite } from "./click.js";
+
 type UserEventState = {
     modifierState: number;
-    isMouseLeftDown: boolean;
+    heldButtons: Map<number, ClickSite[]>;
 };
 
-const createInitialState = (): UserEventState => ({ modifierState: 0, isMouseLeftDown: false });
+const createInitialState = (): UserEventState => ({ modifierState: 0, heldButtons: new Map() });
 
 export { createInitialState, type UserEventState };

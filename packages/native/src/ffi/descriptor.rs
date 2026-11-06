@@ -7,7 +7,7 @@ use crate::api::bind::FunctionSignature;
 use crate::ffi::codec::{
     ArrayBounds, ArrayCodec, ArrayKind, BigIntCodec, BoxedCodec, BoxedTypeSource, BufferCodec,
     BytesCodec, CallbackCodec, CallbackReleasePolicy, CallbackScope, Codec, DestroyNotifyKind,
-    ElementOwnership, Encoder, FloatCodec, FundamentalCodec, HashTableCodec, IntegerCodec,
+    ElementOwnership, Encoder, FloatCodec, FundamentalCodec, HashTableCodec, IntegerCodec, Lending,
     MatchInfoCodec, ObjectCodec, Ownership, RefCodec, StructCodec, VoidCodec,
 };
 use crate::ffi::lifecycle::{
@@ -196,6 +196,9 @@ pub enum Descriptor {
         size: Option<u32>,
         is_inline: bool,
         is_value_safe: bool,
+        /// Copying an instance references it rather than duplicating it, so a callback may keep one
+        /// it is lent.
+        is_ref_counted: Option<bool>,
         /// Native field layout for a record passed by value as a function input.
         #[napi(ts_type = "Array<Descriptor>")]
         abi_fields: Option<Descriptors>,
@@ -381,6 +384,7 @@ impl Descriptor {
                 size,
                 is_inline,
                 is_value_safe,
+                is_ref_counted,
                 abi_fields,
             } => Codec::Boxed(BoxedCodec {
                 ownership,
@@ -396,6 +400,11 @@ impl Descriptor {
                 size: size.map(|n| n as usize),
                 inline: is_inline,
                 value_safe: is_value_safe,
+                lending: if is_ref_counted.unwrap_or(false) {
+                    Lending::Reference
+                } else {
+                    Lending::Borrow
+                },
                 abi_fields: record_abi_fields(abi_fields, size, ownership, is_caller_allocated)?,
             }),
             Self::Struct {

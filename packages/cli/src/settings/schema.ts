@@ -1,9 +1,10 @@
-import { isPathInside, sortStrings, toPosixPath } from "@gtkx/utils";
+import { isPathInside, isPathWithin, sortStrings, toPosixPath } from "@gtkx/utils";
 import { copyFileSync, existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import type { SourceImport } from "../internal/source-imports.js";
 import { I18N_TYPES_FILENAME, i18nTypesPath } from "../i18n/types.js";
 import { discoverProjectImports } from "../internal/import-scan.js";
+import { sourcePackageRoots } from "../internal/source-imports.js";
 import { createRetainedStagingDir, type RetainedStagingDir } from "../internal/staging-dir.js";
 import { isBareRelativeAsset, parseIconSpecifier, parseResourceSpecifier } from "../vite-plugins/asset-specifier.js";
 import { compileSchemas } from "./compile.js";
@@ -46,7 +47,10 @@ const projectRelativeSchemaPath = (root: string, filePath: string): string | nul
         return null;
     }
 
-    return isPathInside(projectRoot, path) ? toPosixPath(relative(projectRoot, path)) : null;
+    const isProjectSchema =
+        isPathInside(projectRoot, path) || sourcePackageRoots(projectRoot).some((dir) => isPathWithin(dir, path));
+
+    return isProjectSchema ? toPosixPath(relative(projectRoot, path)) : null;
 };
 
 const getRelativeModuleSpecifier = (filePath: string): string => `*/${basename(filePath)}`;

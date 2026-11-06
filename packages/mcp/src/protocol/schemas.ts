@@ -46,6 +46,8 @@ const widgetIdParams: z.ZodObject<{ widgetId: z.ZodString }> = z.object({
 });
 
 const DEFAULT_SUBTREE_DEPTH = 8;
+/** How long an app's MCP client waits after losing or failing to reach the server before connecting again. */
+const RECONNECT_DELAY_MS = 2000;
 const MAX_SUBTREE_WIDGETS = 30;
 
 const widgetPropsParams: z.ZodObject<{
@@ -63,14 +65,23 @@ const treeParams: z.ZodObject<{ rootId: z.ZodOptional<z.ZodString>; maxDepth: z.
     maxDepth: z.number().int().nonnegative().optional(),
 });
 
-const queryOptionsSchema: z.ZodObject<{
-    name: z.ZodOptional<z.ZodString>;
-    exact: z.ZodOptional<z.ZodBoolean>;
-    timeout: z.ZodOptional<z.ZodNumber>;
-}> = z.object({
-    name: z.string().optional(),
-    exact: z.boolean().optional(),
-    timeout: z.number().optional(),
+const queryOptionsSchema: z.ZodObject<
+    {
+        name: z.ZodOptional<z.ZodString>;
+        exact: z.ZodOptional<z.ZodBoolean>;
+        timeout: z.ZodOptional<z.ZodNumber>;
+    },
+    z.core.$strict
+> = z.strictObject({
+    name: z.string().optional().describe('With by:"role", the accessible name the widget must also have.'),
+    exact: z
+        .boolean()
+        .optional()
+        .describe(
+            "When true (the default), the value and name must match whole and case-sensitively; when false, " +
+                "they match case-insensitively as substrings.",
+        ),
+    timeout: z.number().optional().describe("Milliseconds to keep retrying while nothing matches (default: 1000)."),
 });
 
 const queryParams: z.ZodObject<{
@@ -85,6 +96,16 @@ const queryParams: z.ZodObject<{
 
 const typeParams: z.ZodObject<{ widgetId: z.ZodString; text: z.ZodString; clear: z.ZodOptional<z.ZodBoolean> }> =
     z.object({ widgetId: z.string(), text: z.string(), clear: z.boolean().optional() });
+
+const pressKeysParams: z.ZodObject<{ widgetId: z.ZodOptional<z.ZodString>; keys: z.ZodString }> = z.object({
+    widgetId: z.string().optional(),
+    keys: z.string(),
+});
+
+const pointerParams: z.ZodObject<{ widgetId: z.ZodString; input: z.ZodString }> = z.object({
+    widgetId: z.string(),
+    input: z.string(),
+});
 
 const fireEventParams: z.ZodObject<{
     widgetId: z.ZodString;
@@ -105,6 +126,8 @@ const ServerRequestParamsSchemas: {
     "widget.getProps": typeof widgetPropsParams;
     "widget.click": typeof widgetIdParams;
     "widget.type": typeof typeParams;
+    "widget.pressKeys": typeof pressKeysParams;
+    "widget.pointer": typeof pointerParams;
     "widget.fireEvent": typeof fireEventParams;
     "widget.screenshot": typeof screenshotParams;
 } = {
@@ -114,12 +137,15 @@ const ServerRequestParamsSchemas: {
     "widget.getProps": widgetPropsParams,
     "widget.click": widgetIdParams,
     "widget.type": typeParams,
+    "widget.pressKeys": pressKeysParams,
+    "widget.pointer": pointerParams,
     "widget.fireEvent": fireEventParams,
     "widget.screenshot": screenshotParams,
 };
 
 export {
     DEFAULT_SUBTREE_DEPTH,
+    RECONNECT_DELAY_MS,
     MAX_SUBTREE_WIDGETS,
     RegisterParamsSchema,
     widgetIdParams,
@@ -127,6 +153,8 @@ export {
     treeParams,
     queryParams,
     typeParams,
+    pressKeysParams,
+    pointerParams,
     fireEventParams,
     screenshotParams,
     ServerRequestParamsSchemas,
