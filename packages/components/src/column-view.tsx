@@ -49,8 +49,11 @@ const COLUMN_VIEW_PROPS = [
     "ref",
 ] as const satisfies (keyof ColumnViewProps)[];
 
-const expanderIndexFor = (columns: ColumnViewColumn<never>[]): number =>
-    columns.findIndex((column) => column.visible !== false);
+const expanderIndexFor = (columns: ColumnViewColumn<never>[]): number => {
+    const marked = columns.findIndex((column) => column.hasExpander === true && column.visible !== false);
+
+    return marked === -1 ? columns.findIndex((column) => column.visible !== false) : marked;
+};
 
 const columnById = (view: Gtk.ColumnView, id: string): Gtk.ColumnViewColumn | null => {
     const columns = view.getColumns();
@@ -157,7 +160,7 @@ const ColumnCells = ({
     size,
 }: ColumnCellsProps): ReactNode => {
     const cells = useItemCells(size);
-    const rest = omit(column, ["id", "renderCell", "isSortable"]);
+    const rest = omit(column, ["id", "renderCell", "isSortable", "hasExpander"]);
 
     return (
         <>

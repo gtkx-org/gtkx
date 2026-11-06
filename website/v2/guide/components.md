@@ -79,7 +79,7 @@ const columns: ColumnViewColumn<Employee>[] = [
 />
 ```
 
-`ColumnView` also supports trees through `ListItem.children`, `expandedIds`, and `onExpandedChange`. The first visible column draws the expander and indentation; the other columns stay aligned at each depth. Hiding that column with `visible: false` moves the expander to the next visible column.
+`ColumnView` also supports trees through `ListItem.children`, `expandedIds`, and `onExpandedChange`. The first visible column draws the expander and indentation; the other columns stay aligned at each depth. Hiding that column with `visible: false` moves the expander to the next visible column. Set `hasExpander` on a column to draw them there instead, such as the subject column of a message list whose status icons come first.
 
 ### DropDown
 

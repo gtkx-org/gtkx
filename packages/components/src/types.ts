@@ -203,6 +203,11 @@ type ColumnViewColumn<T = unknown> = Omit<GtkColumnViewColumnProps, "factory" | 
     renderCell: ListItemRenderer<T>;
     /** Makes the column header clickable, reporting the choice through `onSortChanged`. */
     isSortable?: boolean | undefined;
+    /**
+     * Draws the tree expander and depth indentation in this column. Without a visible column marked this way,
+     * the first visible column draws them.
+     */
+    hasExpander?: boolean | undefined;
     /** Menu element popped up as the column header's context menu, on a right-click. */
     headerMenu?: ReactNode;
 };
