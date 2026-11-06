@@ -3,6 +3,7 @@ import { relative } from "node:path";
 import { satisfies, valid, validRange } from "semver";
 import { isMap, isScalar, parseDocument, type Document } from "yaml";
 import { z } from "zod";
+import { indentOf } from "../internal/json-indent.js";
 import { type DependencyField, isGtkxPackage, manifestPath, parseManifest, readManifest } from "./manifest.js";
 import type { Workspace } from "./workspace.js";
 
@@ -51,8 +52,6 @@ const acceptsVersion = (range: string, version: string): boolean =>
 const targetSpec = (field: DependencyField, spec: string, version: string): string | null =>
     field === PEER_FIELD && acceptsVersion(spec, version) ? null : upgradedSpec(spec, version);
 
-const indentOf = (text: string): string => /^(?<indent>[ \t]+)"/m.exec(text)?.groups?.indent ?? DEFAULT_INDENT;
-
 const planManifest = (directory: string, version: string): UpgradePlan => {
     const file = manifestPath(directory);
     const text = readFileSync(file, "utf8");
@@ -83,7 +82,10 @@ const planManifest = (directory: string, version: string): UpgradePlan => {
         changes,
         kept,
         write: () => {
-            writeFileSync(file, `${JSON.stringify(document, null, indentOf(text))}${text.endsWith("\n") ? "\n" : ""}`);
+            writeFileSync(
+                file,
+                `${JSON.stringify(document, null, indentOf(text, DEFAULT_INDENT))}${text.endsWith("\n") ? "\n" : ""}`,
+            );
         },
     };
 };

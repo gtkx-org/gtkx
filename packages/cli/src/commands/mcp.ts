@@ -70,13 +70,23 @@ const splitPatterns = (value: string): string[] =>
         .map((pattern) => pattern.trim())
         .filter((pattern) => pattern.length > 0);
 
+const printSnippet = (snippet: string): void => {
+    for (const line of snippet.split("\n")) {
+        info(`mcp:   ${line}`);
+    }
+};
+
 const report = (name: ClientName, result: ClientResult): void => {
     if (result.kind === "manual") {
         info(`mcp: ${result.path} already declares the gtkx server in a form this command cannot edit. Make it read:`);
+        printSnippet(result.snippet);
 
-        for (const line of result.snippet.split("\n")) {
-            info(`mcp:   ${line}`);
-        }
+        return;
+    }
+
+    if (result.kind === "unreadable") {
+        info(`mcp: left ${result.path} unchanged: ${result.reason}. Add this entry to its "${result.key}" object:`);
+        printSnippet(result.snippet);
 
         return;
     }

@@ -1,5 +1,7 @@
+import { errorMessage } from "@gtkx/utils";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { indentOf } from "../internal/json-indent.js";
 
 type ClientName = "claude" | "cursor" | "vscode" | "opencode" | "codex";
 type ServerEntry = Record<string, unknown>;
@@ -13,9 +15,11 @@ type Client = {
 
 type ClientResult =
     | { kind: "written"; path: string; isCreated: boolean }
-    | { kind: "manual"; path: string; snippet: string };
+    | { kind: "manual"; path: string; snippet: string }
+    | { kind: "unreadable"; path: string; key: string; snippet: string; reason: string };
 
 const SERVER_NAME = "gtkx";
+const JSON_INDENT = "    ";
 const COMMAND = "npx";
 const ARGS = ["--no", "gtkx", "mcp"];
 const CODEX_PATH = join(".codex", "config.toml");
@@ -79,17 +83,19 @@ const readOrUndefined = (path: string): string | undefined => {
     }
 };
 
-const readJson = (path: string): Record<string, unknown> | undefined => {
-    const source = readOrUndefined(path);
-
-    if (source === undefined) {
-        return undefined;
+const parseJson = (source: string): unknown => {
+    try {
+        return JSON.parse(source);
+    } catch (error) {
+        throw new Error(`it is not plain JSON, as when it has comments (${errorMessage(error)})`, { cause: error });
     }
+};
 
-    const parsed: unknown = JSON.parse(source);
+const parseObject = (source: string): Record<string, unknown> => {
+    const parsed = parseJson(source);
 
     if (!isRecord(parsed)) {
-        throw new Error(`Refusing to edit ${path}: its contents are not a JSON object.`);
+        throw new Error("its contents are not a JSON object");
     }
 
     return parsed;
@@ -268,11 +274,24 @@ const writeClientConfig = (root: string, name: ClientName): ClientResult => {
     const client = clientFor(name);
 
     const path = join(root, client.file);
-    const existing = readJson(path);
+    const source = readOrUndefined(path);
+    let existing: Record<string, unknown> | undefined;
+
+    try {
+        existing = source === undefined ? undefined : parseObject(source);
+    } catch (error) {
+        const snippet = JSON.stringify({ [SERVER_NAME]: client.entry }, null, JSON_INDENT);
+
+        return { kind: "unreadable", path, key: client.key, snippet, reason: errorMessage(error) };
+    }
+
     const document = existing ?? {};
     const section = { ...getSection(document, client.key), [SERVER_NAME]: client.entry };
     mkdirSync(dirname(path), { recursive: true });
-    writeFileSync(path, `${JSON.stringify({ ...document, [client.key]: section }, null, 4)}\n`);
+    writeFileSync(
+        path,
+        `${JSON.stringify({ ...document, [client.key]: section }, null, indentOf(source ?? "", JSON_INDENT))}\n`,
+    );
 
     return { kind: "written", path, isCreated: existing === undefined };
 };

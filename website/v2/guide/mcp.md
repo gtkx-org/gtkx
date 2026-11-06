@@ -33,7 +33,7 @@ From the project root, register the server with your client:
 npx gtkx mcp init --client claude
 ```
 
-The command supports `claude`, `cursor`, `vscode`, `opencode`, and `codex`. It preserves other server entries and replaces an older `gtkx` entry. A scaffolded project already includes the Claude configuration.
+The command supports `claude`, `cursor`, `vscode`, `opencode`, and `codex`. It preserves other server entries and the file's indentation, and replaces an older `gtkx` entry. A JSON file with comments is left unchanged, and the command prints the entry to add to it. A scaffolded project already includes the Claude configuration.
 
 For Codex, the command writes a `[mcp_servers.gtkx]` table to the project's `.codex/config.toml`. Codex reads that file from the directory it starts in and every parent up to the Git root, but only in a project you trust: answer yes to Codex's trust prompt, which records `trust_level = "trusted"` for the project in `~/.codex/config.toml`. When the file already declares `gtkx` in another form, such as an inline table, a sub-table or a multi-line value, the command leaves the file unchanged and prints the table to use instead.
 

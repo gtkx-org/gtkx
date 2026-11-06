@@ -1756,6 +1756,24 @@ describe("CLI commands", () => {
         await expect(invoke(["mcp", "init", "--cwd", project.root, "--client", "missing"])).rejects.toThrow();
     });
 
+    it("keeps an editor MCP configuration's indentation and prints the server for one with comments", async () => {
+        using project = createProject();
+        const path = join(project.root, ".vscode/mcp.json");
+        const init = () => invoke(["mcp", "init", "--cwd", project.root, "--client", "vscode"]);
+        const commented = '{\n\t// Team servers\n\t"servers": {}\n}\n';
+        project.write(".vscode/mcp.json", commented);
+
+        const output = await init();
+        expect(readFileSync(path, "utf8")).toBe(commented);
+        expect(output).toContain('"gtkx": {');
+
+        project.write(".vscode/mcp.json", '{\n\t"servers": {}\n}\n');
+        await init();
+        expect(readFileSync(path, "utf8")).toBe(
+            `${JSON.stringify({ servers: { gtkx: { type: "stdio", command: "npx", args: ["--no", "gtkx", "mcp"] } } }, null, "\t")}\n`,
+        );
+    });
+
     it("writes the Codex server into the project's .codex/config.toml and preserves other servers", async () => {
         using project = createProject();
         const path = join(project.root, ".codex/config.toml");
