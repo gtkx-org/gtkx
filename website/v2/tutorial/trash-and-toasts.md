@@ -28,17 +28,18 @@ In `src/components/window.tsx`, add `AdwToastOverlay` to the Adwaita element imp
 @@ -0,0 +1,2 @@
 +import { ToastProvider } from "@gtkx/components";
 +import { useRef } from "react";
-@@ -12 +14 @@
--import { AdwApplicationWindow, AdwBreakpoint, AdwStatusPage } from "@gtkx/jsx/adw";
-+import { AdwApplicationWindow, AdwToastOverlay, AdwBreakpoint, AdwStatusPage } from "@gtkx/jsx/adw";
+@@ -10 +12,2 @@
+-import { AdwApplicationWindow, AdwStatusPage } from "@gtkx/jsx/adw";
++import * as Adw from "@gtkx/gi/adw";
++import { AdwApplicationWindow, AdwToastOverlay, AdwStatusPage } from "@gtkx/jsx/adw";
 ```
 
 Inside `Window`, create the overlay ref:
 
 ```diff [src/components/window.tsx]
-@@ -31,0 +32 @@
+@@ -30,0 +31 @@
 +    const toastOverlayRef = useRef<Adw.ToastOverlay | null>(null);
-@@ -37,44 +38,13 @@
+@@ -34,49 +35,53 @@
 -        <AdwApplicationWindow
 -            controllers={<AppShortcuts />}
 -            actions={<WindowActions />}
@@ -46,18 +47,11 @@ Inside `Window`, create the overlay ref:
 -            widthRequest={360}
 -            heightRequest={294}
 -            onCloseRequest={() => quit()}
--            breakpoints={
--                <AdwBreakpoint
--                    condition={Adw.BreakpointCondition.parse("max-width: 500sp")}
--                    onApply={() => setCollapsed(true)}
--                    onUnapply={() => setCollapsed(false)}
--                />
--            }
 -        >
 -            <NavigationContainer ref={navigationRef}>
 -                <Split.Navigator
 -                    initialRouteName="Tasks"
--                    collapsed={collapsed}
+-                    collapseCondition="max-width: 500sp"
 -                    sidebarWidthFraction={0.25}
 -                    minSidebarWidth={220}
 -                    maxSidebarWidth={300}
@@ -70,7 +64,6 @@ Inside `Window`, create the overlay ref:
 -                        initialParams={ALL_TASKS}
 -                        options={({ route }) => ({
 -                            title: selectionTitle(route.params, lists),
--                            headerTitle: <TaskFilter />,
 -                            headerStart: (
 -                                <>
 -                                    <GtkButton
@@ -83,20 +76,7 @@ Inside `Window`, create the overlay ref:
 -                            ),
 -                            headerEnd: <MainMenu />,
 -                        })}
-+        <ToastProvider overlayRef={toastOverlayRef}>
-+            <AdwApplicationWindow
-+                controllers={<AppShortcuts />}
-+                actions={<WindowActions />}
-+                title="Tasks"
-+                widthRequest={360}
-+                heightRequest={294}
-+                onCloseRequest={() => quit()}
-+                breakpoints={
-+                    <AdwBreakpoint
-+                        condition={Adw.BreakpointCondition.parse("max-width: 500sp")}
-+                        onApply={() => setCollapsed(true)}
-+                        onUnapply={() => setCollapsed(false)}
-@@ -82,12 +52,47 @@
+-                    />
 -                    <Split.Screen
 -                        name="Task"
 -                        component={TaskScreen}
@@ -109,13 +89,20 @@ Inside `Window`, create the overlay ref:
 -            </NavigationContainer>
 -            <Dialogs />
 -        </AdwApplicationWindow>
-+                }
++        <ToastProvider overlayRef={toastOverlayRef}>
++            <AdwApplicationWindow
++                controllers={<AppShortcuts />}
++                actions={<WindowActions />}
++                title="Tasks"
++                widthRequest={360}
++                heightRequest={294}
++                onCloseRequest={() => quit()}
 +            >
 +                <AdwToastOverlay ref={toastOverlayRef}>
 +                    <NavigationContainer ref={navigationRef}>
 +                        <Split.Navigator
 +                            initialRouteName="Tasks"
-+                            collapsed={collapsed}
++                            collapseCondition="max-width: 500sp"
 +                            sidebarWidthFraction={0.25}
 +                            minSidebarWidth={220}
 +                            maxSidebarWidth={300}
@@ -128,7 +115,6 @@ Inside `Window`, create the overlay ref:
 +                                initialParams={ALL_TASKS}
 +                                options={({ route }) => ({
 +                                    title: selectionTitle(route.params, lists),
-+                                    headerTitle: <TaskFilter />,
 +                                    headerStart: (
 +                                        <>
 +                                            <GtkButton
@@ -211,7 +197,7 @@ Update the type import and dialog fields in `src/store/ui.ts`:
 +    dialog: DialogState;
 @@ -7,0 +8 @@
 +    askDeleteTask: (task: Task) => void;
-@@ -20,2 +21,3 @@
+@@ -18,2 +19,3 @@
 -    dialog: "none",
 -    showDialog: (dialog) => set({ dialog }),
 +    dialog: { kind: "none" },
@@ -425,9 +411,9 @@ In `src/components/app-shortcuts.tsx`, import the same hook and call it inside `
 In `Window`, read `const showDialog = useStore((state) => state.showDialog)` and update the Lists screen header:
 
 ```diff [src/components/window.tsx]
-@@ -31,0 +32 @@
+@@ -30,0 +31 @@
 +    const showDialog = useStore((state) => state.showDialog);
-@@ -64 +65,14 @@
+@@ -54 +55,14 @@
 -                            <Split.Screen name="Lists" component={Sidebar} options={{ title: "Tasks" }} />
 +                            <Split.Screen
 +                                name="Lists"
@@ -473,11 +459,11 @@ Connect the shared delete handler in `src/components/task-buttons.tsx`:
 
 ## Run it
 
-Delete a task using its row button, editor button, and the Delete key on separate attempts. Each action offers Undo and closes the editor when needed. Try a title containing `&` or `<b>`: the toast preserves the text.
+Delete a task using its row button, editor button, and the Delete key outside the editor's text fields on separate attempts. Each action offers Undo and closes the editor when needed. Try a title containing `&` or `<b>`: the toast preserves the text.
 
 Open Trash and delete again. Cancel and Escape preserve the task; Delete removes it permanently. Add another task afterward and check that it appears last in manual order.
 
-Open New List. Add stays disabled for an empty or whitespace-only name. Enter a name, choose a color, and press Return; the saved list appears in the sidebar.
+Open New List. Add stays disabled for an empty or whitespace-only name. Choose a color, type a name in the entry, and press Return; the saved list appears in the sidebar.
 
 ## Next
 

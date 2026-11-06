@@ -47,7 +47,7 @@
         "node": ">=26.7.0"
     },
     "dependencies": {
-        "@gtkx/react": "workspace:*",
+        "@gtkx/react": "workspace:^",
         "@react-navigation/core": "^7.24.0",
         "@react-navigation/routers": "^7.6.5"
     },

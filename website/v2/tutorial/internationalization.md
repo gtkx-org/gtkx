@@ -13,7 +13,7 @@ description: "Translate the interface and package metadata with GTKX's gettext i
 Install the integration:
 
 ```bash
-npm install @gtkx/i18n@2
+npm install @gtkx/i18n@beta
 ```
 
 GTKX requires GNU gettext 0.25 or newer for extraction and compilation. Its CLI reports missing build tools and installation instructions.
@@ -33,12 +33,12 @@ Translate the window title and new-task tooltip in `src/components/window.tsx`:
 ```diff [src/components/window.tsx]
 @@ -0,0 +1 @@
 +import { useTranslation } from "@gtkx/i18n";
-@@ -36,0 +38 @@
+@@ -35,0 +37 @@
 +    const { t } = useTranslation();
-@@ -66 +68 @@
+@@ -63 +65 @@
 -                title="Tasks"
 +                title={t("Tasks")}
-@@ -113 +115 @@
+@@ -102 +104 @@
 -                                                tooltipText="New Task (Ctrl+N)"
 +                                                tooltipText={t("New Task (Ctrl+N)")}
 ```
@@ -70,9 +70,9 @@ Translate the search entry in `src/components/task-list.tsx`:
 ```diff [src/components/task-list.tsx]
 @@ -0,0 +1 @@
 +import { useTranslation } from "@gtkx/i18n";
-@@ -11,0 +13 @@
+@@ -12,0 +14 @@
 +    const { t } = useTranslation();
-@@ -34 +36 @@
+@@ -35 +37 @@
 -                    placeholderText="Search tasks…"
 +                    placeholderText={t("Search tasks…")}
 ```

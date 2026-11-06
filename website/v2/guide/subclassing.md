@@ -60,15 +60,36 @@ Use `declare` for native properties. A JavaScript field initializer would shadow
 
 Property keys use camelCase; the ParamSpec uses the matching native spelling. For example, pair `displayName` with `paramSpecString("display-name", ...)`. Declare read-only and construct-only fields as `readonly`.
 
-Typed `GObject.getProperty` and `GObject.setProperty` calls infer keys from declared fields and compatible ParamSpecs. Use their descriptor-taking overloads when a spec cannot preserve that inference, such as a write-only property or a spec widened to plain `ParamSpec`.
+Typed `GObject.getProperty` and `GObject.setProperty` calls and `useProperty` infer keys from declared fields and compatible ParamSpecs. For object and boxed specs the declared field's type is trusted, so declare `color: Gdk.RGBA` for `paramSpecBoxed("color", null, null, Gdk.RGBA, ParamFlags.READWRITE)`; a field declared with another type typechecks but reads the boxed value. Use the descriptor-taking `getProperty` and `setProperty` overloads when a spec cannot preserve that inference, such as a write-only property, a `paramSpecPointer` or `paramSpecUnichar` spec, or a spec widened to plain `ParamSpec`.
 
 ### Overriding an inherited property
 
-Use `GObject.ParamSpec.override("property-name", Source)` when explicitly redeclaring a property from a parent class or interface. `Source` can be its generated class, interface, or GType. Implemented interface properties are overridden automatically; an explicit spec is useful when supplying custom accessors.
+Use `GObject.ParamSpec.override("property-name", Source)` when explicitly redeclaring a property from a parent class or interface. `Source` can be its generated class, interface, or GType. Implemented interface properties are overridden automatically. Native reads and writes go through a getter and setter of the same camelCase name when the class defines them, as they do for declared properties.
+
+Some interface properties are read through a virtual function, such as `Gtk.Editable`'s `text`, which reads `vfuncGetText`. A write to such a property throws unless the class defines a getter and setter for it, because the virtual function would never see the written value.
 
 ### Inspecting a ParamSpec
 
 Use the generated ParamSpec reference for its metadata and flags. Class-level inspection is available through generated class-struct wrappers, such as `GObject.ObjectClass.peek(TaggedScale)`.
+
+### Binding properties
+
+`bindProperty` keeps a property of one object in step with a property of another. `bindPropertyFull` and `BindingGroup.bindFull` also convert the value on the way, as in GJS: a transform receives the binding and the value read from one end, and returns whether the conversion succeeded with the value to write to the other end. Pass `null` for a direction that should use the default conversion.
+
+```ts
+import * as GObject from "@gtkx/gi/gobject";
+
+scale.bindPropertyFull(
+    "tag",
+    label,
+    "label",
+    GObject.BindingFlags.SYNC_CREATE | GObject.BindingFlags.BIDIRECTIONAL,
+    (_binding, tag) => [true, `#${tag}`],
+    (_binding, text) => (text.startsWith("#") ? [true, text.slice(1)] : [false, null]),
+);
+```
+
+The transform's value types come from the named properties when the objects declare them, so `tag` is a `string` here. A transform that returns `[false, value]` leaves the other end unchanged. A `GObject.Closure` passed in place of a function receives GLib's closure arguments: the binding and the two `GObject.Value`s, the second of which it fills in.
 
 ### Properties and the hooks
 
@@ -84,11 +105,28 @@ const tag = useProperty(scale, "tag");
 <TaggedScaleElement ref={setScale} tag="volume" />;
 ```
 
-The hook returns `undefined` while its target is absent. React state keeps the subscription aligned when the element mounts, is replaced, or unmounts. `useSignal` and `useBindSetting` take instances the same way; mutable ref objects are not subscription targets.
+The hook returns `undefined` while its target is absent, and its type includes `undefined` only when the target's type allows `null` or `undefined`; `useProperty(Adw.StyleManager.getDefault(), "dark")` is a `boolean`. React state keeps the subscription aligned when the element mounts, is replaced, or unmounts. `useSignal` and `useBindSetting` take instances the same way; mutable ref objects are not subscription targets.
 
 ## Declaring signals
 
-The `signals` option registers custom signals. Each entry names its parameter GTypes and, when needed, its return GType. Use the returned class so GTKX's signal helpers recognize the declared names. Custom JSX components should include their signal handler props in their prop type.
+Declare custom signals with `withSignals` when the class emits or connects to them itself. It takes the base class and the signal specs, and the class extending it can use those names on `this`:
+
+```ts
+import * as GObject from "@gtkx/gi/gobject";
+import { registerClass, withSignals } from "@gtkx/runtime";
+
+class CounterBase extends withSignals(GObject.Object, {
+    "cycle-completed": { paramTypes: [GObject.TYPE_INT] },
+}) {
+    complete(cycles: number): void {
+        this.emit("cycle-completed", cycles);
+    }
+}
+
+const Counter = registerClass(CounterBase, { typeName: "ExampleCounter" });
+```
+
+`registerClass` installs these signals on the new type. Its `signals` option declares signals too, typed on the returned class rather than inside the class body; a name declared in both places is an error. Each entry names its parameter GTypes and, when needed, its return GType, as GType values, generated classes, or generated enumerations and flags. Custom JSX components should include their signal handler props in their prop type.
 
 Handlers receive the signal arguments; JSX handlers also receive the emitting object last. See the [JSX prop model](/v2/guide/configuration-and-codegen#the-jsx-prop-model) for handler props and the [`registerClass` reference](/v2/reference/@gtkx/runtime/functions/registerClass) for signal options.
 
@@ -100,7 +138,22 @@ Reserve these names for default handlers when they match a signal. Use ordinary 
 
 ## Class-level setup
 
-Use `classInit` for native operations that must run during type registration, and `cssName` to set a widget subclass's CSS name. `classInit` receives the generated class-struct wrapper, such as `Gtk.WidgetClass`, after GTKX installs the declared properties, signals and virtual functions.
+Use `classInit` for native operations that must run during type registration, and `cssName` to set a widget subclass's CSS name. `classInit` receives the generated class-struct wrapper, such as `Gtk.WidgetClass`, after GTKX installs the declared properties, signals and virtual functions. Its parameter is typed as `object`; annotate it with the class struct of the class you extend:
+
+```ts
+import * as Gtk from "@gtkx/gi/gtk";
+import { registerClass } from "@gtkx/runtime";
+
+class WaveformBase extends Gtk.Widget {}
+
+const Waveform = registerClass(WaveformBase, {
+    typeName: "ExampleWaveform",
+    cssName: "waveform",
+    classInit(klass: Gtk.WidgetClass) {
+        klass.setAccessibleRole(Gtk.AccessibleRole.IMG);
+    },
+});
+```
 
 This is type setup, not a component mount effect. If it throws, registration fails to return, but the native type remains registered and cannot be retried under the same name.
 
@@ -139,6 +192,9 @@ GTKX retains these callbacks for the layout's lifetime, including when GTK owns 
 Implement the generated `vfunc` method with its declared signature. Use `super` to chain to the parent implementation:
 
 ```ts
+import * as Gtk from "@gtkx/gi/gtk";
+import { registerClass } from "@gtkx/runtime";
+
 class PaddedLabel extends Gtk.Label {
     override vfuncMeasure(orientation: Gtk.Orientation, forSize: number): [number, number, number, number] {
         const [minimum, natural, minimumBaseline, naturalBaseline] = super.vfuncMeasure(orientation, forSize);
@@ -152,9 +208,42 @@ registerClass(PaddedLabel, { typeName: "ExamplePaddedLabel" });
 
 Output parameters become return values, grouped into a tuple when there are several. Follow the [native operation's contract](https://docs.gtk.org/gtk4/vfunc.Widget.measure.html) when changing those values. Invoke the ordinary public method when using an instance; direct vfunc calls are for chaining from an override.
 
+Return whole numbers where the slot takes an integer, as `vfuncMeasure` does. GJS truncates a fractional result silently; GTKX rejects it with an error that names the vfunc, such as `TypeError: PaddedLabel.vfuncMeasure returned a value its native caller cannot take: Value 99.5 is not an integer, int32 expects a whole number`. Round sizes computed from fractional values, such as Pango units divided by `Pango.SCALE`, with `Math.round`, `Math.floor` or `Math.ceil` before returning them. See [Passing integers](/v2/guide/native-values#passing-integers).
+
+### Draw with Cairo in `vfuncSnapshot`
+
+A widget that draws with Cairo from its own `vfuncSnapshot`, as many C widgets and gtk4-demo's Paint do, gets a context from `snapshot.appendCairo(bounds)`. Call `cr.$dispose()` once it has drawn, where C calls `cairo_destroy`:
+
+```ts
+import { type ImageSurface } from "@gtkx/cairo";
+import * as Graphene from "@gtkx/gi/graphene";
+import * as Gtk from "@gtkx/gi/gtk";
+
+class CanvasBase extends Gtk.Widget {
+    surface: ImageSurface | null = null;
+
+    override vfuncSnapshot(snapshot: Gtk.Snapshot): void {
+        const cr = snapshot.appendCairo(new Graphene.Rect().init(0, 0, this.getWidth(), this.getHeight()));
+        if (this.surface) {
+            cr.setSourceSurface(this.surface, 0, 0);
+            cr.paint();
+        }
+        cr.$dispose();
+    }
+}
+```
+
+The snapshot keeps what the context drew; `$dispose()` only drops the context. Without it, each frame's context stays alive until garbage collection, and Cairo keeps a copy of `surface` for every frame in which the app draws into it afterwards, so memory grows with every stroke. A `GtkDrawingArea` `drawFunc` needs no call. See [Release contexts you create](/v2/guide/cairo#release-contexts-you-create).
+
 ### Slots with no generated member
 
 Use [`callParent`](/v2/reference/@gtkx/runtime/functions/callParent) when the virtual function has no generated member, including `vfuncDispose`. Pass the class whose override is running, the vfunc name, the instance, and its arguments. The same helper can chain interface slots that TypeScript cannot resolve through `super`.
+
+### Disposal
+
+As in GJS, `vfuncDispose` runs only while the instance's JavaScript object is alive, such as after `runDispose()` or when a window is destroyed. An object released by GTK is usually disposed after its JavaScript object has been garbage-collected; GTKX then skips the override, which could no longer reach the instance's JavaScript state, and runs the parent implementation. Stop timers and other JavaScript-driven work where it is started, such as in `vfuncUnmap` or an effect cleanup, rather than relying on `vfuncDispose`.
+
+When the application quits, GTKX stops keeping objects alive for their JavaScript objects while JavaScript still runs. Objects that only JavaScript references are disposed then, widgets first, then instances of registered classes, then other objects, and the objects they own go with them, as in C. Their `vfuncDispose` overrides run with their JavaScript state, and vfuncs other objects call while they are torn down, such as a column view reading the size of a JavaScript list model, run as usual. Objects GTK itself still holds at that point, such as a window that was never destroyed, are not disposed, as in a C application.
 
 ## Implementing an interface
 
@@ -163,6 +252,7 @@ List the generated interface value in `implements` and implement its required vf
 ```ts
 import * as Gio from "@gtkx/gi/gio";
 import { Object, TYPE_OBJECT } from "@gtkx/gi/gobject";
+import { registerClass } from "@gtkx/runtime";
 
 class LevelStoreBase extends Object implements Gio.ListModelImpl {
     rows: Object[] = [];
@@ -186,13 +276,109 @@ const LevelStore = registerClass(LevelStoreBase, {
 });
 ```
 
-Write vfuncs as prototype methods, not arrow-function fields. The `Impl` type checks signatures; it does not establish that every required native operation has an implementation. Follow the interface's prerequisites and behavior contract. For this example, [Gio.ListModel](https://docs.gtk.org/gio/iface.ListModel.html) also requires change notifications when items change.
+Write vfuncs as prototype methods, not arrow-function fields. Every slot of an `Impl` type is optional, so TypeScript rejects `implements` on a class that fills none of them, such as a `Gtk.Scrollable` widget that only overrides the interface's adjustment and scroll-policy properties; register that class with `implements: [Gtk.Scrollable]` and leave out the `implements` clause. The `Impl` type checks signatures; it does not establish that every required native operation has an implementation. Follow the interface's prerequisites and behavior contract. For this example, [Gio.ListModel](https://docs.gtk.org/gio/iface.ListModel.html) also requires change notifications when items change.
 
 Registration adds the interface's public members to instances. Inside the class, declare any added member you call, such as `declare itemsChanged: Gio.ListModel["itemsChanged"];`. Use a base class whose native state agrees with the implementation you provide.
 
+### Delegating `Gtk.Editable`
+
+GTK's [recipe for implementing `Gtk.Editable`](https://docs.gtk.org/gtk4/iface.Editable.html#implementing-gtkeditable) wraps an inner `Gtk.Text`: return it from `vfuncGetDelegate`, call `initDelegate()` once it exists and `finishDelegate()` in `vfuncDispose`. GTKX forwards the interface's properties (`text`, `cursorPosition`, `editable`, `widthChars`, `xalign` and the rest) to the delegate automatically, as `gtk_editable_delegate_set_property` and `gtk_editable_delegate_get_property` do in C, so skip that step of the recipe. Props such as `text` and `editable` on the class's element then reach the inner field:
+
+```ts
+import * as Gtk from "@gtkx/gi/gtk";
+import { callParent, registerClass } from "@gtkx/runtime";
+
+class SearchFieldBase extends Gtk.Widget implements Gtk.EditableImpl {
+    declare private delegate: Gtk.Text | null;
+    declare initDelegate: Gtk.Editable["initDelegate"];
+    declare finishDelegate: Gtk.Editable["finishDelegate"];
+
+    override vfuncConstructed(): void {
+        super.vfuncConstructed();
+        const text = new Gtk.Text({ hexpand: true });
+        text.setParent(this);
+        this.delegate = text;
+        this.initDelegate();
+    }
+
+    vfuncGetDelegate(): Gtk.Editable | null {
+        return this.delegate;
+    }
+
+    vfuncDispose(): void {
+        if (this.delegate !== null) {
+            this.finishDelegate();
+            this.delegate.unparent();
+            this.delegate = null;
+        }
+
+        callParent(SearchField, "vfuncDispose", this);
+    }
+}
+
+const SearchField = registerClass(SearchFieldBase, {
+    typeName: "ExampleSearchField",
+    implements: [Gtk.Editable],
+    classInit(klass: Gtk.WidgetClass) {
+        klass.setLayoutManagerType(Gtk.BoxLayout);
+    },
+});
+```
+
+Create the delegate in `vfuncConstructed`: reading or writing an editable property while `vfuncGetDelegate` returns `null` throws.
+
 ### Reporting a vfunc error
 
-Throw from a vfunc that reports errors through `GError`. GTKX preserves a thrown `GLib.Error` and converts other exceptions into a native error. A virtual function without an error channel cannot report failure that way; see [Error Handling](/v2/guide/error-handling).
+Throw from a vfunc that reports errors through `GError`. GTKX preserves a thrown `GLib.Error`, such as `new GLib.Error(Gio.IOErrorEnum, Gio.IOErrorEnum.PERMISSION_DENIED, "Read-only")`, and converts other exceptions into a native error. A virtual function without an error channel cannot report failure that way; see [Error Handling](/v2/guide/error-handling).
+
+## Adding actions
+
+A window or application that React renders declares its actions with the `actions` prop, as the [tutorial](/v2/tutorial/actions-menus-shortcuts#define-the-window-actions) shows. A class that builds its own action group, such as a widget with a context menu, adds a table of actions with `addActionEntries`, GJS's `add_action_entries` and C's `g_action_map_add_action_entries`. Every `Gio.ActionMap` has it, including `Gio.SimpleActionGroup`, `Gtk.Application`, `Adw.Application`, `Gtk.ApplicationWindow` and the classes registered from them:
+
+```ts
+import * as Gio from "@gtkx/gi/gio";
+import * as Gtk from "@gtkx/gi/gtk";
+
+class ChartBase extends Gtk.Widget {
+    declare private chartActions: Gio.SimpleActionGroup;
+    declare depth: number;
+
+    override vfuncConstructed(): void {
+        super.vfuncConstructed();
+        this.depth = 5;
+        this.chartActions = new Gio.SimpleActionGroup();
+        this.chartActions.addActionEntries([
+            { name: "zoom-in", activate: () => this.setDepth(this.depth - 1) },
+            { name: "zoom-out", activate: () => this.setDepth(this.depth + 1) },
+            { name: "set-depth", parameterType: "i", activate: (_action, depth) => this.setDepth(depth?.getInt32() ?? 5) },
+            {
+                name: "show-hidden",
+                state: "false",
+                changeState: (action, value) => {
+                    if (value !== null) action.setState(value);
+                    this.queueDraw();
+                },
+            },
+        ]);
+        this.insertActionGroup("chart", this.chartActions);
+    }
+
+    setDepth(depth: number): void {
+        this.depth = Math.max(1, depth);
+        this.queueDraw();
+    }
+}
+```
+
+A menu item with the action `chart.zoom-in` then activates the first entry. Each entry, typed as `Gio.ActionEntryObj`, takes GJS's fields in camelCase:
+
+- `name`, the action's name.
+- `activate(action, parameter)`, connected to the action's `activate` signal.
+- `parameterType`, a GVariant type string such as `"s"` or a `GLib.VariantType`. Without it, the action takes no parameter.
+- `state`, the initial state in GVariant text such as `"'large'"` or `"true"`, a boolean or a `GLib.Variant`. Without it, the action is stateless.
+- `changeState(action, value)`, connected to `change-state`. Without it, a change request sets the state directly.
+
+As in GJS and C, both callbacks receive the action first and run with `this` set to it; a handler passed to `connect` receives only the signal's arguments. An entry without a string name, an invalid `parameterType` or a `state` that does not parse throws, and the entries before it stay added. `removeActionEntries` takes the same entries and removes the actions they name.
 
 ## Elements that cannot be children
 
@@ -200,9 +386,13 @@ Express native object relationships through JSX props and supported child slots.
 
 ## Initialization order
 
-`vfuncConstructed` runs after native construct properties are set, while `super()` is still executing. JavaScript field initializers and the constructor body have not run yet. Use declared fields or native properties for state this override needs; private fields are unavailable at that point.
+`vfuncConstructed` runs after native construct properties are set, while `super()` is still executing. JavaScript field initializers and the constructor body have not run yet. Other properties passed to the constructor, including element props, are set after it returns: a binding or `notify` handler connected there receives them, but reading them directly there returns their defaults. Use declared fields or native properties for state this override needs; private fields are unavailable at that point.
 
 Objects created by native code do not run the JavaScript constructor or its field initializers. Initialize state needed by those instances in `vfuncConstructed`, chaining to the parent. Keep ordinary component setup in React.
+
+## GtkBuilder and `.ui` files
+
+GTKX applications define their interface in JSX, where signal handlers are props; port a `.ui` file or a `Gtk.Template` to JSX rather than loading it. `Gtk.Builder` can still create instances of registered classes from XML, initialized in `vfuncConstructed` as above, but `<signal>` handlers in a `.ui` file are not supported. GTKX has no built-in JavaScript `Gtk.BuilderScope` like GJS's, and a scope implemented with `registerClass` cannot return a closure from `vfuncCreateClosure`, so such a file fails to load.
 
 ## Next
 

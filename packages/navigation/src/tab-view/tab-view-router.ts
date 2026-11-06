@@ -143,7 +143,13 @@ const selectAfterClose = (state: State, position: number): Route | undefined => 
     return state.routes[position + 1] ?? previous;
 };
 
-const closeOne = (state: State, key: string): State | null => {
+const replaceRoutes = (state: State, route: Route): State => ({
+    ...withRoutes(state, [route], route.key),
+    pinnedKeys: [],
+    parents: {},
+});
+
+const closeOne = (state: State, key: string, replacement?: Route): State | null => {
     const position = indexOfKey(state.routes, key);
 
     if (position === -1) {
@@ -151,7 +157,7 @@ const closeOne = (state: State, key: string): State | null => {
     }
 
     if (state.routes.length === 1) {
-        return null;
+        return replacement === undefined ? null : replaceRoutes(state, replacement);
     }
 
     const focused = focusedKey(state) === key ? selectAfterClose(state, position)?.key : focusedKey(state);
@@ -361,19 +367,18 @@ const initialRouteName = (options: TabViewRouterOptions, routeNames: string[]): 
     return name;
 };
 
-const initialPlacement = (
-    options: TabViewRouterOptions,
-    { routeNames, routeParamList }: RouterConfigOptions,
-): Placement => {
+const initialRoute = (options: TabViewRouterOptions, { routeNames, routeParamList }: RouterConfigOptions): Route => {
     const name = initialRouteName(options, routeNames);
 
-    return {
-        routes: [{ key: createRouteKey(name), name, params: routeParamList[name] }],
-        index: 0,
-        pinnedKeys: [],
-        parents: {},
-    };
+    return { key: createRouteKey(name), name, params: routeParamList[name] };
 };
+
+const initialPlacement = (options: TabViewRouterOptions, config: RouterConfigOptions): Placement => ({
+    routes: [initialRoute(options, config)],
+    index: 0,
+    pinnedKeys: [],
+    parents: {},
+});
 
 const existingPlacement = (tabs: readonly ExistingTab[], { routeParamList }: RouterConfigOptions): Placement => ({
     routes: tabs.map(({ route }) => ({ ...route, params: mergeParams(routeParamList[route.name], route.params) })),
@@ -483,8 +488,9 @@ const createTabViewRouter =
                     return openTab(state, action.payload, config);
                 case "CLOSE_TAB": {
                     const key = action.payload.key ?? focusedKey(state);
+                    const replacement = options.replaceLastTab === true ? initialRoute(options, config) : undefined;
 
-                    return key === undefined ? null : closeOne(state, key);
+                    return key === undefined ? null : closeOne(state, key, replacement);
                 }
                 case "CLOSE_OTHER_TABS":
                 case "CLOSE_TABS_BEFORE":

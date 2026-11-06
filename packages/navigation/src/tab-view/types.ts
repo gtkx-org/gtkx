@@ -139,7 +139,11 @@ type TabViewTarget = {
 
 /** Settings of the `AdwTabOverview` rendered around the view. */
 type TabViewOverviewConfig = {
-    /** Whether the overview is open. */
+    /**
+     * Whether the overview is open. When given, the overview follows it: the user opening or closing the overview
+     * calls `onOpenChange`, and a value the app does not update is restored. Leave it out to let the overview open
+     * and close on its own.
+     */
     open?: boolean;
     /** Called when the overview opens or closes natively. */
     onOpenChange?: (open: boolean) => void;
@@ -168,15 +172,21 @@ type TabViewNavigationConfig = {
     tabBarInverted?: boolean;
     /** Renders an `AdwTabOverview` around the view. */
     overview?: TabViewOverviewConfig;
-    /** Context menu of the tabs. */
+    /** An existing menu model to use as the tabs' context menu. Use `renderMenu` to declare the menu in JSX instead. */
     menuModel?: Gio.MenuModel | null;
+    /**
+     * Renders the tabs' context menu. Attach `ref` to a `GMenu`, or to any menu model element, anywhere in the
+     * returned tree; the navigator renders the tree outside the widget hierarchy and uses that model. A navigator
+     * given both `renderMenu` and a `menuModel` throws.
+     */
+    renderMenu?: (ref: (menu: Gio.MenuModel | null) => void) => ReactNode;
     /** Additional content accepted by drops on tabs. */
     extraDropTarget?: TabViewExtraDropTarget | null;
     /** Handles content dropped on a tab; returns whether the drop was accepted. */
     onExtraDragDrop?: (route: RouteProp<ParamListBase>, value: GObject.Value) => boolean;
     /** Returns the view of a new window when a tab is dragged out of this one. */
     onCreateWindow?: () => Adw.TabView | null;
-    /** Called with the tab whose context menu opens, or `null` when it closes. */
+    /** Called with the tab whose context menu opens, or `null` when it closes, after the chosen menu action has run. */
     onSetupMenu?: (route: RouteProp<ParamListBase> | null) => void;
     /** Keyboard shortcuts the view handles. */
     shortcuts?: Adw.TabViewShortcuts;
@@ -188,6 +198,12 @@ type TabViewNavigationConfig = {
 type TabViewRouterOptions = {
     /** Screen of the tab opened when the view starts empty; defaults to the first screen. */
     initialRouteName?: string;
+    /**
+     * Whether closing the last tab replaces it with a new tab of the initial route, instead of leaving that close
+     * unhandled for a parent navigator or the container's `onUnhandledAction`. Use it for a tab view inside a section
+     * of the app rather than a window of its own; defaults to `false`.
+     */
+    replaceLastTab?: boolean;
 };
 
 /** Navigation object of a tab view screen. */

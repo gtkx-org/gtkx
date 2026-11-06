@@ -1,9 +1,10 @@
 import type { ParamSpec } from "@gtkx/gi/gobject";
 import type { RenderHookResult } from "@gtkx/testing";
 import type { ComponentProps, ForwardedRef, ReactNode } from "react";
+import * as Gdk from "@gtkx/gi/gdk";
 import * as GLib from "@gtkx/gi/glib";
 import * as GObject from "@gtkx/gi/gobject";
-import { ParamFlags, paramSpecInt, paramSpecString } from "@gtkx/gi/gobject";
+import { ParamFlags, paramSpecBoxed, paramSpecInt, paramSpecString } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { useProperty, useSignal } from "@gtkx/react";
@@ -17,6 +18,7 @@ type Reading = InstanceType<typeof Reading>;
 type Gauge = InstanceType<typeof Gauge>;
 type Humidity = InstanceType<typeof Humidity>;
 type Annotated = InstanceType<typeof Annotated>;
+type Swatch = InstanceType<typeof Swatch>;
 type ReadingProperty = "celsius" | "dewPoint";
 type HumidityProperty = "dewPoint" | "heatIndex";
 type AddressableNames<T extends GObject.Object> = keyof NonNullable<T["__properties__"]> & keyof T;
@@ -91,6 +93,16 @@ const Annotated = registerClass(
     { typeName: uniqueName("GtkxUsePropertyAnnotated"), properties: ANNOTATED_PROPERTIES },
 );
 
+const Swatch = registerClass(
+    class Swatch extends GObject.Object {
+        declare color: Gdk.RGBA;
+    },
+    {
+        typeName: uniqueName("GtkxUsePropertySwatch"),
+        properties: { color: paramSpecBoxed("color", null, null, Gdk.RGBA, ParamFlags.READWRITE) },
+    },
+);
+
 const MemoTickProbe = memo(TickProbeImpl);
 const ImmediateTickProbe = memo(ImmediateTickProbeImpl);
 const ForwardedTickProbe = forwardRef<Gtk.Label | null, TickProbeProps>(ForwardedTickProbeImpl);
@@ -152,8 +164,11 @@ const renderLabelTarget = async (object: Gtk.Label | null | undefined): Promise<
 const useCelsius = (reading: Reading) => useProperty(reading, "celsius");
 const useInstalledCaption = (gauge: Gauge) => useProperty(gauge, "caption");
 const useInheritedLabel = (gauge: Gauge) => useProperty(gauge, "label");
+const useBoxedColor = (swatch: Swatch) => useProperty(swatch, "color");
 const useDashedKey = (humidity: Humidity) => useProperty(humidity, "dewPoint");
 const useUnderscoredKey = (humidity: Humidity) => useProperty(humidity, "heatIndex");
+const useOptionalCelsius = (reading: Reading | null) => useProperty(reading, "celsius");
+const useMaybeLabel = (label: Gtk.Label | undefined) => useProperty(label, "label");
 
 const useUnknownLabelProperty = (label: Gtk.Label) =>
     // @ts-expect-error "labl" is not a property of Gtk.Label
@@ -328,6 +343,19 @@ describe("useProperty (registered classes)", () => {
             expect(result.current).toEqual({ caption: "outside", label: "Hello" });
         });
     });
+
+    it("reads installed properties passed to the constructor", async () => {
+        const gauge = new Gauge({ caption: "inside", label: "Hello" });
+        const reading = new Reading({ celsius: 21, dewPoint: 14 });
+
+        const { result } = await renderHook(() => ({
+            caption: useProperty(gauge, "caption"),
+            celsius: useProperty(reading, "celsius"),
+            dewPoint: useProperty(reading, "dewPoint"),
+        }));
+
+        expect(result.current).toEqual({ caption: "inside", celsius: 21, dewPoint: 14 });
+    });
 });
 
 describe("useProperty (registration)", () => {
@@ -390,11 +418,17 @@ describe("useProperty (addressable names)", () => {
         expectTypeOf(useSignal<Gtk.Button, "clicked">)
             .parameter(0)
             .toEqualTypeOf<Gtk.Button | null | undefined>();
-        expectTypeOf(useCelsius).returns.toEqualTypeOf<number | undefined>();
-        expectTypeOf(useInstalledCaption).returns.toEqualTypeOf<string | undefined>();
-        expectTypeOf(useInheritedLabel).returns.toEqualTypeOf<string | undefined>();
-        expectTypeOf(useDashedKey).returns.toEqualTypeOf<number | undefined>();
-        expectTypeOf(useUnderscoredKey).returns.toEqualTypeOf<number | undefined>();
+        expectTypeOf(useCelsius).returns.toEqualTypeOf<number>();
+        expectTypeOf(useInstalledCaption).returns.toEqualTypeOf<string>();
+        expectTypeOf(useInheritedLabel).returns.toEqualTypeOf<string>();
+        expectTypeOf(useBoxedColor).returns.toEqualTypeOf<Gdk.RGBA>();
+        expectTypeOf(useDashedKey).returns.toEqualTypeOf<number>();
+        expectTypeOf(useUnderscoredKey).returns.toEqualTypeOf<number>();
+    });
+
+    it("adds undefined to the value only when the object can be null", () => {
+        expectTypeOf(useOptionalCelsius).returns.toEqualTypeOf<number | undefined>();
+        expectTypeOf(useMaybeLabel).returns.toEqualTypeOf<string | undefined>();
     });
 
     it("names every installed property in camelCase, whichever spelling keyed it", () => {
