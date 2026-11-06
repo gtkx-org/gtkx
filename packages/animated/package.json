@@ -40,7 +40,9 @@
         "./src/index.ts",
         "./dist/index.js",
         "./src/bootstrap.ts",
-        "./dist/bootstrap.js"
+        "./dist/bootstrap.js",
+        "./src/loop-guard.ts",
+        "./dist/loop-guard.js"
     ],
     "files": [
         "dist",
