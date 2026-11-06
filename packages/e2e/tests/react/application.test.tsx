@@ -5,15 +5,17 @@ import * as Adw from "@gtkx/gi/adw";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
+import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
 import { GMenu, GMenuItem, GSimpleAction } from "@gtkx/jsx/gio";
 import { GtkApplication, GtkApplicationWindow, GtkBox, GtkEntry, GtkLabel } from "@gtkx/jsx/gtk";
 import { createRoot, quit, rootElement, useApplication } from "@gtkx/react";
+import { getInstanceType } from "@gtkx/runtime";
 import { act, render, userEvent } from "@gtkx/testing";
 import process from "node:process";
 import { createRef, StrictMode, useEffect } from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { startApplicationOwner, stopApplicationOwners } from "../helpers/application-owner.js";
 import { createApplicationRenderer } from "../helpers/application-render.js";
 import { createAppIdFactory } from "../helpers/unique-name.js";
@@ -87,7 +89,7 @@ const renderApplication = createApplicationRenderer("org.gtkx.useapplicationtest
 const uniqueAppId4 = createAppIdFactory("org.gtkx.remoteapp");
 const mounted: Root[] = [];
 
-const TEARDOWNS: Teardown[] = [
+const ROOT_TEARDOWNS: Teardown[] = [
     {
         name: "unmount",
         tearDown: (root) => {
@@ -100,6 +102,10 @@ const TEARDOWNS: Teardown[] = [
             root.render(null);
         },
     },
+];
+
+const TEARDOWNS: Teardown[] = [
+    ...ROOT_TEARDOWNS,
     {
         name: "a previous quit",
         tearDown: () => {
@@ -341,7 +347,7 @@ const Probe = () => {
     return null;
 };
 
-const renderWindowCount = async (applicationId: string): Promise<number> => {
+const renderApplicationWithId = async (applicationId: string): Promise<Gtk.Application> => {
     const root = createRoot({ ...rootElement });
     mounted.push(root);
     const captured: Captured = { application: null };
@@ -359,7 +365,7 @@ const renderWindowCount = async (applicationId: string): Promise<number> => {
         );
     });
 
-    return captured.application?.getWindows().length ?? 0;
+    return requireWidget(captured.application, "GtkApplication");
 };
 
 const Probe2 = ({ onCleanup }: ProbeProps): ReactNode => {
@@ -432,6 +438,20 @@ describe("render - Application configured identity", () => {
         const application = requireWidget(ref.current, "Application");
         expect(application.getApplicationId()).toBe("org.gtkx.e2e");
         expect(application.getResourceBasePath()).toBe("/org/gtkx/custom");
+    });
+
+    it("registers one managed type directly below the application class", async () => {
+        const ref = createRef<Adw.Application>();
+
+        await render(
+            <AdwApplication ref={ref} flags={APP_FLAGS}>
+                <AdwApplicationWindow defaultWidth={200} defaultHeight={100} />
+            </AdwApplication>,
+            { container: rootElement },
+        );
+
+        const application = requireWidget(ref.current, "Application");
+        expect(GObject.typeParent(getInstanceType(application))).toBe(GObject.typeFromName("AdwApplication"));
     });
 });
 
@@ -540,6 +560,32 @@ describe("render - Application main options", () => {
     });
 });
 
+describe("render - Application launched with files", () => {
+    it("renders its windows when it starts by opening files instead of activating", async () => {
+        const ref = createRef<Gtk.Application>();
+        const opened: (string | null)[] = [];
+
+        await withArgv(["/tmp/gtkx-open-probe.txt"], async () => {
+            await render(
+                <GtkApplication
+                    ref={ref}
+                    applicationId={uniqueAppId()}
+                    flags={Gio.ApplicationFlags.HANDLES_OPEN}
+                    onOpen={(files) => {
+                        opened.push(...files.map((file) => file.getBasename()));
+                    }}
+                >
+                    <GtkApplicationWindow defaultWidth={200} defaultHeight={100} />
+                </GtkApplication>,
+                { container: rootElement },
+            );
+        });
+
+        expect(opened).toEqual(["gtkx-open-probe.txt"]);
+        expect(ref.current?.getWindows()).toHaveLength(1);
+    });
+});
+
 describe("render - Application lifecycle", () => {
     it("opens and cleans up an application in StrictMode", async () => {
         const ref = createRef<Gtk.Application>();
@@ -640,6 +686,55 @@ describe("render - Application lifecycle", () => {
         expect(Gio.Application.getDefault()).toBeNull();
     });
 
+    it("runs its shutdown handler when quit closes its last window", async () => {
+        const windowRef = createRef<Adw.ApplicationWindow>();
+        let shutdowns = 0;
+
+        await render(
+            <AdwApplication
+                applicationId={uniqueAppId()}
+                flags={APP_FLAGS}
+                onShutdown={() => {
+                    shutdowns += 1;
+                }}
+            >
+                <AdwApplicationWindow ref={windowRef} onCloseRequest={quit} />
+            </AdwApplication>,
+            { container: rootElement },
+        );
+        const window = requireWidget(windowRef.current, "Application window");
+
+        await act(() => window.close());
+        await vi.waitFor(() => expect(Gio.Application.getDefault()).toBeNull());
+
+        expect(shutdowns).toBe(1);
+    });
+
+    it("ends a run its startup handler holds when quit unmounts it", async () => {
+        const windowRef = createRef<Adw.ApplicationWindow>();
+        let shutdowns = 0;
+
+        await render(
+            <AdwApplication
+                applicationId={uniqueAppId()}
+                flags={APP_FLAGS}
+                onStartup={(application) => application.hold()}
+                onShutdown={() => {
+                    shutdowns += 1;
+                }}
+            >
+                <AdwApplicationWindow ref={windowRef} onCloseRequest={quit} />
+            </AdwApplication>,
+            { container: rootElement },
+        );
+        const window = requireWidget(windowRef.current, "Application window");
+
+        await act(() => window.close());
+        await vi.waitFor(() => expect(Gio.Application.getDefault()).toBeNull());
+
+        expect(shutdowns).toBe(1);
+    });
+
     it("keeps a windowless application alive for work started by an effect", async () => {
         const appRef = createRef<Adw.Application>();
         const root = createRoot({ ...rootElement });
@@ -677,7 +772,7 @@ describe("render - Application lifecycle", () => {
         expect(Gio.Application.getDefault()).toBeNull();
     });
 
-    it.each(TEARDOWNS)("preserves a background hold after $name", async ({ tearDown }) => {
+    it.each(ROOT_TEARDOWNS)("preserves a background hold after $name", async ({ tearDown }) => {
         const appRef = createRef<Adw.Application>();
         const root = createRoot({ ...rootElement });
         mounted.push(root);
@@ -973,14 +1068,17 @@ afterEach(async () => {
 });
 
 describe("<GtkApplication> on an application ID another process already owns", () => {
-    it("draws no window when another process owns the application ID", async () => {
+    it("draws no window and unregisters when another process owns the application ID", async () => {
         const applicationId = uniqueAppId4();
         await startApplicationOwner(applicationId);
-        expect(await renderWindowCount(applicationId)).toBe(0);
+        const application = await renderApplicationWithId(applicationId);
+        expect(application.getWindows()).toHaveLength(0);
+        await expect.poll(() => application.getIsRegistered()).toBe(false);
     });
 
     it("opens a window when this process owns the application ID", async () => {
-        expect(await renderWindowCount(uniqueAppId4())).toBe(1);
+        const application = await renderApplicationWithId(uniqueAppId4());
+        expect(application.getWindows()).toHaveLength(1);
     });
 });
 

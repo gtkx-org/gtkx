@@ -1,11 +1,44 @@
 import * as Adw from "@gtkx/gi/adw";
+import * as Gio from "@gtkx/gi/gio";
+import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
-import { AdwTabOverview, AdwTabPage, AdwTabView } from "@gtkx/jsx/adw";
-import { GtkBox, GtkEntry } from "@gtkx/jsx/gtk";
-import { createPortal, createRoot } from "@gtkx/react";
+import { AdwTabBar, AdwTabOverview, AdwTabPage, AdwTabView, AdwToolbarView } from "@gtkx/jsx/adw";
+import { GtkApplication, GtkApplicationWindow, GtkBox, GtkEntry } from "@gtkx/jsx/gtk";
+import { createPortal, createRoot, rootElement, useSignal } from "@gtkx/react";
 import { act, render, screen, userEvent } from "@gtkx/testing";
 import { createRef, useState } from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
+import { createAppIdFactory } from "../helpers/unique-name.js";
+
+const uniqueAppId = createAppIdFactory("org.gtkx.tablifecycletest");
+
+const pageTitles = (view: Adw.TabView | null): string[] =>
+    Array.from({ length: view?.getNPages() ?? 0 }, (_, index) => view?.getNthPage(index).getTitle() ?? "");
+
+const requestClose = async (view: Adw.TabView | null, title: string): Promise<void> => {
+    await act(() => {
+        const page = Array.from({ length: view?.getNPages() ?? 0 }, (_, index) => view?.getNthPage(index)).find(
+            (candidate) => candidate?.getTitle() === title,
+        );
+        if (view && page) view.closePage(page);
+    });
+};
+
+const observeStderr = () => {
+    const write = vi.spyOn(process.stderr, "write");
+    onTestFinished(() => {
+        write.mockRestore();
+    });
+
+    return write;
+};
+
+const TitledPages = ({ titles }: { titles: string[] }) =>
+    titles.map((title) => (
+        <AdwTabPage key={title} title={title}>
+            <GtkEntry text={title} />
+        </AdwTabPage>
+    ));
 
 describe("native tab lifecycle", () => {
     it("returns a native page created in the overview create-tab handler and renders into it", async () => {
@@ -53,6 +86,40 @@ describe("native tab lifecycle", () => {
         expect(returned.page).toBe(view.current?.getNthPage(1));
         const host = view.current?.getNthPage(1).getChild();
         expect(host instanceof Adw.Bin ? host.getChild() : null).toHaveObjectProperty("text", "New tab");
+    });
+
+    it("closes the window of a tab overview without rendering its pages afterwards", async () => {
+        const criticals: string[] = [];
+        const handlerId = GLib.logSetHandler("Gsk", GLib.LogLevelFlags.LEVEL_CRITICAL, (_domain, _level, message) => {
+            criticals.push(message);
+        });
+        onTestFinished(() => {
+            GLib.logRemoveHandler("Gsk", handlerId);
+        });
+        const applicationId = uniqueAppId();
+        const Documents = () => {
+            const [view, setView] = useState<Adw.TabView | null>(null);
+
+            return (
+                <GtkApplication applicationId={applicationId} flags={Gio.ApplicationFlags.NON_UNIQUE}>
+                    <GtkApplicationWindow title="Documents">
+                        <AdwTabOverview view={view}>
+                            <AdwToolbarView top={<AdwTabBar view={view} />}>
+                                <AdwTabView ref={setView}>
+                                    <TitledPages titles={["Notes", "Ideas"]} />
+                                </AdwTabView>
+                            </AdwToolbarView>
+                        </AdwTabOverview>
+                    </GtkApplicationWindow>
+                </GtkApplication>
+            );
+        };
+        const { unmount } = await render(<Documents />, { container: rootElement });
+        await screen.findByRole(Gtk.AccessibleRole.TAB, { name: "Notes" });
+
+        await unmount();
+
+        expect(criticals).toEqual([]);
     });
 
     it("removes a page from its actual view after a native transfer", async () => {
@@ -154,6 +221,31 @@ describe("native tab lifecycle", () => {
         });
         await rerender(<App visible={false} />);
         expect(view.current?.getNPages()).toBe(0);
+    });
+
+    it("keeps a page selected while its content element is replaced", async () => {
+        const view = createRef<Adw.TabView>();
+        const App = ({ isEmpty }: { isEmpty: boolean }) => (
+            <AdwTabView ref={view}>
+                <AdwTabPage title="First">
+                    <GtkEntry text="First" />
+                </AdwTabPage>
+                <AdwTabPage title="Second">{isEmpty ? <GtkBox /> : <GtkEntry text="Second" />}</AdwTabPage>
+                <AdwTabPage title="Third">
+                    <GtkEntry text="Third" />
+                </AdwTabPage>
+            </AdwTabView>
+        );
+        const { rerender } = await render(<App isEmpty={false} />);
+        await act(() => {
+            const second = view.current?.getNthPage(1);
+            if (second) view.current?.setSelectedPage(second);
+        });
+        await rerender(<App isEmpty />);
+        expect(view.current?.getSelectedPage()?.getTitle()).toBe("Second");
+        expect(view.current?.getNthPage(1).getChild()).toBeInstanceOf(Gtk.Box);
+        await rerender(<App isEmpty={false} />);
+        expect(view.current?.getSelectedPage()?.getTitle()).toBe("Second");
     });
 
     it("selects the parent of an independently rendered duplicate after closing it", async () => {
@@ -307,5 +399,103 @@ describe("native tab lifecycle", () => {
         await rerender(app(true));
         expect(target.current?.getNthPage(0)).toBe(transferred.current);
         expect(target.current?.getNthPage(1).getTitle()).toBe("New");
+    });
+});
+
+describe("closing JSX tabs", () => {
+    it("keeps a page React still renders when nothing handles its close request, and warns", async () => {
+        const view = createRef<Adw.TabView>();
+        const stderr = observeStderr();
+        await render(
+            <AdwTabView ref={view}>
+                <TitledPages titles={["First", "Second"]} />
+            </AdwTabView>,
+        );
+        await requestClose(view.current, "Second");
+        expect(pageTitles(view.current)).toEqual(["First", "Second"]);
+        expect(stderr).toHaveBeenCalled();
+    });
+
+    it("closes a page once onClosePage removes it from state", async () => {
+        const view = createRef<Adw.TabView>();
+        const App = () => {
+            const [titles, setTitles] = useState(["First", "Second"]);
+
+            return (
+                <AdwTabView
+                    ref={view}
+                    onClosePage={(page, self) => {
+                        setTitles((current) => current.filter((title) => title !== page.getTitle()));
+                        self.closePageFinish(page, true);
+                        return true;
+                    }}
+                >
+                    <TitledPages titles={titles} />
+                </AdwTabView>
+            );
+        };
+        await render(<App />);
+        await requestClose(view.current, "Second");
+        expect(pageTitles(view.current)).toEqual(["First"]);
+    });
+
+    it("closes a page that onClosePage removes from state without finishing the close", async () => {
+        const view = createRef<Adw.TabView>();
+        const App = () => {
+            const [titles, setTitles] = useState(["First", "Second"]);
+
+            return (
+                <AdwTabView
+                    ref={view}
+                    onClosePage={(page) => {
+                        setTitles((current) => current.filter((title) => title !== page.getTitle()));
+                        return true;
+                    }}
+                >
+                    <TitledPages titles={titles} />
+                </AdwTabView>
+            );
+        };
+        await render(<App />);
+        await requestClose(view.current, "Second");
+        expect(pageTitles(view.current)).toEqual(["First"]);
+    });
+
+    it("lets a close-page handler connected with useSignal answer the request", async () => {
+        const view = createRef<Adw.TabView>();
+        const App = () => {
+            const [instance, setInstance] = useState<Adw.TabView | null>(null);
+            const [titles, setTitles] = useState(["First", "Second"]);
+            useSignal(instance, "close-page", (page) => {
+                setTitles((current) => current.filter((title) => title !== page.getTitle()));
+                instance?.closePageFinish(page, true);
+                return true;
+            });
+
+            return (
+                <AdwTabView
+                    ref={(tabView) => {
+                        view.current = tabView;
+                        setInstance(tabView);
+                    }}
+                >
+                    <TitledPages titles={titles} />
+                </AdwTabView>
+            );
+        };
+        await render(<App />);
+        await requestClose(view.current, "Second");
+        expect(pageTitles(view.current)).toEqual(["First"]);
+    });
+
+    it("lets libadwaita close the page when onClosePage returns false", async () => {
+        const view = createRef<Adw.TabView>();
+        await render(
+            <AdwTabView ref={view} onClosePage={() => false}>
+                <TitledPages titles={["First", "Second"]} />
+            </AdwTabView>,
+        );
+        await requestClose(view.current, "Second");
+        expect(pageTitles(view.current)).toEqual(["First"]);
     });
 });

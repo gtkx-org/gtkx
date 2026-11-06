@@ -1,9 +1,10 @@
 import type * as Adw from "@gtkx/gi/adw";
 import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { type ElementType, type ReactNode, type Ref, useMemo, useRef } from "react";
+import { type ElementType, type ReactNode, type Ref, useMemo, useRef, useState } from "react";
 import type { Props } from "../reconciler/registry.js";
 import { type ControlledValue, useControlledValue } from "../hooks/use-controlled-value.js";
+import { useRefusedCloseWarning } from "../hooks/use-dismissal.js";
 import { useMergedRef } from "../hooks/use-merged-refs.js";
 import { ControlledChildrenContext } from "./controlled-context.js";
 
@@ -132,10 +133,110 @@ const createToggleGroupComponent = (Component: ElementType): ((props: Props) => 
     });
 };
 
+const createOpenStateComponent = <P extends GObject.Object>(
+    Component: ElementType,
+    prop: string,
+    property: string,
+    read: (object: P) => boolean,
+    write: (object: P, value: boolean) => void,
+    canApply?: (object: P, value: boolean) => boolean,
+): ((props: Props) => ReactNode) =>
+    createControlledComponent<P, boolean>(Component, prop, {
+        signal: `notify::${property}`,
+        read,
+        write,
+        ...(canApply === undefined ? {} : { canApply }),
+        dismissedThrough: `onNotify${prop.charAt(0).toUpperCase()}${prop.slice(1)}`,
+    });
+
+const createOverlaySplitViewComponent = (Component: ElementType): ((props: Props) => ReactNode) =>
+    createOpenStateComponent<Adw.OverlaySplitView>(
+        Component,
+        "showSidebar",
+        "show-sidebar",
+        (view) => view.getShowSidebar(),
+        (view, show) => {
+            view.setShowSidebar(show);
+        },
+    );
+
+const createNavigationSplitViewComponent = (Component: ElementType): ((props: Props) => ReactNode) =>
+    createOpenStateComponent<Adw.NavigationSplitView>(
+        Component,
+        "showContent",
+        "show-content",
+        (view) => view.getShowContent(),
+        (view, show) => {
+            view.setShowContent(show);
+        },
+    );
+
+const createTabOverviewComponent = (Component: ElementType): ((props: Props) => ReactNode) =>
+    createOpenStateComponent<Adw.TabOverview>(
+        Component,
+        "open",
+        "open",
+        (overview) => overview.getOpen(),
+        (overview, open) => {
+            overview.setOpen(open);
+        },
+        (overview) => (overview.getView()?.getNPages() ?? 0) > 0,
+    );
+
+const createSearchBarComponent = (Component: ElementType): ((props: Props) => ReactNode) =>
+    createOpenStateComponent<Gtk.SearchBar>(
+        Component,
+        "searchModeEnabled",
+        "search-mode-enabled",
+        (bar) => bar.getSearchMode(),
+        (bar, enabled) => {
+            bar.setSearchMode(enabled);
+        },
+    );
+
+const SHEET_CLOSE_ANSWERS = ["onNotifyOpen", "onCloseAttempt"];
+
+const createBottomSheetComponent = (Component: ElementType): ((props: Props) => ReactNode) => {
+    const ControlledSheet = createOpenStateComponent<Adw.BottomSheet>(
+        Component,
+        "open",
+        "open",
+        (sheet) => sheet.getOpen(),
+        (sheet, open) => {
+            sheet.setOpen(open);
+        },
+    );
+
+    return (props: Props): ReactNode => {
+        const [sheet, setSheet] = useState<Adw.BottomSheet | null>(null);
+        const ref = useMergedRef(props.ref as Ref<Adw.BottomSheet> | undefined, setSheet);
+        const isAnswered =
+            props.open === undefined || SHEET_CLOSE_ANSWERS.some((name) => typeof props[name] === "function");
+        const isAllowed = props.canClose !== false;
+
+        useRefusedCloseWarning(
+            sheet,
+            isAllowed && !isAnswered,
+            "AdwBottomSheet:close-attempt",
+            () =>
+                "<AdwBottomSheet> was asked to close (a swipe, Escape or a click outside the sheet), but nothing " +
+                "handles onNotifyOpen, so it stays open. Update open from onNotifyOpen, or leave open out to let " +
+                "the sheet manage it.",
+        );
+
+        return <ControlledSheet {...props} ref={ref} canClose={isAllowed && isAnswered} />;
+    };
+};
+
 export {
+    createBottomSheetComponent,
     createListBoxComponent,
     createStackComponent,
     createViewStackComponent,
     createMultiLayoutViewComponent,
     createToggleGroupComponent,
+    createOverlaySplitViewComponent,
+    createNavigationSplitViewComponent,
+    createTabOverviewComponent,
+    createSearchBarComponent,
 };

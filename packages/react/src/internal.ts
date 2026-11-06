@@ -6,8 +6,13 @@ export { createApplicationWindowComponent } from "./components/application-windo
 export { createApplicationComponent } from "./components/application.js";
 export { createConstraintLayoutComponent } from "./components/constraint-layout.js";
 export {
+    createBottomSheetComponent,
     createListBoxComponent,
+    createNavigationSplitViewComponent,
+    createOverlaySplitViewComponent,
+    createSearchBarComponent,
     createStackComponent,
+    createTabOverviewComponent,
     createViewStackComponent,
     createMultiLayoutViewComponent,
     createToggleGroupComponent,
@@ -15,7 +20,7 @@ export {
 /** @internal */
 export { createDialogComponent } from "./components/dialog.js";
 export { createElementComponent } from "./components/element.js";
-export { createMenuComponent, createMenuItemComponent } from "./components/menu.js";
+export { createCustomChildrenComponent, createMenuComponent, createMenuItemComponent } from "./components/menu.js";
 /** @internal */
 export { createPortaledComponent } from "./components/portaled.js";
 export { createCallbackActionComponent, createShortcutTriggerComponent } from "./components/shortcut.js";
@@ -23,6 +28,8 @@ export { createCustomLayoutComponent } from "./components/custom-layout.js";
 /** @internal */
 export { createWindowComponent } from "./components/window.js";
 export { settleAccessible } from "./hooks/use-accessible-map.js";
+/** @internal */
+export { ParentWindowContext } from "./hooks/use-parent-window.js";
 export { useLatestRef } from "./hooks/use-latest-ref.js";
 export { useMergedRef } from "./hooks/use-merged-refs.js";
 export type {
@@ -40,6 +47,8 @@ export type {
     ActionMapProps,
     MenuProps,
     MenuItemProps,
+    CustomChildrenProps,
+    GtkMenuButtonProps,
     AdwToggleGroupProps,
     GtkShortcutControllerProps,
     GtkCallbackActionElementProps,
@@ -72,5 +81,5 @@ export type {
 export { isRootElement } from "./reconciler/root-element.js";
 export { applyWrite } from "./reconciler/signals.js";
 export { applyStyle } from "./reconciler/style.js";
-export type { SettingsSchema, SettingsSchemaKeys, SettingsSchemaValues, SettingValue } from "./utils/settings.js";
+export type { SettingsSchemaKeys, SettingsSchemaValues, SettingValue } from "./utils/settings.js";
 export type { DistributedOmit } from "@gtkx/utils";

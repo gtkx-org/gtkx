@@ -49,6 +49,12 @@
             "import": "./dist/config.js",
             "require": null,
             "default": "./dist/config.js"
+        },
+        "./program-name": {
+            "types": "./dist/program-name.d.ts",
+            "import": "./dist/program-name.js",
+            "require": null,
+            "default": "./dist/program-name.js"
         }
     },
     "sideEffects": [
@@ -58,6 +64,8 @@
         "./dist/internal.js",
         "./src/bootstrap.ts",
         "./dist/bootstrap.js",
+        "./src/program-name.ts",
+        "./dist/program-name.js",
         "./src/element-behaviors.ts",
         "./dist/element-behaviors.js"
     ],
@@ -74,11 +82,12 @@
         "node": ">=26.7.0"
     },
     "dependencies": {
-        "@gtkx/config": "workspace:*",
-        "@gtkx/css": "workspace:*",
-        "@gtkx/runtime": "workspace:*",
-        "@gtkx/utils": "workspace:*",
+        "@gtkx/config": "workspace:^",
+        "@gtkx/css": "workspace:^",
+        "@gtkx/runtime": "workspace:^",
+        "@gtkx/utils": "workspace:^",
         "@types/react-reconciler": "^0.34.1",
+        "leven": "^4.1.0",
         "react-merge-refs": "^3.0.2",
         "react-reconciler": "^0.34.0"
     },

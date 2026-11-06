@@ -21,6 +21,8 @@ import { ControlledChildrenContext } from "./controlled-context.js";
 const Prop = "gtkx:prop";
 const NO_PROP_CHILDREN: ReactNode[] = [];
 
+type RoutedPropProps = { propName: string; children: ReactNode };
+
 const hasElement = (value: unknown): boolean =>
     isValidElement(value) || (Array.isArray(value) && value.some((item: unknown) => hasElement(item)));
 
@@ -40,6 +42,20 @@ const collectPropChildren = (record: Props): ReactNode[] | null => {
     }
 
     return propChildren;
+};
+
+const isRoutedPropElement = (value: unknown): value is ReactElement<RoutedPropProps> =>
+    isValidElement(value) && value.type === Prop;
+
+/**
+ * The routed prop children an element built by {@link createElementComponent} hands its host, which
+ * come first among the host's children.
+ */
+const routedPropElements = (props: Props): ReactElement<RoutedPropProps>[] => {
+    const children: unknown = props.children;
+    const routed: unknown = Array.isArray(children) ? children.at(0) : undefined;
+
+    return Array.isArray(routed) ? routed.filter(isRoutedPropElement) : [];
 };
 
 const hostPropsWithout = (record: Props): Props => {
@@ -162,4 +178,4 @@ const createElementComponent: <P = unknown>(typeName: string, cls?: unknown) => 
     (props): ReactNode =>
         renderElement(typeName, props);
 
-export { Prop, createElementComponent };
+export { Prop, createElementComponent, routedPropElements };
