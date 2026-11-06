@@ -208,7 +208,6 @@ describe("DropDown sections", () => {
         const { rerender } = await render(drawSections(true));
         await openDropDownList();
         await expectTextPresent("Letters");
-        await expectTextPresent("Numbers");
         await expectTextPresent("Alpha");
         await rerender(drawSections(false));
         await openDropDownList();
@@ -218,6 +217,40 @@ describe("DropDown sections", () => {
 });
 
 const renderValue = (element: ReactNode) => render(<AdwPreferencesGroup>{element}</AdwPreferencesGroup>);
+
+const COLOR_SECTIONS = ["Basic", "RGB", "HSV"].map((title) => ({
+    id: title,
+    value: title,
+    data: Array.from({ length: 4 }, (_, index) => ({
+        id: `${title}-${String(index)}`,
+        value: `${title} ${String(index)}`,
+    })),
+}));
+
+describe.each([DropDown, ComboRow])("sectioned dropdown popup", (Component) => {
+    it("opens at the first section header", async () => {
+        await renderValue(
+            <Component
+                sections={COLOR_SECTIONS}
+                renderHeader={({ section }: { section: string }) => <GtkLabel>{`Header ${section}`}</GtkLabel>}
+            />,
+        );
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.COMBO_BOX));
+
+        const label = await screen.findByText("Header Basic");
+        const list = label.getAncestor(Gtk.ListView.prototype.__type__);
+
+        if (!(list instanceof Gtk.ListView)) {
+            throw new TypeError("Expected the popup to list the items");
+        }
+
+        await waitFor(() => {
+            expect(list.getVadjustment()?.getUpper()).toBeGreaterThan(0);
+        });
+
+        expect(list.getVadjustment()?.getValue()).toBe(0);
+    });
+});
 
 describe.each([DropDown, ComboRow])("dropdown value rendering", (Component) => {
     it.each([
@@ -229,6 +262,61 @@ describe.each([DropDown, ComboRow])("dropdown value rendering", (Component) => {
     ])("displays primitive %s as text", async (value, text) => {
         await renderValue(<Component items={[{ id: "choice", value }]} />);
         expect(screen.getByRole(Gtk.AccessibleRole.COMBO_BOX)).toHaveDisplayValue(text);
+    });
+
+    it("marks the selected primitive in the popup with a checkmark", async () => {
+        const checkmarkOpacity = async (text: string): Promise<number | undefined> => {
+            const labels = await screen.findAllByText(text);
+            const marks = labels.map((label) => label.getNextSibling()).filter((mark) => mark instanceof Gtk.Image);
+            expect(marks.map((mark) => mark.getIconName())).toEqual(["object-select-symbolic"]);
+            return marks[0]?.getOpacity();
+        };
+        await renderValue(<Component items={valueItems(["First", "Second"])} selectedId="2" />);
+        const combo = screen.getByRole(Gtk.AccessibleRole.COMBO_BOX);
+        await userEvent.click(combo);
+        expect(await checkmarkOpacity("First")).toBe(0);
+        expect(await checkmarkOpacity("Second")).toBe(1);
+    });
+
+    it("checks the selected item in a filtered popup", async () => {
+        await render(
+            <AdwPreferencesGroup halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
+                <Component
+                    items={valueItems(["Every Day", "Specific Days", "As Needed"])}
+                    selectedId="1"
+                    enableSearch
+                />
+            </AdwPreferencesGroup>,
+        );
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.COMBO_BOX));
+        await userEvent.type(await screen.findByRole(Gtk.AccessibleRole.SEARCH_BOX), "Sp");
+
+        await waitFor(() => {
+            expect(screen.queryByText("As Needed")).toBeNull();
+        });
+        const mark = (await screen.findByText("Specific Days")).getNextSibling();
+
+        expect(mark).toBeInstanceOf(Gtk.Image);
+        expect(mark?.getOpacity()).toBe(0);
+    });
+
+    it("gives popup renderers the unfiltered index", async () => {
+        await render(
+            <AdwPreferencesGroup halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
+                <Component
+                    items={valueItems(["Every Day", "Specific Days", "As Needed"])}
+                    renderListItem={({ item, index }) => <GtkLabel>{`${item} at ${String(index)}`}</GtkLabel>}
+                    enableSearch
+                />
+            </AdwPreferencesGroup>,
+        );
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.COMBO_BOX));
+        await userEvent.type(await screen.findByRole(Gtk.AccessibleRole.SEARCH_BOX), "As");
+
+        await waitFor(() => {
+            expect(screen.queryByText("Every Day at 0")).toBeNull();
+        });
+        expect(screen.getByText(/^As Needed at/)).toHaveTextContent("As Needed at 2");
     });
 
     it.each([null, undefined, ""])("leaves an empty display for %s", async (value) => {

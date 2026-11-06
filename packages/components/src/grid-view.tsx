@@ -8,6 +8,7 @@ import { useCollection } from "./internal/use-collection.js";
 const GRID_VIEW_PROPS = [
     "items",
     "renderItem",
+    "rowProps",
     "selectedIds",
     "onSelectionChanged",
     "selectionMode",
@@ -20,7 +21,7 @@ const GRID_VIEW_PROPS = [
  * rendering, controlled selection, and estimated item sizing.
  */
 function GridView<T = unknown>(props: GridViewProps<T>): ReactNode {
-    const { renderItem, estimatedItemHeight, estimatedItemWidth } = props;
+    const { renderItem, rowProps, estimatedItemHeight, estimatedItemWidth } = props;
     const rest = omit(props, GRID_VIEW_PROPS);
     const size = { width: estimatedItemWidth ?? -1, height: estimatedItemHeight ?? -1 };
     const { collection, selection } = useCollection({ ...props, isFlat: true });
@@ -29,7 +30,7 @@ function GridView<T = unknown>(props: GridViewProps<T>): ReactNode {
     return (
         <>
             <GtkGridView model={selection} factory={<GtkSignalListItemFactory {...itemCells.handlers} />} {...rest} />
-            <ItemPortals registry={itemCells} render={renderItem} collection={collection} />
+            <ItemPortals registry={itemCells} render={renderItem} rowProps={rowProps} collection={collection} />
         </>
     );
 }

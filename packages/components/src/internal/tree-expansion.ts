@@ -1,7 +1,8 @@
 import type { CollectionIndex } from "./collection-index.js";
 import type { SlotMap } from "./slots.js";
 import type { VisibleOrder } from "./tree-order.js";
-import { encodePart } from "./keys.js";
+import type { Relocate } from "./level-splice.js";
+import { decodePartAt, encodePart } from "./keys.js";
 import { getSlotKey, trackPath, trackPaths } from "./slots.js";
 import { walkVisible } from "./tree-order.js";
 
@@ -75,6 +76,46 @@ function pruneSlots(expansion: TreeExpansion, levelPath: string, isPruned: (slot
     expansion.order = null;
 }
 
+function relocatePath(path: string, levelPath: string, relocate: Relocate): string | null {
+    if (path.length === levelPath.length || !path.startsWith(levelPath)) {
+        return path;
+    }
+
+    const part = decodePartAt(path, levelPath.length);
+
+    if (part === null) {
+        return path;
+    }
+
+    const slot = relocate(Number(part));
+
+    if (slot === undefined) {
+        return null;
+    }
+
+    return levelPath + encodePart(String(slot)) + path.slice(levelPath.length + encodePart(part).length);
+}
+
+function relocateSlots(expansion: TreeExpansion, levelPath: string, relocate: Relocate): void {
+    if (expansion.expanded.size === 0) {
+        return;
+    }
+
+    const expanded: Set<string> = new Set();
+
+    for (const path of expansion.expanded) {
+        const relocated = relocatePath(path, levelPath, relocate);
+
+        if (relocated !== null) {
+            expanded.add(relocated);
+        }
+    }
+
+    expansion.expanded = expanded;
+    expansion.slots = trackPaths(expanded);
+    expansion.order = null;
+}
+
 function markExpanded(expansion: TreeExpansion, path: string, isExpanded: boolean): void {
     if (isExpanded) {
         expansion.expanded.add(path);
@@ -92,4 +133,13 @@ function adoptIndex(expansion: TreeExpansion, index: CollectionIndex): void {
     expansion.order = null;
 }
 
-export { adoptIndex, adoptOrder, createTreeExpansion, markExpanded, orderFor, pruneSlots, type TreeExpansion };
+export {
+    adoptIndex,
+    adoptOrder,
+    createTreeExpansion,
+    markExpanded,
+    orderFor,
+    pruneSlots,
+    relocateSlots,
+    type TreeExpansion,
+};

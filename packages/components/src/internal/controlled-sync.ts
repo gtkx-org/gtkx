@@ -8,6 +8,13 @@ type ControlledSyncOptions<T> = {
     apply: (value: T) => void;
 };
 
+function hasSameIds(reported: string[], requested: string[]): boolean {
+    const wanted = new Set(requested);
+    const actual = new Set(reported);
+
+    return actual.size === wanted.size && actual.isSubsetOf(wanted);
+}
+
 function useControlledSync<T>(options: ControlledSyncOptions<T>): () => void {
     const { value, source, target } = options;
     const [drift, setDrift] = useState(0);
@@ -27,4 +34,4 @@ function useControlledSync<T>(options: ControlledSyncOptions<T>): () => void {
     return markDrift;
 }
 
-export { useControlledSync };
+export { hasSameIds, useControlledSync };

@@ -17,7 +17,10 @@ import type { ReactNode, RefObject } from "react";
  * arbitrary value. Nested items form a tree.
  */
 type ListItem<T = unknown> = {
-    /** Stable identifier, unique across the collection, used to preserve identity across updates and selection. */
+    /**
+     * Stable identifier that names the item in selection and expansion, so keep it unique across the collection.
+     * A row keeps its component state while its id stays among the same siblings.
+     */
     id: string;
     /** Payload handed to the cell renderer as `ListItemRenderArgs.item`. */
     value: T;
@@ -45,7 +48,10 @@ type ListSection<S = unknown, T = unknown> = {
 type ListItemRenderArgs<T> = {
     /** Value of the `ListItem` being rendered. */
     item: T;
-    /** Position of the item in the flattened item list, which excludes section headers and collapsed tree rows. */
+    /**
+     * Position of the item in the flattened item list, which excludes section headers and collapsed tree rows.
+     * A drop-down popup filtered by `enableSearch` still passes this position, not the row's place in the results.
+     */
     index: number;
     /** Depth of the item within a tree, starting at zero for top-level items. */
     depth?: number | undefined;
@@ -54,9 +60,10 @@ type ListItemRenderArgs<T> = {
 };
 
 /**
- * Properties applied to the row that carries one item's cells. A Gtk.ColumnViewRow is not a widget, so
- * these are the only handles it offers; anything omitted falls back to the row's own default, which
- * leaves the accessibility strings unset rather than setting them to an empty string.
+ * Properties applied to the row that carries one item: the Gtk.ListItem of a list or grid, or the
+ * Gtk.ColumnViewRow of a table. Neither is a widget, so these are the only handles they offer; anything
+ * omitted falls back to the row's own default, which leaves the accessibility strings unset rather than
+ * setting them to an empty string.
  */
 type ListRowProps = {
     /** Name a screen reader announces for the row, through `accessible-label`. */
@@ -94,6 +101,14 @@ type ItemSizeProps = {
 
 type ListItemFactoryProps<T extends GObject.Object> = ItemSizeProps & {
     renderItem: ListItemRenderer<T>;
+    /** Resolves the props of the row carrying one model object, such as its screen-reader label. */
+    rowProps?: ListRowPropsResolver<T> | null | undefined;
+};
+
+/** Per-row properties shared by the collection views. */
+type RowPropsProps<T> = {
+    /** Resolves the props of the row carrying one item, such as its screen-reader label. */
+    rowProps?: ListRowPropsResolver<T> | null | undefined;
 };
 
 /** The flat-collection hint shared by {@link ListView} and {@link ColumnView}. */
@@ -113,7 +128,10 @@ type SelectionProps = {
      * user's selection is adopted into it.
      */
     selectedIds?: string[] | null | undefined;
-    /** Called with one id per selected row whenever the selection changes, and once on mount. */
+    /**
+     * Called with one id per selected row when the user or the widget changes the selection, or when an item
+     * `selectedIds` names is not in the collection; a `selectedIds` change is not reported back.
+     */
     onSelectionChanged?: ((ids: string[]) => void) | null | undefined;
     /** How much the user may select, one item at a time unless `MULTIPLE` or `NONE` is given. */
     selectionMode?: Gtk.SelectionMode | null | undefined;
@@ -138,7 +156,10 @@ type ExpansionProps = {
      * user's expansion is adopted into it.
      */
     expandedIds?: string[] | null | undefined;
-    /** Called with one id per expanded row, in visible order, whenever expansion changes. */
+    /**
+     * Called with one id per expanded row, in visible order, when the user or the widget changes expansion, or
+     * when a row `expandedIds` names cannot expand; an `expandedIds` change is not reported back.
+     */
     onExpandedChange?: ((ids: string[]) => void) | null | undefined;
     /**
      * Wording announced for the expander of every row that can expand, describing what activating it does.
@@ -182,6 +203,11 @@ type ColumnViewColumn<T = unknown> = Omit<GtkColumnViewColumnProps, "factory" | 
     renderCell: ListItemRenderer<T>;
     /** Makes the column header clickable, reporting the choice through `onSortChanged`. */
     isSortable?: boolean | undefined;
+    /**
+     * Draws the tree expander and depth indentation in this column. Without a visible column marked this way,
+     * the first visible column draws them.
+     */
+    hasExpander?: boolean | undefined;
     /** Menu element popped up as the column header's context menu, on a right-click. */
     headerMenu?: ReactNode;
 };
@@ -192,11 +218,10 @@ type ColumnViewOwnProps<T, S> = SelectionProps &
     SortProps &
     SourceProps<T, S> &
     FlatnessProps &
+    RowPropsProps<T> &
     Omit<ItemSizeProps, "estimatedItemWidth"> & {
         /** Columns to render, in order; each carries its own cell renderer. */
         columns: ColumnViewColumn<T>[];
-        /** Resolves the props of the row carrying one item's cells, such as its screen-reader label. */
-        rowProps?: ListRowPropsResolver<T> | null | undefined;
     };
 
 /**
@@ -235,7 +260,8 @@ type DropDownProps<T = unknown, S = unknown> = DropDownWidgetProps<GtkDropDownPr
 
 /** The declarative collection props {@link GridView} adds on top of Gtk.GridView's own. */
 type GridViewOwnProps<T> = ItemSizeProps &
-    SelectionProps & {
+    SelectionProps &
+    RowPropsProps<T> & {
         /** Items to render as cells; a grid is always flat, so `ListItem.children` is ignored. */
         items?: ListItem<T>[] | undefined;
         /** Renders the contents of one cell. */
@@ -253,7 +279,8 @@ type ListViewOwnProps<T, S> = ItemSizeProps &
     SelectionProps &
     ExpansionProps &
     SourceProps<T, S> &
-    FlatnessProps & {
+    FlatnessProps &
+    RowPropsProps<T> & {
         /** Renders the contents of one row. */
         renderItem: ListItemRenderer<T>;
     };

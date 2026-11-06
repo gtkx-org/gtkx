@@ -1,6 +1,7 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { ReactElement } from "react";
 import { GtkFlattenListModel } from "@gtkx/jsx/gtk";
+import { useLatestRef } from "@gtkx/react/internal";
 import { useLayoutEffect, useMemo, useState } from "react";
 import type { ExpansionProps, ListItem, ListSection, SelectionProps } from "../types.js";
 import type { Collection } from "./collection.js";
@@ -14,6 +15,7 @@ type CollectionDataOptions = {
     items?: ListItem[] | undefined;
     sections?: ListSection[] | undefined;
     isFlat?: boolean | undefined;
+    onSectionsFilled?: (() => void) | undefined;
 };
 
 type CollectionOptions = CollectionDataOptions & SelectionProps & ExpansionProps;
@@ -44,9 +46,13 @@ function useCollectionData(options: CollectionDataOptions): CollectionDataResult
         return gtkModel.clear;
     }, [gtkModel, root, model]);
 
+    const onSectionsFilled = useLatestRef(options.onSectionsFilled);
+
     useLayoutEffect(() => {
-        gtkModel.sync(index);
-    }, [gtkModel, index, root, model]);
+        gtkModel.sync(index, () => {
+            onSectionsFilled.current?.();
+        });
+    }, [gtkModel, index, root, model, onSectionsFilled]);
 
     return {
         collection,
