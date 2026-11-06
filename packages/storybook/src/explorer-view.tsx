@@ -10,7 +10,7 @@ import {
     AdwWindowTitle,
 } from "@gtkx/jsx/adw";
 import { quit } from "@gtkx/react";
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useEffectEvent, useState, useSyncExternalStore } from "react";
 import type { StoryCatalog } from "./catalog.js";
 import { StoryNavigator } from "./explorer-navigator.js";
 import { StorybookPreview } from "./explorer-preview.js";
@@ -50,12 +50,15 @@ const StorybookView = ({
     }
 
     const selectedStoryId = selected?.id;
+    const reportSelection = useEffectEvent((id: string) => {
+        onStorySelected?.(id);
+    });
 
     useEffect(() => {
         if (selectedStoryId !== undefined) {
-            onStorySelected?.(selectedStoryId);
+            reportSelection(selectedStoryId);
         }
-    }, [selectedStoryId, onStorySelected]);
+    }, [selectedStoryId]);
 
     return (
         <AdwOverlaySplitView

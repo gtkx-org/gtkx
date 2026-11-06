@@ -148,14 +148,24 @@ describe("native story explorer", () => {
     it("opens a restarted explorer on its previous story and reports each selection", async () => {
         const catalog = new StoryCatalog();
         const selections: string[] = [];
-        await render(
-            <Storybook
-                catalog={catalog}
-                initialStoryId="components-counter--with-step"
-                onStorySelected={(id) => selections.push(id)}
-            />,
-            { container: rootElement },
-        );
+        const Host = (): ReactNode => {
+            const [, setHistory] = useState<string[]>([]);
+
+            return (
+                <Storybook
+                    catalog={catalog}
+                    initialStoryId="components-counter--with-step"
+                    onStorySelected={(id) => {
+                        selections.push(id);
+
+                        if (selections.length < 5) {
+                            setHistory((history) => [...history, id]);
+                        }
+                    }}
+                />
+            );
+        };
+        await render(<Host />, { container: rootElement });
 
         await act(() =>
             catalog.load([
