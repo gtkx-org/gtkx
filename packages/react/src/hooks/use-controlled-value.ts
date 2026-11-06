@@ -11,7 +11,7 @@ type ControlledValue<P extends GObject.Object, V> = {
     read: (object: P) => unknown;
     write: (object: P, value: V) => void;
     canApply?: (object: P, value: V) => boolean;
-    observe?: (object: P) => Gio.ListModel;
+    observe?: (object: P) => Gio.ListModel | null;
     /** The handler prop that reports the user's change; restoring a value the user dismissed then warns. */
     dismissedThrough?: string;
 };
@@ -54,6 +54,7 @@ const useControlledValue = <P extends GObject.Object, V>(
 ): (() => void) => {
     const valueRef = useLatestRef(value);
     const scheduled = useRef(false);
+    const observed = useRef<Gio.ListModel | null>(null);
     const isUserChange = useRef(false);
     const isControlled = value !== undefined;
     const settle = useCallback(() => {
@@ -95,21 +96,39 @@ const useControlledValue = <P extends GObject.Object, V>(
             return;
         }
 
-        const children = operations.observe?.(instance);
         onSignal(instance, operations.signal, onChange);
-
-        if (children !== undefined) {
-            onSignal(children, "items-changed", schedule);
-        }
 
         return () => {
             offSignal(instance, operations.signal, onChange);
-
-            if (children !== undefined) {
-                offSignal(children, "items-changed", schedule);
-            }
         };
-    }, [objectRef, isControlled, operations, schedule, onChange]);
+    }, [objectRef, isControlled, operations, onChange]);
+    useLayoutEffect(() => {
+        const instance = objectRef.current;
+        const children = instance === null || !isControlled ? null : (operations.observe?.(instance) ?? null);
+
+        if (children === observed.current) {
+            return;
+        }
+
+        if (observed.current !== null) {
+            offSignal(observed.current, "items-changed", schedule);
+        }
+
+        if (children !== null) {
+            onSignal(children, "items-changed", schedule);
+        }
+
+        observed.current = children;
+    });
+    useLayoutEffect(
+        () => () => {
+            if (observed.current !== null) {
+                offSignal(observed.current, "items-changed", schedule);
+                observed.current = null;
+            }
+        },
+        [schedule],
+    );
 
     return schedule;
 };

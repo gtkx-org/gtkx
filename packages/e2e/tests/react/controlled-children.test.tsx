@@ -16,6 +16,7 @@ import {
     AdwToggleGroup,
 } from "@gtkx/jsx/adw";
 import {
+    GtkBox,
     GtkButton,
     GtkEntry,
     GtkLabel,
@@ -98,6 +99,28 @@ const GrowingLayouts = () => {
     );
 };
 
+const GrowingTabView = ({ viewRef }: { viewRef: (view: Adw.TabView | null) => void }) => {
+    const [hasTarget, setHasTarget] = useState(false);
+
+    return (
+        <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <GtkButton
+                label="Add tab"
+                onClicked={() => {
+                    setHasTarget(true);
+                }}
+            />
+            <AdwTabView ref={viewRef}>
+                {hasTarget && (
+                    <AdwTabPage title="Target">
+                        <GtkLabel>Target</GtkLabel>
+                    </AdwTabPage>
+                )}
+            </AdwTabView>
+        </GtkBox>
+    );
+};
+
 describe("controlled parents whose child component updates independently", () => {
     it("selects a newly added stack page", async () => {
         const ref = createRef<Gtk.Stack>();
@@ -146,6 +169,22 @@ describe("controlled parents whose child component updates independently", () =>
         expect(ref.current?.getActiveName()).toBe("first");
         await rerender(<ToggleGroup activeName={null} />);
         expect(ref.current?.getActiveName()).toBeNull();
+    });
+
+    it("opens a tab overview once its view gets a first page", async () => {
+        const ref = createRef<Adw.TabOverview>();
+        const Overview = () => {
+            const [view, setView] = useState<Adw.TabView | null>(null);
+
+            return (
+                <AdwTabOverview ref={ref} view={view ?? undefined} open>
+                    <GrowingTabView viewRef={setView} />
+                </AdwTabOverview>
+            );
+        };
+        await render(<Overview />);
+        await userEvent.click(screen.getByText("Add tab"));
+        expect(ref.current?.getOpen()).toBe(true);
     });
 
     it("selects a newly added layout", async () => {

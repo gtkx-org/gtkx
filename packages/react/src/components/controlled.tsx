@@ -139,13 +139,13 @@ const createOpenStateComponent = <P extends GObject.Object>(
     property: string,
     read: (object: P) => boolean,
     write: (object: P, value: boolean) => void,
-    canApply?: (object: P, value: boolean) => boolean,
+    options: Pick<ControlledValue<P, boolean>, "canApply" | "observe"> = {},
 ): ((props: Props) => ReactNode) =>
     createControlledComponent<P, boolean>(Component, prop, {
         signal: `notify::${property}`,
         read,
         write,
-        ...(canApply === undefined ? {} : { canApply }),
+        ...options,
         dismissedThrough: `onNotify${prop.charAt(0).toUpperCase()}${prop.slice(1)}`,
     });
 
@@ -180,7 +180,10 @@ const createTabOverviewComponent = (Component: ElementType): ((props: Props) => 
         (overview, open) => {
             overview.setOpen(open);
         },
-        (overview) => (overview.getView()?.getNPages() ?? 0) > 0,
+        {
+            canApply: (overview) => (overview.getView()?.getNPages() ?? 0) > 0,
+            observe: (overview) => overview.getView()?.getPages() ?? null,
+        },
     );
 
 const createSearchBarComponent = (Component: ElementType): ((props: Props) => ReactNode) =>
