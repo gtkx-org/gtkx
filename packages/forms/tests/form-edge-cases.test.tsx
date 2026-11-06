@@ -13,7 +13,7 @@ import {
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwPreferencesGroup } from "@gtkx/jsx/adw";
 import { GtkAdjustment, GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
-import { render, screen, userEvent, waitFor } from "@gtkx/testing";
+import { act, render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { createRef, type ReactNode, useState } from "react";
 import { describe, expect, it } from "vitest";
 
@@ -109,11 +109,11 @@ const ResetForm = (refs: FormRefs): ReactNode => {
 };
 
 const ValidationForm = ({ entryRef }: { entryRef: RefObject<Adw.EntryRow | null> }): ReactNode => {
-    const form = useForm<{ name: string }>({ defaultValues: { name: "" } });
+    const form = useForm<{ guests: number; name: string }>({ defaultValues: { guests: 0, name: "" } });
     const [submitted, setSubmitted] = useState("Not submitted");
 
-    const submit = form.handleSubmit(({ name }) => {
-        setSubmitted(name);
+    const submit = form.handleSubmit(({ guests, name }) => {
+        setSubmitted(`${name}|${guests}`);
     });
 
     const handleSubmit = (): void => {
@@ -131,6 +131,12 @@ const ValidationForm = ({ entryRef }: { entryRef: RefObject<Adw.EntryRow | null>
                         cssClasses={["custom"]}
                         tooltipText="Original tooltip"
                         rules={{ required: "Name is required" }}
+                    />
+                    <SpinRow
+                        name="guests"
+                        title="Guests"
+                        adjustment={<GtkAdjustment lower={0} upper={10} stepIncrement={1} pageIncrement={1} />}
+                        rules={{ min: { value: 1, message: "Invite a guest" } }}
                     />
                 </AdwPreferencesGroup>
                 <GtkButton label="Submit" onClicked={handleSubmit} />
@@ -188,6 +194,38 @@ const BlurForm = ({ entryRef }: { entryRef: RefObject<Adw.EntryRow | null> }): R
     );
 };
 
+const OutOfRangeForm = ({ entryRef, spinRef }: Pick<FormRefs, "entryRef" | "spinRef">): ReactNode => {
+    const form = useForm<{ code: string; weight: number }>({ defaultValues: { code: "abcdefghij", weight: 30 } });
+    const [submitted, setSubmitted] = useState("Not submitted");
+
+    const submit = form.handleSubmit((values) => {
+        setSubmitted(`${values.code}|${values.weight}`);
+    });
+
+    return (
+        <FormProvider {...form}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                <AdwPreferencesGroup>
+                    <SpinRow
+                        ref={spinRef}
+                        name="weight"
+                        title="Weight"
+                        adjustment={<GtkAdjustment lower={0} upper={20} stepIncrement={1} pageIncrement={1} />}
+                    />
+                    <EntryRow ref={entryRef} name="code" title="Code" maxLength={4} />
+                </AdwPreferencesGroup>
+                <GtkButton
+                    label="Submit out of range"
+                    onClicked={() => {
+                        void submit();
+                    }}
+                />
+                <GtkLabel name="out-of-range-values">{submitted}</GtkLabel>
+            </GtkBox>
+        </FormProvider>
+    );
+};
+
 describe("forms - edge cases", () => {
     it("applies programmatic values and resets every row to falsy defaults", async () => {
         const refs = createFormRefs();
@@ -222,18 +260,30 @@ describe("forms - edge cases", () => {
         expect(entry).toHaveClass("custom", "error");
         expect(entry).toBeInvalid();
         expect(entry.getDelegate()?.isFocus()).toBe(true);
+        const text = screen.getByRole(Gtk.AccessibleRole.TEXT_BOX, { name: "Name" });
+        const guests = screen.getByRole(Gtk.AccessibleRole.SPIN_BUTTON, { name: "Guests", as: Gtk.SpinButton });
+        expect(text).toBeInvalid();
+        expect(guests).toBeInvalid();
         expect(screen.getByName("submitted-name")).toHaveTextContent("Not submitted");
         await userEvent.type(entry, "Ada");
+        await userEvent.clear(guests);
+        await userEvent.type(guests, "2");
+
+        await act(() => {
+            guests.update();
+        });
 
         await waitFor(() => {
             expect(entry).toHaveClass("custom");
             expect(entry).not.toHaveClass("error");
             expect(entry).toBeValid();
+            expect(text).toBeValid();
+            expect(guests).toBeValid();
             expect(entry.getTooltipText()).toBe("Original tooltip");
         });
 
         await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Submit" }));
-        expect(await screen.findByName("submitted-name")).toHaveTextContent("Ada");
+        expect(await screen.findByName("submitted-name")).toHaveTextContent("Ada|2");
     });
 
     it("omits disabled fields while preserving insensitive field values", async () => {
@@ -254,5 +304,33 @@ describe("forms - edge cases", () => {
             expect(screen.getByName("touched-state")).toHaveTextContent("Touched");
             expect(requireRef(entryRef)).toBeInvalid();
         });
+    });
+
+    it("keeps a value the row cannot show and marks the row invalid until an edit replaces it", async () => {
+        const refs = createFormRefs();
+        await render(<OutOfRangeForm entryRef={refs.entryRef} spinRef={refs.spinRef} />);
+        const spin = requireRef(refs.spinRef);
+        const entry = requireRef(refs.entryRef);
+
+        await waitFor(() => {
+            expect(spin).toHaveClass("error");
+            expect(spin).toBeInvalid();
+            expect(entry).toHaveClass("error");
+            expect(entry).toBeInvalid();
+        });
+
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Submit out of range" }));
+        expect(await screen.findByName("out-of-range-values")).toHaveTextContent("abcdefghij|30");
+        await userEvent.clear(entry);
+        await userEvent.type(entry, "abc");
+
+        await waitFor(() => {
+            expect(entry).not.toHaveClass("error");
+            expect(entry).toBeValid();
+        });
+
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Submit out of range" }));
+        expect(await screen.findByName("out-of-range-values")).toHaveTextContent("abc|30");
+        expect(spin).toBeInvalid();
     });
 });

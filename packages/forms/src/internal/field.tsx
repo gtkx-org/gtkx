@@ -2,14 +2,26 @@ import type { ControllerFieldState, ControllerRenderProps, UseControllerProps } 
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkEventControllerFocus } from "@gtkx/jsx/gtk";
 import { useMergedRef } from "@gtkx/react/internal";
-import { type DistributedOmit, omit } from "@gtkx/utils";
-import { type ReactElement, type ReactNode, type Ref, type RefCallback, useCallback } from "react";
+import { createLogger, type DistributedOmit, type Logger, omit } from "@gtkx/utils";
+import {
+    type ReactElement,
+    type ReactNode,
+    type Ref,
+    type RefCallback,
+    type RefObject,
+    useCallback,
+    useLayoutEffect,
+    useRef,
+    useState,
+} from "react";
 
 type FormFieldPropName = keyof UseControllerProps;
 
 type FieldWidget = {
     grabFocus: () => boolean;
 };
+
+type EditableFieldWidget = FieldWidget & Pick<Gtk.Editable, "getDelegate" | "selectRegion">;
 
 type FieldWidgetOptions<Widget extends FieldWidget> = {
     ref?: Ref<Widget> | undefined;
@@ -21,6 +33,13 @@ type FieldWidgetOptions<Widget extends FieldWidget> = {
 
 type FieldBinding = Pick<ControllerRenderProps, "ref" | "disabled" | "onBlur">;
 
+type EditableFieldBinding = FieldBinding & Pick<ControllerRenderProps, "name">;
+
+type ShownValue<Widget, Value> = {
+    value: Value;
+    read: (widget: Widget) => Value;
+};
+
 type FieldState = Pick<ControllerFieldState, "invalid" | "error">;
 
 type FieldWidgetBinding<Widget extends FieldWidget> = {
@@ -31,6 +50,8 @@ type FieldWidgetBinding<Widget extends FieldWidget> = {
     tooltipText: string | null | undefined;
     accessibleInvalid: Gtk.AccessibleInvalidState;
 };
+
+const log: Logger = createLogger("forms");
 
 const FORM_FIELD_PROP_NAMES: FormFieldPropName[] = [
     "control",
@@ -98,12 +119,64 @@ const useFieldWidget = <Widget extends FieldWidget>(
     accessibleInvalid: (state.invalid && Gtk.AccessibleInvalidState.TRUE) || Gtk.AccessibleInvalidState.FALSE,
 });
 
-const selectText = (row: { selectRegion: (start: number, end: number) => void }): void => {
+const selectText = (row: EditableFieldWidget): void => {
     row.selectRegion(0, -1);
+};
+
+const useCoercedValue = <Widget, Value>(
+    widgetRef: RefObject<Widget | null>,
+    name: string,
+    shown: ShownValue<Widget, Value>,
+): boolean => {
+    const [isCoerced, setIsCoerced] = useState(false);
+    const warnedValue = useRef<{ value: Value } | null>(null);
+
+    useLayoutEffect(() => {
+        const widget = widgetRef.current;
+        const shownValue = widget === null ? shown.value : shown.read(widget);
+        const isMismatch = !Object.is(shownValue, shown.value);
+        setIsCoerced(isMismatch);
+
+        if (!isMismatch || Object.is(warnedValue.current?.value, shown.value)) {
+            return;
+        }
+
+        warnedValue.current = { value: shown.value };
+
+        if (process.env.NODE_ENV !== "production") {
+            log.warn(
+                `Form field "${name}" holds ${JSON.stringify(shown.value)}, but its row shows ${JSON.stringify(shownValue)}; the row is marked invalid until an edit replaces the value`,
+            );
+        }
+    });
+
+    return isCoerced;
+};
+
+const useEditableFieldWidget = <Widget extends EditableFieldWidget, Value>(
+    field: EditableFieldBinding,
+    state: FieldState,
+    props: FieldWidgetOptions<Widget>,
+    shown: ShownValue<Widget, Value>,
+): FieldWidgetBinding<Widget> => {
+    const widgetRef = useRef<Widget | null>(null);
+    const isCoerced = useCoercedValue(widgetRef, field.name, shown);
+    const binding = useFieldWidget(
+        field,
+        { ...state, invalid: state.invalid || isCoerced },
+        { ...props, ref: useMergedRef(props.ref, widgetRef) },
+        selectText,
+    );
+
+    useLayoutEffect(() => {
+        widgetRef.current?.getDelegate()?.updateState([Gtk.AccessibleState.INVALID], [binding.accessibleInvalid]);
+    }, [binding.accessibleInvalid]);
+
+    return binding;
 };
 
 const widgetProps = <Props extends Partial<Record<FormFieldPropName, unknown>>>(
     props: Props,
 ): DistributedOmit<Props, FormFieldPropName> => omit(props, FORM_FIELD_PROP_NAMES);
 
-export { selectText, useFieldWidget, widgetProps };
+export { useEditableFieldWidget, useFieldWidget, widgetProps };
