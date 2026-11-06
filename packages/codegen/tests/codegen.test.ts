@@ -458,21 +458,24 @@ describe("generated bindings", () => {
         expect(resolveFrom(app, "@gtkx/gi/gobject")).toBe(resolveFrom(directory.path, "@gtkx/gi/gobject"));
         expect(resolveFrom(app, "@gtkx/jsx/gobject")).toBe(resolveFrom(directory.path, "@gtkx/jsx/gobject"));
 
-        await runCodegen({ libraries: ["Gio-2.0", "Json-1.0"], girPath, gi: root.gi, jsx: root.jsx });
+        await runCodegen({ libraries: ["Gio-2.0", "GdkPixbuf-2.0"], girPath, gi: root.gi, jsx: root.jsx });
         expect(
-            diagnostics(app, `import { Parser } from "@gtkx/gi/json"; export const parser: Parser = new Parser();`),
+            diagnostics(
+                app,
+                `import { PixbufLoader } from "@gtkx/gi/gdkpixbuf"; export const loader: PixbufLoader = new PixbufLoader();`,
+            ),
         ).not.toEqual([]);
         expect(
             diagnostics(
                 app,
-                `import { Parser } from "@gtkx/gi/json"; export const parser: Parser = new Parser();`,
+                `import { PixbufLoader } from "@gtkx/gi/gdkpixbuf"; export const loader: PixbufLoader = new PixbufLoader();`,
                 scaffoldPaths,
             ),
         ).not.toEqual([]);
         expect(
             diagnostics(
                 directory.path,
-                `import { Parser } from "@gtkx/gi/json"; export const parser: Parser = new Parser();`,
+                `import { PixbufLoader } from "@gtkx/gi/gdkpixbuf"; export const loader: PixbufLoader = new PixbufLoader();`,
             ),
         ).toEqual([]);
     });
