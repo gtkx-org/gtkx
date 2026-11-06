@@ -901,7 +901,9 @@ const stopForStoppedApplication = async (session: DevSession, registrationState:
         return;
     }
 
-    session.deps.log("Application refused its command line - stopping dev runner...");
+    session.deps.log(
+        "Application did not start: it rejected its command line or could not register its ID - stopping dev runner...",
+    );
     await closeAndExit(session, refusedExitCode());
 };
 

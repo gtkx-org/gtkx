@@ -336,6 +336,57 @@ describe("development process shutdown", () => {
         }
     });
 
+    it("does not blame the command line when the application cannot register its ID", async () => {
+        using project = createProject();
+        const ownedPath = join(project.root, "owned.txt");
+        linkWorkspaceBindings(project.root);
+        project.write(
+            "owner.mjs",
+            `import * as Gio from "@gtkx/gi/gio";
+            import * as GLib from "@gtkx/gi/glib";
+            import { writeFileSync } from "node:fs";
+            const connection = Gio.busGetSync(Gio.BusType.SESSION, null);
+            connection.callSync("org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus", "RequestName",
+                new GLib.Variant("(su)", ["org.gtkx.example", 4]), null, Gio.DBusCallFlags.NONE, -1, null);
+            writeFileSync(${JSON.stringify(ownedPath)}, String(process.pid));
+            setInterval(() => connection.getUniqueName(), 60_000);`,
+        );
+        project.write(
+            "src/index.tsx",
+            `import { AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
+            import { createRoot } from "@gtkx/react";
+            createRoot().render(
+                <AdwApplication applicationId="org.gtkx.example">
+                    <AdwApplicationWindow />
+                </AdwApplication>
+            );`,
+        );
+        const stopDisplay = await startHeadlessDisplay(resolveHeadlessOptions({ size: "640x480" }));
+        try {
+            const owner = observeChild(
+                spawn(process.execPath, [join(project.root, "owner.mjs")], { cwd: project.root, stdio: "pipe" }),
+            );
+            try {
+                await owner.waitForFile(ownedPath);
+                const running = observeChild(
+                    spawn(process.execPath, [cliPath, "dev", "--cwd", project.root], { stdio: "pipe" }),
+                );
+                try {
+                    expect(await running.waitForExit()).toEqual({ code: 1, signal: null });
+                    expect(running.output()).toContain("Failed to register");
+                    expect(running.output()).toContain("could not register its ID");
+                    expect(running.output()).not.toContain("refused its command line");
+                } finally {
+                    await running.stop(undefined);
+                }
+            } finally {
+                await owner.stop(undefined);
+            }
+        } finally {
+            stopDisplay();
+        }
+    });
+
     it("cleans up the application when the runner's IPC connection closes", async () => {
         await withDevProcess(
             (root) => {
