@@ -5,9 +5,33 @@ description: "Migrate a GTKX 1.x application to GTKX 2, including configuration,
 
 # Upgrading to 2.0
 
-GTKX 2.0 makes the behaviors previewed in 1.6 unconditional and removes their compatibility APIs. [Prepare on 1.6](/guide/upgrading-to-2#prepare-on-1-6), then upgrade your installed `@gtkx/*` packages to the same 2.0 version and work through this checklist. Do not install `@gtkx/gi` or `@gtkx/jsx`; codegen creates them for the project.
+GTKX 2.0 makes the behaviors previewed in 1.6 unconditional and removes their compatibility APIs. [Prepare on 1.6](/guide/upgrading-to-2#prepare-on-1-6), then move every `@gtkx/*` package to the same 2.0 version and work through this checklist. Do not install `@gtkx/gi` or `@gtkx/jsx`; codegen creates them for the project.
 
 Upgrade to Node.js 26.7 or newer and set `"type": "module"` in `package.json`; GTKX packages are ESM-only and explicitly reject `require()`. Localized projects also need GNU gettext 0.25 or newer.
+
+The 2.0 packages require React 19.3 or newer, and `@gtkx/testing` requires Vitest 5. Upgrade `react`, `@types/react`, and `vitest` first, then run the 2.0 upgrade command from the project directory:
+
+::: code-group
+
+```bash [npm]
+npx @gtkx/cli@beta upgrade
+```
+
+```bash [pnpm]
+pnpm dlx @gtkx/cli@beta upgrade
+```
+
+:::
+
+The 1.x CLI has no `upgrade` command, so this runs the 2.0 CLI without installing it first. It moves every `@gtkx/*` package declared in the project, or in each package of its workspace, to the newest 2.0 beta, including pnpm catalog entries, then installs and deduplicates with the project's package manager. Before installing, it exempts GTKX's own packages from the package manager's [release-age gate](/v2/guide/scaffold-options#release-age-gates) in the project or workspace root settings, so 2.0 installs on the day it is released; if the install still fails, it puts `package.json`, the lockfile and those settings back as they were. Later releases need only `npx gtkx upgrade`; see [Updating GTKX](/v2/guide/getting-started#updating-gtkx).
+
+On a release day, the gate can also stop `npx` or `pnpm dlx` from downloading the 2.0 CLI. When npm's `min-release-age` is set, run `npx --min-release-age=0 @gtkx/cli@beta upgrade`; when pnpm's `minimumReleaseAge` is set, exempt GTKX for that one command:
+
+```bash
+pnpm_config_minimum_release_age_exclude='["@gtkx/*","create-gtkx"]' pnpm dlx @gtkx/cli@beta upgrade
+```
+
+Yarn's gate does not apply to `npx`.
 
 Use ESM `import` and `export` in application code, configuration files, and their local helpers. Convert `.cjs` and `.cts` files to ESM. Configuration runs through Node's native loader, so TypeScript configuration must use erasable syntax. Storybook main configuration uses `.ts`, `.mts`, `.js`, or `.mjs`; keep JSX in previews and stories. External CommonJS dependencies remain supported through ESM imports.
 
@@ -39,6 +63,13 @@ The `"*"` wildcard is gone, and explicitly listing `Adw-1` or `Gtk-4.0` is rejec
 - Assets use relative `?resource`, `?icon`, `?font`, or `?url` imports. Settings schemas use query-free relative imports.
 - Changes to runtime imports, re-exports, or imported resources and icons restart development apps and reset their state. Edits to component bodies still use Fast Refresh.
 - Generated classes register with their own definitions, so production builds retain only reached bindings. Import a class if `GObject.typeFromName` must find it.
+- An application ends when its first render shows no window and nothing holds it. An app that rendered `null` until saved data loaded, as React Navigation's state persistence example does, now quits at once and `gtkx dev` prints `Application quit`. Render the window first and show a placeholder inside it; see [Restoring state](/v2/guide/navigation#restoring-state).
+- Constructing an object with a key that is not one of its properties throws a `TypeError`, as in GJS, instead of skipping the key: `new Gio.Notification({ title: "Done" })` fails with "No property title on GNotification". Pass such values to the type's constructor function or setters, as in `Gio.Notification.new("Done")`.
+- GLib criticals are logged by GLib, as in C and GJS applications, instead of becoming uncaught exceptions. They no longer end the application or fail tests; see [Error Handling](/v2/guide/error-handling#glib-criticals-and-warnings).
+- A close the app does not answer no longer leaves React and the toolkit out of step. Adwaita dialogs without `onClosed` or `onCloseAttempt`, and JSX tab pages whose view has no `onClosePage`, stay open when the user closes them; `showSidebar`, `showContent`, `searchModeEnabled` and the `open` of bottom sheets and tab overviews are restored when the app passes them without taking the user's change. Development builds warn with the handler to add; see [Closing](/v2/guide/modals-and-portals#closing).
+- `bindPropertyFull` and `BindingGroup.bindFull` take transforms shaped as in GJS: `(binding, value) => [success, value]` receives the value read from one property and returns the value to write to the other, and `null` selects the default conversion. Rewrite functions taking GLib's closure arguments, `(binding, fromValue, toValue) => boolean`, to return the converted value instead of filling `toValue`. A `GObject.Closure` still receives the closure arguments. See [Binding properties](/v2/guide/subclassing#binding-properties).
+- `gtkx` commands stop with an error on an option they do not define instead of ignoring it, naming the option and listing the ones the command takes. Remove options GTKX never read from package scripts and CI, and put options meant for the application after `--`, as in `gtkx dev -- --verbose`.
+- `userEvent.type` presses keys named in braces, so `type(entry, "Ada{Enter}")` activates the entry. Text with a literal `{`, such as JSON, fails with "Unclosed key descriptor"; write it as <span v-pre>`{{`</span>. See [Testing](/v2/guide/testing).
 
 Run `tsc --noEmit` after these changes. The typechecker catches the value and tuple changes; `gtkx build` catches stale resource imports.
 
@@ -61,13 +92,13 @@ Adwaita is part of the core packages. `ComboRow`, `ToastProvider`, and `useToast
 import { ComboRow, ToastProvider, useToast } from "@gtkx/components";
 ```
 
+`DropDown` and `ComboRow` now call `onSelectionChanged` with `null` when their items become empty. Check for `null` before storing the ID. `selectedId` no longer accepts `null`; pass `undefined` when no item is chosen.
+
 Use `useToast().dismissAll()` in place of `useToastOverlay().dismissAll()`. `show()` returns the native `Adw.Toast`; call its `dismiss()` method to dismiss that toast. The forwarding `useToast().dismiss(toast)` method and `ToastOverlayController` type are removed.
 
 ## Update runtime imports
 
 Import `createElementComponent` from `@gtkx/react` instead of `@gtkx/react/config`. The config subpath remains for renderer behavior and element registration APIs.
-
-Subscribe to native logs with `onLog(listener)` from `@gtkx/runtime` and release the subscription with `unsubscribe()`. The native addon is an internal implementation detail; application code should import runtime APIs.
 
 Direct native calls using `bigint64` or `biguint64` descriptors now require bigint values. Runtime bindings still accept exactly representable integer Number inputs within ±2⁵³ and normalize them before crossing the native boundary.
 
@@ -89,7 +120,7 @@ An active run finishes automatically when it has no application windows or outst
 
 GTKX tracks JavaScript holds and application windows; it cannot observe arbitrary holds acquired directly by native C code. Explicit holds survive forced shutdown and must still be balanced with `release()`; an unmatched release throws `RangeError`. Full native shutdown can run only once per instance; restarted applications and those already quit by native code may retain registration until finalization. Create another application when another complete lifecycle is needed.
 
-React holds an application until its first activated tree commits. React's `quit()`, `root.unmount()`, and `root.render(null)` remove the UI while allowing explicit background holds to keep the application running. Release those holds when the work finishes. If initial asynchronous rendering or Suspense commits without a window, hold the application until that work can create one.
+React holds an application until its first activated tree commits. `root.unmount()` and `root.render(null)` remove the UI while allowing explicit background holds to keep the application running. Release those holds when the work finishes. React's `quit()` also calls `quit()` on each application element it unmounts, so it ends the run even while the application holds itself, as `application.quit()` does. If initial asynchronous rendering or Suspense commits without a window, hold the application until that work can create one.
 
 ## Update Variant values
 
@@ -111,7 +142,7 @@ A form `ComboRow` now controls a non-nullable string field. Replace `null` or `u
 
 ## Update internationalization
 
-GTKX now delegates extraction and resource typing to `i18next-cli`. Keep catalog declarations in ESM files and use the exact names `t`, `useTranslation`, `Trans`, or `TransWithoutContext`; replace imported aliases, `i18n.t` member calls, dynamic keys, and CommonJS declarations with those static forms.
+GTKX now delegates extraction and resource typing to `i18next-cli`. Keep catalog declarations in ESM files and use the exact names `t`, `useTranslation`, `Trans`, or `TransWithoutContext`; replace imported aliases, `i18n.t` member calls, dynamic keys, and CommonJS declarations with those static forms. Extraction also no longer follows a `t` received through `withTranslation`, the `Translation` render prop or a function parameter, as 1.6 did: codegen leaves those messages out without an error and keeps their translations as obsolete PO entries, and `tsc` then rejects their keys. Import `t` from `@gtkx/i18n` or call `useTranslation()` in those modules; the next codegen run restores the obsolete translations.
 
 Replace the removed positional plural overload:
 
@@ -124,6 +155,12 @@ t("{{count}} file", {
 ```
 
 Run codegen after migrating. The generated declaration now uses i18next's standard `CustomTypeOptions` resources instead of GTKX's strict translation registry, so remove imports of GTKX-specific registry types and use types exported by `i18next` or `react-i18next`.
+
+GTKX no longer reads `GTKX_LOCALE_DIR`. A Vitest configuration that tests compiled catalogs passes their directory to the plugin instead:
+
+```ts
+plugins: [gtkx({ localeDir: resolve(import.meta.dirname, "dist/locale") })],
+```
 
 ## Replace removed APIs
 
@@ -145,7 +182,7 @@ Run codegen after migrating. The generated declaration now uses i18next's standa
 
 The cairo stub-constructor `*ConstructorProps` aliases have no replacement because their constructors no longer exist.
 
-Record constructors now require either public writable value fields, a supported native default constructor, or the zero-initialization contract of `GObject.Value`. Obtain other records from their native factories: use `GLib.String.new(text)`, `GLib.Error.newLiteral(domain, code, message)`, or `Graphene.Matrix.alloc().initIdentity()`. Their synthetic `*ConstructorProps` types are removed. `GLib.String` exposes `str`, `len`, and `allocatedLen` as readonly; use methods such as `assign`, `append`, and `truncate` to update its buffer.
+Record constructors now take a props object only when the record has public writable value fields, a supported native default constructor, or the zero-initialization contract of `GObject.Value`. For other records, `new` calls the record's native `new` constructor with the given arguments, as in GJS: `new GLib.String(text)` calls `GLib.String.new(text)`, and `new GLib.VariantType("s")` calls `GLib.VariantType.new("s")`. Records without a `new` constructor, or whose first zero-argument constructor has another name, come only from their native factories: use `GLib.Error.newLiteral(domain, code, message)` or `Graphene.Matrix.alloc().initIdentity()`. The synthetic `*ConstructorProps` types of all these records are removed. `GLib.String` exposes `str`, `len`, and `allocatedLen` as readonly; use methods such as `assign`, `append`, and `truncate` to update its buffer.
 
 Generated methods that expose unmanaged native addresses are also omitted. Replace `GLib.Bytes.getRegion` with `getData` or `newFromBytes`, use `GLib.Variant.getDataAsBytes` instead of `getData`, and close a `Gio.MemoryOutputStream` before calling `stealAsBytes` instead of `getData` or `stealData`.
 
