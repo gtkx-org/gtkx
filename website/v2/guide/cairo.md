@@ -33,15 +33,48 @@ const Circle = () => (
 );
 ```
 
-Draw only inside this callback: do not update widget properties or React state from it. Keep the context local to the callback. GTKX manages its native reference.
+Draw only inside this callback: do not update widget properties or React state from it. Keep the context local to the callback. GTKX releases it when the callback returns, so the callback does not need to call `cr.$dispose()`. Code ported from GJS that does call it keeps working; any drawing through the context after that call throws.
 
 Changing `drawFunc` queues a repaint, including when a render supplies a new callback. If drawing data changes without replacing the callback, call `queueDraw()` on the area obtained through its `ref`. Use the callback's dimensions when drawing; `contentWidth` and `contentHeight` request a size, which can differ from the allocated space.
 
 ## Share values with native libraries
 
-GTK and PangoCairo return the same managed classes that you import from `@gtkx/cairo`. Pass these objects directly between APIs. For example, `PangoCairo.createLayout(cr)` accepts the context from `drawFunc` without conversion.
+GTK and PangoCairo return the same managed classes that you import from `@gtkx/cairo`. Pass these objects directly between APIs. For example, `PangoCairo.showLayout(cr, layout)` accepts the context from `drawFunc` without conversion.
 
-Use PangoCairo for application text. Its [layout documentation](https://docs.gtk.org/PangoCairo/) covers shaping, font fallback and layout; import its bindings from `@gtkx/gi/pangocairo`.
+Use Pango for application text. Inside `drawFunc`, create the layout with the widget's `createPangoLayout(text)`, which uses the widget's font, and draw it with PangoCairo:
+
+```tsx
+import * as PangoCairo from "@gtkx/gi/pangocairo";
+import { GtkDrawingArea } from "@gtkx/jsx/gtk";
+
+const Caption = () => (
+    <GtkDrawingArea
+        contentWidth={200}
+        contentHeight={40}
+        drawFunc={(area, cr) => {
+            const layout = area.createPangoLayout("Mood this week");
+            cr.moveTo(8, 8);
+            PangoCairo.showLayout(cr, layout);
+        }}
+    />
+);
+```
+
+`PangoCairo.createLayout(cr)` creates a layout with Pango's default font rather than the widget's, so text drawn with it does not match the rest of the interface. Use it for offscreen rendering, and set a font with `layout.setFontDescription()`; `widget.getPangoContext().getFontDescription()` returns the font a widget uses. The [PangoCairo documentation](https://docs.gtk.org/PangoCairo/) covers shaping, font fallback and layout; import its bindings from `@gtkx/gi/pangocairo`.
+
+`cr.copyPath()` and `cr.copyPathFlat()` return a `Path`, which `cr.appendPath()` and bindings such as `Gsk.PathBuilder.addCairoPath()` accept as is. This turns text into a `GskPath`, for example:
+
+```ts
+import * as Gsk from "@gtkx/gi/gsk";
+import * as PangoCairo from "@gtkx/gi/pangocairo";
+
+PangoCairo.layoutPath(cr, layout);
+const builder = Gsk.PathBuilder.new();
+builder.addCairoPath(cr.copyPathFlat());
+const textPath = builder.toPath();
+```
+
+Call `path.toData()` to read a path's segments.
 
 Values returned by native libraries use their concrete wrapper classes. Check `surface instanceof ImageSurface` before reading image pixels from a surface returned by `cr.getTarget()`.
 
@@ -56,12 +89,21 @@ const surface = new ImageSurface(Format.ARGB32, 256, 256);
 const cr = Context.create(surface);
 cr.setSourceRgb(0.9, 0.3, 0.2);
 cr.paint();
+cr.$dispose();
 
 const status = surface.writeToPng("image.png");
 if (status !== Status.SUCCESS) throw new Error(statusToString(status));
 ```
 
 `getData()` returns a copy of the image's pixels, including row padding. Editing that array does not change the surface; draw through its context to update it. Load a saved image with `ImageSurface.createFromPng(path)`.
+
+## Release contexts you create
+
+A context obtained outside a draw callback holds its target surface until JavaScript garbage-collects it. This applies to the contexts from `Context.create(surface)` and from `snapshot.appendCairo(bounds)` in a widget's `vfuncSnapshot`, as well as those returned by other native calls. Call `cr.$dispose()` when you finish drawing, as C calls `cairo_destroy` and GJS calls `$dispose()`; the offscreen example above does.
+
+Releasing them matters most for contexts created on every frame. A snapshot context records the frame, and Cairo copies a backing surface into each recording that still holds it when the app draws into that surface again. Without `$dispose()`, a widget that paints a canvas it keeps updating can grow to gigabytes before the garbage collector runs. [Subclassing](/v2/guide/subclassing#draw-with-cairo-in-vfuncsnapshot) shows the pattern.
+
+After `$dispose()`, every call on the context throws. Calling `$dispose()` again does nothing. If a native call is still drawing with the context, for example when `$dispose()` runs in a callback that call invoked, `$dispose()` throws and leaves the context usable.
 
 ## Handle errors
 
