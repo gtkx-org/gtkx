@@ -154,11 +154,10 @@ const usePreviewState = ({ entry }: PreviewProps) => {
     );
     const boundArgs = useMemo(
         () =>
-            bindActions(
-                includedArgs(mapArgs(state.args, state.story.argTypes), state.story.argTypes, state.story.globals),
+            includedArgs(
+                bindActions(mapArgs(state.args, state.story.argTypes), state.story.argTypes, state.actions, onError),
                 state.story.argTypes,
-                state.actions,
-                onError,
+                state.story.globals,
             ),
         [state.args, state.story.argTypes, state.story.globals, state.actions, onError],
     );
