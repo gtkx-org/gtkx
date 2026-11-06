@@ -45,7 +45,60 @@ export const App = () => (
 
 The container's default theme follows Adwaita's current dark and high-contrast settings. Pass `theme` to override the values supplied to `useTheme` and screen options; this does not change the native color scheme.
 
-State restoration and navigation outside the tree use React Navigation's [container API](https://reactnavigation.org/docs/navigation-container/).
+Navigation outside the tree uses React Navigation's [container API](https://reactnavigation.org/docs/navigation-container/).
+
+### Restoring state
+
+Pass a saved state to `initialState` and save each new one from `onStateChange`. React Navigation's [state persistence](https://reactnavigation.org/docs/state-persistence/) example renders `null` until the saved state loads, but a GTKX application ends when its first render shows no window. Keep the window rendered and load the state inside it:
+
+```tsx
+import * as Gio from "@gtkx/gi/gio";
+import * as GLib from "@gtkx/gi/glib";
+import { AdwApplication, AdwApplicationWindow, AdwSpinner } from "@gtkx/jsx/adw";
+import { type InitialState, NavigationContainer } from "@gtkx/navigation";
+import { quit } from "@gtkx/react";
+import { useEffect, useState } from "react";
+
+const dataDir = GLib.buildFilenamev([GLib.getUserDataDir(), "notes"]);
+const stateFile = Gio.File.newForPath(GLib.buildFilenamev([dataDir, "navigation.json"]));
+
+const loadState = async (): Promise<InitialState | undefined> => {
+    try {
+        const [bytes] = await stateFile.loadContentsAsync(null);
+        return JSON.parse(new TextDecoder().decode(bytes));
+    } catch {
+        return undefined;
+    }
+};
+
+const saveState = (state: object | undefined) => {
+    GLib.mkdirWithParents(dataDir, 0o755);
+    const bytes = new TextEncoder().encode(JSON.stringify(state));
+    void stateFile.replaceContentsAsync(bytes, null, false, Gio.FileCreateFlags.NONE, null);
+};
+
+export const App = () => {
+    const [restored, setRestored] = useState<{ state: InitialState | undefined }>();
+
+    useEffect(() => {
+        void loadState().then((state) => setRestored({ state }));
+    }, []);
+
+    return (
+        <AdwApplication>
+            <AdwApplicationWindow title="Notes" defaultWidth={800} defaultHeight={600} onCloseRequest={quit}>
+                {restored ? (
+                    <NavigationContainer initialState={restored.state} onStateChange={saveState}>
+                        <Notes />
+                    </NavigationContainer>
+                ) : (
+                    <AdwSpinner />
+                )}
+            </AdwApplicationWindow>
+        </AdwApplication>
+    );
+};
+```
 
 ### Opening links
 
