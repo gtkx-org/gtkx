@@ -139,31 +139,49 @@ The generated promise is named `call` here; use the generated signature rather t
 ```ts
 import * as Gio from "@gtkx/gi/gio";
 import { Variant } from "@gtkx/gi/glib";
+import * as GObject from "@gtkx/gi/gobject";
 
 export const watchCounter = (onValue: (value: number | null) => void) => {
     let proxy: Gio.DBusProxy | null = null;
+    let disconnect = () => {};
+    let generation = 0;
+
+    const forget = () => {
+        generation += 1;
+        disconnect();
+        disconnect = () => {};
+        proxy = null;
+    };
 
     const watcher = Gio.busWatchName(
         Gio.BusType.SESSION,
         "com.example.Counter",
         Gio.BusNameWatcherFlags.NONE,
         async (_connection: Gio.DBusConnection, name: string) => {
-            const current = await Gio.DBusProxy.newForBus(
-                Gio.BusType.SESSION,
-                Gio.DBusProxyFlags.NONE,
-                null,
-                name,
-                "/com/example/Counter",
-                "com.example.Counter",
-            );
-            current.connect("g-signal", (_sender, signalName, parameters) => {
-                if (signalName === "Changed") onValue(parameters.deepUnpack<"(u)">()[0]);
-            });
-            proxy = current;
-            onValue(current.getCachedProperty("Value")?.unpack<"u">() ?? null);
+            const current = generation;
+
+            try {
+                const created = await Gio.DBusProxy.newForBus(
+                    Gio.BusType.SESSION,
+                    Gio.DBusProxyFlags.NONE,
+                    null,
+                    name,
+                    "/com/example/Counter",
+                    "com.example.Counter",
+                );
+                if (current !== generation) return;
+                const handler = created.connect("g-signal", (_sender, signalName, parameters) => {
+                    if (signalName === "Changed") onValue(parameters.deepUnpack<"(u)">()[0]);
+                });
+                disconnect = () => GObject.signalHandlerDisconnect(created, handler);
+                proxy = created;
+                onValue(created.getCachedProperty("Value")?.unpack<"u">() ?? null);
+            } catch (error) {
+                if (current === generation) console.error(error);
+            }
         },
         (_connection: Gio.DBusConnection | null, _name: string) => {
-            proxy = null;
+            forget();
             onValue(null);
         },
     );
@@ -176,13 +194,13 @@ export const watchCounter = (onValue: (value: number | null) => void) => {
         },
         stop: () => {
             Gio.busUnwatchName(watcher);
-            proxy = null;
+            forget();
         },
     };
 };
 ```
 
-GIR types these handlers only as `GObject.Closure`, so annotate their parameters with the types the C documentation gives them, as the example does. A production build may need a value reference to the classes they receive; see [Production bindings](/v2/guide/configuration-and-codegen#production-bindings).
+A proxy created after its name vanished, or after `stop`, is discarded, and each proxy's signal handler is disconnected when its name vanishes. GIR types the watcher's handlers only as `GObject.Closure`, so annotate their parameters with the types the C documentation gives them, as the example does. A production build may need a value reference to the classes they receive; see [Production bindings](/v2/guide/configuration-and-codegen#production-bindings).
 
 ### Exporting an object
 
