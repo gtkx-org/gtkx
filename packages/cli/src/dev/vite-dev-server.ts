@@ -1,6 +1,7 @@
-import { createLogger, type InlineConfig, type Logger, type Plugin, type ResolvedConfig } from "vite";
+import { createLogger, type InlineConfig, type Logger, type LogOptions, type Plugin, type ResolvedConfig } from "vite";
 import { warn } from "@gtkx/utils";
 import { join } from "node:path";
+import { stripVTControlCharacters } from "node:util";
 import { gtkxRendererLibraries } from "../vite-plugins/renderer-libraries.js";
 import { createWatchIgnore } from "./watch-ignore.js";
 
@@ -14,6 +15,7 @@ type DevLogger = {
 const WRITE_STABILITY_THRESHOLD_MS = 50;
 const WRITE_POLL_INTERVAL_MS = 10;
 const ENV_FILE_SUFFIXES = ["", ".local"];
+const CLIENT_ENVIRONMENT_TAG = "(client)";
 
 const envFilesForMode = (config: ResolvedConfig): string[] => {
     const envDir = config.envDir;
@@ -56,6 +58,9 @@ const runnerUpdatesPlugin = (): Plugin => ({
     },
 });
 
+const isClientEnvironmentLog = (options: LogOptions | undefined): boolean =>
+    options?.environment !== undefined && stripVTControlCharacters(options.environment) === CLIENT_ENVIRONMENT_TAG;
+
 const createDevLogger = (): DevLogger => {
     const logger = createLogger();
     let isSilenced = false;
@@ -65,6 +70,11 @@ const createDevLogger = (): DevLogger => {
             ...logger,
             get hasWarned() {
                 return logger.hasWarned;
+            },
+            info: (message, options) => {
+                if (!isClientEnvironmentLog(options)) {
+                    logger.info(message, options);
+                }
             },
             error: (message, options) => {
                 if (!isSilenced) {
