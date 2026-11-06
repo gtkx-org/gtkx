@@ -393,9 +393,10 @@ const collectMnemonicMatch = (
 };
 
 const labellingText = (widget: Gtk.Widget): string | null => {
-    const ownLabel = widget.getAccessibleRole() === Gtk.AccessibleRole.LABEL ? null : getWidgetOwnLabel(widget);
+    const ownLabel = getWidgetOwnLabel(widget);
+    const isOwnText = widget.getAccessibleRole() === Gtk.AccessibleRole.LABEL && ownLabel === namingLabelText(widget);
 
-    return ownLabel ?? getWidgetExternalLabelText(widget);
+    return (isOwnText ? null : ownLabel) ?? getWidgetExternalLabelText(widget);
 };
 
 const collectLabelMatches = (

@@ -49,6 +49,7 @@ import {
     queryAllByRole,
     queryAllByText,
     queryByDisplayValue,
+    queryByLabelText,
     queryByName,
     queryByPlaceholderText,
     queryByRole,
@@ -394,6 +395,7 @@ describe("ByLabelText", () => {
                     accessibleLabelledBy={refs.label ? [refs.label] : []}
                 />
                 <GtkEntry accessibleLabel="Email address" />
+                <GtkLabel accessibleLabel="Time remaining">25:00</GtkLabel>
             </VBox>
         );
 
@@ -402,6 +404,8 @@ describe("ByLabelText", () => {
         expect(await findByLabelText(container, "Full name")).toBe(refs.labelled);
         expect(await findAllByLabelText(container, "Field")).toEqual([refs.first, refs.second]);
         expect(getByLabelText(container, "Email address")).toHaveAccessibleName("Email address");
+        expect(getByLabelText(container, "Time remaining")).toHaveTextContent("25:00");
+        expect(queryByLabelText(container, "25:00")).toBeNull();
     });
 
     it("throws when no association exists", async () => {
