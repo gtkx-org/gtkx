@@ -1,4 +1,5 @@
 import * as Adw from "@gtkx/gi/adw";
+import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
 import {
@@ -85,14 +86,30 @@ const readFirstText = (widget: object, getters: string[]): string | null => {
     return null;
 };
 
+const textDecoder = new TextDecoder();
+
+const readGetterText = (widget: Gtk.Accessible): string | null =>
+    widget instanceof Gtk.Label ? widget.getText() || null : readFirstText(widget, DEFAULT_TEXT_GETTERS);
+
+const readAccessibleTextContents = (widget: Gtk.Accessible): string | null => {
+    if (!(widget instanceof Gtk.AccessibleText)) {
+        return null;
+    }
+
+    const contents = widget.vfuncGetContents(0, GLib.MAXUINT32).getData();
+
+    return contents && contents.length > 0 ? textDecoder.decode(contents) : null;
+};
+
 /**
  * Returns a widget's own text by trying its label, text, and title getters in
- * order, or null when none produce a value.
+ * order, then the contents it exposes through `Gtk.AccessibleText`, or null
+ * when none produce a value.
  *
  * @param widget The widget to read text from.
  */
 const getWidgetText = (widget: Gtk.Accessible): string | null =>
-    widget instanceof Gtk.Label ? widget.getText() || null : readFirstText(widget, DEFAULT_TEXT_GETTERS);
+    readGetterText(widget) ?? readAccessibleTextContents(widget);
 
 const namingLabelText = (widget: Gtk.Widget): string | null => {
     if (widget instanceof Gtk.Label) {
@@ -150,7 +167,7 @@ const getWidgetLabelText = (widget: Gtk.Widget): string | null => {
         return null;
     }
 
-    return namingLabelText(widget);
+    return namingLabelText(widget) ?? readAccessibleTextContents(widget);
 };
 
 const textContentParts = (widget: Gtk.Widget): string[] => {
@@ -224,7 +241,7 @@ const nameFromAuthor = (widget: Gtk.Widget): string | null =>
     readFirstText(widget, ["getTitle"]);
 
 const nameFromContent = (widget: Gtk.Widget): string | null => {
-    const ownText = getWidgetText(widget);
+    const ownText = readGetterText(widget);
 
     if (ownText) {
         return ownText;
@@ -507,7 +524,7 @@ const getWidgetExternalLabelText = (widget: Gtk.Widget): string | null => {
 
 const isTooltipUsedAsName = (widget: Gtk.Widget): boolean =>
     readAccessibleString(widget, Gtk.AccessibleProperty.LABEL) === null &&
-    getWidgetText(widget) === null &&
+    readGetterText(widget) === null &&
     collectLabels(widget).length === 0;
 
 const getWidgetDescribedByText = (widget: Gtk.Widget): string | null => {

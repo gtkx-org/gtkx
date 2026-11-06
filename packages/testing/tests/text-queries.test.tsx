@@ -1,6 +1,18 @@
+import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwActionRow } from "@gtkx/jsx/adw";
-import { GtkBox, GtkEntry, GtkExpander, GtkLabel, GtkListBox } from "@gtkx/jsx/gtk";
+import {
+    GtkBox,
+    GtkEntry,
+    GtkExpander,
+    GtkLabel,
+    GtkListBox,
+    GtkTextBuffer,
+    GtkTextView,
+    type GtkWidgetProps,
+} from "@gtkx/jsx/gtk";
+import { createElementComponent } from "@gtkx/react";
+import { registerClass } from "@gtkx/runtime";
 import { getWidgetText, render, screen, within } from "@gtkx/testing";
 import { type ReactNode, useState } from "react";
 import { describe, expect, it } from "vitest";
@@ -20,7 +32,37 @@ const LabelledField = ({ isInside, isVisible }: { isInside: boolean; isVisible: 
     );
 };
 
+class DrawnTextBase extends Gtk.Widget implements Gtk.AccessibleTextImpl {
+    vfuncGetContents(start: number, end: number): GLib.Bytes {
+        return GLib.Bytes.new(new TextEncoder().encode("Drawn reading".slice(start, end)));
+    }
+}
+
+const DrawnText = registerClass(DrawnTextBase, {
+    typeName: "TestingDrawnText",
+    implements: [Gtk.AccessibleText],
+    classInit(klass: Gtk.WidgetClass) {
+        klass.setAccessibleRole(Gtk.AccessibleRole.LABEL);
+    },
+});
+
+const DrawnTextElement = createElementComponent<GtkWidgetProps>("TestingDrawnText", DrawnText);
+
 describe("rendered label text", () => {
+    it("reads text that a widget exposes only through its accessible text", async () => {
+        await render(
+            <GtkBox>
+                <DrawnTextElement name="drawn" />
+                <GtkTextView name="notes" buffer={<GtkTextBuffer text="Buffered notes" />} />
+            </GtkBox>,
+        );
+        const drawn = screen.getByName("drawn");
+        expect(screen.getByText("Drawn reading")).toBe(drawn);
+        expect(getWidgetText(drawn)).toBe("Drawn reading");
+        expect(drawn).toHaveTextContent("Drawn reading");
+        expect(screen.getByName("notes")).toHaveTextContent("Buffered notes");
+    });
+
     it.each([
         <GtkExpander name="labelled" useMarkup useUnderline label={"<b>_Save __ &amp; close</b>"} />,
         <GtkListBox>
