@@ -330,14 +330,13 @@ describe("ColumnView sorting", () => {
 });
 
 describe("ColumnView selection", () => {
-    it("applies a selectedIds change after mount and reports it once", async () => {
+    it("applies a selectedIds change after mount without reporting it back", async () => {
         const selectionChanges: string[][] = [];
         const onSelectionChanged = (ids: string[]): void => {
             selectionChanges.push(ids);
         };
         const options = { columns: personColumns, selectionMode: Gtk.SelectionMode.MULTIPLE, onSelectionChanged };
         const { ref, rerender } = await renderColumnView(personRows(null), { ...options, selected: [] });
-        selectionChanges.length = 0;
         await rerender(personRows(null), { ...options, selected: ["Charlie", "Bob"] });
 
         await waitFor(() => {
@@ -348,7 +347,7 @@ describe("ColumnView selection", () => {
             expect(model.isSelected(2)).toBe(true);
         });
 
-        expect(selectionChanges).toEqual([["Charlie", "Bob"]]);
+        expect(selectionChanges).toEqual([]);
     });
 });
 
@@ -359,5 +358,34 @@ describe("ColumnView sections", () => {
         await expectRowTexts(ref, ["Name", "H:One", "Parent 1", "Child 1", "Solo 1", "H:Two", "Parent 2", "Child 2"]);
         await rerender(drawSections(ref, sections.slice(1)));
         await expectRowTexts(ref, ["Name", "H:Two", "Parent 2", "Child 2"]);
+    });
+
+    it("starts at the first section header when the sections overflow the viewport", async () => {
+        const ref = createRef<Gtk.ColumnView>();
+        const tall = ["A", "B", "C", "D"].map((name) => ({
+            id: name,
+            value: name,
+            data: Array.from({ length: 6 }, (_, index) => ({
+                id: `${name}${String(index)}`,
+                value: { name: `${name} ${String(index)}` },
+            })),
+        }));
+        await render(
+            <ScrollWrapper minContentHeight={300} maxContentHeight={300}>
+                <ColumnView<Named, string>
+                    ref={ref}
+                    sections={tall}
+                    columns={[{ id: "name", title: "Name", renderCell: renderNamed }]}
+                    renderHeader={({ section }: { section: string }) => <GtkLabel>{`H:${section}`}</GtkLabel>}
+                />
+            </ScrollWrapper>,
+        );
+
+        await waitFor(() => {
+            const adjustment = ref.current?.getVadjustment();
+            expect(adjustment?.getUpper()).toBeGreaterThan(adjustment?.getPageSize() ?? 0);
+        });
+
+        expect(ref.current?.getVadjustment()?.getValue()).toBe(0);
     });
 });
