@@ -57,11 +57,11 @@
         "node": ">=26.7.0"
     },
     "dependencies": {
-        "@gtkx/cairo": "workspace:*",
-        "@gtkx/config": "workspace:*",
-        "@gtkx/native": "workspace:*",
-        "@gtkx/runtime": "workspace:*",
-        "@gtkx/utils": "workspace:*",
+        "@gtkx/cairo": "workspace:^",
+        "@gtkx/config": "workspace:^",
+        "@gtkx/native": "workspace:^",
+        "@gtkx/runtime": "workspace:^",
+        "@gtkx/utils": "workspace:^",
         "@types/node": "catalog:",
         "fast-xml-parser": "^5.11.2",
         "fast-xml-validator": "^1.4.2",
@@ -75,7 +75,7 @@
         "@gtkx/react": "workspace:*"
     },
     "peerDependencies": {
-        "@gtkx/react": "workspace:*"
+        "@gtkx/react": "workspace:^"
     },
     "peerDependenciesMeta": {
         "@gtkx/react": {

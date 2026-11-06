@@ -2,9 +2,11 @@ import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
 
 import * as Regress from "@gtkx/gi/regress";
 
+import { getHandle, wrapHandle } from "@gtkx/runtime";
+
 import { expect, test } from "vitest";
 
-import { drainGC } from "./helpers/memory.js";
+import { didSettle, drainGC } from "./helpers/memory.js";
 
 test("SimpleStruct round trips through construction, methods, and returnv", () => {
     const constructed = new GIMarshallingTests.SimpleStruct({ long: 6n, int8: 7 });
@@ -47,6 +49,21 @@ test("NestedStruct inline struct field reads alias the owner", () => {
     inner.long = 55n;
     expect(nested.simpleStruct.long).toBe(55n);
     expect(nested.simpleStruct.int8).toBe(2);
+});
+
+test("an embedded pointer-carrying struct view keeps its parent's memory alive", async () => {
+    const finalized: string[] = [];
+    const registry = new FinalizationRegistry((name: string) => finalized.push(name));
+    const view = (() => {
+        const union = GIMarshallingTests.StructuredUnion.new(GIMarshallingTests.StructuredUnionType.BOXED_STRUCT);
+        const member = wrapHandle(getHandle(union), GIMarshallingTests.StructuredUnionBoxedStruct);
+        registry.register(union, "union");
+        registry.register(member, "member");
+        return member.parent;
+    })();
+    expect(await didSettle(() => finalized.length === 2)).toBe(true);
+    expect([view.long, view.string]).toEqual([42n, "hello"]);
+    view.inv();
 });
 
 test("NestedStruct inline struct field writes copy the donor struct", () => {
@@ -120,6 +137,7 @@ test("StructuredUnion constructs each plain variant and reports its type", () =>
     for (const type of cases) {
         const union = GIMarshallingTests.StructuredUnion.new(type);
         expect(union.type()).toBe(type);
+        expect(new GIMarshallingTests.StructuredUnion(type).type()).toBe(type);
     }
 });
 
@@ -306,4 +324,21 @@ test("abstract structs and unions cannot be constructed", () => {
 test("a struct method whose C symbol is missing throws", () => {
     const union = Regress.FooBUnion.new();
     expect(() => union.getContainedType()).toThrow("regress_foo_bunion_get_contained_type");
+});
+
+test("functions GIR moves onto a record, union or interface keep their flat namespace names", () => {
+    const original = GIMarshallingTests.BoxedStruct.new();
+    original.long = 42n;
+    expect(GIMarshallingTests.boxedStructInout(original).long).toBe(0n);
+    expect(GIMarshallingTests.boxedStructOut().long).toBe(42n);
+    expect(GIMarshallingTests.boxedStructOutUninitialized()).toEqual([false, null]);
+    expect(GIMarshallingTests.boxedStructReturnv().long).toBe(42n);
+    expect(GIMarshallingTests.overridesStructReturnv().method()).toBe(42n);
+    expect(GIMarshallingTests.pointerArrayStructWithUint8Array().refCount).toBe(1);
+    expect(GIMarshallingTests.pointerStructReturnv().long).toBe(42n);
+    expect(GIMarshallingTests.simpleStructReturnv().int8).toBe(7);
+    expect(GIMarshallingTests.unionReturnv().long).toBe(42n);
+    expect(Regress.testSimpleBoxedAConstReturn().someInt).toBe(5);
+    expect(Regress.testStructAParse("ignored").someInt).toBe(23);
+    expect(Regress.fooInterfaceStaticMethod(42)).toBeUndefined();
 });

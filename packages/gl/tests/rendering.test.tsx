@@ -21,6 +21,7 @@ void main() { gl_Position = vec4(aPos * uScale, 1.0); }`;
 const FRAGMENT_SOURCE = `#version 300 es
 precision mediump float;
 out vec4 FragColor;
+// Opaque green — 100 % coverage
 void main() { FragColor = vec4(0.0, 1.0, 0.0, 1.0); }`;
 
 const TRIANGLE = new Float32Array([-1, -1, 0, 1, -1, 0, 0, 1, 0]);
@@ -52,7 +53,7 @@ const inGlContext = async <T,>(work: () => T): Promise<T> => {
 
 const compileShader = (type: number, source: string): number => {
     const shader = gl.createShader(type);
-    gl.shaderSource(shader, 1, [source], [-1]);
+    gl.shaderSource(shader, 1, [source], null);
     gl.compileShader(shader);
 
     return shader;

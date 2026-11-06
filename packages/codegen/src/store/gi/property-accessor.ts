@@ -34,7 +34,9 @@ type PropertyAccessorArgs = {
 
 const NON_NULLABLE_KINDS: Set<string> = new Set(["primitive", "enum"]);
 
-const isNullablePropertyType = (context: ModuleContext, type: TypeId | undefined): boolean => {
+type LibraryContext = Pick<ModuleContext, "library">;
+
+const isNullablePropertyType = (context: LibraryContext, type: TypeId | undefined): boolean => {
     if (type === undefined) {
         return false;
     }
@@ -52,7 +54,7 @@ const isNullablePropertyType = (context: ModuleContext, type: TypeId | undefined
     return !NON_NULLABLE_KINDS.has(resolved.kind);
 };
 
-const isNullableProperty = (context: ModuleContext, property: GirProperty): boolean =>
+const isNullableProperty = (context: LibraryContext, property: GirProperty): boolean =>
     property.defaultValue === "NULL" || isNullablePropertyType(context, property.type);
 
 const declaredReadType = (context: ModuleContext, property: GirProperty): string =>

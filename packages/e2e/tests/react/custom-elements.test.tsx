@@ -1,9 +1,16 @@
 import type { ReactNode } from "react";
-import { ParamFlags, paramSpecString } from "@gtkx/gi/gobject";
+import { BindingFlags, ParamFlags, paramSpecString } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkAdjustment, GtkAspectFrame, GtkFrame, GtkLabel } from "@gtkx/jsx/gtk";
+import {
+    GtkAdjustment,
+    GtkAspectFrame,
+    type GtkEditableProps,
+    GtkFrame,
+    GtkLabel,
+    type GtkWidgetProps,
+} from "@gtkx/jsx/gtk";
 import { createElementComponent } from "@gtkx/react";
-import { registerClass } from "@gtkx/runtime";
+import { callParent, registerClass } from "@gtkx/runtime";
 import { render, screen } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -26,6 +33,33 @@ registerClass(TaggedScale, {
     properties: { tag: paramSpecString("tag", null, null, "none", ParamFlags.READWRITE) },
 });
 
+class CaptionedBinBase extends Gtk.Widget {
+    declare caption: string;
+    declare label: Gtk.Label;
+
+    override vfuncConstructed(): void {
+        super.vfuncConstructed();
+        this.label = new Gtk.Label();
+        this.label.setParent(this);
+        this.bindProperty("caption", this.label, "label", BindingFlags.SYNC_CREATE);
+    }
+}
+
+const CaptionedBin = registerClass(CaptionedBinBase, {
+    typeName: "GtkxCaptionedBin",
+    properties: { caption: paramSpecString("caption", null, null, "none", ParamFlags.READWRITE) },
+    classInit(klass: Gtk.WidgetClass) {
+        klass.setLayoutManagerType(Gtk.BinLayout);
+    },
+});
+
+type CaptionedBin = InstanceType<typeof CaptionedBin>;
+
+const CaptionedBinElement = createElementComponent<GtkWidgetProps<CaptionedBin> & { caption?: string }>(
+    "GtkxCaptionedBin",
+    CaptionedBin,
+);
+
 describe("createElementComponent for a type codegen does not cover", () => {
     it("renders a registered subclass with its own props", async () => {
         await render(<TaggedScaleElement name="tagged" tag="mine" />);
@@ -43,10 +77,103 @@ describe("createElementComponent for a type codegen does not cover", () => {
         expect((found as Gtk.Scale).getAdjustment().getValue()).toBe(7);
     });
 
+    it("notifies a binding made in vfuncConstructed of the props it was created with", async () => {
+        const ref = createRef<CaptionedBin>();
+        const { rerender } = await render(<CaptionedBinElement ref={ref} caption="Forecast" />);
+        expect(ref.current?.label.getLabel()).toBe("Forecast");
+
+        await rerender(<CaptionedBinElement ref={ref} caption="Hourly" />);
+        expect(ref.current?.label.getLabel()).toBe("Hourly");
+    });
+
     it("rejects an element whose GType has not been registered", async () => {
         const UnknownElement = createElementComponent("GtkxUnregisteredCustomElement");
 
         await expect(render(<UnknownElement />)).rejects.toThrow();
+    });
+});
+
+class DelegatingEntryBase extends Gtk.Widget implements Gtk.EditableImpl {
+    declare private delegate: Gtk.Text | null;
+    declare initDelegate: Gtk.Editable["initDelegate"];
+    declare finishDelegate: Gtk.Editable["finishDelegate"];
+
+    override vfuncConstructed(): void {
+        super.vfuncConstructed();
+        const text = new Gtk.Text();
+        text.setParent(this);
+        this.delegate = text;
+        this.initDelegate();
+    }
+
+    vfuncGetDelegate(): Gtk.Editable | null {
+        return this.delegate;
+    }
+
+    vfuncDispose(): void {
+        if (this.delegate !== null) {
+            this.finishDelegate();
+            this.delegate.unparent();
+            this.delegate = null;
+        }
+
+        callParent(DelegatingEntry, "vfuncDispose", this);
+    }
+}
+
+const DelegatingEntry = registerClass(DelegatingEntryBase, {
+    typeName: "GtkxDelegatingEntry",
+    implements: [Gtk.Editable],
+    classInit(klass: Gtk.WidgetClass) {
+        klass.setLayoutManagerType(Gtk.BoxLayout);
+    },
+});
+
+type DelegatingEntry = InstanceType<typeof DelegatingEntry>;
+
+const DelegatingEntryElement = createElementComponent<
+    GtkWidgetProps<DelegatingEntry> & GtkEditableProps<DelegatingEntry>
+>("GtkxDelegatingEntry", DelegatingEntry);
+
+const TextlessEditable = registerClass(
+    class extends Gtk.Widget implements Gtk.EditableImpl {
+        vfuncGetText(): string {
+            return "fixed";
+        }
+    },
+    { typeName: "GtkxTextlessEditable", implements: [Gtk.Editable] },
+);
+
+describe("a registered Gtk.Editable", () => {
+    it("routes its editable props to the delegate it returns from vfuncGetDelegate", async () => {
+        const ref = createRef<DelegatingEntry>();
+        const App = ({ text }: { text: string }) => (
+            <DelegatingEntryElement ref={ref} text={text} editable={false} widthChars={4} />
+        );
+        const { rerender } = await render(<App text="hello" />);
+        const delegate = ref.current?.getDelegate();
+        expect(delegate?.getText()).toBe("hello");
+        expect(delegate?.getEditable()).toBe(false);
+        expect(delegate?.getWidthChars()).toBe(4);
+
+        await rerender(<App text="" />);
+        expect(delegate?.getText()).toBe("");
+        expect(ref.current?.text).toBe("");
+
+        delegate?.setText("again");
+        delegate?.setPosition(3);
+        expect(ref.current?.text).toBe("again");
+        expect(ref.current?.cursorPosition).toBe(3);
+        expect(ref.current?.editable).toBe(false);
+    });
+
+    it("rejects a write to a property it reads through a slot it has no setter for", () => {
+        const editable = new TextlessEditable();
+
+        expect(() => {
+            editable.text = "lost";
+        }).toThrow();
+        expect(editable.text).toBe("fixed");
     });
 });
 

@@ -137,7 +137,9 @@ const buildInArg = (options: BuildArgOptions, name: string, track: (alias: strin
             track(scalarAliasOrGroup(plan.scalar, param.group));
             const descriptor = tArray(plan.scalar.descriptor, undefined, NUMERIC_LAYOUT);
 
-            return inArg(name, arrayInTsType(plan.scalar, param.group), descriptor);
+            const tsType = arrayInTsType(plan.scalar, param.group);
+
+            return inArg(name, plan.isNullable ? `${tsType} | null` : tsType, descriptor);
         }
         case "buffer": {
             return inArg(name, `ArrayBufferView | ${track("GLpointer")} | null`, tBuffer);

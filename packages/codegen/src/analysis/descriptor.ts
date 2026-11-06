@@ -116,6 +116,7 @@ const tBoxed = (glibName: string, options: BoxedOptions): string =>
             options.isCallerAllocated ? "isCallerAllocated: true" : undefined,
             options.isInline === true ? "isInline: true" : undefined,
             optionalTrueEntry("isValueSafe", options.isValueSafe),
+            optionalTrueEntry("isRefCounted", options.isRefCounted),
             options.size === undefined ? undefined : `size: ${String(options.size)}`,
             options.fallbackClass === undefined ? undefined : `fallbackClass: ${options.fallbackClass}`,
         ]),

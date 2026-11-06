@@ -14,6 +14,7 @@ type GenerateBindingsOptions = {
     inputs?: CodegenInputs;
     isForced?: boolean;
     lockTimeoutMs?: number | undefined;
+    onRegenerate?: (() => void) | undefined;
 };
 
 type GenerateBindingsResult = CodegenRunnerResult & CodegenInputs & { isForced: boolean };
@@ -41,6 +42,7 @@ const generateBindings = async (options: GenerateBindingsOptions): Promise<Gener
             linkDir: store.giLinkDir,
             version: store.runtimeVersion,
             owner: store.owner,
+            dependencies: store.giDependencies,
         },
         jsx:
             store.react === null
@@ -50,13 +52,16 @@ const generateBindings = async (options: GenerateBindingsOptions): Promise<Gener
                       linkDir: store.jsxLinkDir,
                       version: store.react.version,
                       owner: store.owner,
+                      dependencies: store.jsxDependencies,
                   },
-        userComponents: resolveElementComponents(config.elements),
-        userProps: resolveElementProps(config.elements),
+        userComponents: resolveElementComponents(config.elements, options.cwd),
+        userProps: resolveElementProps(config.elements, options.cwd),
         userLazyElements: resolveLazyElements(config.elements),
         userOmittedProps: resolveOmittedProps(config.elements),
         isForced,
+        isSharingForced: options.isForced === true,
         lockTimeoutMs: options.lockTimeoutMs,
+        onRegenerate: options.onRegenerate,
     });
 
     return { ...result, ...inputs, isForced };

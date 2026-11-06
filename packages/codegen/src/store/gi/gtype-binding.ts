@@ -13,8 +13,9 @@ const gtypeTsType = (context: ModuleContext): string =>
 const gtypeParamTsType = (context: ModuleContext): string => {
     context.addRuntimeTypeImport("AnyClass");
     context.addRuntimeTypeImport("TypedClass");
+    const typedEnum = context.addRuntimeTypeImport("TypedEnum");
 
-    return `${gtypeTsType(context)} | AnyClass<TypedClass>`;
+    return `${gtypeTsType(context)} | AnyClass<TypedClass> | ${typedEnum}`;
 };
 
 const gtypeMemberDeclaration = (context: ModuleContext): string => `declare __type__: ${gtypeTsType(context)};`;
