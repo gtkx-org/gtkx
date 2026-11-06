@@ -2,6 +2,7 @@ import type { SignalHandler } from "@gtkx/runtime";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { coerceObjectProperty, getInstanceType, signalForHandlerName, TYPE_INVALID } from "@gtkx/runtime";
+import { getObjectPropertyDefault } from "@gtkx/runtime/internal";
 import {
     camelCase,
     CONSTRUCT_ONLY_PROP_CHANGE,
@@ -148,9 +149,23 @@ const writeValue = (object: GObject.Object, name: string, value: unknown): void 
     });
 };
 
+const paramSpecDefault = (object: GObject.Object, name: string): unknown => {
+    const property = getPropertyName(object, name);
+
+    return property === undefined ? null : getObjectPropertyDefault(object, property);
+};
+
 const resetPlain = (object: GObject.Object, info: TypeInfo, name: string): void => {
     if (Object.hasOwn(info.defaults, name)) {
         writeValue(object, name, info.defaults[name]);
+
+        return;
+    }
+
+    const value = paramSpecDefault(object, name);
+
+    if (value !== null) {
+        writeValue(object, name, value);
     }
 };
 

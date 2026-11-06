@@ -554,6 +554,18 @@ function coerceObjectProperty(obj: object, propertyName: string, value: unknown)
     return gtype === TYPE_INVALID ? value : coercePropertyValue(gtype, propertyName, value);
 }
 
+/**
+ * Reads the default value a native property's `GObject.ParamSpec` declares.
+ *
+ * @param obj Object whose class declares the property.
+ * @param propertyName Dashed or camelCased property name.
+ * @returns The default value converted to JavaScript.
+ * @throws {TypeError} When the object has no GObject property of that name.
+ */
+function getObjectPropertyDefault(obj: object, propertyName: string): unknown {
+    return fromValue(defaultValueFor(objectPropertyCheckFor(obj, propertyName).handle));
+}
+
 function constructPropertyFor(
     gtype: bigint,
     name: string,
@@ -1096,6 +1108,7 @@ export {
     buildPropertyDispatch,
     coerceObjectProperty,
     getDeclaredPropertyName,
+    getObjectPropertyDefault,
     isReadableProperty,
     assertConstructValueValidates,
     coerceConstructPropertyValue,

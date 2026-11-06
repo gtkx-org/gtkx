@@ -1,6 +1,8 @@
+import type * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
-import { GtkBox, GtkButton, GtkDropDown, GtkLabel, GtkStringList } from "@gtkx/jsx/gtk";
+import { AdwActionRow } from "@gtkx/jsx/adw";
+import { GtkBox, GtkButton, GtkDropDown, GtkLabel, GtkListBox, GtkStringList } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { expect, it } from "vitest";
@@ -25,6 +27,19 @@ it("updates native props on the same widget and restores omitted defaults", asyn
     expect(widget).toHaveObjectProperty("widthRequest", -1);
     await unmount();
     expect(ref.current).toBeNull();
+});
+
+it("restores native defaults that the GIR does not record", async () => {
+    const ref = createRef<Adw.ActionRow>();
+    const row = (subtitle?: string) => (
+        <GtkListBox>
+            <AdwActionRow ref={ref} title="Phone" subtitle={subtitle} />
+        </GtkListBox>
+    );
+    const { rerender } = await render(row("Enter a valid number"));
+    expect(ref.current).toHaveObjectProperty("subtitle", "Enter a valid number");
+    await rerender(row());
+    expect(ref.current).toHaveObjectProperty("subtitle", "");
 });
 
 it("replaces mutually exclusive properties and coerces native numeric ranges", async () => {
