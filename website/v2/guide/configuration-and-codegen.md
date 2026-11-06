@@ -131,6 +131,14 @@ When a production build receives such an object through a closure and has droppe
 
 The object is still wrapped as its nearest retained ancestor, so the warning usually comes right before the error it explains. Objects returned from typed functions, methods and properties keep at least their declared class and never trigger it, nor do private library classes that have no generated class. Development and tests load every class and never print it.
 
+A type assertion is erased too, so it does not keep a more derived class than the declared one. `Gst.parseLaunch` declares a `Gst.Element`, so `(pipeline as Gst.Bin).getByName("sink")` throws `getByName is not a function` in a production build unless the app references `Gst.Bin` as a value; so does `(root as OSTree.RepoFile).getChecksum()` on the `Gio.File` that `OSTree.Repo.readCommit` returns. No warning precedes these errors. Narrow with `instanceof` instead of a cast:
+
+```ts
+const pipeline = Gst.parseLaunch("videotestsrc ! videoconvert ! appsink name=sink");
+if (!(pipeline instanceof Gst.Bin)) throw new TypeError("Expected a bin");
+const sink = pipeline.getByName("sink");
+```
+
 ## Monorepos
 
 GTKX apps work in pnpm and npm workspaces with the package manager's default `node_modules` layout, and in Yarn workspaces whose root `.yarnrc.yml` sets `nodeLinker: node-modules`, alongside shared packages of components. In a workspace, `create gtkx apps/my-app` adds the app to the workspace, adds an MCP server to the root `.mcp.json` unless it already has one, and prints any `allowBuilds`, `allowScripts`, `nodeLinker` or `dependenciesMeta` entries, and the release-age exemptions for GTKX's packages, to add to its root configuration; see [Scaffold Options](/v2/guide/scaffold-options#workspaces).
