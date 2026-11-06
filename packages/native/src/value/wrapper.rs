@@ -549,7 +549,8 @@ unsafe fn release_unowned_object(gobject: *mut glib::gobject_ffi::GObject) {
 
 /// Gives up every toggle reference wrappers hold while JavaScript can still run, so teardown that
 /// calls back into JavaScript, such as a view clearing a JavaScript list model or a subclass's
-/// `vfuncDispose`, runs as it does during the application's run. Pending cleanup runs first.
+/// `vfuncDispose`, runs as it does during the application's run. Pending cleanup runs first, and
+/// handles only JavaScript holds give up the object references they keep.
 /// Objects native code still references keep their wrappers but lose the toggle references, so
 /// each is disposed when its native owners let it go, as in C, often inside the teardown of an
 /// object released here; objects GTK keeps until the process ends are never disposed. Objects only
@@ -563,6 +564,7 @@ pub(crate) fn release_unowned() {
     let mut visited = HashSet::new();
     loop {
         release_queue::flush();
+        crate::handle::release_unshared_reference_holders();
         detach_owned_objects();
         let round = next_unowned_objects(&visited);
         if round.is_empty() {

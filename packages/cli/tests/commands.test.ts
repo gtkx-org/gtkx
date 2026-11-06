@@ -602,11 +602,13 @@ describe("CLI commands", () => {
                 }
             }
             const Names = registerClass(NamesBase, { typeName: "ExampleNames", implements: [Gio.ListModel] });
+            const names = new Names();
+            const views = new Set<Gtk.ColumnView>();
             const People = () => {
-                const model = useMemo(() => Gtk.NoSelection.new(new Names()), []);
+                const model = useMemo(() => Gtk.NoSelection.new(names), []);
                 return (
                     <AdwApplicationWindow onMap={() => setTimeout(quit, 300)}>
-                        <GtkColumnView model={model}>
+                        <GtkColumnView ref={(view) => void (view && views.add(view))} model={model}>
                             <GtkColumnViewColumn
                                 title="Name"
                                 factory={
