@@ -9,7 +9,7 @@ GTKX turns compatible GIR async/finish pairs into promise-returning methods. Awa
 
 The promise resolves to the finish function's results: one value directly, or a tuple for several. A leading success boolean is omitted when the finish function also returns output values and failure already throws. Boolean-only results and explicit finish methods keep their native return shape. For example, `loadContentsAsync` resolves to the contents and optional etag, while `replaceContentsAsync` resolves to the etag alone.
 
-Check the generated signature for the libraries your project binds. Not every method ending in `Async` returns a promise. Some GIO operations, including the closure-based `copyAsync` and `moveAsync`, retain their callback form.
+Check the generated signature for the libraries your project binds. Not every method ending in `Async` returns a promise. Some GIO operations, including the closure-based `copyAsync` and `moveAsync`, retain their callback form. GIR types their progress and ready handlers only as `GObject.Closure`, so annotate the parameters with the types the C documentation gives them; 64-bit integers such as the `goffset` byte counts of a progress handler arrive as `bigint`.
 
 ## Awaiting async operations
 
