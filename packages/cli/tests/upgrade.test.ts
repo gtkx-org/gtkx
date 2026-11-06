@@ -157,7 +157,6 @@ describe("gtkx upgrade", () => {
 
     it("upgrades pnpm catalogs and workspace members to the newest release on the project's dist-tag", async () => {
         using project = createTemporaryProject({
-            "package.json": JSON.stringify({ name: "studio", private: true }),
             "pnpm-workspace.yaml": [
                 "packages:",
                 "  - apps/*",

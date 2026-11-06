@@ -44,7 +44,7 @@ const memberDirectories = (root: string, patterns: string[]): string[] => {
         .filter((member) => !excluded.some((pattern) => matchesGlob(member, pattern)))
         .map((member) => resolve(root, member));
 
-    return [...new Set([root, ...members])];
+    return [...new Set(existsSync(manifestPath(root)) ? [root, ...members] : members)];
 };
 
 const projectRoot = (cwd: string): string => {
