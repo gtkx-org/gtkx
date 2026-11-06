@@ -723,10 +723,6 @@ function interfaceAccessorFor(dispatch: PropertyDispatch, pspec: PropertySpec): 
         isInterfaceProperty: true,
     };
 
-    if (delegate !== undefined) {
-        accessor.delegate = delegate;
-    }
-
     const target = dispatch.targets.get(propertyName);
 
     if (target !== undefined) {
@@ -737,6 +733,8 @@ function interfaceAccessorFor(dispatch: PropertyDispatch, pspec: PropertySpec): 
 
     if (dispatch.memberAccessors.has(memberName)) {
         accessor.memberName = memberName;
+    } else if (delegate !== undefined) {
+        accessor.delegate = delegate;
     }
 
     return accessor;

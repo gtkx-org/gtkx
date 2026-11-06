@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { BindingFlags, ParamFlags, paramSpecString } from "@gtkx/gi/gobject";
+import { BindingFlags, getProperty, ParamFlags, paramSpecString, setProperty } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
     GtkAdjustment,
@@ -144,6 +144,21 @@ const TextlessEditable = registerClass(
     { typeName: "GtkxTextlessEditable", implements: [Gtk.Editable] },
 );
 
+const AccessorEditable = registerClass(
+    class extends Gtk.Widget {
+        declare stored: string;
+
+        get text(): string {
+            return this.stored ?? "";
+        }
+
+        set text(value: string) {
+            this.stored = value;
+        }
+    },
+    { typeName: "GtkxAccessorEditable", implements: [Gtk.Editable] },
+);
+
 describe("a registered Gtk.Editable", () => {
     it("routes its editable props to the delegate it returns from vfuncGetDelegate", async () => {
         const ref = createRef<DelegatingEntry>();
@@ -174,6 +189,13 @@ describe("a registered Gtk.Editable", () => {
             editable.text = "lost";
         }).toThrow();
         expect(editable.text).toBe("fixed");
+    });
+
+    it("reads and writes a slot-backed property through the class's own accessors", () => {
+        const editable = new AccessorEditable();
+
+        setProperty(editable, "text", "typed");
+        expect(getProperty(editable, "text")).toBe("typed");
     });
 });
 
