@@ -63,6 +63,36 @@ export const PreferencesForm = ({ onSave }: { onSave: (values: Preferences) => v
 
 You can also import `FormProvider` from `@gtkx/forms` to supply the control to rows below it. When a row relies on the provider, give it the form type explicitly, such as `<EntryRow<Preferences> name="displayName" />`, to check its field name.
 
+GTKX compiles components with the React Compiler by default, so read a field with `useWatch` rather than `form.watch`. As [React Hook Form documents](https://react-hook-form.com/docs/useform/watch), the compiler can cache what `watch` returns, and the component keeps showing a stale value after `setValue`:
+
+```tsx
+import { useWatch } from "@gtkx/forms";
+
+const theme = useWatch({ control: form.control, name: "theme" });
+```
+
+React Hook Form also updates nested entries of `formState.errors` in place, and the compiler caches what a component renders from them. A message read below a field array or a nested object, such as `errors.stops?.root?.message`, can stay hidden when the error joins one already reported beside it, for example a field array `validate` rule failing on submit after an empty row was reported. Add the `"use no memo"` directive at the top of a component that renders such messages, so React re-renders it from the current errors:
+
+```tsx
+import { useFieldArray, useForm } from "@gtkx/forms";
+import { GtkLabel } from "@gtkx/jsx/gtk";
+
+type Trip = { stops: { city: string; nights: number }[] };
+
+const StopsError = () => {
+    "use no memo";
+    const form = useForm<Trip>({ defaultValues: { stops: [] } });
+    useFieldArray({
+        control: form.control,
+        name: "stops",
+        rules: { validate: (stops) => stops.length <= 6 || "Plan at most six stops" },
+    });
+    const message = form.formState.errors.stops?.root?.message;
+
+    return message ? <GtkLabel cssClasses={["error"]} label={message} /> : null;
+};
+```
+
 ## Choose a row
 
 | Row                            | Stored value |
@@ -72,7 +102,7 @@ You can also import `FormProvider` from `@gtkx/forms` to supply the control to r
 | `SpinRow`                      | Number       |
 | `ComboRow`                     | Item ID      |
 
-The rows retain their native props, children, refs and signal handlers. React Hook Form owns the value, so configure a spin row's range through a JSX `GtkAdjustment`, and use `setValue` or `reset` to change its current value. Those form updates do not echo back as user edits.
+The rows retain their native props, children, refs and signal handlers. React Hook Form owns the value, so configure a spin row's range by passing a JSX `GtkAdjustment` to its `adjustment` prop, such as `adjustment={<GtkAdjustment lower={1} upper={10} stepIncrement={1} />}`, and use `setValue` or `reset` to change its current value. Those form updates do not echo back as user edits. If GTK clamps a value to the adjustment's range or cuts text at `maxLength`, the form keeps the stored value and submits it. The row is marked invalid, and a development build logs a warning, until an edit replaces the value.
 
 `ComboRow` shares the [collection component's sources and renderers](/v2/guide/components#dropdown). Item IDs remain stable when items move or their labels change. Strings and other primitive values have a default display; structured values require `renderItem`. Passing `control` also lets TypeScript infer item and section types for renderers.
 
@@ -80,7 +110,7 @@ A form `ComboRow` uses a non-nullable string field. Supply an explicit default I
 
 ## Native validation feedback
 
-An invalid row gains Adwaita's `error` CSS class and exposes an accessible invalid state. When validation supplies a message, the row uses it as its tooltip. Correcting the field restores the caller's classes and tooltip.
+An invalid row gains Adwaita's `error` CSS class. The row and, for text and spin rows, the field that receives focus expose an accessible invalid state. When validation supplies a message, the row uses it as its tooltip. Correcting the field restores the caller's classes and tooltip.
 
 The rows do not add a persistent error label. Render one beside the row when your application needs visible feedback. Native handlers such as `onNotifyText` still run after the form receives an edit.
 
