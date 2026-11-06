@@ -4,6 +4,12 @@ type Override = {
     module: string;
     exports: "*" | string[];
     needsBootstrap?: boolean;
+    interfaces?: Record<string, string>;
+};
+
+type InterfaceExtension = {
+    module: string;
+    name: string;
 };
 
 const OVERRIDES: Record<string, Override[]> = {
@@ -11,15 +17,19 @@ const OVERRIDES: Record<string, Override[]> = {
         { module: "application", exports: ["Application"], needsBootstrap: true },
         { module: "sidebar", exports: "*", needsBootstrap: true },
         { module: "combo-row", exports: "*", needsBootstrap: true },
+        { module: "tab-bar", exports: "*", needsBootstrap: true },
     ],
     gio: [
+        { module: "action-map", exports: ["type ActionEntryObj"], interfaces: { ActionMap: "extendActionMap" } },
         {
             module: "application",
             exports: ["Application"],
             needsBootstrap: true,
         },
+        { module: "settings", exports: ["Settings"], needsBootstrap: true },
     ],
     glib: [
+        { module: "error", exports: ["Error", "type ErrorConstructor"], needsBootstrap: true },
         { module: "regex", exports: [], needsBootstrap: true },
         {
             module: "variant",
@@ -44,6 +54,7 @@ const OVERRIDES: Record<string, Override[]> = {
     ],
     gtk: [
         { module: "application", exports: ["Application"], needsBootstrap: true },
+        { module: "editable", exports: [], needsBootstrap: true },
         { module: "widget-class", exports: ["WidgetClass"], needsBootstrap: true },
         { module: "text-view", exports: "*", needsBootstrap: true },
         { module: "window", exports: [], needsBootstrap: true },
@@ -68,4 +79,16 @@ const renderOverrideExports = (directory: string): string[] =>
             return `export ${exports} from ${overrideImportPath(override)};`;
         });
 
-export { namespaceOverrides, renderOverrideExports, renderOverrideImports };
+const interfaceExtension = (directory: string, className: string): InterfaceExtension | undefined => {
+    for (const override of namespaceOverrides(directory)) {
+        const name = override.interfaces?.[className];
+
+        if (name !== undefined) {
+            return { module: `./overrides/${override.module}.js`, name };
+        }
+    }
+
+    return undefined;
+};
+
+export { interfaceExtension, namespaceOverrides, renderOverrideExports, renderOverrideImports };

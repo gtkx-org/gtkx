@@ -1,6 +1,9 @@
-import { createConfigLoader } from "@gtkx/config/internal";
+import { ensureStoreLinks } from "@gtkx/codegen/internal";
+import { createConfigLoader, LIBRARY_APPLICATION_ID } from "@gtkx/config/internal";
 import { resolve } from "node:path";
 import { createProjectStaging } from "../internal/project-staging.js";
+import { storeGeneration, storeLinkDirs } from "../internal/store-generation.js";
+import { storybookApplicationId } from "../storybook/entry.js";
 import { receiveDevRunnerBootstrap } from "./bootstrap.js";
 import { prepareDevFontDir } from "./font-dir.js";
 import { prepareDevIconDir } from "./icon-dir.js";
@@ -21,22 +24,29 @@ const main = async (): Promise<void> => {
         mode: "development",
         configFile,
         shouldWarnGraduatedFuture: false,
+        defaultApplicationId: storybookConfig === undefined ? undefined : LIBRARY_APPLICATION_ID,
     });
-    const { config, root } = await loadConfig.load(cwd);
+    const { config, root, translationDomain } = await loadConfig.load(cwd);
     const staging = createProjectStaging();
-    const localeDir = prepareDevLocaleDir(root, config.applicationId);
+    const localeDir = await prepareDevLocaleDir(root, translationDomain);
     prepareDevSchemaDir(root, staging.schemas);
     prepareDevIconDir(root, config.applicationId, config.applicationIcon);
     prepareDevFontDir(root, staging.fonts);
     const entryPath = resolve(cwd, entryArg);
+    ensureStoreLinks(root);
+    const linkDirs = storeLinkDirs(root);
+    const generation = storeGeneration(linkDirs);
     const { defaultDevRunnerDeps } = await import("./runner-deps.js");
     const runner = createDevRunner(
         defaultDevRunnerDeps(configFile, config.deploy?.outDir, {
-            applicationId: config.applicationId,
+            translationDomain,
+            mcpApplicationId:
+                storybookConfig === undefined ? config.applicationId : storybookApplicationId(config.applicationId),
             loadConfig,
             mcpSocketPath,
             staging,
             localeDir,
+            hasStoreChanged: () => storeGeneration(linkDirs) !== generation,
         }),
         { storybookConfig },
     );

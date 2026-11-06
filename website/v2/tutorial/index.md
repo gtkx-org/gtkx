@@ -15,7 +15,7 @@ Each chapter keeps the app runnable and includes checks for the feature you adde
 
 The tutorial assumes familiarity with [React](https://react.dev/learn) and [TypeScript](https://www.typescriptlang.org/docs/handbook/2/basic-types.html). It focuses on using GTKX with libadwaita and GTK4. You need Linux, the native development libraries, and Node.js 26.7 or later; [Getting Started](/v2/guide/getting-started) covers installation.
 
-This tutorial uses the GTKX 2.0 beta. Keep GTKX packages on the same version. For the stable release, use the [1.6 tutorial](/tutorial/).
+This tutorial uses the GTKX 2.0 beta. Keep GTKX packages on the same version; [`gtkx upgrade`](/v2/guide/getting-started#updating-gtkx) moves them together. For the stable release, use the [1.6 tutorial](/tutorial/).
 
 ## Check your setup
 
@@ -37,13 +37,9 @@ npm create gtkx@beta
 pnpm create gtkx@beta
 ```
 
-```bash [yarn]
-yarn create gtkx@beta
-```
-
 :::
 
-Choose `tasks` as the project directory, **Tasks** as the display name, and `com.gtkx.tutorial` as the application ID. Enable TypeScript and the testing setup, and choose your package manager. The scaffolder installs the dependencies and initializes a Git repository.
+Choose `tasks` as the project directory, **Tasks** as the display name, and `com.gtkx.tutorial` as the application ID. Enable TypeScript and the testing setup, and choose your package manager. The scaffolder installs the dependencies and initializes a Git repository. `yarn create` cannot run the prerelease scaffolder; to manage the project with Yarn, start it with npm or pnpm and choose Yarn as the package manager.
 
 The commands below use npm; use the equivalent commands for your package manager. If you choose another application ID, substitute it consistently throughout the tutorial.
 
@@ -56,7 +52,7 @@ npm run dev
 
 This opens an Adwaita window with a counter. The next chapter replaces it with the Tasks application shell.
 
-Leave `npm run dev` running as you work. Fast Refresh applies component edits to the open window; changes that need a restart relaunch the app. Saving `gtkx.config.ts`, or a local file it imports, regenerates bindings and relaunches it too.
+Leave `npm run dev` running as you work. Fast Refresh applies edits to components, and to the hooks and styles they import, to the open window; changes that need a restart relaunch the app. Saving `gtkx.config.ts`, or a local file it imports, regenerates bindings and relaunches it too.
 
 ## How this tutorial works
 

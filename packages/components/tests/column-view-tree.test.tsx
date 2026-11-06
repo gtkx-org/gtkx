@@ -11,11 +11,12 @@ import { expanderCount, expanderNamed } from "./helpers/expanders.js";
 import { ScrollWrapper } from "./helpers/scroll-wrapper.js";
 
 type Named = { name: string };
-type ColumnFlags = { visible?: boolean | undefined };
+type ColumnFlags = { visible?: boolean | undefined; hasExpander?: boolean | undefined };
 
 const DESCRIPTIONS: ExpanderDescriptions = { expand: "Expand", collapse: "Collapse" };
 const TRAILING_COLUMNS = [1, 2];
 const HIDDEN: ColumnFlags = { visible: false };
+const EXPANDER: ColumnFlags = { hasExpander: true };
 
 const treeItems: ListItem<Named>[] = [
     {
@@ -122,6 +123,14 @@ describe("ColumnView tree expanders", () => {
         const ref = createRef<Gtk.ColumnView>();
         await render(drawTree(ref, []));
         expect(hiddenExpanderCount()).toBe(1);
+    });
+
+    it("draws the expander in the column marked hasExpander", async () => {
+        const ref = createRef<Gtk.ColumnView>();
+        await render(drawTree(ref, [{}, EXPANDER]));
+        expect(expanderCount()).toBe(4);
+        expect(expanderColumns(ref)).toEqual([1, 1, 1, 1]);
+        expect(new Set(labelLefts(ref, 0)).size).toBe(1);
     });
 
     it("moves the expander off a column hidden with visible: false", async () => {

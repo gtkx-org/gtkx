@@ -1,6 +1,7 @@
 import { runCliTool } from "../internal/run-cli-tool.js";
 
 const SCHEMA_COMPILER = "glib-compile-schemas";
+const COMPILED_SCHEMAS_FILENAME = "gschemas.compiled";
 const SCHEMA_COMPILE_TIMEOUT_MS = 30_000;
 
 const compileSchemas = (dir: string): void => {
@@ -16,4 +17,4 @@ const compileSchemas = (dir: string): void => {
     });
 };
 
-export { compileSchemas };
+export { COMPILED_SCHEMAS_FILENAME, compileSchemas };

@@ -2,7 +2,7 @@ import { toCamelIdentifier, upperFirst } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { Library } from "../gir/library.js";
 import type { ModuleContext } from "../writer/context.js";
-import type { HandwrittenProp } from "./handwritten-props.js";
+import type { HandwrittenProp, PropTypeShape } from "./handwritten-props.js";
 import { ancestorClassMethodNames } from "../analysis/inheritance.js";
 import { isEmittableProperty } from "../analysis/property-admission.js";
 import { isEmittableSignal } from "../analysis/signal-admission.js";
@@ -13,6 +13,7 @@ import { annotationSpec } from "../store/gi/doc-spec.js";
 import { resolveAccessor, type ResolvedAccessor, resolvePropertyMetadata } from "../store/gi/property-accessor.js";
 import { acceptedChildTypesFor } from "../store/jsx/accepted-child-types.js";
 import { elementPropTypeFor } from "../store/jsx/element-prop-imports.js";
+import { LAZY_CHILDREN_PROP } from "../store/jsx/element-prop-types.js";
 import { isMountableElement } from "../store/jsx/generated-elements.js";
 import {
     getGlibName,
@@ -48,6 +49,7 @@ type ElementPageContext = {
     library: Library;
     linkFor: (glibName: string) => string | undefined;
     handwrittenProps: ReadonlyMap<string, HandwrittenProp[]>;
+    lazyOmittedProps: ReadonlyMap<string, string[]>;
 };
 
 type MemberOwner = {
@@ -153,7 +155,7 @@ const propertyEntry = (options: PropertyEntryOptions): MetaDocEntry => {
 
     return {
         name: jsName,
-        meta: propertyMetaLine({ type, property, accessNotes, origin: owner.origin }),
+        meta: propertyMetaLine({ library: context.library, type, property, accessNotes, origin: owner.origin }),
         doc: docMarkdown(property.doc),
         tags: annotationSpec(property.annotations),
     };
@@ -185,8 +187,13 @@ const hiddenPropertyAccessor = (setup: PropertyAccessorSetup, property: GirPrope
     return metadata !== undefined && field === undefined ? metadata : undefined;
 };
 
-const handwrittenPropMeta = (prop: HandwrittenProp, owner: MemberOwner): string =>
-    [`\`${prop.type}\``, ...(owner.origin === undefined ? [] : [`from \`${owner.origin}\``])].join(" · ");
+const handwrittenPropMeta = (prop: HandwrittenProp, owner: MemberOwner, constructOnly: readonly string[]): string =>
+    [
+        `\`${prop.type}\``,
+        ...(constructOnly.includes(prop.name) ? ["construct-only"] : []),
+        ...(owner.origin === undefined ? [] : [`from \`${owner.origin}\``]),
+        ...(prop.deprecation === undefined ? [] : ["deprecated"]),
+    ].join(" · ");
 
 const acceptedChildTypesDoc = (context: ElementPageContext, owner: MemberOwner): string => {
     if (owner.glibName === undefined) {
@@ -209,11 +216,34 @@ const acceptedChildTypesDoc = (context: ElementPageContext, owner: MemberOwner):
     );
 };
 
-const handwrittenPropEntry = (context: ElementPageContext, owner: MemberOwner, prop: HandwrittenProp): MetaDocEntry => {
-    const childTypesDoc = prop.name === "children" ? acceptedChildTypesDoc(context, owner) : "";
-    const doc = [prop.doc, childTypesDoc].filter((part) => part.length > 0).join("\n\n");
+const propTypeShapeDoc = (shape: PropTypeShape): string =>
+    [
+        `**\`${shape.name}\` fields**`,
+        "",
+        ...shape.fields.map((field) => {
+            const signature = `\`${field.name}${field.isOptional ? "?" : ""}: ${field.type}\``;
 
-    return { name: prop.name, meta: handwrittenPropMeta(prop, owner), doc };
+            return field.doc.length === 0 ? `- ${signature}` : `- ${signature}: ${field.doc}`;
+        }),
+    ].join("\n");
+
+const handwrittenPropEntry = (
+    context: ElementPageContext,
+    owner: MemberOwner,
+    prop: HandwrittenProp,
+    constructOnly: readonly string[],
+): MetaDocEntry => {
+    const childTypesDoc = prop.name === "children" ? acceptedChildTypesDoc(context, owner) : "";
+    const doc = [prop.doc, childTypesDoc, ...prop.shapes.map(propTypeShapeDoc)]
+        .filter((part) => part.length > 0)
+        .join("\n\n");
+
+    return {
+        name: prop.name,
+        meta: handwrittenPropMeta(prop, owner, constructOnly),
+        doc,
+        tags: { deprecated: prop.deprecation },
+    };
 };
 
 const handwrittenPropEntries = (
@@ -237,7 +267,7 @@ const handwrittenPropEntries = (
         }
 
         seen.add(prop.name);
-        entries.push(handwrittenPropEntry(context, owner, prop));
+        entries.push(handwrittenPropEntry(context, owner, prop, declared.constructOnly ?? []));
     }
 
     return entries;
@@ -289,6 +319,42 @@ const ownerPropEntries = (
     return entries;
 };
 
+const inheritedChildrenProp = (entry: GlibNamedClass, context: ElementPageContext): HandwrittenProp | undefined => {
+    for (const ancestor of ancestorChain(context.library, entry.klass, entry.namespace.name)) {
+        const glibName = getGlibName(ancestor.klass);
+        const declared = glibName === undefined ? undefined : elementPropTypeFor(glibName);
+        const props = declared === undefined ? undefined : context.handwrittenProps.get(declared.type);
+        const children = props?.find((prop) => prop.name === "children");
+
+        if (children !== undefined) {
+            return children;
+        }
+    }
+
+    return undefined;
+};
+
+const inheritedChildrenEntries = (
+    entry: GlibNamedClass,
+    context: ElementPageContext,
+    seen: Set<string>,
+): MetaDocEntry[] => {
+    if (seen.has("children") || acceptedChildTypesFor(entry.glibName).length === 0) {
+        return [];
+    }
+
+    const children = inheritedChildrenProp(entry, context);
+
+    if (children === undefined) {
+        return [];
+    }
+
+    seen.add(children.name);
+    const owner = { klass: entry.klass, namespace: entry.namespace, origin: undefined, glibName: entry.glibName };
+
+    return [handwrittenPropEntry(context, owner, children, [])];
+};
+
 const propertyEntries = (entry: GlibNamedClass, context: ElementPageContext, seen: Set<string>): MetaDocEntry[] => {
     const entries: MetaDocEntry[] = [];
 
@@ -296,21 +362,43 @@ const propertyEntries = (entry: GlibNamedClass, context: ElementPageContext, see
         entries.push(...ownerPropEntries(context, owner, seen, entry.glibName));
     }
 
+    entries.push(...inheritedChildrenEntries(entry, context, seen));
+
     return entries;
 };
 
+const lazyPropsNotes = (lazyOmitted: string[]): string[] => {
+    if (lazyOmitted.length === 0) {
+        return [];
+    }
+
+    const names = lazyOmitted.map((name) => `\`${name}\``).join(", ");
+
+    return [`The parent container creates this object, so its construct-only props are not accepted: ${names}.`];
+};
+
+const LAZY_CHILDREN_ENTRY: MetaDocEntry = {
+    name: LAZY_CHILDREN_PROP.name,
+    meta: `\`${LAZY_CHILDREN_PROP.type}\``,
+    doc: LAZY_CHILDREN_PROP.doc,
+};
+
 const propsSection = (entry: GlibNamedClass, context: ElementPageContext, selfType: string): string[] => {
-    const seen: Set<string> = new Set();
-    const entries = propertyEntries(entry, context, seen);
+    const lazyOmitted = context.lazyOmittedProps.get(entry.glibName);
+    const seen: Set<string> = new Set(lazyOmitted === undefined ? [] : [...lazyOmitted, LAZY_CHILDREN_PROP.name]);
+    const lazyEntries = lazyOmitted === undefined ? [] : [LAZY_CHILDREN_ENTRY];
+    const entries = [...lazyEntries, ...propertyEntries(entry, context, seen)];
 
     const omitted = omittedPropNamesFor(entry.glibName).map((name) => `\`${name}\``);
-    const omissionNote =
-        omitted.length === 0
+    const omissionNote = [
+        ...(omitted.length === 0
             ? []
             : [
                   `GIR props omitted from this element: ${omitted.join(", ")}. ` +
                       "Their notify handlers are omitted too; configured props can replace them.",
-              ];
+              ]),
+        ...lazyPropsNotes(lazyOmitted ?? []),
+    ];
     const intro = [
         `\`ref\` receives the \`${selfType}\` instance.`,
         "Every mutable property also has an `onNotify<Prop>` handler prop called with the new value " +
@@ -386,15 +474,26 @@ const methodsSection = (entry: GlibNamedClass, context: ElementPageContext, self
 
 const staticMethodsSection = (entry: GlibNamedClass, context: ElementPageContext, selfType: string): string[] => {
     const importPath = `@gtkx/gi/${namespaceDirectory(entry.namespace)}`;
-    const callables = [...entry.klass.constructors, ...entry.klass.functions];
+    const siblings = [...entry.klass.constructors, ...entry.klass.functions];
+    const signatureContext = docsSignatureContext(entry.namespace, context.library);
 
-    return staticSectionBlocks({
-        title: "## Static methods",
-        intro: `Static methods are called on \`${selfType}\`, imported from \`${importPath}\`.`,
-        context: docsSignatureContext(entry.namespace, context.library),
-        callables,
-        siblings: callables,
-    });
+    return [
+        ...staticSectionBlocks({
+            title: "## Constructors",
+            intro: `Constructors are called on \`${selfType}\`, imported from \`${importPath}\`.`,
+            context: signatureContext,
+            callables: entry.klass.constructors,
+            siblings,
+            returnTypeOverride: selfType,
+        }),
+        ...staticSectionBlocks({
+            title: "## Static methods",
+            intro: `Static methods are called on \`${selfType}\`, imported from \`${importPath}\`.`,
+            context: signatureContext,
+            callables: entry.klass.functions,
+            siblings,
+        }),
+    ];
 };
 
 const gtkxNotes = (entry: GlibNamedClass): string[] => {

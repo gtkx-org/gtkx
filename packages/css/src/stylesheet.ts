@@ -5,7 +5,9 @@ import { attachParsingErrorLogger, registerProviderForDefaultDisplay } from "./p
 const log = createLogger("css");
 
 class StyleSheet {
-    private css = "";
+    private readonly sections: string[][] = [];
+    private readonly ownedSections: Map<string, string[]> = new Map();
+    private sharedSection: string[] | null = null;
     private provider: Gtk.CssProvider | null = null;
     private updateScheduled = false;
 
@@ -30,13 +32,47 @@ class StyleSheet {
 
         queueMicrotask(() => {
             this.updateScheduled = false;
-            this.ensureProvider().loadFromString(this.css);
+            this.ensureProvider().loadFromString(this.sections.flat().join("\n"));
         });
     }
 
-    insert(rule: string): void {
-        this.css += this.css.length > 0 ? `\n${rule}` : rule;
+    private appendSection(): string[] {
+        const section: string[] = [];
+        this.sections.push(section);
+
+        return section;
+    }
+
+    private sectionFor(owner: string | undefined): string[] {
+        if (owner === undefined) {
+            this.sharedSection ??= this.appendSection();
+
+            return this.sharedSection;
+        }
+
+        let section = this.ownedSections.get(owner);
+
+        if (section === undefined) {
+            section = this.appendSection();
+            this.ownedSections.set(owner, section);
+            this.sharedSection = null;
+        }
+
+        return section;
+    }
+
+    insert(rule: string, owner?: string): void {
+        this.sectionFor(owner).push(rule);
         this.scheduleUpdate();
+    }
+
+    clear(owner: string): void {
+        const section = this.ownedSections.get(owner);
+
+        if (section !== undefined) {
+            section.length = 0;
+            this.scheduleUpdate();
+        }
     }
 }
 

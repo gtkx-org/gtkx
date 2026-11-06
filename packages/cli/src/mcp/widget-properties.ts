@@ -7,6 +7,7 @@ import {
     getInstanceType,
     type Handle,
     isReadableProperty,
+    TYPE_BOXED,
     TYPE_ENUM,
     TYPE_FLAGS,
     typeIsA,
@@ -84,6 +85,17 @@ function describeObjectValue(value: unknown, registry: WidgetRegistry): Property
     return { value: name, widgetId: registry.getOrCreateId(value) };
 }
 
+const hasStringForm = (value: unknown): value is { toString: () => string } =>
+    typeof value === "object" && value !== null && value.toString !== Object.prototype.toString;
+
+function representBoxedValue(value: unknown, registry: WidgetRegistry): PropertyRepresentation {
+    if (hasStringForm(value)) {
+        return { value: value.toString() };
+    }
+
+    return { ...representValue(value, registry), note: "boxed value without a string form" };
+}
+
 function representValue(value: unknown, registry: WidgetRegistry): PropertyRepresentation {
     if (isScalar(value)) {
         return { value };
@@ -107,6 +119,10 @@ function representNativeProperty(native: NativeProperty, registry: WidgetRegistr
 
     if (typeIsA(native.type, TYPE_FLAGS)) {
         return { value: GObject.flagsToString(native.type, Number(fromValue(native.handle))) };
+    }
+
+    if (typeIsA(native.type, TYPE_BOXED)) {
+        return representBoxedValue(fromValue(native.handle), registry);
     }
 
     return representValue(fromValue(native.handle), registry);

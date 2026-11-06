@@ -140,7 +140,7 @@ pub fn run_dispatch_scope(dispatch: impl FnOnce()) {
         ) == sys::Status::napi_ok;
 
         {
-            let _errors = CallbackErrorScope::open(Env::from_raw(raw));
+            let _errors = CallbackErrorScope::open_reporting(Env::from_raw(raw));
             dispatch();
         }
 
@@ -153,7 +153,7 @@ pub fn run_dispatch_scope(dispatch: impl FnOnce()) {
     }
 }
 
-fn report_pending_exception(raw: sys::napi_env) {
+pub(crate) fn report_pending_exception(raw: sys::napi_env) {
     unsafe {
         let mut pending = false;
         if sys::napi_is_exception_pending(raw, &raw mut pending) != sys::Status::napi_ok || !pending

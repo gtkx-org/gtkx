@@ -50,13 +50,13 @@ Add these helpers at the end of the same file. They reuse the existing `isSelect
 In `src/components/window.tsx`, add `navigationRef` to the navigation import and pass it to the container:
 
 ```diff [src/components/window.tsx]
-@@ -10 +10 @@
+@@ -8 +8 @@
 -import { ALL_TASKS, Split } from "../navigation.js";
 +import { ALL_TASKS, navigationRef, Split } from "../navigation.js";
 ```
 
 ```diff [src/components/window.tsx]
-@@ -43 +43 @@
+@@ -27 +27 @@
 -            <NavigationContainer>
 +            <NavigationContainer ref={navigationRef}>
 ```
@@ -82,7 +82,7 @@ In `src/store/ui.ts`, add `DialogKind` to the existing type import, then extend 
 @@ -5,0 +6,2 @@
 +    dialog: DialogKind;
 +    showDialog: (dialog: DialogKind) => void;
-@@ -17,0 +20,2 @@
+@@ -15,0 +18,2 @@
 +    dialog: "none",
 +    showDialog: (dialog) => set({ dialog }),
 ```
@@ -119,7 +119,7 @@ export const WindowActions = () => {
 };
 ```
 
-Mounting these elements in the window's `actions` prop exposes `win.new`, `win.shortcuts`, and `win.about`. The same prop on the application exposes `app.*` actions. For the native action model, see [Gio actions](https://docs.gtk.org/gio/class.SimpleAction.html).
+Mounting these elements in the window's `actions` prop exposes `win.new`, `win.shortcuts`, and `win.about`. The same prop on the application exposes `app.*` actions. A class that builds its own action group adds a table of actions with `addActionEntries` instead; see [Adding actions](/v2/guide/subclassing#adding-actions). For the native action model, see [Gio actions](https://docs.gtk.org/gio/class.SimpleAction.html).
 
 ## Add the menu and accelerator
 
@@ -171,14 +171,21 @@ Update `src/components/window.tsx`. Import the button and the two new components
 +import { GtkButton } from "@gtkx/jsx/gtk";
 +import { MainMenu } from "./main-menu.js";
 +import { WindowActions } from "./window-actions.js";
-@@ -30,0 +34 @@
+@@ -26 +29,7 @@
+-        <AdwApplicationWindow title="Tasks" widthRequest={360} heightRequest={294} onCloseRequest={() => quit()}>
++        <AdwApplicationWindow
 +            actions={<WindowActions />}
++            title="Tasks"
++            widthRequest={360}
++            heightRequest={294}
++            onCloseRequest={() => quit()}
++        >
 ```
 
 Add `actions={<WindowActions />}` to `AdwApplicationWindow`. In the Tasks screen's existing options, replace `headerStart` and add `headerEnd`:
 
 ```diff [src/components/window.tsx]
-@@ -64 +64,11 @@
+@@ -52 +52,11 @@
 -                            headerStart: <SearchButton />,
 +                            headerStart: (
 +                                <>
@@ -342,9 +349,9 @@ Finish the window wiring:
 @@ -0,0 +1,2 @@
 +import { AppShortcuts } from "./app-shortcuts.js";
 +import { Dialogs } from "./dialogs.js";
-@@ -33,0 +36 @@
+@@ -29,0 +32 @@
 +            controllers={<AppShortcuts />}
-@@ -86,0 +90 @@
+@@ -74,0 +78 @@
 +            <Dialogs />
 ```
 
@@ -354,7 +361,7 @@ Finish the window wiring:
 - Press F10 on the task list. New Task shows Ctrl+N in the menu.
 - Open Keyboard Shortcuts with Ctrl+Shift+/ on a US keyboard, then dismiss it with Escape.
 - Press Escape in an editor to return to the list. In a narrow window, Back from the list returns to the sidebar.
-- Press Delete with a task open. It moves to Trash; the next chapter closes its editor and offers Undo.
+- Open a task, press Tab to leave the title field, and press Delete. The task moves to Trash; the next chapter closes its editor and offers Undo. In the title or notes field, Delete edits the text instead.
 
 ## Next
 

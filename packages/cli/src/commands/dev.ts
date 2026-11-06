@@ -13,7 +13,7 @@ const createDevCommand = (options: { signal?: AbortSignal; applicationArgs?: str
     defineCommand({
         meta: {
             name: "dev",
-            description: "Start development server with HMR",
+            description: "Start development server with HMR; arguments after -- go to the application",
         },
         args: {
             ...entryArg,
@@ -33,8 +33,20 @@ const createDevCommand = (options: { signal?: AbortSignal; applicationArgs?: str
                 throw new Error("--size requires --headless");
             }
 
-            const { cwd, entry: entryPath, configFile, configDependencies } = await prepareProject(args, DEV_MODE);
-            const watch: DevWatch | undefined = await resolveConfigWatch(cwd, DEV_MODE, configFile, configDependencies);
+            const {
+                cwd,
+                entry: entryPath,
+                configFile,
+                configDependencies,
+            } = await prepareProject(args, DEV_MODE, {
+                name: "dev",
+                forwardsApplicationArgs: true,
+            });
+            const watch: DevWatch | undefined = await resolveConfigWatch(
+                cwd,
+                { mode: DEV_MODE, configFile },
+                configDependencies,
+            );
             const applicationArgs = options.applicationArgs ?? splitApplicationArgs(rawArgs).applicationArgs;
             const headless = args.headless ? await startHeadlessDevDisplay(args.size) : undefined;
 

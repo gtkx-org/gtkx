@@ -1,7 +1,6 @@
 use std::alloc::{Layout, alloc_zeroed, dealloc, handle_alloc_error};
 use std::cell::{Cell, RefCell};
-use std::collections::HashMap;
-use std::collections::hash_map::Entry;
+use std::collections::{HashMap, HashSet};
 use std::ffi::c_void;
 use std::os::raw::c_int;
 use std::sync::Mutex;
@@ -9,23 +8,20 @@ use std::thread::{self, ThreadId};
 use std::time::{Duration, Instant};
 
 use glib::ffi::{
-    G_IO_ERR, G_IO_HUP, G_IO_IN, G_IO_OUT, G_IO_PRI, GFALSE, GMainContext, GPollFD,
-    g_main_context_check, g_main_context_default, g_main_context_iteration, g_main_context_prepare,
-    g_main_context_query, g_main_context_release,
+    G_IO_IN, G_IO_OUT, G_IO_PRI, GFALSE, GMainContext, GPollFD, g_main_context_check,
+    g_main_context_default, g_main_context_iteration, g_main_context_prepare, g_main_context_query,
+    g_main_context_release,
 };
 use libloading::os::unix::Library;
 use napi::Env;
 
-use crate::host::{error_reporter, log_writer, panic_handler};
+use crate::host::{error_reporter, panic_handler};
 
 const UV_POLL: c_int = 8;
 const UV_PREPARE: c_int = 9;
 const UV_TIMER: c_int = 13;
 
 const UV_READABLE: c_int = 1;
-const UV_WRITABLE: c_int = 2;
-const UV_DISCONNECT: c_int = 4;
-const UV_PRIORITIZED: c_int = 8;
 
 const HANDLE_ALIGN: usize = 16;
 
@@ -123,35 +119,54 @@ fn close_uv_handle(handle: *mut c_void) {
     unsafe { (uv().close)(handle, Some(on_close)) };
 }
 
-fn glib_events_to_uv(events: u16) -> c_int {
+fn glib_events_to_epoll(events: u16) -> u32 {
     let events = u32::from(events);
     let mut result = 0;
     if events & G_IO_IN != 0 {
-        result |= UV_READABLE;
+        result |= libc::EPOLLIN as u32;
     }
     if events & G_IO_OUT != 0 {
-        result |= UV_WRITABLE;
-    }
-    if events & (G_IO_HUP | G_IO_ERR) != 0 {
-        result |= UV_DISCONNECT;
+        result |= libc::EPOLLOUT as u32;
     }
     if events & G_IO_PRI != 0 {
-        result |= UV_PRIORITIZED;
+        result |= libc::EPOLLPRI as u32;
     }
     result
 }
 
-fn desired_uv_events(fds: &[GPollFD]) -> HashMap<c_int, c_int> {
+fn desired_epoll_events(fds: &[GPollFD]) -> HashMap<c_int, u32> {
     let mut desired = HashMap::new();
     for pfd in fds {
-        *desired.entry(pfd.fd).or_insert(0) |= glib_events_to_uv(pfd.events);
-    }
-    for uv_events in desired.values_mut() {
-        if *uv_events == 0 {
-            *uv_events = UV_DISCONNECT;
-        }
+        *desired.entry(pfd.fd).or_insert(0) |= glib_events_to_epoll(pfd.events);
     }
     desired
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Registration {
+    Modified,
+    Added,
+    Unwatchable,
+}
+
+/// Points the private epoll set at `fd`, adding it when the set has no registration for the open
+/// file the number now refers to.
+fn watch_descriptor(epoll: c_int, fd: c_int, events: u32) -> Registration {
+    let mut event = libc::epoll_event {
+        events,
+        u64: u64::from(fd.unsigned_abs()),
+    };
+    if unsafe { libc::epoll_ctl(epoll, libc::EPOLL_CTL_MOD, fd, &raw mut event) } == 0 {
+        return Registration::Modified;
+    }
+    if std::io::Error::last_os_error().raw_os_error() != Some(libc::ENOENT) {
+        return Registration::Unwatchable;
+    }
+    if unsafe { libc::epoll_ctl(epoll, libc::EPOLL_CTL_ADD, fd, &raw mut event) } == 0 {
+        Registration::Added
+    } else {
+        Registration::Unwatchable
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -171,12 +186,22 @@ fn wakeup_for(timeout: c_int, sources_ready: bool, has_unwatchable_fds: bool) ->
     }
 }
 
+/// The descriptors `GLib` polls live in a private epoll set that libuv watches through one poll
+/// handle. `GLib` closes and reuses descriptors whenever its sources do, so registering them with
+/// libuv directly would leave stale watchers that remove or refuse Node's own handles on reused
+/// numbers.
+///
+/// The kernel keeps a registration until every duplicate of its open file is closed, and a closed
+/// number can no longer remove it. When a watched number turns out closed or reused, the whole set
+/// is replaced, so a registration whose file a duplicate keeps alive cannot stay ready forever.
 struct RunloopState {
-    uv_loop: *mut c_void,
     ctx: *mut GMainContext,
+    uv_loop: *mut c_void,
     prepare: *mut c_void,
     timer: *mut c_void,
-    pollers: HashMap<c_int, *mut c_void>,
+    epoll: c_int,
+    poller: *mut c_void,
+    watched: HashSet<c_int>,
     fds: Vec<GPollFD>,
     n_fds: usize,
     dispatch_budget: Duration,
@@ -228,7 +253,7 @@ impl RunloopState {
             )
         } != 0;
 
-        let has_unwatchable_fds = self.reconcile_pollers();
+        let has_unwatchable_fds = self.reconcile_watched();
         self.arm_timer(wakeup_for(
             timeout,
             prepared_ready || check_ready,
@@ -236,44 +261,68 @@ impl RunloopState {
         ));
     }
 
-    fn reconcile_pollers(&mut self) -> bool {
-        let uv = uv();
-        let desired = desired_uv_events(&self.fds[..self.n_fds]);
+    fn reconcile_watched(&mut self) -> bool {
+        let desired = desired_epoll_events(&self.fds[..self.n_fds]);
+        if self.register(&desired) {
+            self.replace_epoll_set();
+            self.register(&desired);
+        }
+        desired.keys().any(|fd| !self.watched.contains(fd))
+    }
 
+    /// Updates the set to `desired`, returning whether a watched number was closed or reused, so
+    /// that its registration may have outlived it.
+    fn register(&mut self, desired: &HashMap<c_int, u32>) -> bool {
+        let mut orphaned = false;
         let stale: Vec<c_int> = self
-            .pollers
-            .keys()
+            .watched
+            .iter()
             .copied()
             .filter(|fd| !desired.contains_key(fd))
             .collect();
         for fd in stale {
-            if let Some(handle) = self.pollers.remove(&fd) {
-                close_uv_handle(handle);
-            }
+            self.watched.remove(&fd);
+            orphaned |= unsafe {
+                libc::epoll_ctl(self.epoll, libc::EPOLL_CTL_DEL, fd, std::ptr::null_mut())
+            } != 0;
         }
 
-        let mut has_unwatchable_fds = false;
-        for (fd, uv_events) in desired {
-            let handle = match self.pollers.entry(fd) {
-                Entry::Occupied(entry) => *entry.get(),
-                Entry::Vacant(entry) => {
-                    let handle = alloc_uv_handle(UV_POLL);
-                    if unsafe { (uv.poll_init)(self.uv_loop, handle, fd) } != 0 {
-                        unsafe { free_uv_handle(handle) };
-                        has_unwatchable_fds = true;
-                        continue;
-                    }
-                    unsafe { (uv.unreference)(handle) };
-                    *entry.insert(handle)
-                }
-            };
-            if unsafe { (uv.poll_start)(handle, uv_events, on_poll) } != 0 {
-                self.pollers.remove(&fd);
-                close_uv_handle(handle);
-                has_unwatchable_fds = true;
+        for (&fd, &events) in desired {
+            let registration = watch_descriptor(self.epoll, fd, events);
+            orphaned |= registration != Registration::Modified && self.watched.contains(&fd);
+            if registration == Registration::Unwatchable {
+                self.watched.remove(&fd);
+            } else {
+                self.watched.insert(fd);
             }
         }
-        has_unwatchable_fds
+        orphaned
+    }
+
+    fn replace_epoll_set(&mut self) {
+        let epoll = unsafe { libc::epoll_create1(libc::EPOLL_CLOEXEC) };
+        if epoll < 0 {
+            error_reporter::report_str(&format!(
+                "Failed to replace the GLib descriptor set: {}",
+                std::io::Error::last_os_error()
+            ));
+            return;
+        }
+        let poller = match start_poller(self.uv_loop, epoll) {
+            Ok(poller) => poller,
+            Err((call, rc)) => {
+                unsafe { libc::close(epoll) };
+                error_reporter::report_str(&format!(
+                    "{call} failed while replacing the GLib descriptor set (uv error {rc})"
+                ));
+                return;
+            }
+        };
+        close_uv_handle(self.poller);
+        unsafe { libc::close(self.epoll) };
+        self.epoll = epoll;
+        self.poller = poller;
+        self.watched.clear();
     }
 
     fn arm_timer(&self, wakeup: Wakeup) {
@@ -324,6 +373,23 @@ unsafe extern "C" fn on_timer(_handle: *mut c_void) {}
 
 unsafe extern "C" fn on_poll(_handle: *mut c_void, _status: c_int, _events: c_int) {}
 
+fn start_poller(uv_loop: *mut c_void, epoll: c_int) -> Result<*mut c_void, (&'static str, c_int)> {
+    let uv = uv();
+    let poller = alloc_uv_handle(UV_POLL);
+    let rc = unsafe { (uv.poll_init)(uv_loop, poller, epoll) };
+    if rc != 0 {
+        unsafe { free_uv_handle(poller) };
+        return Err(("uv_poll_init", rc));
+    }
+    let rc = unsafe { (uv.poll_start)(poller, UV_READABLE, on_poll) };
+    if rc != 0 {
+        close_uv_handle(poller);
+        return Err(("uv_poll_start", rc));
+    }
+    unsafe { (uv.unreference)(poller) };
+    Ok(poller)
+}
+
 fn context_owner() -> std::sync::MutexGuard<'static, Option<ThreadId>> {
     CONTEXT_OWNER
         .lock()
@@ -344,7 +410,6 @@ pub fn install(env: &Env, dispatch_budget: Duration) -> napi::Result<()> {
         return Ok(());
     }
 
-    log_writer::install();
     panic_handler::install();
 
     let uv = UvApi::load().map_err(|err| {
@@ -360,7 +425,7 @@ pub fn install(env: &Env, dispatch_budget: Duration) -> napi::Result<()> {
 
     if unsafe { glib::ffi::g_main_context_acquire(ctx) } == 0 {
         let message = if context_owner().is_some() {
-            "GTKX is already running on another thread; worker threads cannot import @gtkx/* — post plain data back to the owning thread instead"
+            "GTKX is already running on another thread, and only the thread that started it can use it. A thread starts GTKX when it first loads GTKX code, such as @gtkx/gi, @gtkx/react or @gtkx/i18n. Load @gtkx/* on one thread and post plain data to it from the others"
         } else {
             "Failed to acquire the default GLib main context on the Node thread"
         };
@@ -371,23 +436,40 @@ pub fn install(env: &Env, dispatch_budget: Duration) -> napi::Result<()> {
     *context_owner() = Some(thread::current().id());
     crate::host::release_queue::install();
 
+    let epoll = unsafe { libc::epoll_create1(libc::EPOLL_CLOEXEC) };
+    if epoll < 0 {
+        let errno = std::io::Error::last_os_error().raw_os_error().unwrap_or(0);
+        return Err(fail_install(ctx, -1, &[], "epoll_create1", errno));
+    }
+
     let prepare = alloc_uv_handle(UV_PREPARE);
     let rc = unsafe { (uv.prepare_init)(uv_loop, prepare) };
     if rc != 0 {
         unsafe { free_uv_handle(prepare) };
-        return Err(fail_install(ctx, &[], "uv_prepare_init", rc));
+        return Err(fail_install(ctx, epoll, &[], "uv_prepare_init", rc));
     }
 
     let timer = alloc_uv_handle(UV_TIMER);
     let rc = unsafe { (uv.timer_init)(uv_loop, timer) };
     if rc != 0 {
         unsafe { free_uv_handle(timer) };
-        return Err(fail_install(ctx, &[prepare], "uv_timer_init", rc));
+        return Err(fail_install(ctx, epoll, &[prepare], "uv_timer_init", rc));
     }
+
+    let poller = match start_poller(uv_loop, epoll) {
+        Ok(poller) => poller,
+        Err((call, rc)) => return Err(fail_install(ctx, epoll, &[prepare, timer], call, rc)),
+    };
 
     let rc = unsafe { (uv.prepare_start)(prepare, on_prepare) };
     if rc != 0 {
-        return Err(fail_install(ctx, &[prepare, timer], "uv_prepare_start", rc));
+        return Err(fail_install(
+            ctx,
+            epoll,
+            &[prepare, timer, poller],
+            "uv_prepare_start",
+            rc,
+        ));
     }
 
     unsafe {
@@ -397,11 +479,13 @@ pub fn install(env: &Env, dispatch_budget: Duration) -> napi::Result<()> {
 
     RUNLOOP.with(|slot| {
         *slot.borrow_mut() = Some(RunloopState {
-            uv_loop,
             ctx,
+            uv_loop,
             prepare,
             timer,
-            pollers: HashMap::new(),
+            epoll,
+            poller,
+            watched: HashSet::new(),
             fds: vec![
                 GPollFD {
                     fd: 0,
@@ -429,6 +513,7 @@ pub fn install(env: &Env, dispatch_budget: Duration) -> napi::Result<()> {
 
 fn fail_install(
     ctx: *mut GMainContext,
+    epoll: c_int,
     initialized: &[*mut c_void],
     call: &str,
     rc: c_int,
@@ -436,22 +521,24 @@ fn fail_install(
     for &handle in initialized {
         close_uv_handle(handle);
     }
+    if epoll >= 0 {
+        unsafe { libc::close(epoll) };
+    }
     unsafe { g_main_context_release(ctx) };
     clear_context_owner();
     napi::Error::new(
         napi::Status::GenericFailure,
-        format!("{call} failed while installing the GLib runloop (uv error {rc})"),
+        format!("{call} failed while installing the GLib runloop (error {rc})"),
     )
 }
 
 pub fn teardown() {
     let ctx = RUNLOOP.with_borrow_mut(|slot| {
         let state = slot.take()?;
-        for handle in state.pollers.into_values() {
-            close_uv_handle(handle);
-        }
+        close_uv_handle(state.poller);
         close_uv_handle(state.prepare);
         close_uv_handle(state.timer);
+        unsafe { libc::close(state.epoll) };
         Some(state.ctx)
     });
 

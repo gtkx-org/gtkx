@@ -1,16 +1,30 @@
-import type * as GObject from "@gtkx/gi/gobject";
+import type * as Adw from "@gtkx/gi/adw";
 import type { ElementType, ReactNode, Ref } from "react";
-import { GtkLabel, GtkSignalListItemFactory } from "@gtkx/jsx/gtk";
+import * as GObject from "@gtkx/gi/gobject";
+import * as Gtk from "@gtkx/gi/gtk";
+import type * as Pango from "@gtkx/gi/pango";
+import { GtkBox, GtkImage, GtkLabel, GtkSignalListItemFactory } from "@gtkx/jsx/gtk";
+import { useProperty } from "@gtkx/react";
+import { useLatestRef } from "@gtkx/react/internal";
 import { omit, type Primitive } from "@gtkx/utils";
-import { useRef } from "react";
-import type { DropDownOwnProps, ListItemRenderArgs, ListItemRenderer } from "../types.js";
+import { useLayoutEffect, useRef, useState } from "react";
+import type { DropDownOwnProps, ListItemRenderer } from "../types.js";
 import { ItemPortals, useItemCells, useSectionHeader } from "./cells.js";
+import { type SlotRef, slotRefFor } from "./collection-model.js";
 import { type Collection, isCollectionIdle } from "./collection.js";
 import { useControlledSync } from "./controlled-sync.js";
+import { showFirstHeader } from "./first-header.js";
 import { useCollectionData } from "./use-collection.js";
 import { useWidgetRef } from "./use-widget-ref.js";
 
-type SelectableWidget = GObject.Object & { getSelected: () => number; selected: number };
+type SelectableWidget = Gtk.DropDown | Adw.ComboRow;
+
+/** Label settings of the widget's own default item factory, kept by the default renderers. */
+type ItemLabelProps = {
+    ellipsize?: Pango.EllipsizeMode;
+    maxWidthChars?: number;
+    widthChars?: number;
+};
 
 type DropDownBaseProps = DropDownOwnProps<unknown, unknown> & {
     onNotifySelected?: ((value: number | null, self: SelectableWidget) => void) | null | undefined;
@@ -25,6 +39,7 @@ type SelectionOptions = {
 
 type NotifySelectedHandler = NonNullable<DropDownBaseProps["onNotifySelected"]>;
 type ApplyState = { isApplying: boolean; isReady: boolean };
+type ShownSelection = { ref: SlotRef | null; text: string };
 
 type NotifyContext = {
     options: SelectionOptions;
@@ -40,6 +55,7 @@ type KnownSelection = {
 
 const DROP_DOWN_PROPS: string[] = [
     "component",
+    "itemLabel",
     "items",
     "sections",
     "selectedId",
@@ -55,9 +71,82 @@ function newApplyState(): ApplyState {
     return { isApplying: false, isReady: false };
 }
 
-const defaultRenderItem = ({ item }: ListItemRenderArgs<Primitive>): ReactNode =>
-    item == null ? null : <GtkLabel>{String(item)}</GtkLabel>;
-const faceRenderer = (props: DropDownBaseProps): ListItemRenderer<never> => props.renderItem ?? defaultRenderItem;
+const defaultRenderer =
+    (itemLabel: ItemLabelProps): ListItemRenderer<Primitive> =>
+    ({ item }) =>
+        item == null ? null : <GtkLabel {...itemLabel}>{String(item)}</GtkLabel>;
+const faceRenderer = (props: DropDownBaseProps, itemLabel: ItemLabelProps): ListItemRenderer<never> =>
+    props.renderItem ?? defaultRenderer(itemLabel);
+
+const selectionMarkedRenderer =
+    (selected: number | undefined, itemLabel: ItemLabelProps): ListItemRenderer<Primitive> =>
+    ({ item, index }) => (
+        <GtkBox>
+            <GtkLabel xalign={0} {...itemLabel}>
+                {item == null ? "" : String(item)}
+            </GtkLabel>
+            <GtkImage
+                iconName="object-select-symbolic"
+                accessibleRole={Gtk.AccessibleRole.PRESENTATION}
+                opacity={index === selected ? 1 : 0}
+            />
+        </GtkBox>
+    );
+
+const popupRenderer = (
+    props: DropDownBaseProps,
+    selected: number | undefined,
+    itemLabel: ItemLabelProps,
+): ListItemRenderer<never> | null =>
+    props.renderListItem ?? (props.renderItem == null ? selectionMarkedRenderer(selected, itemLabel) : null);
+
+const textOf = (value: unknown): string => {
+    switch (typeof value) {
+        case "string":
+            return value;
+        case "number":
+        case "bigint":
+        case "boolean":
+            return String(value);
+        case "symbol":
+            return value.toString();
+        default:
+            return "";
+    }
+};
+
+const slotText = (collection: Collection, ref: SlotRef | null): string =>
+    ref === null ? "" : textOf(collection.itemAt(ref)?.value);
+
+/**
+ * AdwComboRow reads the selected item's text for its subtitle only when the selected item or the expression changes.
+ * Slots keep their objects when an item's value changes in place, so the expression is replaced when the selected
+ * item's text changes without a selection change.
+ */
+const useItemTextExpression = (widget: SelectableWidget | null, collection: Collection): Gtk.Expression => {
+    const latest = useLatestRef(collection);
+    const shown = useRef<ShownSelection>({ ref: null, text: "" });
+    const createExpression = (): Gtk.Expression =>
+        Gtk.ClosureExpression.new(
+            GObject.TYPE_STRING,
+            (object: GObject.Object | null) => slotText(latest.current, slotRefFor(object)),
+            null,
+        );
+    const [expression, setExpression] = useState(createExpression);
+
+    useLayoutEffect(() => {
+        const ref = slotRefFor(widget?.getSelectedItem() ?? null);
+        const text = slotText(collection, ref);
+        const isRenamed = ref !== null && ref === shown.current.ref && text !== shown.current.text;
+        shown.current = { ref, text };
+
+        if (isRenamed) {
+            setExpression(createExpression());
+        }
+    });
+
+    return expression;
+};
 
 const resolvePosition = (widget: SelectableWidget, collection: Collection, selectedId: string | undefined): number => {
     if (selectedId === undefined) {
@@ -175,31 +264,39 @@ const useDropDownSelection = (options: SelectionOptions): NotifySelectedHandler 
     };
 };
 
-function DropDownBase(props: DropDownBaseProps & { component: ElementType }): ReactNode {
-    const { component: Component, items, sections, renderListItem, renderHeader, ref } = props;
+function DropDownBase(props: DropDownBaseProps & { component: ElementType; itemLabel?: ItemLabelProps }): ReactNode {
+    const { component: Component, itemLabel = {}, items, sections, renderHeader, ref } = props;
     const rest = omit(props, DROP_DOWN_PROPS);
     const [widget, refCallback] = useWidgetRef<SelectableWidget>(ref);
-    const { collection, model } = useCollectionData({ items, sections, isFlat: true });
+    const { collection, model } = useCollectionData({
+        items,
+        sections,
+        isFlat: true,
+        onSectionsFilled: () => showFirstHeader(widget),
+    });
     const faceCells = useItemCells({ width: -1, height: -1 });
     const listCells = useItemCells({ width: -1, height: -1 });
     const header = useSectionHeader(renderHeader, collection, { width: -1, height: -1 });
     const handleNotifySelected = useDropDownSelection({ widget, collection, props });
+    const renderListItem = popupRenderer(props, useProperty(widget, "selected"), itemLabel);
+    const expression = useItemTextExpression(widget, collection);
 
     return (
         <>
             <Component
                 ref={refCallback}
                 model={model}
+                expression={expression}
                 factory={<GtkSignalListItemFactory {...faceCells.handlers} />}
-                {...(renderListItem != null && {
+                {...(renderListItem !== null && {
                     listFactory: <GtkSignalListItemFactory {...listCells.handlers} />,
                 })}
                 {...header.factoryProps}
                 {...rest}
                 onNotifySelected={handleNotifySelected}
             />
-            <ItemPortals registry={faceCells} render={faceRenderer(props)} collection={collection} />
-            {renderListItem != null && (
+            <ItemPortals registry={faceCells} render={faceRenderer(props, itemLabel)} collection={collection} />
+            {renderListItem !== null && (
                 <ItemPortals registry={listCells} render={renderListItem} collection={collection} />
             )}
             {header.portals}

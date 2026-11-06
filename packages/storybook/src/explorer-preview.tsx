@@ -7,10 +7,11 @@ import { createPortal, rootElement } from "@gtkx/react";
 import { normalizeError } from "@gtkx/utils";
 import { Component, useCallback, useMemo, useState } from "react";
 import type { StoryEntry } from "./catalog.js";
-import type { Args, ComposedStory } from "./types.js";
+import type { Args, ArgTypes, ComposedStory } from "./types.js";
 import { ActionsPanel } from "./actions-panel.js";
 import { ActionStore, bindActions } from "./actions.js";
 import { Controls } from "./controls.js";
+import { isConditionalArgIncluded } from "./upstream.js";
 
 type PreviewProps = {
     entry: StoryEntry;
@@ -66,6 +67,36 @@ const previewMode = (story: ComposedStory): "content" | "window" | "dialog" => {
     return mode;
 };
 
+const mapValue = (value: unknown, mapping: Record<string, unknown>): unknown => {
+    const key = String(value);
+
+    return Object.hasOwn(mapping, key) ? mapping[key] : value;
+};
+
+const mapArgs = (args: Args, argTypes: ArgTypes): Args =>
+    Object.fromEntries(
+        Object.entries(args).map(([argument, value]) => {
+            const mapping = argTypes[argument]?.mapping;
+
+            if (mapping === undefined) {
+                return [argument, value];
+            }
+
+            return [
+                argument,
+                Array.isArray(value) ? value.map((item) => mapValue(item, mapping)) : mapValue(value, mapping),
+            ];
+        }),
+    );
+
+const includedArgs = (args: Args, argTypes: ArgTypes, globals: Args): Args =>
+    Object.fromEntries(
+        Object.entries(args).map(([argument, value]) => [
+            argument,
+            isConditionalArgIncluded(argTypes[argument] ?? {}, args, globals) ? value : undefined,
+        ]),
+    );
+
 const PreviewContent = ({ story: Story, args }: { story: ComposedStory; args: Args }): ReactNode => {
     const mode = previewMode(Story);
 
@@ -86,20 +117,20 @@ const PreviewContent = ({ story: Story, args }: { story: ComposedStory; args: Ar
     const align = Story.parameters.layout === "centered" ? Gtk.Align.CENTER : Gtk.Align.FILL;
 
     return (
-        <GtkBox
-            name="storybook-canvas"
-            orientation={Gtk.Orientation.VERTICAL}
-            hexpand
-            vexpand
-            halign={align}
-            valign={align}
-            marginTop={margin}
-            marginBottom={margin}
-            marginStart={margin}
-            marginEnd={margin}
-        >
-            <Story {...args} />
-        </GtkBox>
+        <GtkScrolledWindow hexpand vexpand propagateNaturalWidth propagateNaturalHeight>
+            <GtkBox
+                name="storybook-canvas"
+                orientation={Gtk.Orientation.VERTICAL}
+                halign={align}
+                valign={align}
+                marginTop={margin}
+                marginBottom={margin}
+                marginStart={margin}
+                marginEnd={margin}
+            >
+                <Story {...args} />
+            </GtkBox>
+        </GtkScrolledWindow>
     );
 };
 
@@ -122,8 +153,13 @@ const usePreviewState = ({ entry }: PreviewProps) => {
         [state.story, state.generation],
     );
     const boundArgs = useMemo(
-        () => bindActions(state.args, state.story.argTypes, state.actions, onError),
-        [state.args, state.story.argTypes, state.actions, onError],
+        () =>
+            includedArgs(
+                bindActions(mapArgs(state.args, state.story.argTypes), state.story.argTypes, state.actions, onError),
+                state.story.argTypes,
+                state.story.globals,
+            ),
+        [state.args, state.story.argTypes, state.story.globals, state.actions, onError],
     );
 
     if (state.story !== entry.story) {
@@ -165,7 +201,7 @@ const StoryInspector = ({ entry, actions, args, onChange }: InspectorProps): Rea
             marginStart={12}
             marginEnd={12}
         >
-            <Controls argTypes={entry.controls} args={args} onChange={onChange} />
+            <Controls argTypes={entry.controls} args={args} globals={entry.story.globals} onChange={onChange} />
             <ActionsPanel store={actions} />
         </GtkBox>
     </GtkScrolledWindow>

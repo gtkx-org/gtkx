@@ -80,6 +80,20 @@ describe("native story actions", () => {
         expect(screen.queryAllByName(/^storybook-action-/)).toHaveLength(0);
     });
 
+    it("leaves argTypes actions unbound while their condition excludes them", async () => {
+        await showInspector({
+            default: {
+                ...eventMeta,
+                args: { ...eventMeta.args, enabled: false },
+                argTypes: { onConfigured: { action: "Configured event", if: { arg: "enabled" } } },
+            },
+            Default: {},
+        });
+        await userEvent.click(screen.getByText("Trigger configured event"));
+
+        expect(screen.queryAllByName(/^storybook-action-/)).toHaveLength(0);
+    });
+
     it("preserves the original event callback and its return value when recording an action", async () => {
         await showInspector({
             default: {

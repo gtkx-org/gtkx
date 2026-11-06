@@ -111,7 +111,17 @@ function createDrawerNavigator<
     const ParamList extends ParamListBase,
     const NavigatorID extends string | undefined = string | undefined,
     const TypeBag extends NavigatorTypeBagBase = DrawerTypeBag<ParamList, NavigatorID>,
-    const Config extends StaticConfig<TypeBag> | undefined = undefined,
+>(): TypedNavigator<TypeBag, undefined>;
+/** Creates a drawer navigator rendered with `AdwOverlaySplitView`: a sidebar listing the screens beside the content. */
+function createDrawerNavigator<
+    const ParamList extends ParamListBase,
+    const NavigatorID extends string | undefined = string | undefined,
+    const TypeBag extends NavigatorTypeBagBase = DrawerTypeBag<ParamList, NavigatorID>,
+    const Config extends StaticConfig<TypeBag> = StaticConfig<TypeBag>,
+>(config: Config): TypedNavigator<TypeBag, Config>;
+function createDrawerNavigator<
+    const TypeBag extends NavigatorTypeBagBase,
+    const Config extends StaticConfig<TypeBag> | undefined,
 >(config?: Config): TypedNavigator<TypeBag, Config> {
     return createNavigatorFactory(DrawerNavigator)(config) as TypedNavigator<TypeBag, Config>;
 }

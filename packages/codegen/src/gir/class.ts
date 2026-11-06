@@ -1,6 +1,6 @@
 import type { ParseContext } from "./type-id.js";
 import { documentedFromNode, type GirAnnotations } from "./annotations.js";
-import { functionFromNode, type GirFunction } from "./function.js";
+import { functionFromNode, type GirFunction, methodFromNode } from "./function.js";
 import { type GirCallable, parseCallable } from "./parameter.js";
 import { attr, getChildren, GIR_CONSTRUCTOR_TAG, isAttrTrue, type RawNode } from "./parse.js";
 import { type GirProperty, propertyFromNode } from "./property.js";
@@ -63,7 +63,7 @@ const classFromNode = (node: RawNode, isInterface: boolean, context: ParseContex
     prerequisites: getChildren(node, "prerequisite")
         .map((prerequisite) => attr(prerequisite, "name"))
         .filter((name): name is string => name !== undefined),
-    methods: getChildren(node, "method").map((method) => functionFromNode(method, context)),
+    methods: getChildren(node, "method").map((method) => methodFromNode(method, attr(node, "name") ?? "", context)),
     constructors: getChildren(node, GIR_CONSTRUCTOR_TAG).map((ctor) => functionFromNode(ctor, context)),
     functions: getChildren(node, "function").map((fn) => functionFromNode(fn, context)),
     properties: getChildren(node, "property").map((property) => propertyFromNode(property, context)),

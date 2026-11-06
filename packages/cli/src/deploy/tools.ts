@@ -1,6 +1,7 @@
 import { missingToolLines, tryResolveExecutable, warn } from "@gtkx/utils";
 import { spawnSync } from "node:child_process";
 import type { DeployTool } from "./types.js";
+import { configuredNfpm } from "./vendored/nfpm.js";
 
 type ToolReport = {
     missingRequired: DeployTool[];
@@ -54,6 +55,12 @@ const FLATPAK_NODE_GENERATOR_PNPM: DeployTool = {
     isPresent: () => hasGeneratorPnpmSupport(),
 };
 
+const MSGCAT: DeployTool = {
+    command: "msgcat",
+    purpose: "formats the catalog template",
+    isOptional: false,
+};
+
 const MSGFMT: DeployTool = {
     command: "msgfmt",
     purpose: "compiles the gettext catalogs and localized metadata",
@@ -95,6 +102,13 @@ const TAR: DeployTool = {
     purpose: "unpacks the downloaded Node.js and packaging tools",
     isOptional: false,
 };
+
+const configuredNfpmTool = (root: string, override: string): DeployTool => ({
+    command: override,
+    purpose: "packages Debian and RPM targets, as set by deploy.tools.nfpm",
+    isOptional: false,
+    isPresent: () => tryResolveExecutable(configuredNfpm(root, override)) !== undefined,
+});
 
 const isFlatpakRefInstalled = (ref: string): boolean => {
     const flatpak = tryResolveExecutable(FLATPAK.command);
@@ -160,10 +174,12 @@ export {
     FLATPAK_NODE_GENERATOR_PNPM,
     GENERATOR_PNPM_OPTION,
     assertTools,
+    configuredNfpmTool,
     DESKTOP_FILE_VALIDATE,
     FILE_TOOL,
     FLATPAK,
     FLATPAK_BUILDER,
+    MSGCAT,
     MSGFMT,
     MSGGREP,
     MSGINIT,

@@ -85,7 +85,7 @@ const TASKS: Task[] = [
 export const TaskList = () => (
     <GtkScrolledWindow vexpand>
         <AdwClamp maximumSize={640} marginTop={12} marginBottom={12} marginStart={12} marginEnd={12}>
-            <GtkListBox selectionMode={Gtk.SelectionMode.NONE} cssClasses={["boxed-list"]}>
+            <GtkListBox valign={Gtk.Align.START} selectionMode={Gtk.SelectionMode.NONE} cssClasses={["boxed-list"]}>
                 {TASKS.map((task) => (
                     <AdwActionRow key={task.id} title={task.title} subtitle={task.notes} useMarkup={false} />
                 ))}
@@ -95,7 +95,7 @@ export const TaskList = () => (
 );
 ```
 
-`GtkScrolledWindow` scrolls long lists. `AdwClamp` keeps the rows readable in a wide window, and the `boxed-list` class gives the list its rounded card appearance. [CSS](/v2/guide/css) covers native classes and stylesheets.
+`GtkScrolledWindow` scrolls long lists. `AdwClamp` keeps the rows readable in a wide window, and the `boxed-list` class gives the list its rounded card appearance. `valign={Gtk.Align.START}` keeps the card as tall as its rows; without it, the list fills the scrolled area. [CSS](/v2/guide/css) covers native classes and stylesheets.
 
 `selectionMode={Gtk.SelectionMode.NONE}` disables row selection because each task will have its own controls. JSX elements come from `@gtkx/jsx/gtk`; enums such as `Gtk.SelectionMode` come from `@gtkx/gi/gtk`.
 

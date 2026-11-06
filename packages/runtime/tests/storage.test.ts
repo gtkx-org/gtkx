@@ -16,6 +16,22 @@ test("fixed and strided fields share the same bounded native storage", () => {
     expect(strided.read(storage, 8)).toBe(-7);
 });
 
+test("repeated field reads and writes leave no native memory behind", () => {
+    const storage = alloc(4);
+    const accessAll = (count: number): void => {
+        for (let i = 0; i < count; i++) {
+            write(storage, t.float32, 0, i);
+            read(storage, t.float32, 0);
+        }
+    };
+    accessAll(1000);
+    const before = process.memoryUsage().rss;
+
+    accessAll(100_000);
+
+    expect(process.memoryUsage().rss - before).toBeLessThan(32 * 1024 * 1024);
+});
+
 test("string fields preserve Unicode, replacement, null and failed writes", () => {
     const storage = alloc(8);
     const field = t.field(t.string(), 0);
@@ -39,7 +55,8 @@ test("wrappers retain their assigned handle across field operations", () => {
 
     expect(getHandle(wrapper)).toBe(storage);
     expect(read(storage, t.int32, 0)).toBe(17);
-    expect(() => getHandle({})).toThrow();
+    expect(() => getHandle({})).toThrow(TypeError);
+    expect(() => getHandle(() => storage)).toThrow(TypeError);
 });
 
 test("function output shaping shares the compiled reference storage contract", () => {

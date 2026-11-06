@@ -6,6 +6,8 @@ import { LOCALE_DIRNAME } from "../../i18n/catalogs.js";
 import { I18N_RUNTIME_CONFIG_FILENAME, renderI18nRuntimeConfig } from "../../i18n/runtime-config.js";
 import { BUILD_METADATA_FILENAMES } from "../../internal/build-manifest.js";
 import { listFilesRecursive } from "../../internal/list-files.js";
+import { COMPILED_SCHEMAS_FILENAME } from "../../settings/compile.js";
+import { SCHEMA_SUFFIX } from "../../settings/schema.js";
 import { BUNDLE_FILENAME } from "../../vite-plugins/esm-extension.js";
 import { renderCopyright } from "../freedesktop/copyright.js";
 import { renderDbusService } from "../freedesktop/dbus-service.js";
@@ -55,6 +57,8 @@ const licenseDestination = (settings: DeploySettings): string => `${licenseDirFo
 const noticesDestination = (settings: DeploySettings): string => `${licenseDirFor(settings)}/${NOTICES_FILENAME}`;
 const isIconAsset = (rel: string): boolean => rel === DIST_ICONS_DIR || rel.startsWith(`${DIST_ICONS_DIR}/`);
 const isLocaleAsset = (rel: string): boolean => rel === LOCALE_DIRNAME || rel.startsWith(`${LOCALE_DIRNAME}/`);
+const isSchemaAsset = (rel: string): boolean =>
+    rel === COMPILED_SCHEMAS_FILENAME || (!rel.includes("/") && rel.endsWith(SCHEMA_SUFFIX));
 
 const nodeLicenseDestination = (settings: DeploySettings): string =>
     `${licenseDirFor(settings)}/${NODE_FILENAME}/${NODE_LICENSE_FILENAME}`;
@@ -67,9 +71,20 @@ const stageRuntimeFiles = (settings: DeploySettings, root: string): StagedFile[]
     }
 
     return listFilesRecursive(dist)
-        .filter((file) => !isIconAsset(file.rel) && !BUILD_METADATA_FILENAMES.has(file.rel) && !isLocaleAsset(file.rel))
+        .filter(
+            (file) =>
+                !isIconAsset(file.rel) &&
+                !BUILD_METADATA_FILENAMES.has(file.rel) &&
+                !isLocaleAsset(file.rel) &&
+                !isSchemaAsset(file.rel),
+        )
         .map((file) => copyInto(root, join(libDirFor(settings), file.rel), file.absPath));
 };
+
+const stageBuiltSchemas = (settings: DeploySettings, root: string): StagedFile[] =>
+    listFilesRecursive(settings.paths.dist)
+        .filter((file) => isSchemaAsset(file.rel))
+        .map((file) => copyInto(root, join(libDirFor(settings), file.rel), file.absPath));
 
 const stageAddon = (settings: DeploySettings, root: string, addon: string | null): StagedFile[] =>
     addon === null ? [] : [copyInto(root, join(libDirFor(settings), BINDING_FILENAME), addon)];
@@ -94,20 +109,19 @@ const assertStagedArchitecture = (settings: DeploySettings, staged: StagedFile[]
     }
 };
 
+const i18nConfigDestination = (settings: DeploySettings): string =>
+    posix.join(libDirFor(settings), I18N_RUNTIME_CONFIG_FILENAME);
+
+const renderInstalledI18nConfig = (settings: DeploySettings): string =>
+    renderI18nRuntimeConfig(posix.relative(libDirFor(settings), SHARE_LOCALE));
+
 const stageCatalogs = (settings: DeploySettings, root: string): StagedFile[] => {
     const files = listFilesRecursive(join(settings.paths.dist, LOCALE_DIRNAME)).map((file) =>
         copyInto(root, join(SHARE_LOCALE, file.rel), file.absPath),
     );
 
     if (existsSync(join(settings.paths.dist, I18N_RUNTIME_CONFIG_FILENAME))) {
-        const libDir = libDirFor(settings);
-        files.push(
-            writeInto(
-                root,
-                join(libDir, I18N_RUNTIME_CONFIG_FILENAME),
-                renderI18nRuntimeConfig(posix.relative(libDir, SHARE_LOCALE)),
-            ),
-        );
+        files.push(writeInto(root, i18nConfigDestination(settings), renderInstalledI18nConfig(settings)));
     }
 
     return files;
@@ -253,6 +267,7 @@ const stageOverlay = (
 
     return [
         ...activation,
+        ...(target === "appimage" ? stageBuiltSchemas(settings, root) : []),
         ...(licenseFile === null ? [] : [copyInto(root, licenseDestination(settings), licenseFile)]),
         writeInto(root, noticesDestination(settings), renderNotices(settings, notices)),
     ];
@@ -270,10 +285,12 @@ const stageOverlays = (
 });
 
 export {
+    i18nConfigDestination,
     licenseDestination,
     nodeLicenseDestination,
     NOTICES_FILENAME,
     noticesDestination,
+    renderInstalledI18nConfig,
     type StagedMetadata,
     stageOverlays,
     stagePayload,

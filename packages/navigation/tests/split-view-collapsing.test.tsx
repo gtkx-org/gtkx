@@ -1,7 +1,9 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { screen, waitFor } from "@gtkx/testing";
+import { render, screen, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import {
+    buildCollapsedStateSplit,
+    buildSidebarSplit,
     buildSplit,
     clickButton,
     expectHidden,
@@ -116,5 +118,59 @@ describe("split view - collapsing", () => {
         await clickButton("Back");
         await screen.findByText("Tasks personal");
         expectVisible("Lists Content");
+    });
+
+    it("collapses while its collapse condition holds and widens to the placeholder without reselecting a row", async () => {
+        const { rerender } = await render(buildSidebarSplit("max-width: 1px"));
+        await screen.findByText("Tasks personal");
+        expectVisible("Personal");
+        await rerender(buildSidebarSplit("max-width: 10000px"));
+
+        await waitFor(() => {
+            expectHidden("Personal");
+        });
+
+        expectVisible("Tasks personal");
+        await clickButton("Back");
+        await screen.findByText("Personal");
+
+        await waitFor(() => {
+            expectHidden("Tasks personal");
+        });
+
+        await rerender(buildSidebarSplit("max-width: 1px"));
+
+        await waitFor(() => {
+            expectVisible("Nothing Selected");
+        });
+
+        expectHidden("Tasks personal");
+        expectHidden("Tasks work");
+    });
+
+    it("tells its screens whether the collapse condition holds", async () => {
+        const { rerender } = await render(
+            buildCollapsedStateSplit({ initialRouteName: "Tasks", collapseCondition: "max-width: 1px" }),
+        );
+        await screen.findByText("Sidebar expanded");
+        expectVisible("Content expanded");
+        await rerender(
+            buildCollapsedStateSplit({ initialRouteName: "Tasks", collapseCondition: "max-width: 10000px" }),
+        );
+        await screen.findByText("Content collapsed");
+        await clickButton("Back");
+        await screen.findByText("Sidebar collapsed");
+        await rerender(buildCollapsedStateSplit({ initialRouteName: "Tasks", collapseCondition: "max-width: 1px" }));
+        await screen.findByText("Sidebar expanded");
+    });
+
+    it("tells its screens when the collapsed prop changes", async () => {
+        const { rerender } = await render(buildCollapsedStateSplit({ collapsed: true }));
+        await screen.findByText("Sidebar collapsed");
+        await rerender(buildCollapsedStateSplit({ collapsed: false }));
+
+        await waitFor(() => {
+            expectVisible("Sidebar expanded");
+        });
     });
 });

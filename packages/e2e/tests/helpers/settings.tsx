@@ -1,9 +1,9 @@
 import type * as Gio from "@gtkx/gi/gio";
-import type { SettingsSchema, SettingsSchemaKeys, SettingsSchemaValues, SettingValue } from "@gtkx/react/internal";
+import type { SettingsSchemaKeys, SettingsSchemaValues, SettingValue } from "@gtkx/react/internal";
 import type { RenderHookResult } from "@gtkx/testing";
 import { GSettings } from "@gtkx/jsx/gio";
 import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
-import { createPortal, rootElement, useSetting } from "@gtkx/react";
+import { createPortal, rootElement, type SettingsSchema, useSetting } from "@gtkx/react";
 import { act, render, renderHook, waitFor } from "@gtkx/testing";
 import { createRef } from "react";
 import { expect } from "vitest";

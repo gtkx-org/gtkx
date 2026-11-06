@@ -1,6 +1,6 @@
 import type { ExtractedKey, ExtractedKeysMap, Logger, Plugin } from "i18next-cli";
 import { type NodePath, parseSync as parseBabelSync, type Scope, traverse, types } from "@babel/core";
-import { isPathInside, isPathWithin, toPosixPath } from "@gtkx/utils";
+import { isPathWithin, toPosixPath } from "@gtkx/utils";
 import { type GetTextTranslation, type GetTextTranslationRecord, po } from "gettext-parser";
 import { runExtractor } from "i18next-cli";
 import { existsSync, mkdtempDisposableSync, readFileSync, writeFileSync } from "node:fs";
@@ -8,6 +8,8 @@ import { isAbsolute, join, relative, resolve } from "node:path";
 import type { CatalogProject } from "./catalogs.js";
 import { runCliTool } from "../internal/run-cli-tool.js";
 import { sourceLanguage } from "../internal/source-imports.js";
+import { projectSchemaFiles } from "../settings/schema.js";
+import { prepareStorybookFiles } from "../storybook/config.js";
 import { replaceCatalogTemplate } from "./catalog-template.js";
 import { metadataTemplateFiles } from "./metadata-templates.js";
 import { clearI18nResources, i18nToolkitConfig } from "./types.js";
@@ -16,6 +18,7 @@ type SourceLocation = {
     file: string;
     line?: number | undefined;
     column?: number | undefined;
+    comments?: string[] | undefined;
 };
 type ExtractedLocation = NonNullable<ExtractedKey["locations"]>[number];
 
@@ -29,6 +32,7 @@ type SourceMessage = {
 };
 
 type CatalogSource = {
+    comments: string[];
     message: SourceMessage;
     path: string;
     line: number;
@@ -38,7 +42,13 @@ type CatalogTemplateExtraction = {
     messages: SourceMessage[];
     output?: string | undefined;
     project: CatalogProject;
+    schemaFiles: string[];
     shouldPreserveMetadataMessages: boolean;
+};
+
+type SourceCatalog = {
+    messages: SourceMessage[];
+    schemaFiles: string[];
 };
 
 type PluralVariant = {
@@ -54,11 +64,17 @@ type PluralGroup = {
 };
 
 type TranslationReferences = {
+    comments: Map<string, string[]>;
     entryLocations: Map<string, SourcePoint[]>;
     locations: Map<string, SourcePoint>;
     masks: SourceMask[];
+    writtenPluralLocations: Set<string>;
 };
-type SourceMask = { end: number; start: number };
+type LocationTest = (location: SourceLocation) => boolean;
+type SourceSpan = { end: number; start: number };
+type SourceMask = SourceSpan;
+type SourceComment = SourceSpan & { value: string };
+type TranslationKeyword = { key: string; start: number };
 type SourcePoint = { column: number; line: number };
 type TranslationCallKind = "alias" | "canonical";
 type ImportedBinding = {
@@ -77,6 +93,8 @@ const CONTEXT_SEPARATOR = "\u{4}";
 const DEFAULT_NAMESPACE = "translation";
 const POTFILES_FILENAME = "POTFILES.in";
 const SYNTHETIC_FILENAME = "messages.js";
+const TRANSLATOR_COMMENT_TAG = "Translators:";
+const LINE_TERMINATOR = /[\n\r\u2028\u2029]/u;
 const UNSUPPORTED_PLURAL_OPTION = /^defaultValue_(few|many|two|zero)$/u;
 const STATIC_SOURCE_OPTION_NAMES: ReadonlySet<string> = new Set([
     "context",
@@ -118,8 +136,9 @@ const sourceErrorMessage = (error: unknown): string => {
 
 const projectSourcePath = (root: string, path: string): string => {
     const absolute = isAbsolute(path) ? resolve(path) : resolve(root, path);
+    const projectRelative = relative(root, absolute);
 
-    return toPosixPath(isPathInside(root, absolute) ? relative(root, absolute) : path);
+    return toPosixPath(isAbsolute(projectRelative) ? path : projectRelative);
 };
 
 const sourceExtractionError = (
@@ -164,12 +183,32 @@ const errorSourcePoint = (error: unknown): SourcePoint | null => {
     return "location" in error && isSourcePoint(error.location) ? error.location : null;
 };
 
-const atSourceNode = <T>(root: string, path: string, node: LocatableNode, operation: () => T): T => {
+const collectAtSourceNode = (
+    errors: SourceExtractionError[],
+    root: string,
+    path: string,
+    node: LocatableNode,
+    operation: () => void,
+): void => {
     try {
-        return operation();
+        operation();
     } catch (error) {
-        throw sourceExtractionError(root, path, locatablePoint(node), error);
+        errors.push(sourceExtractionError(root, path, locatablePoint(node), error));
     }
+};
+
+const throwCollectedErrors = (errors: SourceExtractionError[]): void => {
+    const [first, ...rest] = errors;
+
+    if (first === undefined) {
+        return;
+    }
+
+    if (rest.length === 0) {
+        throw first;
+    }
+
+    throw new SourceExtractionError(errors.map((error) => error.message).join("\n"), { cause: first });
 };
 
 const atExtractedLocation = <T>(root: string, locations: SourceLocation[], operation: () => T): T => {
@@ -326,15 +365,26 @@ const pairedVariants = (variants: PluralVariant[]): { one: PluralVariant; other:
     return { one, other };
 };
 
-const pluralMessage = ({ baseKey, namespace, variants }: PluralGroup): SourceMessage => {
+const pluralMessage = (
+    { baseKey, namespace, variants }: PluralGroup,
+    isWrittenOutPlural: LocationTest,
+): SourceMessage => {
     const { one, other } = pairedVariants(variants);
     const { context, msgid } = splitContext(baseKey);
     validateIdentity(context, msgid);
     const singular = one.defaultValue;
     const plural = other.defaultValue;
 
-    if (singular === plural || singular.length === 0 || plural.length === 0) {
-        throw new Error("GNU gettext plural source strings must be distinct and non-empty");
+    if (singular.length === 0 || plural.length === 0) {
+        throw new Error("GNU gettext plural source strings cannot be empty");
+    }
+
+    if (singular === plural && !variants.some((variant) => variant.locations.some(isWrittenOutPlural))) {
+        throw new Error(
+            `Both plural forms of "${msgid}" are "${singular}". Pass defaultValue_one and defaultValue_other options ` +
+                "(through tOptions on Trans), even when they read the same; GTKX 2 removed the " +
+                "t(singular, plural, options) overload.",
+        );
     }
 
     return {
@@ -347,46 +397,82 @@ const pluralMessage = ({ baseKey, namespace, variants }: PluralGroup): SourceMes
     };
 };
 
-const pluralMessages = (root: string, entries: ExtractedKey[]): SourceMessage[] =>
-    groupedPlurals(root, entries).map((group) =>
-        atExtractedLocation(
-            root,
-            group.variants.flatMap((variant) => variant.locations),
-            () => pluralMessage(group),
-        ),
-    );
+const collectAtExtractedLocation = <T>(
+    errors: SourceExtractionError[],
+    root: string,
+    locations: SourceLocation[],
+    operation: () => T,
+): T | undefined => {
+    try {
+        return atExtractedLocation(root, locations, operation);
+    } catch (error) {
+        errors.push(
+            error instanceof SourceExtractionError
+                ? error
+                : new SourceExtractionError(sourceErrorMessage(error), { cause: error }),
+        );
 
-const assertCardinal = (entry: ExtractedKey): void => {
-    if (entry.isOrdinal === true) {
-        throw new Error("GNU gettext catalogs do not support i18next ordinal plurals");
+        return undefined;
     }
 };
 
-const sourceMessages = (root: string, entries: ExtractedKey[]): SourceMessage[] => {
+const pluralMessages = (
+    errors: SourceExtractionError[],
+    root: string,
+    entries: ExtractedKey[],
+    isWrittenOutPlural: LocationTest,
+): SourceMessage[] =>
+    groupedPlurals(root, entries).flatMap(
+        (group) =>
+            collectAtExtractedLocation(
+                errors,
+                root,
+                group.variants.flatMap((variant) => variant.locations),
+                () => pluralMessage(group, isWrittenOutPlural),
+            ) ?? [],
+    );
+
+const entryKind = (entry: ExtractedKey): "plural" | "point" => {
+    if (entry.isOrdinal === true) {
+        throw new Error("GNU gettext catalogs do not support i18next ordinal plurals");
+    }
+
+    if (entry.isExpandedPlural === true) {
+        return "plural";
+    }
+
+    if (entry.hasCount === true) {
+        throw new Error("Count-based translations require an explicit plural source string");
+    }
+
+    return "point";
+};
+
+const sourceMessages = (root: string, entries: ExtractedKey[], isWrittenOutPlural: LocationTest): SourceMessage[] => {
+    const errors: SourceExtractionError[] = [];
     const points: ExtractedKey[] = [];
     const plurals: ExtractedKey[] = [];
 
     for (const entry of entries) {
-        atExtractedLocation(root, entry.locations ?? [], () => {
-            assertCardinal(entry);
-        });
+        const kind = collectAtExtractedLocation(errors, root, entry.locations ?? [], () => entryKind(entry));
 
-        if (entry.isExpandedPlural === true) {
+        if (kind === "plural") {
             plurals.push(entry);
-            continue;
+        } else if (kind === "point") {
+            points.push(entry);
         }
-
-        if (entry.hasCount === true) {
-            throw new Error("Count-based translations require an explicit plural source string");
-        }
-
-        points.push(entry);
     }
 
-    return [
-        ...points.map((entry) => atExtractedLocation(root, entry.locations ?? [], () => pointMessage(entry))),
-        ...pluralMessages(root, plurals),
+    const messages = [
+        ...points.flatMap(
+            (entry) => collectAtExtractedLocation(errors, root, entry.locations ?? [], () => pointMessage(entry)) ?? [],
+        ),
+        ...pluralMessages(errors, root, plurals, isWrittenOutPlural),
     ];
+
+    throwCollectedErrors(errors);
+
+    return messages;
 };
 
 const compareMessages = (left: SourceMessage, right: SourceMessage): number =>
@@ -413,8 +499,11 @@ const inferLocations = (message: SourceMessage, sources: Map<string, string>): S
     return { ...message, locations };
 };
 
-const normalizedSourceFiles = (root: string, paths: string[]): string[] => {
-    const files = paths.map((path) => resolve(root, path)).filter((path) => isPathWithin(root, path));
+const isCatalogSourcePath = (project: CatalogProject, path: string): boolean =>
+    [project.root, ...project.packages].some((root) => isPathWithin(root, path));
+
+const normalizedSourceFiles = (project: CatalogProject, paths: string[]): string[] => {
+    const files = paths.map((path) => resolve(project.root, path)).filter((path) => isCatalogSourcePath(project, path));
 
     return new Set(files)
         .values()
@@ -713,9 +802,56 @@ const isHookTranslationMember = (scope: Scope, member: TranslationMemberExpressi
     return types.isIdentifier(object) && isTranslationHookResultBinding(scope.getBinding(object.name));
 };
 
+const isHookInstanceBinding = (binding: ResolvedBinding | undefined): boolean => {
+    if (binding === undefined) {
+        return false;
+    }
+
+    const path = constantVariableDeclarator(binding);
+
+    if (path === null) {
+        return false;
+    }
+
+    const pattern = path.node.id;
+    const initializer = path.node.init;
+
+    return (
+        types.isObjectPattern(pattern) &&
+        types.isCallExpression(initializer) &&
+        importedTranslationHook(path.scope, initializer) !== null &&
+        pattern.properties.some(
+            (property) =>
+                types.isObjectProperty(property) &&
+                propertyName(property) === "i18n" &&
+                isBoundIdentifier(property.value, binding.identifier.name),
+        )
+    );
+};
+
+const isHookInstance = (scope: Scope, object: types.Node): boolean => {
+    if (types.isIdentifier(object)) {
+        return isHookInstanceBinding(scope.getBinding(object.name));
+    }
+
+    if (!types.isMemberExpression(object) || babelMemberName(object) !== "i18n") {
+        return false;
+    }
+
+    const hook = object.object;
+
+    if (types.isCallExpression(hook)) {
+        return importedTranslationHook(scope, hook) !== null;
+    }
+
+    return types.isIdentifier(hook) && isTranslationHookResultBinding(scope.getBinding(hook.name));
+};
+
 const isTranslationMember = (scope: Scope, member: TranslationMemberExpression): boolean =>
     babelMemberName(member) === "t" &&
-    (isImportedTranslationObject(scope, member.object) || isHookTranslationMember(scope, member));
+    (isImportedTranslationObject(scope, member.object) ||
+        isHookTranslationMember(scope, member) ||
+        isHookInstance(scope, member.object));
 
 const isDirectTranslationFunction = (scope: Scope, node: types.Node): boolean =>
     types.isIdentifier(node) && directTranslationFunctionKind(scope, node.name) !== null;
@@ -949,6 +1085,20 @@ const registerEntryLocation = (
     references.entryLocations.set(key, locations);
 };
 
+const writesOutPluralForms = (options: types.ObjectExpression | null): boolean =>
+    babelNamedProperty(options, "defaultValue_one") !== null &&
+    babelNamedProperty(options, "defaultValue_other") !== null;
+
+const registerWrittenOutPlural = (
+    point: SourcePoint | null,
+    options: types.ObjectExpression | null,
+    references: TranslationReferences,
+): void => {
+    if (point !== null && writesOutPluralForms(options)) {
+        references.writtenPluralLocations.add(sourceLocationKey(point.line, point.column));
+    }
+};
+
 const registerCallReference = (
     callPath: NodePath<types.CallExpression>,
     references: TranslationReferences,
@@ -958,6 +1108,7 @@ const registerCallReference = (
     const point = registerSourceLocation(firstArgument ?? callPath.node, references);
 
     registerEntryLocation(extractedEntryKey(callPath.node, keyPrefix), point, references);
+    registerWrittenOutPlural(point, babelObjectExpression(callPath.node.arguments[1]), references);
 };
 
 const parserPlugins = (lang: ReturnType<typeof sourceLanguage>): ("decorators" | "jsx" | "typescript")[] => [
@@ -978,7 +1129,7 @@ const parseTranslationReferences = (
             babelrc: false,
             configFile: false,
             filename: projectSourcePath(root, path),
-            parserOpts: { createParenthesizedExpressions: true, plugins: parserPlugins(lang) },
+            parserOpts: { createParenthesizedExpressions: true, plugins: parserPlugins(lang), tokens: true },
             sourceType: "module",
         });
     } catch (error) {
@@ -1096,7 +1247,8 @@ const registerTranslationElement = (
     }
 
     if (kind === "canonical") {
-        registerSourceLocation(elementPath.node, references);
+        const point = registerSourceLocation(elementPath.node, references);
+        registerWrittenOutPlural(point, transOptions(elementPath.node), references);
 
         return true;
     } else if (TRANS_ELEMENTS.has(name.node.name)) {
@@ -1117,11 +1269,98 @@ const maskUnrecognizedTranslations = (source: string, references: TranslationRef
     return masked;
 };
 
+const sourceSpan = (value: unknown): SourceSpan | null =>
+    typeof value === "object" &&
+    value !== null &&
+    "start" in value &&
+    typeof value.start === "number" &&
+    "end" in value &&
+    typeof value.end === "number"
+        ? { start: value.start, end: value.end }
+        : null;
+
+const sourceComments = (file: types.File): SourceComment[] =>
+    (file.comments ?? []).flatMap(({ start, end, value }) =>
+        start === undefined || end === undefined ? [] : [{ start, end, value }],
+    );
+
+const isWithinSpan = (span: SourceSpan, outer: SourceSpan): boolean =>
+    span.start >= outer.start && span.end <= outer.end;
+
+const codeTokens = (
+    file: types.File,
+    source: string,
+    comments: SourceComment[],
+    emptyContainers: SourceSpan[],
+): SourceSpan[] => {
+    const tokens: unknown[] = file.tokens ?? [];
+    const commentStarts = new Set(comments.map((comment) => comment.start));
+
+    return tokens
+        .map((token) => sourceSpan(token))
+        .filter(
+            (span): span is SourceSpan =>
+                span !== null &&
+                !commentStarts.has(span.start) &&
+                source.slice(span.start, span.end).trim().length > 0 &&
+                !emptyContainers.some((container) => isWithinSpan(span, container)),
+        )
+        .toSorted((left, right) => left.start - right.start);
+};
+
+const translationKeyword = (expression: TranslationExpression): TranslationKeyword | null => {
+    const keyword = types.isCallExpression(expression) ? expression.callee : expression;
+    const point = sourcePoint(
+        types.isCallExpression(expression) ? (expression.arguments[0] ?? expression) : expression,
+    );
+    const span = sourceSpan(keyword);
+
+    return point === null || span === null
+        ? null
+        : { key: sourceLocationKey(point.line, point.column), start: span.start };
+};
+
+const commentRunStart = (source: string, tokens: SourceSpan[], keyword: TranslationKeyword): number =>
+    tokens.findLast(
+        (token) => token.end <= keyword.start && LINE_TERMINATOR.test(source.slice(token.end, keyword.start)),
+    )?.end ?? 0;
+
+const registerTranslatorComments = (
+    file: types.File,
+    source: string,
+    expressions: TranslationExpression[],
+    emptyContainers: SourceSpan[],
+    references: TranslationReferences,
+): void => {
+    const comments = sourceComments(file);
+    const tokens = codeTokens(file, source, comments, emptyContainers);
+    const keywords = expressions
+        .map(translationKeyword)
+        .filter((keyword) => keyword !== null)
+        .toSorted((left, right) => left.start - right.start);
+    let consumed = 0;
+
+    for (const keyword of keywords) {
+        const start = Math.max(consumed, commentRunStart(source, tokens, keyword));
+        const run = comments.filter((comment) => comment.start >= start && comment.end <= keyword.start);
+        consumed = keyword.start;
+
+        if (run.some((comment) => comment.value.includes(TRANSLATOR_COMMENT_TAG))) {
+            references.comments.set(
+                keyword.key,
+                run.map((comment) => source.slice(comment.start, comment.end)),
+            );
+        }
+    }
+};
+
 const translationReferences = (root: string, path: string, source: string): TranslationReferences => {
     const references: TranslationReferences = {
+        comments: new Map(),
         entryLocations: new Map(),
         locations: new Map(),
         masks: [],
+        writtenPluralLocations: new Set(),
     };
     const lang = sourceLanguage(path);
 
@@ -1136,29 +1375,38 @@ const translationReferences = (root: string, path: string, source: string): Tran
     }
 
     const expressions: TranslationExpression[] = [];
+    const emptyContainers: SourceSpan[] = [];
+    const errors: SourceExtractionError[] = [];
 
     traverse(parsed, {
         CallExpression(callPath) {
-            atSourceNode(root, path, callPath.node, () => {
+            collectAtSourceNode(errors, root, path, callPath.node, () => {
                 if (registerTranslationCall(callPath, references)) {
                     expressions.push(callPath.node);
                 }
             });
         },
+        JSXExpressionContainer(containerPath) {
+            const span = sourceSpan(containerPath.node);
+
+            if (span !== null && types.isJSXEmptyExpression(containerPath.node.expression)) {
+                emptyContainers.push(span);
+            }
+        },
         JSXOpeningElement(elementPath) {
-            atSourceNode(root, path, elementPath.node, () => {
+            collectAtSourceNode(errors, root, path, elementPath.node, () => {
                 if (registerTranslationElement(elementPath, references)) {
                     expressions.push(elementPath.node);
                 }
             });
         },
         OptionalCallExpression(callPath) {
-            atSourceNode(root, path, callPath.node, () => {
+            collectAtSourceNode(errors, root, path, callPath.node, () => {
                 assertSupportedOptionalCall(callPath);
             });
         },
         TaggedTemplateExpression(tagPath) {
-            atSourceNode(root, path, tagPath.node, () => {
+            collectAtSourceNode(errors, root, path, tagPath.node, () => {
                 assertUnsupportedTranslationTag(tagPath);
             });
         },
@@ -1167,7 +1415,7 @@ const translationReferences = (root: string, path: string, source: string): Tran
     for (const expression of expressions) {
         const location = types.isCallExpression(expression) ? (expression.arguments[0] ?? expression) : expression;
 
-        atSourceNode(root, path, location, () => {
+        collectAtSourceNode(errors, root, path, location, () => {
             if (types.isCallExpression(expression)) {
                 assertSupportedTranslationCall(expression);
             } else {
@@ -1175,6 +1423,9 @@ const translationReferences = (root: string, path: string, source: string): Tran
             }
         });
     }
+
+    throwCollectedErrors(errors);
+    registerTranslatorComments(parsed, source, expressions, emptyContainers, references);
 
     return references;
 };
@@ -1204,6 +1455,20 @@ const assertSupportedTranslationOptions = (
 
 const isNamedJsxAttribute = (attribute: types.JSXAttribute, name: string): boolean =>
     attribute.name.type === "JSXIdentifier" && attribute.name.name === name;
+
+const transOptions = (node: types.JSXOpeningElement): types.ObjectExpression | null => {
+    for (const attribute of node.attributes) {
+        if (
+            types.isJSXAttribute(attribute) &&
+            isNamedJsxAttribute(attribute, "tOptions") &&
+            types.isJSXExpressionContainer(attribute.value)
+        ) {
+            return babelObjectExpression(attribute.value.expression);
+        }
+    }
+
+    return null;
+};
 
 const assertSupportedTransKey = (attribute: types.JSXAttribute): void => {
     if (!isNamedJsxAttribute(attribute, "i18nKey")) {
@@ -1260,6 +1525,20 @@ const isRecognizedLocation = (
     const sourceReferences = references.get(extractedLocationFile(root, location.file));
 
     return sourceReferences?.locations.has(sourceLocationKey(location.line, location.column)) === true;
+};
+
+const isWrittenOutPluralLocation = (
+    root: string,
+    references: Map<string, TranslationReferences>,
+    location: SourceLocation,
+): boolean => {
+    if (location.line === undefined || location.column === undefined) {
+        return false;
+    }
+
+    const sourceReferences = references.get(extractedLocationFile(root, location.file));
+
+    return sourceReferences?.writtenPluralLocations.has(sourceLocationKey(location.line, location.column)) === true;
 };
 
 const recognizedKeyLocations = (
@@ -1561,6 +1840,31 @@ const assertAllReferencesExtracted = (
     }
 };
 
+const commentedLocation = (
+    root: string,
+    references: Map<string, TranslationReferences>,
+    location: SourceLocation,
+): SourceLocation => {
+    if (location.line === undefined || location.column === undefined) {
+        return location;
+    }
+
+    const comments = references
+        .get(extractedLocationFile(root, location.file))
+        ?.comments.get(sourceLocationKey(location.line, location.column));
+
+    return comments === undefined ? location : { ...location, comments };
+};
+
+const commentedMessage = (
+    root: string,
+    references: Map<string, TranslationReferences>,
+    message: SourceMessage,
+): SourceMessage => ({
+    ...message,
+    locations: message.locations.map((location) => commentedLocation(root, references, location)),
+});
+
 const findSourceMessages = async (root: string, sourceFiles: string[]): Promise<SourceMessage[]> => {
     if (sourceFiles.length === 0) {
         clearI18nResources(root);
@@ -1571,9 +1875,21 @@ const findSourceMessages = async (root: string, sourceFiles: string[]): Promise<
     const sources = new Map(sourceFiles.map((file) => [file, readFileSync(file, "utf8")]));
     const references: Map<string, TranslationReferences> = new Map();
 
+    const errors: SourceExtractionError[] = [];
+
     for (const [file, source] of sources) {
-        references.set(file, translationReferences(root, file, source));
+        try {
+            references.set(file, translationReferences(root, file, source));
+        } catch (error) {
+            if (!(error instanceof SourceExtractionError)) {
+                throw error;
+            }
+
+            errors.push(error);
+        }
     }
+
+    throwCollectedErrors(errors);
 
     let extracted: ExtractedKeysMap | undefined;
     const { logger, reports } = quietLogger();
@@ -1604,26 +1920,26 @@ const findSourceMessages = async (root: string, sourceFiles: string[]): Promise<
         throw new Error(reports.join("\n") || "i18next extraction failed");
     }
 
-    return sourceMessages(root, extracted.values().toArray())
+    return sourceMessages(root, extracted.values().toArray(), (location) =>
+        isWrittenOutPluralLocation(root, references, location),
+    )
+        .map((message) => commentedMessage(root, references, message))
         .map((message) => inferLocations(message, sources))
         .toSorted(compareMessages);
 };
 
-const projectPath = (root: string, path: string): string | null => {
-    const absolute = isAbsolute(path) ? resolve(path) : resolve(root, path);
-    const projectRelative = relative(root, absolute);
+const projectPath = (project: CatalogProject, path: string): string | null => {
+    const absolute = isAbsolute(path) ? resolve(path) : resolve(project.root, path);
 
-    if (!isPathInside(root, absolute)) {
+    if (absolute === project.root || !isCatalogSourcePath(project, absolute)) {
         return null;
     }
 
-    return toPosixPath(projectRelative);
+    return toPosixPath(relative(project.root, absolute));
 };
 
 const writePotfiles = (project: CatalogProject, sourceFiles: string[]): string => {
-    const paths = sourceFiles
-        .map((path) => projectPath(project.root, path))
-        .filter((path): path is string => path !== null);
+    const paths = sourceFiles.map((path) => projectPath(project, path)).filter((path): path is string => path !== null);
 
     const sorted = [...new Set(paths)].toSorted((left, right) => left.localeCompare(right));
     const target = resolve(project.poDir, POTFILES_FILENAME);
@@ -1646,21 +1962,25 @@ const renderCatalogCall = (message: SourceMessage): string => {
     return message.context === null ? `gettext(${msgid});` : `pgettext(${JSON.stringify(message.context)}, ${msgid});`;
 };
 
-const sourceOwners = (
-    project: CatalogProject,
-    message: SourceMessage,
-): { path: string; line: number | undefined }[] => {
-    const owners = new Map<string, { path: string; line: number | undefined }>();
+type SourceOwner = { comments: string[]; path: string; line: number | undefined };
+
+const renderCatalogSource = ({ comments, message }: CatalogSource): string =>
+    [...comments, renderCatalogCall(message)].join("\n");
+
+const sourceOwners = (project: CatalogProject, message: SourceMessage): SourceOwner[] => {
+    const owners = new Map<string, SourceOwner>();
 
     for (const location of message.locations) {
-        const path = projectPath(project.root, location.file);
+        const path = projectPath(project, location.file);
 
         if (path !== null) {
-            owners.set(`${path}\0${String(location.line)}`, { path, line: location.line });
+            const key = `${path}\0${String(location.line)}`;
+            const comments = owners.get(key)?.comments ?? [];
+            owners.set(key, { comments: [...comments, ...(location.comments ?? [])], path, line: location.line });
         }
     }
 
-    return owners.size > 0 ? owners.values().toArray() : [{ path: SYNTHETIC_FILENAME, line: undefined }];
+    return owners.size > 0 ? owners.values().toArray() : [{ comments: [], path: SYNTHETIC_FILENAME, line: undefined }];
 };
 
 const catalogSources = (project: CatalogProject, messages: SourceMessage[]): CatalogSource[] => {
@@ -1725,14 +2045,16 @@ const restoreCatalogReferences = (output: string, sources: CatalogSource[]): voi
     );
 };
 
-const extractSourceMessages = (sources: CatalogSource[], output: string): void => {
+const extractSourceMessages = (project: CatalogProject, sources: CatalogSource[], output: string): void => {
     runCliTool({
         tool: "xgettext",
         args: [
             "--language=JavaScript",
             "--from-code=UTF-8",
+            `--package-name=${project.domain}`,
             "--force-po",
             "--no-location",
+            `--add-comments=${TRANSLATOR_COMMENT_TAG}`,
             "--keyword=gettext:1",
             "--keyword=ngettext:1,2",
             "--keyword=pgettext:1c,2",
@@ -1740,7 +2062,7 @@ const extractSourceMessages = (sources: CatalogSource[], output: string): void =
             `--output=${output}`,
             "-",
         ],
-        options: { input: sources.map(({ message }) => renderCatalogCall(message)).join("\n") },
+        options: { input: sources.map(renderCatalogSource).join("\n") },
         target: output,
     });
 };
@@ -1781,43 +2103,125 @@ const extractMetadataFragment = (project: CatalogProject, input: string, output:
 
     const fragment = po.parse(readFileSync(output));
     retainMetadataReferences(fragment.translations, metadataPaths);
-    writeFileSync(output, po.compile(fragment, { foldLength: 0 }));
+    writeFileSync(
+        output,
+        po.compile(
+            {
+                ...fragment,
+                charset: "utf-8",
+                headers: { ...fragment.headers, "Content-Type": "text/plain; charset=UTF-8" },
+            },
+            { foldLength: 0 },
+        ),
+    );
 };
 
-const joinMetadataFragment = (output: string, fragment: string): void => {
+const joinMetadataFragment = (project: CatalogProject, output: string, fragment: string): void => {
     runCliTool({
         tool: "xgettext",
-        args: ["--language=PO", "--join-existing", "--force-po", `--output=${output}`, fragment],
+        args: [
+            "--language=PO",
+            "--join-existing",
+            `--package-name=${project.domain}`,
+            "--force-po",
+            `--output=${output}`,
+            fragment,
+        ],
         target: output,
+    });
+};
+
+const joinSchemaMessages = (project: CatalogProject, schemaFiles: string[], output: string): void => {
+    if (schemaFiles.length === 0) {
+        return;
+    }
+
+    runCliTool({
+        tool: "xgettext",
+        args: [
+            "--join-existing",
+            `--add-comments=${TRANSLATOR_COMMENT_TAG}`,
+            `--package-name=${project.domain}`,
+            "--force-po",
+            "--from-code=UTF-8",
+            `--output=${output}`,
+            ...schemaFiles,
+        ],
+        target: output,
+        options: { cwd: project.root },
+    });
+};
+
+const formatCatalogTemplate = (input: string, output: string): void => {
+    runCliTool({
+        tool: "msgcat",
+        args: ["--force-po", "--to-code=UTF-8", `--output-file=${output}`, input],
+        target: input,
     });
 };
 
 const extractCatalogTemplate = ({
     project,
     messages,
+    schemaFiles,
     shouldPreserveMetadataMessages,
-    output = resolve(project.poDir, `${project.domain}.pot`),
+    output = project.template,
 }: CatalogTemplateExtraction): void => {
     using workDir = mkdtempDisposableSync(join(project.poDir, ".gtkx-i18n-"));
     const source = join(workDir.path, "source.pot");
     const sources = catalogSources(project, messages);
-    extractSourceMessages(sources, source);
+    extractSourceMessages(project, sources, source);
+    joinSchemaMessages(project, schemaFiles, source);
 
     if (shouldPreserveMetadataMessages && existsSync(output)) {
         const fragment = join(workDir.path, "metadata.pot");
         extractMetadataFragment(project, output, fragment);
-        joinMetadataFragment(source, fragment);
+        joinMetadataFragment(project, source, fragment);
     }
 
     restoreCatalogReferences(source, sources);
-    replaceCatalogTemplate(source, output);
+    const template = join(workDir.path, "template.pot");
+    formatCatalogTemplate(source, template);
+    replaceCatalogTemplate(template, output);
+};
+
+const projectStoryFiles = async (project: CatalogProject): Promise<ReadonlySet<string>> => {
+    const files = await Promise.all([project.root, ...project.packages].map((root) => prepareStorybookFiles(root)));
+
+    return new Set(files.flatMap(({ stories, skippedMdx }) => [...stories.map((story) => story.id), ...skippedMdx]));
+};
+
+const withoutStoryLocations = (
+    root: string,
+    messages: SourceMessage[],
+    storyFiles: ReadonlySet<string>,
+): SourceMessage[] =>
+    messages.flatMap((message) => {
+        const locations = message.locations.filter(
+            (location) => !storyFiles.has(extractedLocationFile(root, location.file)),
+        );
+
+        return locations.length === 0 && message.locations.length > 0 ? [] : [{ ...message, locations }];
+    });
+
+const catalogSchemaFiles = (project: CatalogProject): string[] =>
+    projectSchemaFiles(project.root)
+        .files.map((path) => projectPath(project, path))
+        .filter((path): path is string => path !== null);
+
+const prepareSourceCatalog = async (project: CatalogProject, paths: string[]): Promise<SourceCatalog> => {
+    const sourceFiles = normalizedSourceFiles(project, paths);
+    const storyFiles = await projectStoryFiles(project);
+    const messages = await findSourceMessages(project.root, sourceFiles);
+    const schemaFiles = catalogSchemaFiles(project);
+    writePotfiles(project, [...sourceFiles.filter((path) => !storyFiles.has(path)), ...schemaFiles]);
+
+    return { messages: withoutStoryLocations(project.root, messages, storyFiles), schemaFiles };
 };
 
 const extractSourceCatalogTo = async (project: CatalogProject, paths: string[], output: string): Promise<void> => {
-    const sourceFiles = normalizedSourceFiles(project.root, paths);
-    const messages = await findSourceMessages(project.root, sourceFiles);
-    writePotfiles(project, sourceFiles);
-    extractCatalogTemplate({ project, messages, shouldPreserveMetadataMessages: false, output });
+    const catalog = await prepareSourceCatalog(project, paths);
+    extractCatalogTemplate({ project, ...catalog, shouldPreserveMetadataMessages: false, output });
 };
 
 const extractSourceCatalog = async (
@@ -1825,10 +2229,8 @@ const extractSourceCatalog = async (
     paths: string[],
     shouldPreserveMetadataMessages = true,
 ): Promise<void> => {
-    const sourceFiles = normalizedSourceFiles(project.root, paths);
-    const messages = await findSourceMessages(project.root, sourceFiles);
-    writePotfiles(project, sourceFiles);
-    extractCatalogTemplate({ project, messages, shouldPreserveMetadataMessages });
+    const catalog = await prepareSourceCatalog(project, paths);
+    extractCatalogTemplate({ project, ...catalog, shouldPreserveMetadataMessages });
 };
 
 export { extractSourceCatalog, extractSourceCatalogTo, SourceExtractionError };

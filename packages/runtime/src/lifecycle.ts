@@ -4,8 +4,10 @@ import { quit as nativeQuit } from "./native.js";
 const shutdownCallbacks: (() => void)[] = [];
 
 /**
- * Runs every registered exit callback and shuts down the native runtime. Safe to
- * call more than once; only the first call takes effect.
+ * Runs every registered exit callback, disposes the objects that only JavaScript
+ * still references while their JavaScript vfuncs and signal handlers can still
+ * run, and shuts down the native runtime. Safe to call more than once; only the
+ * first call takes effect.
  */
 const quit: () => void = createQuit();
 

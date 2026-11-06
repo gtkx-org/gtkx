@@ -12,8 +12,10 @@ import { errorMessage } from "@gtkx/utils";
 import {
     configCandidatePaths,
     configDependenciesFor,
+    LIBRARY_APPLICATION_ID,
     resolveAcceptedChildTypes,
     resolveElementProps,
+    resolveLazyElements,
     resolveOmittedProps,
 } from "@gtkx/config/internal";
 import { type McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -91,11 +93,19 @@ const SYMBOL_KIND = z.enum([
     "alias",
     "function",
     "constant",
+    "constructor",
+    "staticMethod",
+    "property",
+    "signal",
+    "method",
+    "field",
 ]);
 
 const SYMBOL_DESCRIPTION =
     "Qualified symbol name (`Adw.Toast`, `Gtk.Orientation`, `GLib.idleAdd`), JSX element name (`AdwToast`), " +
-    "or bare symbol name when unambiguous (`Toast`).";
+    "bare symbol name when unambiguous (`Toast`), or a class, interface or record member named after its owner " +
+    "(`Gio.File.replaceContentsAsync`, `Gtk.Window.close-request`, `Gdk.RGBA.red`) or after the JSX element of " +
+    "its class (`AdwToast.title`), which returns only that member's section. A member a class inherits resolves to the ancestor or interface that documents it.";
 
 const PROJECT_ROOT_DESCRIPTION =
     "Directory of the GTKX project whose bindings to document, absolute or relative to the working directory. " +
@@ -116,16 +126,24 @@ const listApiShape = {
 
 const searchApiShape = {
     ...projectRootShape,
-    query: z.string().describe("Case-insensitive substring of a symbol name, e.g. `headerbar` or `orientation`."),
+    query: z
+        .string()
+        .describe(
+            "Case-insensitive substring of a symbol or member name, e.g. `headerbar`, `replaceContentsAsync` or " +
+                "`close-request`. Include the owner, or the JSX element of a class, to list its members: " +
+                "`Gio.File.replace` or `GtkButton.icon`.",
+        ),
     namespace: z.string().optional().describe("Restrict matches to one namespace (e.g. `Adw`)."),
-    kind: SYMBOL_KIND.optional().describe("Restrict matches to one symbol kind."),
+    kind: SYMBOL_KIND.optional().describe("Restrict matches to one symbol or member kind."),
     limit: z.number().int().min(1).optional().describe("Maximum number of results (default: 20)."),
 };
 
 const apiDocsShape = {
     ...projectRootShape,
     symbol: z.string().describe(SYMBOL_DESCRIPTION),
-    kind: SYMBOL_KIND.optional().describe("Disambiguate when several kinds share the symbol name."),
+    kind: SYMBOL_KIND.optional().describe(
+        "Disambiguate when several kinds share the name, such as a class and its JSX element, or a signal and a method.",
+    ),
 };
 
 const watchFile = (path: string): WatchedFile => {
@@ -158,8 +176,10 @@ const findProjectRoot = (start: string): string | undefined => {
     return parent === current ? undefined : findProjectRoot(parent);
 };
 
+const projectRootOf = (path: string): string => findProjectRoot(path) ?? resolve(path);
+
 const projectAt = (candidate: string, source: ProjectSource): ResolvedProject => ({
-    root: findProjectRoot(candidate) ?? resolve(candidate),
+    root: projectRootOf(candidate),
     source,
 });
 
@@ -186,7 +206,7 @@ const resolveProject = (
 };
 
 const loadReference = async (requestedRoot: string): Promise<LoadedReference> => {
-    const loaded = await loadConfig(requestedRoot);
+    const loaded = await loadConfig(requestedRoot, { defaultApplicationId: LIBRARY_APPLICATION_ID });
     const { config, root } = loaded;
 
     if (config.codegen === false) {
@@ -214,8 +234,9 @@ const loadReference = async (requestedRoot: string): Promise<LoadedReference> =>
         libraries,
         girPath,
         resolveFrom: root,
-        props: { ...builtin.props, ...resolveElementProps(config.elements) },
+        props: { ...builtin.props, ...resolveElementProps(config.elements, root) },
         omittedProps: mergeOmittedProps(builtin.omittedProps, resolveOmittedProps(config.elements)),
+        lazyElements: [...builtin.lazyElements, ...resolveLazyElements(config.elements)],
         acceptedChildTypes: { ...builtin.acceptedChildTypes, ...resolveAcceptedChildTypes(config.elements) },
     });
 
@@ -345,7 +366,9 @@ const searchApiResult = (reference: ReferenceApi, args: ToolArgs<typeof searchAp
     const results = reference.search(buildSearchOptions(args));
 
     if (results.length === 0) {
-        return textContent(`No symbols matched "${args.query}". Try a shorter substring or \`gtkx_list_api\`.`);
+        return textContent(
+            `No symbols or members matched "${args.query}". Try a shorter substring or \`gtkx_list_api\`.`,
+        );
     }
 
     return textContent(JSON.stringify(results, null, 2));
@@ -388,8 +411,10 @@ const searchApiTool = (provider: ReferenceProvider): Tool =>
         title: "Search API reference",
         kind: "readOnly",
         description:
-            "Search the project's generated bindings API by symbol name. Returns matching symbols with " +
-            "their namespace, kind, and a one-line summary; fetch full pages with `gtkx_get_api_docs`.",
+            "Search the project's generated bindings API by name: classes, interfaces, records, enums, functions " +
+            "and other symbols, and the constructors, static methods, properties, signals, methods and record " +
+            "fields of classes, interfaces and records. Returns the best matches first, with namespace, kind and " +
+            "a one-line summary; a member's name is `Owner.member`. Read one with `gtkx_get_api_docs`.",
         inputSchema: searchApiShape,
         handler: (args) => scopedResult(provider, args.projectRoot, (reference) => searchApiResult(reference, args)),
     });
@@ -400,9 +425,10 @@ const getApiDocsTool = (provider: ReferenceProvider): Tool =>
         title: "Get API docs",
         kind: "readOnly",
         description:
-            "Get the full reference page for one symbol of the project's generated bindings: JSX elements " +
+            "Get the reference page for one symbol of the project's generated bindings: JSX elements " +
             "(props, signals, methods) or `@gtkx/gi` classes, interfaces, records, enums, callbacks, aliases, " +
-            "functions, and constants.",
+            "functions, and constants. A class page can run to hundreds of kilobytes; pass a member name such " +
+            "as `Gio.File.replaceContentsAsync` to get only that member's section.",
         inputSchema: apiDocsShape,
         handler: (args) => scopedResult(provider, args.projectRoot, (reference) => apiDocsResult(reference, args)),
     });
@@ -564,4 +590,10 @@ const registerReferenceResources = (server: ResourceServer, provider: ReferenceP
     registerSymbolResource(server, provider);
 };
 
-export { createReferenceProvider, buildReferenceTools, registerReferenceResources, type ReferenceProvider };
+export {
+    createReferenceProvider,
+    buildReferenceTools,
+    projectRootOf,
+    registerReferenceResources,
+    type ReferenceProvider,
+};

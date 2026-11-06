@@ -2,15 +2,18 @@ import {
     type AnyClass,
     getClassType,
     getDeclaredPropertyName,
+    getInstanceType,
     TYPE_INVALID,
     typeFromName,
     typeInterfaces,
+    typeIsA,
     typeName,
     typeParent,
 } from "@gtkx/runtime";
 import {
     elementMetadataVersion,
     type ElementPropertyEntry,
+    propertyValueType,
     registeredElementProperties,
     registeredElementSignals,
 } from "@gtkx/runtime/internal";
@@ -23,6 +26,7 @@ type TypeInfo = {
     signals: Record<string, string>;
     userEventSignals: Set<string>;
     behaviors: ElementBehavior[];
+    omittedProps: Set<string>;
     createProps: Set<string>;
     declaredConstructOnly: Set<string>;
     isLazy: boolean;
@@ -101,6 +105,7 @@ const accumulateAncestor = (info: TypeInfo, ancestor: string): void => {
     }
 
     info.behaviors.push(...(config?.behaviors ?? []));
+    addAll(info.omittedProps, config?.omittedProps);
     addAll(info.declaredConstructOnly, config?.props?.constructOnly);
 };
 
@@ -157,6 +162,7 @@ const buildTypeInfo = (name: string): TypeInfo => {
         signals: {},
         userEventSignals: new Set(),
         behaviors: [],
+        omittedProps: new Set(),
         createProps: new Set(),
         declaredConstructOnly: new Set(),
         isLazy: false,
@@ -196,6 +202,25 @@ const getTypeInfo = (object: object): TypeInfo | undefined => {
 
 const hasProperty = (info: TypeInfo, accessor: string): boolean => Object.hasOwn(info.properties, accessor);
 
+const hasSetter = (object: object, name: string): boolean => {
+    let prototype = Reflect.getPrototypeOf(object);
+
+    while (prototype !== null) {
+        const descriptor = Object.getOwnPropertyDescriptor(prototype, name);
+
+        if (descriptor !== undefined) {
+            return descriptor.set !== undefined;
+        }
+
+        prototype = Reflect.getPrototypeOf(prototype);
+    }
+
+    return false;
+};
+
+const isKnownProp = (info: TypeInfo, object: object, name: string): boolean =>
+    hasProperty(info, name) || hasSetter(object, name);
+
 const isReadableProperty = (info: TypeInfo, accessor: string): boolean =>
     ((info.properties[accessor]?.[FLAGS] ?? 0) & READABLE) !== 0;
 
@@ -209,4 +234,30 @@ const getPropertyName = (object: object, accessor: string): string | undefined =
     );
 };
 
-export { getPropertyName, hasProperty, isReadableProperty, typeInfoFor, type TypeInfo };
+const isSettableEntry = (entry: ElementPropertyEntry): boolean =>
+    (entry[FLAGS] & (WRITABLE | CONSTRUCT_ONLY)) === WRITABLE;
+
+const propertiesAccepting = (parent: object, child: object): string[] => {
+    const info = getTypeInfo(parent);
+    const parentType = getInstanceType(parent);
+    const childType = getInstanceType(child);
+
+    return Object.entries(info?.properties ?? {})
+        .filter(
+            ([accessor, entry]) =>
+                info?.omittedProps.has(accessor) !== true &&
+                isSettableEntry(entry) &&
+                typeIsA(childType, propertyValueType(parentType, entry[NAME])),
+        )
+        .map(([accessor]) => accessor);
+};
+
+export {
+    getPropertyName,
+    hasProperty,
+    isKnownProp,
+    isReadableProperty,
+    propertiesAccepting,
+    typeInfoFor,
+    type TypeInfo,
+};

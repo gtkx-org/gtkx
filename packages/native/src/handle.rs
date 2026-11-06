@@ -1,15 +1,18 @@
 mod boxed;
+mod external_memory;
 mod fundamental;
 mod lease;
 pub(crate) mod surface;
 
 use std::cell::{Cell, RefCell};
+use std::collections::HashMap;
 use std::ffi::c_void;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 pub use boxed::{Boxed, BoxedFreeFn};
+use external_memory::ExternalMemory;
 pub use fundamental::{Fundamental, RefFn, UnrefFn};
 use glib::prelude::{ObjectExt as _, ObjectType as _};
 pub(crate) use lease::{LeaseScope, RecordLease};
@@ -22,12 +25,17 @@ const STRUCT_SIZE_HINT: usize = 256;
 
 pub const INVALIDATED_HANDLE: &str = "the instance a dispose or finalize override receives is only valid until the override returns, and memory a C caller lends to a callback only until that callback returns";
 
+pub const RELEASED_HANDLE: &str =
+    "the value was released early, such as by `$dispose()`, so nothing remains to reach through it";
+
 pub const NULL_HANDLE: &str =
     "the handle points at nothing, so there is no memory to reach through it";
 
 thread_local! {
     static OPEN_BORROW_SCOPES: RefCell<Vec<Rc<RefCell<Vec<Handle>>>>> =
         const { RefCell::new(Vec::new()) };
+    static REFERENCE_HOLDERS: RefCell<HashMap<usize, std::rc::Weak<HandleInner>>> =
+        RefCell::new(HashMap::new());
 }
 
 /// Collects every handle built over memory somebody else owns while the scope is open, so a caller
@@ -148,6 +156,11 @@ impl ObjectLifetime {
     }
 }
 
+/// A flag that turns true once `object` is finalized, which stays readable after its memory is gone.
+pub(crate) fn finalization_flag(object: &glib::Object) -> Arc<AtomicBool> {
+    ObjectLifetime::track(object).0
+}
+
 impl Drop for ObjectLifetime {
     fn drop(&mut self) {
         self.ended.store(true, Ordering::Release);
@@ -197,7 +210,10 @@ struct HandleInner {
     fields: FieldStore,
     pointer_storage: RefCell<Option<(Handle, bool)>>,
     invalidated: Cell<bool>,
+    released: Cell<bool>,
+    record_leases: Cell<usize>,
     allocated_bytes: Cell<Option<usize>>,
+    external_memory: ExternalMemory,
 }
 
 /// A shared reference to one native instance. Cloning shares the same instance, so a value that
@@ -238,7 +254,10 @@ impl From<HandleKind> for Handle {
                 fields: FieldStore::default(),
                 pointer_storage: RefCell::new(None),
                 invalidated: Cell::new(false),
+                released: Cell::new(false),
+                record_leases: Cell::new(0),
                 allocated_bytes: Cell::new(None),
+                external_memory: ExternalMemory::default(),
             }),
         }
     }
@@ -246,7 +265,15 @@ impl From<HandleKind> for Handle {
 
 impl From<Boxed> for Handle {
     fn from(boxed: Boxed) -> Self {
-        HandleKind::Boxed(boxed).into()
+        let holds_references = boxed.type_().is_some_and(|type_| {
+            glib::translate::IntoGlib::into_glib(type_)
+                == unsafe { glib::gobject_ffi::g_value_get_type() }
+        });
+        let handle: Self = HandleKind::Boxed(boxed).into();
+        if holds_references {
+            handle.track_reference_holder();
+        }
+        handle
     }
 }
 
@@ -303,7 +330,7 @@ impl Handle {
 
     pub fn function_ptr(&self) -> anyhow::Result<*mut c_void> {
         self.retain_lease()?;
-        anyhow::ensure!(!self.is_invalidated(), "{INVALIDATED_HANDLE}");
+        anyhow::ensure!(!self.is_invalidated(), "{}", self.ended_reason());
         let HandleKind::Function { ptr, .. } = self.inner.kind else {
             anyhow::bail!("The handle does not reference a native function");
         };
@@ -347,7 +374,7 @@ impl Handle {
     }
 
     pub fn retain_owned(&self) -> anyhow::Result<Self> {
-        anyhow::ensure!(!self.is_invalidated(), "{INVALIDATED_HANDLE}");
+        anyhow::ensure!(!self.is_invalidated(), "{}", self.ended_reason());
         let retained = match &self.inner.kind {
             HandleKind::Object { lent: false, .. } => Self::decoded_gobject(
                 self.acquire_lease()?
@@ -453,6 +480,12 @@ impl Handle {
         self.inner.allocated_bytes.get()
     }
 
+    /// Counts `bytes` of native memory the instance keeps alive toward the garbage collector's
+    /// external memory, until the last clone of this handle is released.
+    pub fn report_external_memory(&self, bytes: i64) -> napi::Result<()> {
+        self.inner.external_memory.add(bytes)
+    }
+
     pub(crate) fn check_range(&self, offset: usize, size: usize) -> anyhow::Result<()> {
         let end = offset
             .checked_add(size)
@@ -512,7 +545,7 @@ impl Handle {
     pub fn decoded_gobject(object: glib::Object) -> Self {
         let ptr = object.as_ptr().cast::<c_void>();
         let (lifetime, weak) = ObjectLifetime::track(&object);
-        HandleKind::Object {
+        let handle: Self = HandleKind::Object {
             ptr: Cell::new(ptr),
             owned: Cell::new(Some(object)),
             lent: false,
@@ -520,7 +553,15 @@ impl Handle {
             weak,
             wrapper: RefCell::new(std::rc::Weak::new()),
         }
-        .into()
+        .into();
+        handle.track_reference_holder();
+        handle
+    }
+
+    fn track_reference_holder(&self) {
+        REFERENCE_HOLDERS.with_borrow_mut(|holders| {
+            holders.insert(Rc::as_ptr(&self.inner) as usize, Rc::downgrade(&self.inner));
+        });
     }
 
     /// A handle over a `GObject` that owns no reference to it, for a pointer the caller only keeps
@@ -556,9 +597,57 @@ impl Handle {
         }
     }
 
+    /// Ends the handle now instead of when JavaScript collects it. An owned boxed value is freed
+    /// through its free function and a borrowed value's borrow ends; either way every later use
+    /// through the handle, or through a field aliasing it, is rejected. Ending a handle that has
+    /// already ended is harmless. A value an operation still in progress is using is refused, as
+    /// is any other kind of handle, whose lifetime stays with the garbage collector.
+    pub fn release(&self) -> anyhow::Result<()> {
+        if self.is_invalidated() {
+            return Ok(());
+        }
+
+        anyhow::ensure!(
+            self.inner.record_leases.get() == 0,
+            "A value that a native operation still in progress is using cannot be released"
+        );
+
+        match &self.inner.kind {
+            HandleKind::Boxed(boxed) => {
+                self.inner.released.set(true);
+                boxed.free();
+            }
+            HandleKind::Borrowed(_) => self.inner.released.set(true),
+            _ => anyhow::bail!(
+                "Only a boxed or borrowed value can be released early; this handle is released when it is collected"
+            ),
+        }
+
+        self.inner.external_memory.release();
+
+        Ok(())
+    }
+
+    /// Why an ended handle can no longer be used: released early on request, or its borrow over.
+    #[must_use]
+    pub fn ended_reason(&self) -> &'static str {
+        if self.inner.released.get() {
+            return RELEASED_HANDLE;
+        }
+
+        match &self.inner.kind {
+            HandleKind::Field { owner, .. }
+            | HandleKind::Pointer { owner, .. }
+            | HandleKind::Function {
+                owner: Some(owner), ..
+            } => owner.ended_reason(),
+            _ => INVALIDATED_HANDLE,
+        }
+    }
+
     #[must_use]
     pub fn is_invalidated(&self) -> bool {
-        if self.inner.invalidated.get() {
+        if self.inner.invalidated.get() || self.inner.released.get() {
             return true;
         }
 
@@ -688,7 +777,7 @@ impl Handle {
     }
 
     pub(crate) fn acquire_lease(&self) -> anyhow::Result<Option<glib::Object>> {
-        anyhow::ensure!(!self.is_invalidated(), "{INVALIDATED_HANDLE}");
+        anyhow::ensure!(!self.is_invalidated(), "{}", self.ended_reason());
         match &self.inner.kind {
             HandleKind::Object { lent: true, .. } => Ok(None),
             HandleKind::Object {
@@ -738,9 +827,9 @@ impl Handle {
     }
 
     pub(crate) fn acquire_record_lease(&self) -> anyhow::Result<Option<RecordLease>> {
-        anyhow::ensure!(!self.is_invalidated(), "{INVALIDATED_HANDLE}");
+        anyhow::ensure!(!self.is_invalidated(), "{}", self.ended_reason());
         match &self.inner.kind {
-            HandleKind::Struct { .. } => Ok(Some(RecordLease::new(self))),
+            HandleKind::Struct { .. } | HandleKind::Boxed(_) => Ok(Some(RecordLease::new(self))),
             HandleKind::Field { owner, .. }
             | HandleKind::Pointer { owner, .. }
             | HandleKind::Function {
@@ -798,6 +887,39 @@ impl Handle {
             | HandleKind::Pointer { .. }
             | HandleKind::Function { .. }
             | HandleKind::CallbackData { .. } => 0,
+        }
+    }
+}
+
+impl Drop for HandleInner {
+    fn drop(&mut self) {
+        if matches!(self.kind, HandleKind::Object { .. } | HandleKind::Boxed(_)) {
+            let key = std::ptr::from_ref(self) as usize;
+            let _ = REFERENCE_HOLDERS.try_with(|holders| holders.borrow_mut().remove(&key));
+        }
+    }
+}
+
+/// Drops the object references that handles only JavaScript holds still keep: the reference an
+/// object handle owns, such as the one a decoded return value leaves for garbage collection when
+/// its object already has a wrapper, and the contents of a `GObject.Value`, which is freed. An
+/// object handle stays usable while its object lives; a freed value's handle reports it released.
+pub(crate) fn release_unshared_reference_holders() {
+    let handles: Vec<_> = REFERENCE_HOLDERS.with_borrow(|holders| {
+        holders
+            .values()
+            .filter_map(std::rc::Weak::upgrade)
+            .collect()
+    });
+    for inner in handles {
+        if Rc::strong_count(&inner) != 2 {
+            continue;
+        }
+        let handle = Handle { inner };
+        if matches!(handle.inner.kind, HandleKind::Boxed(_)) {
+            let _ = handle.release();
+        } else {
+            handle.release_owned();
         }
     }
 }

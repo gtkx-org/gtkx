@@ -13,15 +13,19 @@ const signalEmit: typeof signalEmitImpl = signalEmitImpl;
 
 const retainWrapperClasses = (wrappers: readonly unknown[]): readonly unknown[] => wrappers;
 
-type SignalMethodReceiver<T, K extends PropertyKey> = T extends {
-    [naturalSignalMember]?: infer TMembers;
-}
-    ? K extends keyof NonNullable<TMembers>
-        ? never
-        : unknown
-    : unknown;
+type SignalMethodMember = "connect" | "disconnect" | "emit" | "off" | "on" | "once";
+
+/**
+ * `unknown` when the receiver's type keeps the signal method `K`, and the natural member's brand
+ * when a GIR method of that name replaces it. It is an indexed access rather than a conditional
+ * type so it also resolves for the polymorphic `this` of a subclass body.
+ */
+type SignalMethodReceiver<T, K extends SignalMethodMember> = NonNullable<
+    (T & { [naturalSignalMember]?: Record<SignalMethodMember, unknown> })[typeof naturalSignalMember]
+>[K];
 
 export { preserveArrayNull } from "./descriptors.js";
+export { registerGeneratedClasses } from "./dropped-classes.js";
 /** @internal */
 export { registerElementMetadata } from "./element-metadata.js";
 export {
@@ -34,10 +38,23 @@ export { fixedArrayEntries } from "./field.js";
 export { markSyntheticSignalMembers };
 export { getObjectProperty, getProperty, registerConstructFactory, setProperty } from "./object.js";
 export { getParamSpecFlags, getParamSpecOwnerType, getParamSpecValueType } from "./param-spec.js";
-export { newParamSpecOverride } from "./properties.js";
+export {
+    getObjectPropertyDefault,
+    newParamSpecOverride,
+    propertyValueType,
+    registerInterfacePropertyTarget,
+} from "./properties.js";
 export { propertyWriteComplete } from "./property-brand.js";
 export type { DescriptorFreePropertySpec } from "./property-brand.js";
-export type { Camelized, Dashed, ReadableProperties, WritableProperties } from "./property-types.js";
+export type {
+    BindingTransform,
+    Camelized,
+    Dashed,
+    ReadableProperties,
+    ReadablePropertyValue,
+    WritableProperties,
+    WritablePropertyValue,
+} from "./property-types.js";
 export { createRegexBindings } from "./regex.js";
 export { getExactWrapperClass, getVfuncRegistry, peekTypeClass, resolveWrapperClass } from "./registry.js";
 export type { SignalMethodReceiver };
@@ -51,12 +68,14 @@ export {
     type SignalEmitArguments,
     type SignalEmitName,
     type SignalEmitResult,
+    type SignalHandlerFor,
     type SignalHandlerId,
     type SignalMap,
     type SignalName,
 } from "./signal.js";
 export { retainWrapperClasses };
-export { fromValue, getBoxedValue, getValueType, setBoxedValue, toValue } from "./value.js";
+export { defineEnumType, defineStatics } from "./statics.js";
+export { fromValue, getBoxedValue, getValueType, intoValue, setBoxedValue, toValue } from "./value.js";
 export { registerClassOption } from "./class-options.js";
 export {
     connectNativeSignal,
@@ -67,5 +86,5 @@ export {
 } from "./native-lifetime.js";
 export { initializeWrapper } from "./wrapper-brand.js";
 export { keepAlive } from "./keep-alive.js";
-export { setWrapperBorrow } from "./native.js";
+export { releaseHandle, reportExternalMemory, setWrapperBorrow } from "./native.js";
 export { resolveFunction } from "./native-bindings.js";

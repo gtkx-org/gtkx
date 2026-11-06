@@ -20,6 +20,7 @@ const READY_SUBJECT = "the exit fixture";
 const EXIT_MARKER = "ONEXIT RAN";
 const READY_TIMEOUT_MS = 20_000;
 const HANDLED_EXIT_CODE = 7;
+const CLOSE_TIMEOUT_MS = 20_000;
 
 const waitForClose = (child: ChildProcess): Promise<SignalledExit> =>
     new Promise<SignalledExit>((resolve) => {
@@ -52,6 +53,21 @@ const runUntilSignalled = async (signal: NodeJS.Signals, mode?: string): Promise
     }
 };
 
+const runToCompletion = async (mode: string): Promise<SignalledRun> => {
+    const child = spawn(process.execPath, [...FIXTURE_ARGS, mode], { stdio: ["ignore", "pipe", "pipe"] });
+    const read = collectOutput(child);
+    const timer = setTimeout(() => {
+        child.kill("SIGKILL");
+    }, CLOSE_TIMEOUT_MS);
+
+    try {
+        const exit = await waitForClose(child);
+        return { output: read(), ...exit };
+    } finally {
+        clearTimeout(timer);
+    }
+};
+
 describe("onExit for a process stopped by a signal", () => {
     it("runs the registered callbacks on SIGINT, then dies of the signal", async () => {
         const run = await runUntilSignalled("SIGINT");
@@ -69,5 +85,14 @@ describe("onExit for a process stopped by a signal", () => {
         const run = await runUntilSignalled("SIGTERM", "handled");
         expect(run.code).toBe(HANDLED_EXIT_CODE);
         expect(run.output).toContain(EXIT_MARKER);
+    });
+});
+
+describe("a process ended by native code", () => {
+    it("exits with the native status when a native call exits the process", async () => {
+        const run = await runToCompletion("native-exit");
+        expect(run.output).toContain("--help-gapplication");
+        expect(run.output).not.toContain("panic");
+        expect(run.code).toBe(0);
     });
 });

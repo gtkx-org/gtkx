@@ -7,7 +7,11 @@ import { type Callables, dedupeCallables, generateBindings, renderPlainTypeMembe
 import { getDoc } from "./doc-spec.js";
 import { declareFoldedClass, localClassName } from "./folded.js";
 import { renderSourceGtype } from "./gtype-binding.js";
-import { renderRecordConstructor, renderRecordConstructorPropsInterface } from "./record-constructor.js";
+import {
+    delegatedRecordConstructor,
+    renderRecordConstructor,
+    renderRecordConstructorPropsInterface,
+} from "./record-constructor.js";
 import { renderRecordFieldAccessor } from "./record-field-accessor.js";
 import { computeRecordFieldSlots } from "./record-layout.js";
 import { appendWrapperClassRegistration } from "./registration.js";
@@ -39,7 +43,10 @@ const recordHeritage = (context: ModuleContext, isErrorSubclass: boolean): strin
     return ` extends ${base}`;
 };
 
-const recordModifier = (isConstructible: boolean): string => (isConstructible ? "" : "abstract ");
+const recordModifier = (context: ModuleContext, record: GirRecord, isConstructible: boolean): string =>
+    isConstructible || delegatedRecordConstructor(context, context.namespace.name, record) !== undefined
+        ? ""
+        : "abstract ";
 
 const declareFoldedRecord = (context: ModuleContext, options: FoldedRecordOptions): void => {
     const { record, className, doc, modifier, heritage, body, gtypeExpr } = options;
@@ -81,7 +88,7 @@ const generateRecord = (context: ModuleContext, record: GirRecord): void => {
     const heritage = recordHeritage(context, isErrorSubclass);
     const doc = getDoc(record);
     const isConstructible = isConstructibleRecord(context, context.namespace.name, record);
-    const modifier = recordModifier(isConstructible);
+    const modifier = recordModifier(context, record, isConstructible);
     const gtypeExpr = renderSourceGtype(context, record);
 
     if (gtypeExpr === undefined) {

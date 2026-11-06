@@ -9,6 +9,7 @@ import { resolveBoundLibraries } from "@gtkx/codegen/internal";
 
 type ResolvedLibraries = {
     libraries: string[];
+    sharedLibraries: Record<string, string[]>;
     minimumLibraryVersions: Record<string, string>;
 };
 
@@ -22,11 +23,14 @@ const generatedLibraries = (root: string): GeneratedLibraries | null => {
 
 const resolveLibraries = (root: string, config: Config): ResolvedLibraries => {
     const generated = generatedLibraries(root);
-    const libraries = resolveBoundLibraries(generated?.libraries ?? expandLibraries(config.libraries));
+    const libraries = resolveBoundLibraries(
+        (config.codegen === false ? generated?.libraries : undefined) ?? expandLibraries(config.libraries),
+    );
     const deploy = config.deploy ?? {};
 
     return {
         libraries,
+        sharedLibraries: generated?.sharedLibraries ?? {},
         minimumLibraryVersions: deploy.minimumLibraryVersions ?? {},
     };
 };

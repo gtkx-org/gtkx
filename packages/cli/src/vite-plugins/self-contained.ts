@@ -1,7 +1,7 @@
-import type { Plugin } from "vite";
+import type { Plugin, Rollup } from "vite";
 import { type NodePath, parseSync, type Scope, traverse } from "@babel/core";
 import { isBuiltin } from "node:module";
-import { posix } from "node:path";
+import { posix, relative } from "node:path";
 
 type BindingKind = "factory" | "module" | "require";
 
@@ -264,11 +264,48 @@ const unreachableSpecifiers = (chunk: Chunk, emitted: Set<string>): string[] => 
         .toSorted((left, right) => left.localeCompare(right));
 };
 
-const assertSelfContained = (chunk: Chunk, emitted: Set<string>): void => {
+type UnresolvedImport = {
+    importer: string;
+    specifier: string;
+};
+
+const findUnresolvedImport = async (
+    ctx: Rollup.PluginContext,
+    moduleIds: string[],
+    specifiers: string[],
+): Promise<UnresolvedImport | null> => {
+    for (const importer of moduleIds) {
+        const info = ctx.getModuleInfo(importer);
+        const imported = [...(info?.importedIds ?? []), ...(info?.dynamicallyImportedIds ?? [])];
+
+        for (const specifier of imported.filter((id) => specifiers.includes(id))) {
+            if ((await ctx.resolve(specifier, importer)) === null) {
+                return { importer, specifier };
+            }
+        }
+    }
+
+    return null;
+};
+
+const assertSelfContained = async (
+    ctx: Rollup.PluginContext,
+    root: string,
+    chunk: Rollup.OutputChunk,
+    emitted: Set<string>,
+): Promise<void> => {
     const specifiers = unreachableSpecifiers(chunk, emitted);
 
     if (specifiers.length === 0) {
         return;
+    }
+
+    const unresolved = await findUnresolvedImport(ctx, chunk.moduleIds, specifiers);
+
+    if (unresolved !== null) {
+        throw new Error(
+            `${relative(root, unresolved.importer)} imports ${unresolved.specifier}, which cannot be resolved. Install the package that provides it or correct the import.`,
+        );
     }
 
     throw new Error(
@@ -281,17 +318,17 @@ const assertSelfContained = (chunk: Chunk, emitted: Set<string>): void => {
     );
 };
 
-function gtkxSelfContained(): Plugin {
+function gtkxSelfContained(root: string): Plugin {
     return {
         name: "gtkx:self-contained",
         apply: "build",
 
-        generateBundle(_options, bundle) {
+        async generateBundle(_options, bundle) {
             const emitted = new Set(Object.keys(bundle));
 
             for (const output of Object.values(bundle)) {
                 if (output.type === "chunk") {
-                    assertSelfContained({ fileName: output.fileName, code: output.code }, emitted);
+                    await assertSelfContained(this, root, output, emitted);
                 }
             }
         },

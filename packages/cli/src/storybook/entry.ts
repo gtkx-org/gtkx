@@ -1,22 +1,45 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 
+const STORYBOOK_APPLICATION_ID_SUFFIX = ".Storybook";
+
+const storybookApplicationId = (applicationId: string): string => `${applicationId}${STORYBOOK_APPLICATION_ID_SUFFIX}`;
+
+const assertStorybookInstalled = (root: string): void => {
+    try {
+        createRequire(resolve(root, "package.json")).resolve("@gtkx/storybook/package.json");
+    } catch (error) {
+        throw new Error(
+            "gtkx storybook needs @gtkx/storybook, which is not installed in this project. " +
+                "Add it as a development dependency at the same version as @gtkx/cli, then run gtkx storybook again.",
+            { cause: error },
+        );
+    }
+};
+
 const createStorybookEntry = (root: string): string => {
-    createRequire(resolve(root, "package.json")).resolve("@gtkx/storybook/package.json");
     const path = resolve(root, ".gtkx/storybook-entry.ts");
+    const selectionPath = resolve(root, ".gtkx/storybook-selection");
     const source = [
+        'import { existsSync, readFileSync, writeFileSync } from "node:fs";',
         'import { startStorybook } from "@gtkx/storybook/explorer";',
         'import { applicationId } from "virtual:gtkx-config";',
-        "const explorer = startStorybook({ applicationId });",
+        `const selectionPath = ${JSON.stringify(selectionPath)};`,
+        "const explorer = startStorybook({",
+        `    applicationId: applicationId + ${JSON.stringify(STORYBOOK_APPLICATION_ID_SUFFIX)},`,
+        '    initialStoryId: existsSync(selectionPath) ? readFileSync(selectionPath, "utf8") : undefined,',
+        "    onStorySelected: (id) => writeFileSync(selectionPath, id),",
+        "});",
         "export const updateStories = explorer.updateStories;",
         "export const reportStorybookError = explorer.reportStorybookError;",
         "",
     ].join("\n");
     mkdirSync(dirname(path), { recursive: true });
+    rmSync(selectionPath, { force: true });
     writeFileSync(path, source);
 
     return path;
 };
 
-export { createStorybookEntry };
+export { assertStorybookInstalled, createStorybookEntry, storybookApplicationId };

@@ -1,6 +1,7 @@
 import { sanitizeTypeIdentifier, sortStringsBy } from "@gtkx/utils";
 import type { GirAnnotations } from "../gir/annotations.js";
 import type { GirClass } from "../gir/class.js";
+import { enumMemberKey } from "../gir/enum.js";
 import type { GirFunction } from "../gir/function.js";
 import type { Library } from "../gir/library.js";
 import type { GirNamespace } from "../gir/namespace.js";
@@ -40,14 +41,29 @@ type SignatureEntry = {
 
 type OriginSignatureEntry = SignatureEntry & { origin: string | undefined };
 
+type SectionMember = {
+    name: string;
+    summary: string;
+    block: string;
+    origin: string | undefined;
+};
+
+type PageSection = {
+    title: string;
+    intro: string;
+    members: SectionMember[];
+};
+
 type MetaDocEntry = {
     name: string;
     meta: string;
     doc: string;
     tags?: JsDocSpec | undefined;
+    origin?: string | undefined;
 };
 
 type PropertyMetaOptions = {
+    library: Library;
     type: string;
     property: GirProperty;
     accessNotes: string[];
@@ -64,6 +80,7 @@ type StaticSectionOptions = {
 };
 
 const DOCS_DEFAULT_VALUES: Record<string, string> = { TRUE: "true", FALSE: "false", NULL: "null" };
+const DECIMAL_LITERAL = /^-?\d+\.\d+$/;
 const HEADING_LINE = /^#{1,5}\s/;
 const LEADING_NAMESPACES = ["Adw", "Gtk"];
 const DOCS_SIGNATURE_NAMESPACE = "$docs";
@@ -109,7 +126,27 @@ const renderDocsSignalSignature = (library: Library, signal: GirCallable, selfTy
 const renderDocsSignalHandlerType = (library: Library, signal: GirCallable): string =>
     `(${renderDocsHandlerParameters(library, signal).join(", ")}) => ${renderDocsHandlerResultType(library, signal)}`;
 
-const docsDefaultValue = (value: string): string => DOCS_DEFAULT_VALUES[value] ?? value;
+const enumDefaultValue = (library: Library, property: GirProperty, value: string): string | undefined => {
+    const resolved = property.type === undefined ? undefined : library.typeFor(property.type);
+
+    if (resolved?.kind !== "enum") {
+        return undefined;
+    }
+
+    const typeName = renderDocsType(library, property.type, false);
+    const members = value
+        .split("|")
+        .map((identifier) => resolved.value.members.find((member) => member.cIdentifier === identifier.trim()));
+
+    return members.every((member) => member !== undefined)
+        ? members.map((member) => `${typeName}.${enumMemberKey(member.name)}`).join(" | ")
+        : undefined;
+};
+
+const docsDefaultValue = (library: Library, property: GirProperty, value: string): string =>
+    enumDefaultValue(library, property, value) ??
+    DOCS_DEFAULT_VALUES[value] ??
+    (DECIMAL_LITERAL.test(value) ? String(Number(value)) : value);
 
 const demoteLine = (line: string, isInFence: boolean): { text: string; isInFence: boolean } => {
     if (isFenceLine(line)) {
@@ -167,8 +204,8 @@ const plainText = (doc: string | undefined): string => stripMarkdown(docMarkdown
 const callableDocMarkdown = (doc: string | undefined, note: string | undefined): string =>
     [docMarkdown(doc), note ?? ""].filter((text) => text.length > 0).join("\n\n");
 
-const firstSentence = (doc: string | undefined): string => {
-    const text = plainText(doc);
+const markdownSummary = (markdown: string): string => {
+    const text = stripMarkdown(markdown);
 
     if (text.length === 0) {
         return "";
@@ -179,6 +216,8 @@ const firstSentence = (doc: string | undefined): string => {
 
     return sentence.length > 220 ? `${sentence.slice(0, 217)}...` : sentence;
 };
+
+const firstSentence = (doc: string | undefined): string => markdownSummary(docMarkdown(doc));
 
 const elementSlug = (className: string): string =>
     className
@@ -272,14 +311,31 @@ const metaBlock = (entry: MetaDocEntry): string => {
     return lines.join("\n");
 };
 
-const sortedMetaBlocks = (entries: MetaDocEntry[]): string[] =>
-    sortStringsBy(entries, (item) => item.name).map((item) => metaBlock(item));
+const sectionMember = <Entry extends { name: string; doc: string; origin?: string | undefined }>(
+    entry: Entry,
+    render: (entry: Entry) => string,
+): SectionMember => ({
+    name: entry.name,
+    summary: markdownSummary(entry.doc),
+    block: render(entry),
+    origin: entry.origin,
+});
 
-const propertyMetaLine = ({ type, property, accessNotes, origin }: PropertyMetaOptions): string => {
+const metaMembers = (entries: MetaDocEntry[]): SectionMember[] =>
+    sortStringsBy(entries, (item) => item.name).map((item) => sectionMember(item, metaBlock));
+
+const sortedMetaBlocks = (entries: MetaDocEntry[]): string[] => metaMembers(entries).map((member) => member.block);
+
+const sectionBlocks = (section: PageSection): string[] =>
+    section.members.length === 0
+        ? []
+        : [section.title, section.intro, ...section.members.map((member) => member.block)];
+
+const propertyMetaLine = ({ library, type, property, accessNotes, origin }: PropertyMetaOptions): string => {
     const meta = [`\`${type}\``];
 
     if (property.defaultValue !== undefined) {
-        meta.push(`default \`${docsDefaultValue(property.defaultValue)}\``);
+        meta.push(`default \`${docsDefaultValue(library, property, property.defaultValue)}\``);
     }
 
     if (property.constructOnly) {
@@ -330,7 +386,12 @@ const staticEntry = (options: StaticSectionOptions, callable: GirFunction): Sign
     };
 };
 
-const staticSectionBlocks = (options: StaticSectionOptions): string[] => {
+const signatureMembers = (entries: SignatureEntry[]): SectionMember[] =>
+    sortStringsBy(entries, (item) => item.name).map((item) =>
+        sectionMember(item, (entry) => signatureEntryBlock(entry)),
+    );
+
+const staticSection = (options: StaticSectionOptions): PageSection => {
     const entries: SignatureEntry[] = [];
 
     for (const callable of dedupeCallables(options.callables)) {
@@ -341,14 +402,10 @@ const staticSectionBlocks = (options: StaticSectionOptions): string[] => {
         }
     }
 
-    if (entries.length === 0) {
-        return [];
-    }
-
-    const blocks = sortStringsBy(entries, (item) => item.name).map((item) => signatureEntryBlock(item));
-
-    return [options.title, options.intro, ...blocks];
+    return { title: options.title, intro: options.intro, members: signatureMembers(entries) };
 };
+
+const staticSectionBlocks = (options: StaticSectionOptions): string[] => sectionBlocks(staticSection(options));
 
 const namespaceOrder = (name: string): string => {
     const index = LEADING_NAMESPACES.indexOf(name);
@@ -359,10 +416,15 @@ const namespaceOrder = (name: string): string => {
 const docsSignatureContext = (namespace: GirNamespace, library: Library): ModuleContext =>
     new DocsSignatureContext({ ...namespace, name: DOCS_SIGNATURE_NAMESPACE }, library);
 
-const originSignatureBlocks = (entries: OriginSignatureEntry[]): string[] =>
+const originSignatureMembers = (entries: OriginSignatureEntry[]): SectionMember[] =>
     sortStringsBy(entries, (item) => item.name).map((item) =>
-        signatureEntryBlock(item, item.origin === undefined ? [] : [`From \`${item.origin}\`.`]),
+        sectionMember(item, (entry) =>
+            signatureEntryBlock(entry, entry.origin === undefined ? [] : [`From \`${entry.origin}\`.`]),
+        ),
     );
+
+const originSignatureBlocks = (entries: OriginSignatureEntry[]): string[] =>
+    originSignatureMembers(entries).map((member) => member.block);
 
 const qualifiedClassName = (namespaceName: string, className: string): string =>
     `${namespaceName}.${sanitizeTypeIdentifier(className)}`;
@@ -421,6 +483,11 @@ export {
     docMarkdown,
     firstSentence,
     elementSlug,
+    metaMembers,
+    originSignatureMembers,
+    sectionBlocks,
+    signatureMembers,
+    staticSection,
     implementsLine,
     joinSections,
     plainText,
@@ -439,4 +506,6 @@ export {
     type MetaDocEntry,
     type SignatureEntry,
     type OriginSignatureEntry,
+    type PageSection,
+    type SectionMember,
 };

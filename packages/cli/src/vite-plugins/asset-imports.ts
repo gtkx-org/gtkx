@@ -27,8 +27,6 @@ const URL_QUERY = "?url";
 const DEFAULT_BINDING = "default";
 const RESOURCE_BINDING = JSON.stringify(RESOURCE_PATH_EXPORT);
 
-const QUERY_ADVICE = `A URL asset exports only its default filesystem path; import the default instead of ${RESOURCE_BINDING}.`;
-
 const RESOURCE_ADVICE = `A resource asset exports only its default GResource path and ${RESOURCE_BINDING}, and nothing else.`;
 
 const ICON_ADVICE = "An icon asset exports only its default icon-theme name, and nothing else.";
@@ -55,20 +53,29 @@ const importBindings = (statement: ImportStatement): NamedBinding[] =>
         .filter((name) => name !== null)
         .map((name) => ({ name, source: statement.moduleRequest.value }));
 
-const exportBinding = (entry: ExportEntry): NamedBinding | null => {
-    const name = boundName(entry);
-    const source = entry.moduleRequest?.value;
+const exportBinding = (entry: ExportEntry, importedRequests: Set<number>): NamedBinding | null => {
+    const request = entry.moduleRequest;
 
-    return name === null || source === undefined ? null : { name, source };
+    if (request === null || importedRequests.has(request.start)) {
+        return null;
+    }
+
+    const name = boundName(entry);
+
+    return name === null ? null : { name, source: request.value };
 };
 
-const exportBindings = (statement: ExportStatement): NamedBinding[] =>
-    statement.entries.map((entry) => exportBinding(entry)).filter((binding) => binding !== null);
+const exportBindings = (statement: ExportStatement, importedRequests: Set<number>): NamedBinding[] =>
+    statement.entries.map((entry) => exportBinding(entry, importedRequests)).filter((binding) => binding !== null);
 
-const bindings = (parsed: ParsedModule): NamedBinding[] => [
-    ...parsed.staticImports.flatMap((statement) => importBindings(statement)),
-    ...parsed.staticExports.flatMap((statement) => exportBindings(statement)),
-];
+const bindings = (parsed: ParsedModule): NamedBinding[] => {
+    const importedRequests = new Set(parsed.staticImports.map((statement) => statement.moduleRequest.start));
+
+    return [
+        ...parsed.staticImports.flatMap((statement) => importBindings(statement)),
+        ...parsed.staticExports.flatMap((statement) => exportBindings(statement, importedRequests)),
+    ];
+};
 
 const isBacked = ({ name, source }: NamedBinding): boolean => {
     if (name !== RESOURCE_PATH_EXPORT) {
@@ -83,7 +90,7 @@ const isCheckedSpecifier = (source: string): boolean => isAssetSpecifier(source)
 const unbackedBinding = (parsed: ParsedModule): NamedBinding | undefined =>
     bindings(parsed).find((binding) => isCheckedSpecifier(binding.source) && !isBacked(binding));
 
-const adviceFor = (source: string): string => {
+const adviceFor = ({ name, source }: NamedBinding): string => {
     if (parseResourceSpecifier(source) !== null) {
         return RESOURCE_ADVICE;
     }
@@ -97,7 +104,7 @@ const adviceFor = (source: string): string => {
     }
 
     if (isUrlSpecifier(source)) {
-        return QUERY_ADVICE;
+        return `A URL asset exports only its default filesystem path; import the default instead of ${JSON.stringify(name)}.`;
     }
 
     return RELATIVE_ADVICE;
@@ -107,7 +114,7 @@ const unbackedBindingError = (path: string, binding: NamedBinding): Error =>
     new Error(
         `${path}: ${JSON.stringify(binding.source)} does not export ${JSON.stringify(binding.name)}, which ` +
             "gtkx build rejects and gtkx dev would bind as undefined. " +
-            adviceFor(binding.source),
+            adviceFor(binding),
     );
 
 const isCheckedSource = (path: string): boolean => !path.startsWith(VIRTUAL_PREFIX) && !NODE_MODULES.test(path);

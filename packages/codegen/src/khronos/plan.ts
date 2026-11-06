@@ -21,7 +21,7 @@ type ParamPlan =
     | { kind: "sync" }
     | { kind: "string-in" }
     | { kind: "string-array-in" }
-    | { kind: "array-in"; scalar: GlScalar }
+    | { kind: "array-in"; scalar: GlScalar; isNullable: boolean }
     | { kind: "ref-out"; scalar: GlScalar }
     | { kind: "ref-array-out"; scalar: GlScalar; lenParamName: string }
     | { kind: "ref-fixed-out"; scalar: GlScalar; length: number }
@@ -182,6 +182,16 @@ const planCharParam = (command: GlCommand, param: GlParam, parsed: ParsedCType):
     return { reason: "unsupported-shape" };
 };
 
+const isStringArray = (param: GlParam): boolean => {
+    const parsed = parseCType(param.cType);
+
+    return (parsed.base === GL_CHAR || parsed.base === "GLcharARB") && parsed.pointers === 2 && parsed.isConstData;
+};
+
+const isStringLengths = (command: GlCommand, param: GlParam): boolean =>
+    param.len !== undefined &&
+    command.params.some((other) => other !== param && other.len === param.len && isStringArray(other));
+
 const planScalarParam = (
     command: GlCommand,
     param: GlParam,
@@ -199,7 +209,7 @@ const planScalarParam = (
     }
 
     if (parsed.pointers === 1 && parsed.isConstData) {
-        return { plan: { kind: "array-in", scalar } };
+        return { plan: { kind: "array-in", scalar, isNullable: isStringLengths(command, param) } };
     }
 
     if (parsed.pointers === 1) {

@@ -1,5 +1,7 @@
 import * as GObject from "@gtkx/gi/gobject";
+import { getInstanceType, typeName } from "@gtkx/runtime";
 import { runInAct } from "./act.js";
+import { usageError } from "./usage-error.js";
 
 /**
  * A signal emission built but not yet delivered. GObject has no event object to construct, so this
@@ -16,7 +18,7 @@ type WidgetEvent = {
 
 const requireObject = (target: object): GObject.Object => {
     if (!(target instanceof GObject.Object)) {
-        throw new TypeError("Expected a GObject instance");
+        throw usageError(new TypeError("Expected a GObject instance"));
     }
 
     return target;
@@ -41,8 +43,21 @@ const createEvent = (
     args,
 });
 
+const requireSignal = (target: GObject.Object, signalName: string): void => {
+    const [isKnown] = GObject.signalParseName(signalName, getInstanceType(target), false);
+
+    if (!isKnown) {
+        throw usageError(
+            new TypeError(
+                `Unable to fire an event: ${typeName(getInstanceType(target)) ?? "the object"} has no signal "${signalName}"`,
+            ),
+        );
+    }
+};
+
 const dispatchEvent = async (event: WidgetEvent): Promise<void> => {
     const target = requireObject(event.target);
+    requireSignal(target, event.signalName);
 
     await runInAct(() => {
         Reflect.apply(GObject.signalEmit, undefined, [target, event.signalName, ...event.args]);
@@ -83,7 +98,7 @@ function fireEvent(
     }
 
     if (signalName === undefined) {
-        throw new Error("Unable to fire an event: pass a signal name, or an event built by createEvent.");
+        throw usageError(new Error("Unable to fire an event: pass a signal name, or an event built by createEvent."));
     }
 
     const target = requireObject(eventOrTarget);

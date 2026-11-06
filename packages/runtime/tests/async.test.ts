@@ -1,4 +1,13 @@
-import { promisify, trimFinish } from "@gtkx/runtime";
+import {
+    createErrorDomain,
+    getHandle,
+    promisify,
+    read,
+    registerWrapperClass,
+    resolveType,
+    t,
+    trimFinish,
+} from "@gtkx/runtime";
 import { runInNewContext } from "node:vm";
 import { expect, test } from "vitest";
 
@@ -31,6 +40,31 @@ test("finish failures reject the operation without losing the original error", a
     );
 
     await expect(result).rejects.toBe(error);
+});
+
+class NativeError extends Error {
+    get domain(): number {
+        return read(getHandle(this), t.uint32, 0) as number;
+    }
+
+    get code(): number {
+        return read(getHandle(this), t.int32, 4) as number;
+    }
+}
+
+test("finish failures reject with the native GError and its domain", async () => {
+    registerWrapperClass(NativeError, resolveType("libgobject-2.0.so.0", "g_error_get_type"));
+    const regexQuark = t.bind("libglib-2.0.so.0", "g_regex_error_quark", [], t.uint32);
+    const RegexError = createErrorDomain(() => regexQuark() as number, { COMPILE: 0 });
+    const compileRegex = t.fn("libglib-2.0.so.0", "g_regex_new", {
+        args: [{ type: t.string() }, { type: t.int32 }, { type: t.int32 }],
+        returns: t.struct("full", { sharedLibrary: "libglib-2.0.so.0", freeFnName: "g_regex_unref" }),
+        canThrow: true,
+    });
+    const result = promisify(operation, () => compileRegex("(", 0, 0), null);
+
+    await expect(result).rejects.toBeInstanceOf(NativeError);
+    await expect(result).rejects.toBeInstanceOf(RegexError);
 });
 
 test("finish failures preserve errors and their causes across realms", async () => {

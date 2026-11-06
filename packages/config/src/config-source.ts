@@ -33,16 +33,20 @@ const isDirectoryConfigSource = (source: string): boolean => {
     return extension.length === 0 || extension === basename(source);
 };
 
-const localConfigSourcePath = (source: string, options: ConfigResolutionOptions): string | undefined => {
+const localConfigSourcePaths = (source: string, options: ConfigResolutionOptions): string[] => {
     if (source === "." || !isLocalConfigSource(source)) {
-        return undefined;
+        return [];
     }
 
-    const cwd = options.cwd ?? process.cwd();
+    const path = resolve(options.cwd ?? process.cwd(), source);
 
-    return isDirectoryConfigSource(source)
-        ? resolve(cwd, source, options.configFile ?? "gtkx.config")
-        : resolve(cwd, source);
+    if (!isDirectoryConfigSource(source)) {
+        return [path];
+    }
+
+    return options.configFile === undefined || options.configFile === CONFIG_LOCATIONS[0]
+        ? configCandidatePaths(path)
+        : [join(path, options.configFile)];
 };
 
-export { configCandidatePaths, configSourceCandidates, localConfigSourcePath, type ConfigResolutionOptions };
+export { configCandidatePaths, configSourceCandidates, localConfigSourcePaths, type ConfigResolutionOptions };

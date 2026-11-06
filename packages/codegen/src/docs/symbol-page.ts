@@ -1,8 +1,9 @@
 import { sanitizeTypeIdentifier, sortStringsBy, upperFirst } from "@gtkx/utils";
+import type { ApiMemberKind } from "./api-reference.js";
 import type { GirAnnotations } from "../gir/annotations.js";
 import type { GirCallback } from "../gir/callback.js";
 import type { GirClass } from "../gir/class.js";
-import type { EnumMember, GirEnum } from "../gir/enum.js";
+import { type EnumMember, enumMemberKey, type GirEnum } from "../gir/enum.js";
 import type { GirFunction } from "../gir/function.js";
 import type { Library } from "../gir/library.js";
 import type { GirRecord } from "../gir/record.js";
@@ -22,9 +23,9 @@ import {
     renderStaticSignature,
 } from "../store/gi/callables.js";
 import { callbackSignature } from "../store/gi/callback.js";
+import { enumStaticFunctions } from "../store/gi/function.js";
 import { constantLiteral } from "../store/gi/constant.js";
 import { annotationSpec } from "../store/gi/doc-spec.js";
-import { enumMemberKey } from "../store/gi/enum.js";
 import {
     methodExportName,
     renderMethodReturnType,
@@ -32,6 +33,7 @@ import {
     renderPromisifiedSignature,
 } from "../store/gi/method.js";
 import { resolveAccessor, type ResolvedAccessor, resolvePropertyMetadata } from "../store/gi/property-accessor.js";
+import { delegatedRecordConstructor } from "../store/gi/record-constructor.js";
 import { resolveRecordFieldEntry } from "../store/gi/record-field-accessor.js";
 import { computeRecordFieldSlots } from "../store/gi/record-layout.js";
 import { vfuncEntries } from "../store/gi/vtable.js";
@@ -47,9 +49,11 @@ import {
     implementsLine,
     joinSections,
     type MetaDocEntry,
-    methodsSectionBlocks,
-    originSignatureBlocks,
+    metaMembers,
+    originSignatureMembers,
     type OriginSignatureEntry,
+    type PageSection,
+    type SectionMember,
     plainText,
     propertyMetaLine,
     qualifiedClassName,
@@ -57,9 +61,10 @@ import {
     renderDocsType,
     signalTags,
     signatureBlock,
+    sectionBlocks,
     type SignatureEntry,
-    sortedMetaBlocks,
-    staticSectionBlocks,
+    signatureMembers,
+    staticSection,
     tagNotes,
 } from "./render.js";
 
@@ -101,6 +106,10 @@ type GiSymbolEntry =
 
 type ClassSymbol = GiSymbolBase & { klass: GirClass };
 type ClassPageSymbol = ClassSymbol & { kind: "class" | "interface" };
+type RecordPageSymbol = GiSymbolBase & { kind: "record"; record: GirRecord };
+
+/** One kind of member on a class, interface or record page, with its heading, intro and rendered members. */
+type MemberSection = PageSection & { kind: ApiMemberKind };
 
 type SymbolPageOptions = {
     library: Library;
@@ -368,6 +377,7 @@ const ownerPropertyEntries = (owner: MemberOwner, setup: PropertyAccessorSetup, 
         entries.push({
             name: accessor.jsName,
             meta: propertyMetaLine({
+                library: setup.context.library,
                 type: documentedAccessorType(accessor),
                 property,
                 accessNotes:
@@ -376,13 +386,14 @@ const ownerPropertyEntries = (owner: MemberOwner, setup: PropertyAccessorSetup, 
             }),
             doc: docMarkdown(property.doc),
             tags: annotationSpec(property.annotations),
+            origin: owner.origin,
         });
     }
 
     return entries;
 };
 
-const propertiesSection = (entry: ClassPageSymbol, library: Library): string[] => {
+const propertiesSection = (entry: ClassPageSymbol, library: Library): MemberSection => {
     const seen: Set<string> = new Set();
     const entries: MetaDocEntry[] = [];
 
@@ -392,17 +403,13 @@ const propertiesSection = (entry: ClassPageSymbol, library: Library): string[] =
         entries.push(...ownerPropertyEntries(owner, setup, seen));
     }
 
-    if (entries.length === 0) {
-        return [];
-    }
-
     const intro =
         "Properties are normally read and written as instance fields. Collision exceptions are marked with " +
         "their `GObject.getProperty` or `GObject.setProperty` escape hatch. Changes can be observed " +
         'with `GObject.signalConnect(instance, "notify::<property-name>", handler)`. Properties inherited ' +
         "from ancestors are documented on their own pages.";
 
-    return ["## Properties", intro, ...sortedMetaBlocks(entries)];
+    return { kind: "property", title: "## Properties", intro, members: metaMembers(entries) };
 };
 
 const ownerSignalEntries = (owner: MemberOwner, library: Library, seen: Set<string>): OriginSignatureEntry[] => {
@@ -431,7 +438,7 @@ const ownerSignalEntries = (owner: MemberOwner, library: Library, seen: Set<stri
     return entries;
 };
 
-const signalsSection = (entry: ClassSymbol, library: Library): string[] => {
+const signalsSection = (entry: ClassSymbol, library: Library): MemberSection => {
     const seen: Set<string> = new Set();
     const entries: OriginSignatureEntry[] = [];
 
@@ -439,54 +446,130 @@ const signalsSection = (entry: ClassSymbol, library: Library): string[] => {
         entries.push(...ownerSignalEntries(owner, library, seen));
     }
 
-    if (entries.length === 0) {
-        return [];
-    }
-
     const intro =
         'Connect with `GObject.signalConnect(instance, "<signal>", handler)`. ' +
         "Signals inherited from ancestors are documented on their own pages.";
 
-    return ["## Signals", intro, ...originSignatureBlocks(entries)];
+    return { kind: "signal", title: "## Signals", intro, members: originSignatureMembers(entries) };
 };
 
-const classMethodsSection = (entry: ClassSymbol, library: Library): string[] =>
-    methodsSectionBlocks(
-        classMethodEntries(library, entry.namespace, entry.klass),
-        "Methods are called on instances. Methods inherited from ancestors are documented on their own pages.",
-    );
+const classMethodsSection = (entry: ClassSymbol, library: Library): MemberSection => ({
+    kind: "method",
+    title: "## Methods",
+    intro: "Methods are called on instances. Methods inherited from ancestors are documented on their own pages.",
+    members: signatureMembers(classMethodEntries(library, entry.namespace, entry.klass)),
+});
+
+type StaticSectionsOptions = {
+    entry: GiSymbolBase;
+    context: ModuleContext;
+    constructors: GirFunction[];
+    functions: GirFunction[];
+    constructorsIntro: string;
+};
+
+const staticSections = (options: StaticSectionsOptions): MemberSection[] => {
+    const qualified = qualifiedName(options.entry);
+    const siblings = [...options.constructors, ...options.functions];
+
+    return [
+        {
+            kind: "constructor",
+            ...staticSection({
+                title: "## Constructors",
+                intro: options.constructorsIntro,
+                context: options.context,
+                callables: options.constructors,
+                siblings,
+                returnTypeOverride: qualified,
+            }),
+        },
+        {
+            kind: "staticMethod",
+            ...staticSection({
+                title: "## Static methods",
+                intro: `Static methods are called on the class: \`${qualified}.<method>(...)\`.`,
+                context: options.context,
+                callables: options.functions,
+                siblings,
+            }),
+        },
+    ];
+};
+
+const classMemberSections = (entry: ClassPageSymbol, library: Library): MemberSection[] => [
+    ...staticSections({
+        entry,
+        context: docsSignatureContext(entry.namespace, library),
+        constructors: entry.klass.constructors,
+        functions: entry.klass.functions,
+        constructorsIntro: `Constructors are called on the class: \`${qualifiedName(entry)}.new(...)\`.`,
+    }),
+    propertiesSection(entry, library),
+    signalsSection(entry, library),
+    classMethodsSection(entry, library),
+];
 
 const classPage = (entry: ClassPageSymbol, options: SymbolPageOptions): string => {
     const { library } = options;
-    const qualified = qualifiedName(entry);
-    const docsContext = docsSignatureContext(entry.namespace, library);
-    const constructorsIntro = `Constructors are called on the class: \`${qualified}.new(...)\`.`;
-    const staticIntro = `Static methods are called on the class: \`${qualified}.<method>(...)\`.`;
-    const staticSiblings = [...entry.klass.constructors, ...entry.klass.functions];
 
     return joinSections([
         ...pageHeader(entry, entry.kind),
         ...elementNote(entry, options),
         ...(entry.kind === "interface" ? prerequisitesLine(entry, library) : hierarchySection(entry, library)),
-        ...staticSectionBlocks({
-            title: "## Constructors",
-            intro: constructorsIntro,
-            context: docsContext,
-            callables: entry.klass.constructors,
-            siblings: staticSiblings,
-            returnTypeOverride: qualified,
-        }),
-        ...staticSectionBlocks({
-            title: "## Static methods",
-            intro: staticIntro,
-            context: docsContext,
-            callables: entry.klass.functions,
-            siblings: staticSiblings,
-        }),
-        ...propertiesSection(entry, library),
-        ...signalsSection(entry, library),
-        ...classMethodsSection(entry, library),
+        ...classMemberSections(entry, library).flatMap((section) => sectionBlocks(section)),
         ...implementingSection(entry, library),
+    ]);
+};
+
+const MEMBER_KIND_LABELS: Record<ApiMemberKind, string> = {
+    constructor: "constructor",
+    staticMethod: "static method",
+    property: "property",
+    signal: "signal",
+    method: "method",
+    field: "field",
+};
+
+/** The member sections of a class, interface or record page in page order, empty for any other kind. */
+const memberSections = (entry: GiSymbolEntry, library: Library): MemberSection[] => {
+    switch (entry.kind) {
+        case "class":
+        case "interface": {
+            return classMemberSections(entry, library);
+        }
+        case "record": {
+            return recordMemberSections(entry, library);
+        }
+        default: {
+            return [];
+        }
+    }
+};
+
+const ownerKindLabel = (entry: GiSymbolEntry): string =>
+    entry.kind === "record" ? recordKindLabel(entry) : entry.kind;
+
+/** Which member of which page to render on its own, and the subclass it was requested through, if any. */
+type MemberPageOptions = {
+    owner: GiSymbolEntry;
+    section: MemberSection;
+    member: SectionMember;
+    requestedOwner: string | undefined;
+};
+
+/** Renders one member's section of its owner's page, with the heading and import line it needs on its own. */
+const renderMemberPage = ({ owner, section, member, requestedOwner }: MemberPageOptions): string => {
+    const ownerName = qualifiedName(owner);
+
+    return joinSections([
+        `# ${ownerName}.${member.name}`,
+        `\`${MEMBER_KIND_LABELS[section.kind]}\` of the \`${ownerName}\` ${ownerKindLabel(owner)} in ` +
+            `\`@gtkx/gi/${namespaceDirectory(owner.namespace)}\``,
+        ...(requestedOwner === undefined ? [] : [`\`${requestedOwner}\` inherits it from \`${ownerName}\`.`]),
+        importBlock(owner),
+        section.intro,
+        member.block,
     ]);
 };
 
@@ -500,7 +583,7 @@ const renderSymbolPage = (entry: GiSymbolEntry, options: SymbolPageOptions): str
             return recordPage(entry, options.library);
         }
         case "enum": {
-            return enumPage(entry);
+            return enumPage(entry, options.library);
         }
         case "callback": {
             return callbackPage(entry, options.library);
@@ -538,43 +621,49 @@ const recordInstanceEntries = (context: ModuleContext, record: GirRecord): Signa
     return sortStringsBy(entries, (item) => item.name);
 };
 
-const recordPage = (entry: GiSymbolBase & { kind: "record"; record: GirRecord }, library: Library): string => {
+const recordMemberSections = (entry: RecordPageSymbol, library: Library): MemberSection[] => {
     const docsContext = docsSignatureContext(entry.namespace, library);
     const qualified = qualifiedName(entry);
-    const constructorsIntro = `Constructors are called on the class: \`${qualified}.new(...)\`.`;
-    const staticIntro = `Static methods are called on the class: \`${qualified}.<method>(...)\`.`;
+    const delegated = delegatedRecordConstructor(docsContext, entry.namespace.name, entry.record);
+    const constructorsIntro = [
+        `Constructors are called on the class: \`${qualified}.new(...)\`.`,
+        ...(delegated === undefined ? [] : [`\`new ${qualified}(...)\` calls \`${qualified}.new(...)\`.`]),
+    ].join(" ");
     const methodEntries = recordInstanceEntries(docsContext, entry.record);
     const claimedNames = new Set(methodEntries.map((item) => item.name));
-    const staticSiblings = [...entry.record.constructors, ...entry.record.functions];
 
-    return joinSections([
-        ...pageHeader(entry, entry.record.isUnion ? "union" : "record"),
-        ...staticSectionBlocks({
-            title: "## Constructors",
-            intro: constructorsIntro,
+    return [
+        ...staticSections({
+            entry,
             context: docsContext,
-            callables: entry.record.constructors,
-            siblings: staticSiblings,
-            returnTypeOverride: qualified,
+            constructors: entry.record.constructors,
+            functions: entry.record.functions,
+            constructorsIntro,
         }),
-        ...staticSectionBlocks({
-            title: "## Static methods",
-            intro: staticIntro,
-            context: docsContext,
-            callables: entry.record.functions,
-            siblings: staticSiblings,
-        }),
-        ...fieldsSection(entry.record, docsContext, claimedNames),
-        ...methodsSectionBlocks(methodEntries, "Methods are called on instances."),
-    ]);
+        fieldsSection(entry.record, docsContext, claimedNames),
+        {
+            kind: "method",
+            title: "## Methods",
+            intro: "Methods are called on instances.",
+            members: signatureMembers(methodEntries),
+        },
+    ];
 };
+
+const recordKindLabel = (entry: RecordPageSymbol): string => (entry.record.isUnion ? "union" : "record");
+
+const recordPage = (entry: RecordPageSymbol, library: Library): string =>
+    joinSections([
+        ...pageHeader(entry, recordKindLabel(entry)),
+        ...recordMemberSections(entry, library).flatMap((section) => sectionBlocks(section)),
+    ]);
 
 const fieldMeta = (field: ResolvedRecordField): string =>
     [`\`${field.tsType}\``, ...(field.isWritable ? [] : ["read-only"]), ...deprecationMeta(field.annotations)].join(
         " · ",
     );
 
-const fieldsSection = (record: GirRecord, context: ModuleContext, claimedNames: Set<string>): string[] => {
+const fieldsSection = (record: GirRecord, context: ModuleContext, claimedNames: Set<string>): MemberSection => {
     const { slots } = computeRecordFieldSlots(context, record.fields, record.isUnion);
     const entries: MetaDocEntry[] = [];
 
@@ -593,11 +682,7 @@ const fieldsSection = (record: GirRecord, context: ModuleContext, claimedNames: 
         });
     }
 
-    if (entries.length === 0) {
-        return [];
-    }
-
-    return ["## Fields", ...sortedMetaBlocks(entries)];
+    return { kind: "field", title: "## Fields", intro: "", members: metaMembers(entries) };
 };
 
 const memberDescription = (member: EnumMember): string => {
@@ -609,8 +694,30 @@ const memberDescription = (member: EnumMember): string => {
         .replaceAll("|", String.raw`\|`);
 };
 
-const enumPage = (entry: GiSymbolBase & { kind: "enum"; enumeration: GirEnum }): string => {
+const enumFunctionSections = (
+    entry: GiSymbolBase,
+    qualified: string,
+    statics: ReturnType<typeof enumStaticFunctions>,
+): string[] => {
+    if (statics.length === 0) {
+        return [];
+    }
+
+    const namespaceName = entry.namespace.name;
+    const rows = statics.map(
+        ({ name, exportName }) => `| \`${qualified}.${name}()\` | \`${namespaceName}.${exportName}()\` |`,
+    );
+
+    return [
+        "## Functions",
+        "Each function is also exported from the namespace under its flat name.",
+        ["| Function | Namespace export |", "| --- | --- |", ...rows].join("\n"),
+    ];
+};
+
+const enumPage = (entry: GiSymbolBase & { kind: "enum"; enumeration: GirEnum }, library: Library): string => {
     const { enumeration } = entry;
+    const statics = enumStaticFunctions(docsSignatureContext(entry.namespace, library), enumeration.name);
     const kindLabel = enumeration.errorDomain === undefined ? enumeration.kind : "error domain";
     const qualified = qualifiedName(entry);
 
@@ -624,9 +731,20 @@ const enumPage = (entry: GiSymbolBase & { kind: "enum"; enumeration: GirEnum }):
             : `Members are error codes for the \`${enumeration.errorDomain}\` GError domain, ` +
               `accessed as \`${qualified}.<member>\`.`;
 
+    const gtype =
+        enumeration.glibGetType === undefined
+            ? ""
+            : ` \`${qualified}.__type__\` is its GType, and \`${qualified}\` itself can be passed wherever a GType is taken.`;
+
     const table = ["| Member | Value | Description |", "| --- | --- | --- |", ...rows].join("\n");
 
-    return joinSections([...pageHeader(entry, kindLabel), "## Members", usage, table]);
+    return joinSections([
+        ...pageHeader(entry, kindLabel),
+        "## Members",
+        `${usage}${gtype}`,
+        table,
+        ...enumFunctionSections(entry, qualified, statics),
+    ]);
 };
 
 const callbackPage = (entry: GiSymbolBase & { kind: "callback"; callback: GirCallback }, library: Library): string => {
@@ -687,4 +805,11 @@ const constantPage = (entry: GiSymbolBase & { kind: "constant"; constant: GirCon
     ]);
 };
 
-export { renderSymbolPage, type GiSymbolEntry, type SymbolPageOptions };
+export {
+    memberSections,
+    renderMemberPage,
+    renderSymbolPage,
+    type GiSymbolEntry,
+    type MemberSection,
+    type SymbolPageOptions,
+};

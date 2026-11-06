@@ -16,6 +16,11 @@ type PluginOptions = Partial<HeadlessOptions> &
 
 const GTKX_INLINE_DEPS: RegExp[] = [/@gtkx\/(?!native)/, /[/\\]\.gtkx[/\\]/];
 const DEFAULT_TIMEOUT = 30_000;
+const SHARED_WORKER_MESSAGE = [
+    "GTKX tests need Vitest's per-file isolation, but this run sets `isolate: false` (or `--no-isolate`).",
+    "Each test file runs in its own worker process with its own GTK runtime and headless display, which GTKX shuts down when the file finishes.",
+    "Remove `isolate: false` from the Vitest configuration and `--no-isolate` from the command line.",
+].join("\n");
 
 const headlessPreloadSpecifier = (options: Partial<HeadlessOptions>): string => {
     const url = new URL("worker-preload.js", import.meta.url);
@@ -33,9 +38,13 @@ const headlessPreloadSpecifier = (options: Partial<HeadlessOptions>): string => 
  * setup files, and sets the environment needed for headless GTK4 rendering.
  *
  * Each worker's compositor, session bus, and private runtime directory are torn
- * down when the worker exits normally. Creating the plugin reaps orphaned
+ * down when the worker exits normally, along with processes still running in that
+ * runtime, such as GTK's sandboxed image loaders. Creating the plugin reaps orphaned
  * display helpers and stale `gtkx-xdg-*` runtime directories left behind
  * by earlier runs, which `gtkx cleanup` also does on demand.
+ *
+ * Test files always run in isolated workers: Vitest fails to start when a project
+ * sets `isolate: false`, because GTKX shuts each worker's runtime down after its file.
  *
  * When Sway or `dbus-daemon` is missing from `PATH`, Vitest fails to start,
  * before any worker launches, with an error naming each missing tool. Loading
@@ -62,6 +71,7 @@ const gtkx = (options: PluginOptions = {}): Plugin => {
                     testTimeout: config.test?.testTimeout ?? DEFAULT_TIMEOUT,
                     hookTimeout: config.test?.hookTimeout ?? DEFAULT_TIMEOUT,
                     pool: "forks",
+                    isolate: config.test?.isolate ?? true,
                     env: STATIC_HEADLESS_ENV,
                     server: {
                         deps: {
@@ -75,7 +85,11 @@ const gtkx = (options: PluginOptions = {}): Plugin => {
 
     return {
         ...configPlugin,
-        configureVitest() {
+        configureVitest({ project }) {
+            if (!project.config.isolate) {
+                throw new Error(SHARED_WORKER_MESSAGE);
+            }
+
             resolveHeadlessExecutables();
         },
     };

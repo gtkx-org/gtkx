@@ -1,7 +1,6 @@
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Regress from "@gtkx/gi/regress";
-import { onLog } from "@gtkx/runtime";
 import { expect, test } from "vitest";
 import { drainGC } from "./helpers/memory.js";
 
@@ -66,20 +65,10 @@ test("hash table property aliases share their native container", async () => {
     expect(object.hashTable).toEqual(new Map([["replacement", 42]]));
 });
 
-test("the annotation-only pointer array property reports its absent native implementation", async () => {
-    const messages: string[] = [];
-    const subscription = onLog((level, _domain, message) => {
-        if (level === "warning" && message.includes("pptrarray")) messages.push(message);
-    });
-    try {
-        const object = new Regress.TestObj({});
-        object.pptrarray = ["first", "second"];
-        expect(object.pptrarray).toBeNull();
-        await expect.poll(() => messages.length).toBe(2);
-        expect(messages.every((message) => message.includes("invalid property id"))).toBe(true);
-    } finally {
-        subscription.unsubscribe();
-    }
+test("the annotation-only pointer array property has no native implementation", () => {
+    const object = new Regress.TestObj({});
+    object.pptrarray = ["first", "second"];
+    expect(object.pptrarray).toBeNull();
 });
 
 test.each([GIMarshallingTests.PropertiesObject, GIMarshallingTests.PropertiesAccessorsObject])(

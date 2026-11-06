@@ -1,5 +1,6 @@
 import type { ComponentProps, ReactNode } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
+import { GtkLabel } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
 import { Storybook, StoryCatalog } from "@gtkx/storybook/explorer";
 import { render, screen, userEvent, within } from "@gtkx/testing";
@@ -43,14 +44,13 @@ describe("native story controls", () => {
                     }),
             },
         ]);
-        const explorer = <Storybook catalog={catalog} />;
-        const result = await render(explorer, { container: rootElement });
+        await render(<Storybook catalog={catalog} />, { container: rootElement });
         await userEvent.click(screen.getByText("Increment local state"));
         await userEvent.click(screen.getByName("storybook-control-enabled"));
-        await expect(result.rerender(explorer)).rejects.toThrow();
+        expect(await screen.findByName("storybook-preview-error")).toBeVisible();
 
         await replaceControl("text", "Repaired");
-        await expect(result.rerender(explorer)).rejects.toThrow();
+        expect(screen.getByName("storybook-preview-error")).toBeVisible();
         await userEvent.click(screen.getByName("storybook-control-enabled"));
 
         expect(screen.getByName("inspector-enabled")).toHaveTextContent(/^false$/);
@@ -231,6 +231,46 @@ describe("native story controls", () => {
         expect(screen.getByName("inspector-choice")).toHaveTextContent(/^42$/);
     });
 
+    it("renders the mapped value of an option with an argTypes mapping", async () => {
+        await showInspector({
+            default: {
+                ...controlMeta,
+                args: { choice: "accent" },
+                argTypes: {
+                    choice: {
+                        control: "select",
+                        options: ["accent", "warning"],
+                        mapping: { accent: { tone: "blue" }, warning: { tone: "yellow" } },
+                    },
+                },
+            },
+            Default: {},
+        });
+
+        expect(screen.getByName("storybook-control-choice")).toHaveDisplayValue("accent");
+        expect(screen.getByName("inspector-choice")).toHaveTextContent(/^\{"tone":"blue"\}$/);
+        await userEvent.selectOptions(screen.getByName("storybook-control-choice"), 2);
+        expect(screen.getByName("inspector-choice")).toHaveTextContent(/^\{"tone":"yellow"\}$/);
+    });
+
+    it("passes arguments without an argTypes mapping through unchanged", async () => {
+        const settings = Object.create(null) as Record<string, string>;
+        settings.tone = "plain";
+        await showInspector({
+            default: {
+                title: "Unmapped",
+                args: { settings, tags: ["accent"] },
+                argTypes: { tags: { mapping: { accent: "Mapped accent" } } },
+                render: ({ settings: values, tags }: { settings: Record<string, string>; tags: string[] }) => (
+                    <GtkLabel name="inspector-unmapped">{`${values.tone ?? "unset"} ${tags.join(",")}`}</GtkLabel>
+                ),
+            },
+            Default: {},
+        });
+
+        expect(screen.getByName("inspector-unmapped")).toHaveTextContent(/^plain Mapped accent$/);
+    });
+
     it("preserves fractional values and step increments in range controls", async () => {
         await showInspector({
             default: {
@@ -247,5 +287,50 @@ describe("native story controls", () => {
         expect(screen.getByName("inspector-quantity")).toHaveTextContent(/^0.5$/);
         await replaceControl("quantity", "-0.75");
         expect(screen.getByName("inspector-quantity")).toHaveTextContent(/^-0.75$/);
+    });
+
+    it("shows conditional controls and arguments only while their arg or global condition holds", async () => {
+        await showInspector({
+            default: {
+                ...controlMeta,
+                argTypes: {
+                    ...controlMeta.argTypes,
+                    text: { control: "text", if: { arg: "enabled" } },
+                    quantity: { control: "number", if: { global: "density", eq: "compact" } },
+                },
+            },
+            Default: {},
+            Compact: { globals: { density: "compact" } },
+        });
+
+        expect(screen.queryByName("storybook-control-text")).toBeNull();
+        expect(screen.queryByName("storybook-control-quantity")).toBeNull();
+        expect(screen.getByName("inspector-text")).toHaveTextContent(/^unset$/);
+        expect(screen.getByName("inspector-quantity")).toHaveTextContent(/^unset$/);
+
+        await userEvent.click(screen.getByName("storybook-control-enabled"));
+        expect(screen.getByName("storybook-control-text")).toBeVisible();
+        expect(screen.getByName("inspector-text")).toHaveTextContent(/^Initial$/);
+
+        await userEvent.click(screen.getByName("storybook-story-inspector--compact"));
+        expect(screen.getByName("storybook-control-quantity")).toBeVisible();
+        expect(screen.getByName("inspector-quantity")).toHaveTextContent(/^2$/);
+    });
+
+    it("shows and keeps fractional arguments in number controls without a fractional step", async () => {
+        await showInspector({
+            default: { ...controlMeta, args: { quantity: 0.25 }, argTypes: { quantity: { control: "number" } } },
+            Default: {},
+        });
+        const control = within(screen.getByName("storybook-control-quantity")).getByRole(
+            Gtk.AccessibleRole.SPIN_BUTTON,
+        );
+
+        expect(control).toHaveDisplayValue("0.25");
+        await userEvent.keyboard(control, "{Enter}");
+        expect(screen.getByName("inspector-quantity")).toHaveTextContent(/^0.25$/);
+        await replaceControl("quantity", "1.5");
+        expect(screen.getByName("inspector-quantity")).toHaveTextContent(/^1.5$/);
+        expect(control).toHaveDisplayValue("1.5");
     });
 });

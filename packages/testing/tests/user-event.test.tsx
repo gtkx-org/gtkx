@@ -1,16 +1,36 @@
 import type { ComponentProps, ReactNode } from "react";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gdk from "@gtkx/gi/gdk";
+import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { AdwActionRow, AdwSidebar, AdwSidebarItem, AdwSidebarSection } from "@gtkx/jsx/adw";
+import {
+    AdwActionRow,
+    AdwApplication,
+    AdwApplicationWindow,
+    AdwDialog,
+    AdwEntryRow,
+    AdwHeaderBar,
+    AdwSidebar,
+    AdwSidebarItem,
+    AdwSidebarSection,
+    AdwTabBar,
+    AdwTabOverview,
+    AdwTabPage,
+    AdwTabView,
+    AdwWindowTitle,
+} from "@gtkx/jsx/adw";
+import { GSimpleAction } from "@gtkx/jsx/gio";
 import {
     GtkBox,
     GtkButton,
+    GtkCallbackAction,
     GtkCheckButton,
+    GtkDragSource,
     GtkDropDown,
     GtkDropTarget,
+    GtkEditableLabel,
     GtkEntry,
     GtkEventControllerKey,
     GtkEventControllerMotion,
@@ -23,17 +43,35 @@ import {
     GtkLabel,
     GtkListBox,
     GtkListBoxRow,
+    GtkListView,
+    GtkMenuButton,
+    GtkMultiSelection,
+    GtkPopover,
     GtkShortcut,
     GtkShortcutController,
     GtkShortcutTrigger,
+    GtkSignalListItemFactory,
+    GtkSingleSelection,
+    GtkSpinButton,
+    GtkStringList,
     GtkSwitch,
     GtkTextBuffer,
     GtkTextTag,
     GtkTextView,
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
-import { type BoundQueries, queryAllControllers, render, screen, userEvent, waitFor, within } from "@gtkx/testing";
-import { createRef } from "react";
+import { rootElement } from "@gtkx/react";
+import {
+    type BoundQueries,
+    type PointerInput,
+    queryAllControllers,
+    render,
+    screen,
+    userEvent,
+    waitFor,
+    within,
+} from "@gtkx/testing";
+import { createRef, useState } from "react";
 import { describe, expect, it } from "vitest";
 import {
     callCounter,
@@ -74,6 +112,43 @@ const editableText = (entry: Gtk.Widget): string => {
     }
 
     return entry.getText();
+};
+
+const setupStringRow = (item: GObject.Object): void => {
+    if (item instanceof Gtk.ListItem) {
+        item.setChild(new Gtk.Label());
+    }
+};
+
+const setupClaimingRow = (item: GObject.Object): void => {
+    if (item instanceof Gtk.ListItem) {
+        const label = new Gtk.Label();
+        const gesture = new Gtk.GestureClick();
+        gesture.on("pressed", () => {
+            gesture.setState(Gtk.EventSequenceState.CLAIMED);
+        });
+        label.addController(gesture);
+        item.setChild(label);
+    }
+};
+
+const bindStringRow = (item: GObject.Object): void => {
+    const label = item instanceof Gtk.ListItem ? item.getChild() : null;
+    const value = item instanceof Gtk.ListItem ? item.getItem() : null;
+
+    if (label instanceof Gtk.Label && value instanceof Gtk.StringObject) {
+        label.setLabel(value.getString());
+    }
+};
+
+const pointerTargetAt = (widget: Gtk.Widget): Gtk.Widget => {
+    let target = widget;
+
+    for (let current: Gtk.Widget | null = widget; current !== null; current = current.getParent()) {
+        target = current.getCanTarget() ? target : (current.getParent() ?? target);
+    }
+
+    return target;
 };
 
 const renderScoped = async (element: ReactNode): Promise<BoundQueries> => {
@@ -448,6 +523,163 @@ describe("userEvent.click", () => {
         expect(y).toBeGreaterThan(bounds.getY());
     });
 
+    it("reports the primary button and held modifiers to an authored click gesture's handlers", async () => {
+        const events: [string, number, boolean][] = [];
+        const record = (phase: string, gesture: Gtk.GestureClick) => {
+            const isControlHeld = (gesture.getCurrentEventState() & Gdk.ModifierType.CONTROL_MASK) !== 0;
+            events.push([phase, gesture.getCurrentButton(), isControlHeld]);
+        };
+
+        await render(
+            <GtkBox
+                accessibleLabel="Tile"
+                controllers={
+                    <GtkGestureClick
+                        button={0}
+                        onPressed={(_nPress, _x, _y, self) => record("pressed", self)}
+                        onReleased={(_nPress, _x, _y, self) => record("released", self)}
+                    />
+                }
+            />,
+        );
+
+        const tile = await screen.findByLabelText("Tile");
+        await userEvent.click(tile);
+        const user = userEvent.setup();
+        await user.keyboard(tile, "{Control>}");
+        await user.pointer(tile, "click");
+
+        expect(events).toEqual([
+            ["pressed", Gdk.BUTTON_PRIMARY, false],
+            ["released", Gdk.BUTTON_PRIMARY, false],
+            ["pressed", Gdk.BUTTON_PRIMARY, true],
+            ["released", Gdk.BUTTON_PRIMARY, true],
+        ]);
+        const [gesture] = queryAllControllers(tile, Gtk.GestureClick);
+        expect(gesture?.getCurrentButton()).toBe(0);
+    });
+
+    it("delivers right and middle pointer buttons to the gestures listening for them, not to the button's click", async () => {
+        const events: [string, number][] = [];
+        const clicked = callCounter();
+        const record = (phase: string, gesture: Gtk.GestureClick) => events.push([phase, gesture.getCurrentButton()]);
+
+        await render(
+            <GtkButton
+                label="Cell"
+                onClicked={clicked.callback}
+                controllers={
+                    <>
+                        <GtkGestureClick
+                            button={Gdk.BUTTON_SECONDARY}
+                            onPressed={(_nPress, _x, _y, self) => record("secondary pressed", self)}
+                            onReleased={(_nPress, _x, _y, self) => record("secondary released", self)}
+                        />
+                        <GtkGestureClick
+                            button={Gdk.BUTTON_MIDDLE}
+                            onPressed={(_nPress, _x, _y, self) => record("middle pressed", self)}
+                        />
+                    </>
+                }
+            />,
+        );
+
+        const cell = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Cell" });
+        const user = userEvent.setup();
+        await user.pointer(cell, "[MouseRight]");
+        await user.pointer(cell, "[MouseMiddle]");
+        await user.pointer(cell, "[MouseRight>]");
+        await user.pointer(cell, "[/MouseRight]");
+
+        expect(events).toEqual([
+            ["secondary pressed", Gdk.BUTTON_SECONDARY],
+            ["secondary released", Gdk.BUTTON_SECONDARY],
+            ["middle pressed", Gdk.BUTTON_MIDDLE],
+            ["secondary pressed", Gdk.BUTTON_SECONDARY],
+            ["secondary released", Gdk.BUTTON_SECONDARY],
+        ]);
+        expect(clicked.count).toBe(0);
+    });
+
+    it("stops a pointer button at the gesture that claims its press, as GTK propagation does", async () => {
+        const events: string[] = [];
+        const listen = (name: string, claims: boolean) => (
+            <GtkGestureClick
+                button={Gdk.BUTTON_SECONDARY}
+                onPressed={(_nPress, _x, _y, self) => {
+                    events.push(`${name} pressed`);
+                    if (claims) self.setState(Gtk.EventSequenceState.CLAIMED);
+                }}
+                onReleased={() => events.push(`${name} released`)}
+            />
+        );
+
+        await render(
+            <GtkBox controllers={listen("canvas", false)}>
+                <GtkLabel label="Item" controllers={listen("item", true)} />
+            </GtkBox>,
+        );
+
+        const item = await screen.findByText("Item");
+        const user = userEvent.setup();
+        await user.pointer(item, "[MouseRight]");
+        await user.pointer(item, "[MouseRight>]");
+        await user.pointer(item, "[/MouseRight]");
+
+        expect(events).toEqual(["item pressed", "item released", "item pressed", "item released"]);
+    });
+
+    it("skips click gestures GTK does not run: phase none, or a press from inside a popover", async () => {
+        const presses: string[] = [];
+        const listen = (name: string, button: number, phase = Gtk.PropagationPhase.BUBBLE) => (
+            <GtkGestureClick key={name} button={button} propagationPhase={phase} onPressed={() => presses.push(name)} />
+        );
+
+        await render(
+            <GtkBox
+                controllers={[
+                    listen("outer primary", Gdk.BUTTON_PRIMARY),
+                    listen("outer secondary", Gdk.BUTTON_SECONDARY),
+                ]}
+            >
+                <GtkLabel
+                    label="Idle"
+                    controllers={[
+                        listen("idle primary", Gdk.BUTTON_PRIMARY, Gtk.PropagationPhase.NONE),
+                        listen("idle secondary", Gdk.BUTTON_SECONDARY, Gtk.PropagationPhase.NONE),
+                    ]}
+                />
+                <GtkMenuButton
+                    label="Menu"
+                    popover={
+                        <GtkPopover>
+                            <GtkLabel label="Inside" />
+                        </GtkPopover>
+                    }
+                />
+            </GtkBox>,
+        );
+
+        const idle = await screen.findByText("Idle");
+        await userEvent.click(idle);
+        await userEvent.pointer(idle, "[MouseRight]");
+        expect(presses).toEqual(["outer primary", "outer secondary"]);
+        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Menu" }));
+        const inside = await screen.findByText("Inside");
+        await userEvent.click(inside);
+        await userEvent.pointer(inside, "[MouseRight]");
+        expect(presses).toEqual(["outer primary", "outer secondary"]);
+    });
+
+    it("rejects a pointer input it does not know", async () => {
+        const { button } = await renderClickButton();
+        const input: string = "[MouseBack]";
+
+        await expect(userEvent.pointer(button, input as PointerInput)).rejects.toThrow(
+            'Unknown pointer input "[MouseBack]"',
+        );
+    });
+
     it("activates sidebar rows through click and pointer without driving internal gestures", async () => {
         let activations = 0;
         const onActivated = () => {
@@ -467,6 +699,127 @@ describe("userEvent.click", () => {
         await userEvent.click(row);
         await userEvent.pointer(row, "click");
         expect(activations).toBe(2);
+    });
+
+    it("clicks a header bar title without driving the window handle's internal gesture", async () => {
+        await render(<AdwHeaderBar titleWidget={<AdwWindowTitle title="Shopping" />} />);
+        const title = await screen.findByText("Shopping");
+
+        await userEvent.click(title);
+        await userEvent.pointer(title, "click");
+        await userEvent.dblClick(title);
+        expect(title.getRoot()).toBeInstanceOf(Gtk.Window);
+    });
+
+    it("opens a drop-down when the selected item it displays is clicked", async () => {
+        const dropdown = await renderDropDown(["Option A", "Option B"]);
+
+        await userEvent.click(await screen.findByText("Option A"));
+        await userEvent.click(await screen.findByText("Option B"));
+        expect((dropdown as Gtk.DropDown).getSelected()).toBe(1);
+    });
+
+    it("starts editing an editable label when its text is clicked or pointer-clicked", async () => {
+        const label = createRef<Gtk.EditableLabel>();
+        await render(<GtkEditableLabel ref={label} text="Draft" />);
+        await userEvent.click(await screen.findByText("Draft"));
+        expect(label.current?.getEditing()).toBe(true);
+        label.current?.stopEditing(false);
+        await userEvent.pointer(await screen.findByText("Draft"), "click");
+        expect(label.current?.getEditing()).toBe(true);
+    });
+
+    it("selects a tab view page from its tab bar tab and its overview thumbnail", async () => {
+        const overview = createRef<Adw.TabOverview>();
+        const TabbedPages = () => {
+            const [view, setView] = useState<Adw.TabView | null>(null);
+
+            return (
+                <AdwTabOverview ref={overview} view={view}>
+                    <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                        <AdwTabBar view={view} autohide={false} />
+                        <AdwTabView ref={setView}>
+                            <AdwTabPage title="First">
+                                <GtkLabel>First page</GtkLabel>
+                            </AdwTabPage>
+                            <AdwTabPage title="Second">
+                                <GtkLabel>Second page</GtkLabel>
+                            </AdwTabPage>
+                        </AdwTabView>
+                    </GtkBox>
+                </AdwTabOverview>
+            );
+        };
+        await render(<TabbedPages />);
+        const view = await screen.findByRole(Gtk.AccessibleRole.GROUP, { as: Adw.TabView });
+        const first = await screen.findByRole(Gtk.AccessibleRole.TAB, { name: "First" });
+        const second = await screen.findByRole(Gtk.AccessibleRole.TAB, { name: "Second" });
+        await userEvent.click(second);
+        expect(view.getSelectedPage()?.getTitle()).toBe("Second");
+        await userEvent.pointer(first, "click");
+        expect(view.getSelectedPage()?.getTitle()).toBe("First");
+
+        overview.current?.setOpen(true);
+        const thumbnails = await screen.findAllByText("Second");
+        const thumbnail = thumbnails.find((widget) => !widget.isAncestor(second));
+
+        if (thumbnail === undefined) {
+            throw new Error("expected an overview thumbnail title");
+        }
+
+        await expect(userEvent.click(thumbnail)).rejects.toThrow(
+            /a pointer there lands on <Box role="generic">, its nearest ancestor that can/,
+        );
+        await userEvent.click(pointerTargetAt(thumbnail));
+        expect(view.getSelectedPage()?.getTitle()).toBe("Second");
+        expect(overview.current?.getOpen()).toBe(false);
+    });
+
+    it("keeps a list row unselected when a gesture inside it claims the press", async () => {
+        const model = createRef<Gtk.SingleSelection>();
+        await render(
+            <GtkListView
+                model={<GtkSingleSelection ref={model} model={<GtkStringList strings={["Alpha", "Beta"]} />} />}
+                factory={<GtkSignalListItemFactory onSetup={setupClaimingRow} onBind={bindStringRow} />}
+            />,
+        );
+        await userEvent.click(await screen.findByText("Beta"));
+        expect(model.current?.getSelected()).toBe(0);
+    });
+
+    it("extends a list view selection with held Control and Shift like a pointer click", async () => {
+        const model = createRef<Gtk.MultiSelection>();
+        const selected = (): number[] => [0, 1, 2, 3].filter((position) => model.current?.isSelected(position));
+        await render(
+            <GtkListView
+                model={
+                    <GtkMultiSelection
+                        ref={model}
+                        model={<GtkStringList strings={["Alpha", "Beta", "Gamma", "Delta"]} />}
+                    />
+                }
+                factory={<GtkSignalListItemFactory onSetup={setupStringRow} onBind={bindStringRow} />}
+            />,
+        );
+        const user = userEvent.setup();
+        await user.click(await screen.findByText("Alpha"));
+        await user.keyboard(screen.getByText("Gamma"), "{Control>}");
+        await user.click(screen.getByText("Gamma"));
+        expect(selected()).toEqual([0, 2]);
+        const [alphaRow] = screen.getAllByRole(Gtk.AccessibleRole.LIST_ITEM);
+
+        if (alphaRow === undefined) {
+            throw new Error("expected a row for Alpha");
+        }
+
+        await user.pointer(alphaRow, "click");
+        expect(selected()).toEqual([2]);
+        await user.keyboard(screen.getByText("Delta"), "{/Control}{Shift>}");
+        await user.click(screen.getByText("Delta"));
+        expect(selected()).toEqual([0, 1, 2, 3]);
+        await user.keyboard(screen.getByText("Delta"), "{/Shift}");
+        await user.click(screen.getByText("Beta"));
+        expect(selected()).toEqual([1]);
     });
 });
 
@@ -546,6 +899,59 @@ describe("userEvent.type", () => {
         expect(bufferText(single)).toBe("Zello");
         await userEvent.keyboard(single, "{Control>}z{/Control}");
         expect(bufferText(single)).toBe("hello");
+    });
+
+    it("presses key descriptors, so Enter submits an entry, an entry row and a spin button", async () => {
+        const activations: string[] = [];
+
+        const { findByRole, findByName } = await renderColumn(
+            <>
+                <GtkEntry name="entry" onActivate={(entry) => activations.push(entry.getText())} />
+                <AdwEntryRow name="row" title="Title" onEntryActivated={(row) => activations.push(row.getText())} />
+                <GtkSpinButton name="spin" adjustment={new Gtk.Adjustment({ upper: 10, stepIncrement: 1 })} />
+            </>,
+        );
+
+        await userEvent.type(await findByName("entry"), "Celebrate{Enter}");
+        await userEvent.type(await findByName("row"), "Party{Enter}");
+        const spin = await findByRole(Gtk.AccessibleRole.SPIN_BUTTON, { as: Gtk.SpinButton });
+        await userEvent.type(spin, "{Backspace}4{Enter}");
+        expect(activations).toEqual(["Celebrate", "Party"]);
+        expect(spin.getValue()).toBe(4);
+    });
+
+    it("edits with Backspace and arrow keys, holds modifiers, and types a doubled brace literally", async () => {
+        const entry = await renderTextBox();
+        await userEvent.type(entry, "{{tex{Backspace}{Backspace}{ArrowLeft}a{End}}");
+        expect(editableText(entry)).toBe("{at}");
+        await userEvent.type(entry, "{Control>}a{/Control}Z");
+        expect(editableText(entry)).toBe("Z");
+        const view = await renderTextView();
+        await userEvent.type(view, "one{Enter}two");
+        expect(bufferText(view)).toBe("one\ntwo");
+    });
+
+    it("moves focus on Tab between the fields it types into, and types on into the newly focused one", async () => {
+        const { findByName } = await renderColumn(
+            <>
+                <GtkEntry name="first" />
+                <GtkEntry name="second" />
+            </>,
+        );
+        const first = await findByName("first", { as: Gtk.Entry });
+        const second = await findByName("second", { as: Gtk.Entry });
+
+        await userEvent.type(first, "Ada{Tab}Lovelacee{Backspace}");
+        expect(second).toHaveFocus();
+        expect(first.getText()).toBe("Ada");
+        expect(second.getText()).toBe("Lovelace");
+    });
+
+    it("throws on an unknown or unclosed key descriptor without typing", async () => {
+        const entry = await renderTextBox();
+        await expect(userEvent.type(entry, "a{Unknown}")).rejects.toThrow();
+        await expect(userEvent.type(entry, "a{Enter")).rejects.toThrow();
+        expect(editableText(entry)).toBe("");
     });
 
     it("throws when the widget is not editable", async () => {
@@ -709,6 +1115,20 @@ describe("userEvent.selectOptions", () => {
         await expect(userEvent.selectOptions(dropdown, [0, 1])).rejects.toThrow();
         await expect(userEvent.deselectOptions(dropdown, 0)).rejects.toThrow();
     });
+
+    it("rejects option labels and positions past the last item without changing the selection", async () => {
+        const dropdown = await renderDropDown(["Option A", "Option B", "Option C"]);
+        await expect(userEvent.selectOptions(dropdown, 3)).rejects.toThrow("positions 0 to 2");
+        await expect(Reflect.apply(userEvent.selectOptions, userEvent, [dropdown, "Option B"])).rejects.toThrow(
+            'got "Option B"',
+        );
+        expect((dropdown as Gtk.DropDown).getSelected()).toBe(0);
+        const list = await renderTwoItemListBox(Gtk.SelectionMode.MULTIPLE);
+        const selectedRows = (list as Gtk.ListBox).getSelectedRows();
+        await expect(userEvent.selectOptions(list, [0, 2])).rejects.toThrow("positions 0 to 1");
+        await expect(userEvent.deselectOptions(list, -1)).rejects.toThrow("positions 0 to 1");
+        expect((list as Gtk.ListBox).getSelectedRows()).toEqual(selectedRows);
+    });
 });
 
 describe("userEvent gestures", () => {
@@ -768,6 +1188,50 @@ describe("userEvent gestures", () => {
         expect(presses[0]).toEqual([50, 75]);
         await userEvent.longPress(label);
         expect(presses[1]).toEqual([0, 0]);
+    });
+
+    it("dispatch to the nearest ancestor carrying the gesture, in that ancestor's coordinates", async () => {
+        const presses: [number, number][] = [];
+        const swipes: [number, number][] = [];
+        const { findByName } = await renderScoped(
+            <GtkBox
+                orientation={Gtk.Orientation.VERTICAL}
+                controllers={[
+                    <GtkGestureSwipe
+                        key="swipe"
+                        onSwipe={(velocityX, velocityY) => {
+                            swipes.push([velocityX, velocityY]);
+                        }}
+                    />,
+                    <GtkGestureLongPress
+                        key="long-press"
+                        onPressed={(x, y) => {
+                            presses.push([x, y]);
+                        }}
+                    />,
+                ]}
+            >
+                <GtkBox
+                    controllers={
+                        <GtkGestureLongPress
+                            propagationPhase={Gtk.PropagationPhase.NONE}
+                            onPressed={() => {
+                                presses.push([-1, -1]);
+                            }}
+                        />
+                    }
+                >
+                    <GtkLabel name="nested-gesture" marginStart={10} marginTop={20}>
+                        Nested
+                    </GtkLabel>
+                </GtkBox>
+            </GtkBox>,
+        );
+        const label = await findByName("nested-gesture");
+        await userEvent.longPress(label, 1, 2);
+        expect(presses).toEqual([[11, 22]]);
+        await userEvent.swipe(label, 5, 6);
+        expect(swipes).toEqual([[5, 6]]);
     });
 
     it("throws when the widget carries no matching gesture controller", async () => {
@@ -1004,21 +1468,30 @@ describe("userEvent.dragAndDrop", () => {
         expect(handleDrop.calls[0]?.[0]).toBe(42);
     });
 
-    it("ends a drag without delivering a format the target does not accept", async () => {
+    it("ends a drag without delivering a format or an action the target does not accept", async () => {
         const drops = callCounter();
         const ends = callCounter();
-        const { source, target } = await renderDragAndDropPair({
-            onDrop: () => {
-                drops.callback();
+        const onDrop = () => {
+            drops.callback();
 
-                return true;
-            },
+            return true;
+        };
+        const unaccepted = await renderDragAndDropPair({
+            onDrop,
             onPrepare: () => Gdk.ContentProvider.newForValue(true),
             onDragEnd: ends.callback,
         });
-        await userEvent.dragAndDrop(source, target);
+        await userEvent.dragAndDrop(unaccepted.source, unaccepted.target);
+        const moved = await renderDragAndDropPair({
+            onDrop,
+            sourceActions: Gdk.DragAction.MOVE,
+            onPrepare: () => Gdk.ContentProvider.newForValue("moved"),
+            onDragEnd: ends.callback,
+        });
+        await userEvent.dragAndDrop(moved.source, moved.target);
+        await userEvent.dragAndDrop(moved.source, moved.target, "explicit");
         expect(drops.count).toBe(0);
-        expect(ends.count).toBe(1);
+        expect(ends.count).toBe(3);
     });
 
     it("throws when the source has no content", async () => {
@@ -1053,6 +1526,131 @@ describe("userEvent.dragAndDrop", () => {
         expect(handleDrop.calls[0]?.[0]).toBe("payload");
         expect(begins.count).toBe(1);
         expect(ends.count).toBe(1);
+    });
+
+    it("drags from and drops onto the nearest ancestors carrying the controllers", async () => {
+        const handleDrop = dropHandler((value) => value.getString());
+        const { findByName } = await renderScoped(
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                <GtkBox
+                    controllers={
+                        <GtkDragSource
+                            actions={Gdk.DragAction.COPY}
+                            onPrepare={() => Gdk.ContentProvider.newForValue("cell")}
+                        />
+                    }
+                >
+                    <GtkLabel name="nested-source">Source</GtkLabel>
+                </GtkBox>
+                <GtkBox
+                    controllers={
+                        <GtkDropTarget
+                            types={[GObject.TYPE_STRING]}
+                            actions={Gdk.DragAction.COPY}
+                            onDrop={handleDrop.onDrop}
+                        />
+                    }
+                >
+                    <GtkLabel name="nested-target" marginStart={4}>
+                        Target
+                    </GtkLabel>
+                </GtkBox>
+            </GtkBox>,
+        );
+        const source = await findByName("nested-source");
+        const target = await findByName("nested-target");
+        await userEvent.dragAndDrop(source, target, undefined, { x: 1, y: 2 });
+        expect(handleDrop.calls).toEqual([["cell", 5, 2]]);
+        await userEvent.drop(target, "direct");
+        expect(handleDrop.calls[1]).toEqual(["direct", 4, 0]);
+    });
+
+    it("drops on tab bar tabs and overview thumbnails through their extra drop target", async () => {
+        const drops: [string, string | null, Gdk.DragAction][] = [];
+        const overview = createRef<Adw.TabOverview>();
+        const extraDropTarget = {
+            actions: Gdk.DragAction.COPY | Gdk.DragAction.MOVE,
+            types: [GObject.TYPE_STRING],
+        };
+        const onExtraDragDrop = (
+            page: Adw.TabPage,
+            value: GObject.Value,
+            self: Adw.TabBar | Adw.TabOverview,
+        ): boolean => {
+            drops.push([page.getTitle(), value.getString(), self.getExtraDragPreferredAction()]);
+
+            return true;
+        };
+        const TabbedDrops = () => {
+            const [view, setView] = useState<Adw.TabView | null>(null);
+
+            return (
+                <AdwTabOverview
+                    ref={overview}
+                    view={view}
+                    extraDropTarget={extraDropTarget}
+                    onExtraDragDrop={onExtraDragDrop}
+                >
+                    <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                        <AdwTabBar
+                            view={view}
+                            autohide={false}
+                            extraDropTarget={extraDropTarget}
+                            onExtraDragDrop={onExtraDragDrop}
+                        />
+                        <AdwTabView ref={setView}>
+                            <AdwTabPage title="First">
+                                <GtkBox>
+                                    <GtkLabel
+                                        controllers={
+                                            <GtkDragSource
+                                                actions={Gdk.DragAction.MOVE}
+                                                onPrepare={() => Gdk.ContentProvider.newForValue("dragged")}
+                                            />
+                                        }
+                                    >
+                                        First page
+                                    </GtkLabel>
+                                    <GtkLabel
+                                        controllers={
+                                            <GtkDragSource
+                                                actions={Gdk.DragAction.LINK}
+                                                onPrepare={() => Gdk.ContentProvider.newForValue("linked")}
+                                            />
+                                        }
+                                    >
+                                        Link
+                                    </GtkLabel>
+                                </GtkBox>
+                            </AdwTabPage>
+                            <AdwTabPage title="Second">
+                                <GtkLabel>Second page</GtkLabel>
+                            </AdwTabPage>
+                        </AdwTabView>
+                    </GtkBox>
+                </AdwTabOverview>
+            );
+        };
+        await render(<TabbedDrops />);
+        const second = await screen.findByRole(Gtk.AccessibleRole.TAB, { name: "Second" });
+        await userEvent.dragAndDrop(await screen.findByText("First page"), second);
+        await userEvent.dragAndDrop(await screen.findByText("First page"), second, "explicit");
+        await userEvent.dragAndDrop(await screen.findByText("Link"), second);
+        await userEvent.drop(second, "dropped");
+        overview.current?.setOpen(true);
+        const thumbnail = (await screen.findAllByText("Second")).find((widget) => !widget.isAncestor(second));
+
+        if (thumbnail === undefined) {
+            throw new Error("expected an overview thumbnail title");
+        }
+
+        await userEvent.drop(pointerTargetAt(thumbnail), "thumbnail");
+        expect(drops).toEqual([
+            ["Second", "dragged", Gdk.DragAction.MOVE],
+            ["Second", "explicit", Gdk.DragAction.MOVE],
+            ["Second", "dropped", Gdk.DragAction.COPY],
+            ["Second", "thumbnail", Gdk.DragAction.COPY],
+        ]);
     });
 
     it("throws when the source has no DragSource controller", async () => {
@@ -1104,6 +1702,51 @@ describe("userEvent.keyboard: shortcuts", () => {
         expect(global.count).toBe(1);
         expect(local.count).toBe(0);
         expect(insensitive.count).toBe(0);
+    });
+
+    it("keeps keys inside an open dialog from its window's shortcuts and application accelerators", async () => {
+        const searches = returningCallCounter(true);
+        const statistics = callCounter();
+        const view = (isDialogOpen: boolean): ReactNode => (
+            <AdwApplication
+                applicationId="org.gtkx.dialogshortcuts"
+                flags={Gio.ApplicationFlags.NON_UNIQUE}
+                actionAccels={[{ detailedActionName: "win.statistics", accels: ["<Control>i"] }]}
+            >
+                <AdwApplicationWindow
+                    title="Main"
+                    actions={<GSimpleAction name="statistics" onActivate={statistics.callback} />}
+                    controllers={
+                        <GtkShortcutController
+                            scope={Gtk.ShortcutScope.GLOBAL}
+                            shortcuts={
+                                <GtkShortcut
+                                    trigger={<GtkShortcutTrigger accelerator="<Control>f" />}
+                                    action={<GtkCallbackAction callback={searches.callback} />}
+                                />
+                            }
+                        />
+                    }
+                >
+                    {isDialogOpen && (
+                        <AdwDialog title="Edit">
+                            <GtkEntry name="field" />
+                        </AdwDialog>
+                    )}
+                </AdwApplicationWindow>
+            </AdwApplication>
+        );
+
+        const { rerender } = await render(view(true), { container: rootElement });
+        await userEvent.keyboard(await screen.findByName("field"), "{Control>}f{/Control}{Control>}i{/Control}");
+        expect(searches.count).toBe(0);
+        expect(statistics.count).toBe(0);
+
+        await rerender(view(false));
+        const window = screen.getByRole(Gtk.AccessibleRole.WINDOW, { name: "Main" });
+        await userEvent.keyboard(window, "{Control>}f{/Control}{Control>}i{/Control}");
+        expect(searches.count).toBe(1);
+        expect(statistics.count).toBe(1);
     });
 
     it("runs a global-scope shortcut at the root, behind the key controllers above its host", async () => {
@@ -1250,6 +1893,23 @@ describe("userEvent.keyboard: key controller propagation", () => {
 
         expect(probe.ancestorPresses).toHaveLength(1);
         expect(probe.fieldPresses).toHaveLength(0);
+    });
+
+    it("starts at the window's focus widget when the target contains it", async () => {
+        const order: string[] = [];
+        const field = await renderKeyControllerTree(
+            recordingKeyController(order, "ancestor"),
+            recordingKeyController(order, "focus"),
+        );
+        const ancestor = field.getParent();
+
+        if (ancestor === null) {
+            throw new TypeError("Field has no parent");
+        }
+
+        field.grabFocus();
+        await userEvent.keyboard(ancestor, "{Escape}");
+        expect(order).toEqual(["focus", "ancestor"]);
     });
 });
 

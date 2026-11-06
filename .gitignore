@@ -14,6 +14,7 @@ dist/
 gschemas.compiled
 node_modules/
 out-tsc/
+packages/create-gtkx/dependency-ranges.json
 packages/gl/src/generated/
 packages/native/npm/*/package.json
 packages/native/npm/*/README.md

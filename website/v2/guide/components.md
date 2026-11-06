@@ -1,6 +1,6 @@
 ---
 title: "Components"
-description: "Render lists, tables, dropdowns, tabs, and toast notifications from React state."
+description: "Render lists, tables, dropdowns, grid cells, tabs, menu widgets, and toast notifications from React state."
 ---
 
 # Components
@@ -19,7 +19,7 @@ See the [component reference](/v2/reference/@gtkx/components/) for props. Hooks 
 
 ### ListView
 
-`ListView<T, S>` wraps `Gtk.ListView`. Pass `items` as `{ id, value }` pairs plus a `renderItem`. Selection is controlled: update `selectedIds` from `onSelectionChanged` to retain the selection.
+`ListView<T, S>` wraps `Gtk.ListView`. Pass `items` as `{ id, value }` pairs plus a `renderItem`. Selection is controlled: update `selectedIds` from `onSelectionChanged` to retain the selection. Like a React input's `onChange`, `onSelectionChanged` reports what the user or the widget changes, not the `selectedIds` you pass in. It also reports the remaining selection when an item named by `selectedIds` is not in the list.
 
 ```tsx
 import { ListView } from "@gtkx/components";
@@ -36,11 +36,23 @@ import { GtkLabel } from "@gtkx/jsx/gtk";
 />
 ```
 
-Nesting `ListItem.children` turns the same component into an acyclic tree, with `expandedIds` and `onExpandedChange` driving expansion. Keep item IDs stable and unique across the collection, including nested items. Section IDs must be unique among sections.
+Nesting `ListItem.children` turns the same component into an acyclic tree, with `expandedIds` and `onExpandedChange` driving expansion the same way. Keep item IDs stable and unique across the collection, including nested items, since selection and expansion name rows by ID. Section IDs must be unique among sections.
+
+IDs also give rows their identity. When items are inserted, removed or reordered, GTK keeps every row whose ID stays among the same siblings bound, so its component state survives, and only new rows mount. A row that moves keeps its state in a flat list, grid, table or section; a tree row that moves among its siblings remounts, because GTK rebuilds its tree node. A reorder that moves more than about a thousand rows at once updates rows in place instead, and the rows that move there remount. An ID repeated among siblings pairs rows by their order.
 
 When every item is known to be a leaf, pass `isFlat` to `ListView` or `ColumnView`. This skips tree discovery when synchronizing large collections; do not use it when any item has children.
 
 To group rows under headers, pass `sections` in place of `items`: each `ListSection` carries its own `data` array of items, and `renderHeader` draws the header above each group. `ColumnView` and `DropDown` accept the same pair.
+
+A row's content is not the row a screen reader announces: GTK names a list row only from its own accessible label. Pass `rowProps` to name or describe each row, or to make one unselectable, unactivatable or unfocusable. It receives the same arguments as `renderItem`; `GridView`, `ColumnView` and `ListItemFactory` accept it too.
+
+```tsx
+<ListView<Task>
+    items={tasks.map((task) => ({ id: task.id, value: task }))}
+    rowProps={({ item }) => ({ accessibleLabel: item.title, isSelectable: !item.isArchived })}
+    renderItem={({ item }) => <TaskRow task={item} />}
+/>
+```
 
 ### GridView
 
@@ -67,7 +79,7 @@ const columns: ColumnViewColumn<Employee>[] = [
 />
 ```
 
-`ColumnView` also supports trees through `ListItem.children`, `expandedIds`, and `onExpandedChange`. The first visible column draws the expander and indentation; the other columns stay aligned at each depth. Hiding that column with `visible: false` moves the expander to the next visible column.
+`ColumnView` also supports trees through `ListItem.children`, `expandedIds`, and `onExpandedChange`. The first visible column draws the expander and indentation; the other columns stay aligned at each depth. Hiding that column with `visible: false` moves the expander to the next visible column. Set `hasExpander` on a column to draw them there instead, such as the subject column of a message list whose status icons come first.
 
 ### DropDown
 
@@ -88,6 +100,26 @@ import { DropDown } from "@gtkx/components";
 The callback receives `null` when the model becomes empty.
 
 `ComboRow<T, S>` from `@gtkx/components` takes the same collection props and renders an `Adw.ComboRow` inside a preferences group. See the tutorial's [preferences chapter](/v2/tutorial/preferences-and-theming) for an example.
+
+### Native models
+
+When a native `Gio.ListModel` already holds the data, such as a `Gtk.StringList` behind a `Gtk.FilterListModel`, keep the model and use `ListItemFactory` as the view's factory. Its `renderItem` receives each model object:
+
+```tsx
+import { ListItemFactory } from "@gtkx/components";
+import type * as Gtk from "@gtkx/gi/gtk";
+import { GtkInscription, GtkListView, GtkNoSelection } from "@gtkx/jsx/gtk";
+
+<GtkListView
+    model={<GtkNoSelection model={words} />}
+    factory={
+        <ListItemFactory<Gtk.StringObject>
+            rowProps={({ item }) => ({ accessibleLabel: item.getString() })}
+            renderItem={({ item }) => <GtkInscription text={item.getString()} />}
+        />
+    }
+/>
+```
 
 ### GtkListBox
 
@@ -114,13 +146,43 @@ import { GtkListBox } from "@gtkx/jsx/gtk";
 
 Leave `selectedIndex` out for native selection, or set it to keep selection under application control. Use `-1` or `null` to clear it. If the desired row has not mounted yet, GTKX keeps the current selection and applies the index once that row exists.
 
-GTKX suppresses `onRowSelected` while applying its own selection updates. Other native selection changes still reach the handler, including changes made through native methods. Update the controlled value in that handler to keep the new selection; otherwise GTKX restores the requested row.
+GTKX suppresses `onRowSelected` while applying its own selection updates and while a commit adds or removes rows, so removing the selected row from your state doesn't call it with `null`. Other native selection changes still reach the handler, including changes made through native methods. Update the controlled value in that handler to keep the new selection; otherwise GTKX restores the requested row.
 
 The tutorial's [sidebar](/v2/tutorial/lists-and-the-sidebar#keeping-gtk4-and-the-route-in-agreement) controls selection from the current route.
 
 ## Tabs across windows
 
 Ordinary `AdwTabView` children work for tabs that share their parent's React lifetime. For tabs the user opens, closes, reorders and drags between windows, use the [tab view navigator](/v2/guide/navigation#tab-view-navigator) from `@gtkx/navigation`, which keeps the open tabs in navigation state and follows native transfers.
+
+A JSX tab stays open while React renders it. To let the user close tabs with their close buttons, Ctrl+W or the overview, handle `onClosePage`: remove the page from the state that renders it and confirm the close. Without a handler, the close does nothing and GTKX warns in development; see [Closing](/v2/guide/modals-and-portals#closing).
+
+```tsx
+import { AdwTabPage, AdwTabView } from "@gtkx/jsx/adw";
+import { GtkLabel } from "@gtkx/jsx/gtk";
+import { useState } from "react";
+
+const Documents = () => {
+    const [titles, setTitles] = useState(["Notes", "Ideas"]);
+
+    return (
+        <AdwTabView
+            onClosePage={(page, view) => {
+                setTitles((current) => current.filter((title) => title !== page.getTitle()));
+                view.closePageFinish(page, true);
+                return true;
+            }}
+        >
+            {titles.map((title) => (
+                <AdwTabPage key={title} title={title}>
+                    <GtkLabel>{title}</GtkLabel>
+                </AdwTabPage>
+            ))}
+        </AdwTabView>
+    );
+};
+```
+
+`onNotifySelectedPage` reports the selection libadwaita makes: the first page once the view mounts, and the neighbour it selects after your state drops the selected page, so a window subtitle or per-tab action mirrored from that handler stays current.
 
 ### Native tab configuration
 
@@ -146,6 +208,52 @@ import { AdwTabBar } from "@gtkx/jsx/adw";
 ```
 
 Here `renameTab` updates the state the page's `title` prop comes from. Removing `extraDropTarget` disables the additional drop target. Types can be GType values or generated classes. Use explicit `null` when clearing nullable object props such as a tab's `icon`.
+
+## Grid cells
+
+GTK places a widget in a `GtkGrid` through the layout manager's child object, which GtkBuilder writes as a `<layout>` element and C code sets with `gtk_grid_attach`. Wrap each child of the grid in `GtkGridLayoutChild` and give it the cell's `column` and `row`, plus `columnSpan` or `rowSpan` to cover several cells:
+
+```tsx
+import { GtkButton, GtkGrid, GtkGridLayoutChild, GtkLabel } from "@gtkx/jsx/gtk";
+
+<GtkGrid columnSpacing={6} rowSpacing={6}>
+    <GtkGridLayoutChild column={0} row={0}>
+        <GtkLabel label="Name" />
+    </GtkGridLayoutChild>
+    <GtkGridLayoutChild column={1} row={0}>
+        <GtkButton label="Edit" />
+    </GtkGridLayoutChild>
+    <GtkGridLayoutChild column={0} row={1} columnSpan={2}>
+        <GtkButton label="Save" />
+    </GtkGridLayoutChild>
+</GtkGrid>
+```
+
+The grid creates the layout child for the widget, and changing `column` or `row` moves it. A child without the wrapper sits in the first cell. Other layout managers' child objects work the same way, such as `GtkFixedLayoutChild` for a widget's `transform` inside a `GtkFixed`, which [Animations](/v2/guide/animations#moving-widgets) animates.
+
+## Widgets in menus
+
+A popover menu can show a widget in place of a menu item, as GNOME Text Editor does with its style selector. Give the item a `custom` ID and pass the widget under that ID in `customChildren` on the `GtkMenuButton`, `GtkPopoverMenu` or `GtkPopoverMenuBar` showing the menu, as GtkBuilder's `<child type="ID">` does:
+
+```tsx
+import { GMenu } from "@gtkx/jsx/gio";
+import { GtkMenuButton } from "@gtkx/jsx/gtk";
+
+<GtkMenuButton
+    iconName="open-menu-symbolic"
+    menuModel={
+        <GMenu
+            items={[
+                { section: [{ custom: "theme" }] },
+                { section: [{ label: "Preferences", action: "win.preferences", accel: "<Control>comma" }] },
+            ]}
+        />
+    }
+    customChildren={{ theme: <ThemeSelector /> }}
+/>
+```
+
+The widget stays in its item when the model or its items change. An ID with no matching item leaves its widget out of the menu. Menu items also take GTK's other [menu attributes](https://docs.gtk.org/gtk4/class.PopoverMenu.html#menu-models) in camelCase, such as `hiddenWhen` and `accel`.
 
 ## Toasts
 

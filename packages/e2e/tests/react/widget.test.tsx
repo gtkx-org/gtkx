@@ -1,6 +1,8 @@
+import type * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
-import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
+import { AdwActionRow } from "@gtkx/jsx/adw";
+import { GtkBox, GtkButton, GtkDropDown, GtkLabel, GtkListBox, GtkStringList } from "@gtkx/jsx/gtk";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { expect, it } from "vitest";
@@ -27,6 +29,19 @@ it("updates native props on the same widget and restores omitted defaults", asyn
     expect(ref.current).toBeNull();
 });
 
+it("restores native defaults that the GIR does not record", async () => {
+    const ref = createRef<Adw.ActionRow>();
+    const row = (subtitle?: string) => (
+        <GtkListBox>
+            <AdwActionRow ref={ref} title="Phone" subtitle={subtitle} />
+        </GtkListBox>
+    );
+    const { rerender } = await render(row("Enter a valid number"));
+    expect(ref.current).toHaveObjectProperty("subtitle", "Enter a valid number");
+    await rerender(row());
+    expect(ref.current).toHaveObjectProperty("subtitle", "");
+});
+
 it("replaces mutually exclusive properties and coerces native numeric ranges", async () => {
     const ref = createRef<Gtk.Button>();
     const { rerender } = await render(
@@ -47,6 +62,18 @@ it("requires a new key when a construct-only property changes", async () => {
     const { rerender } = await render(<GtkBox ref={ref} cssName="initial-name" />);
     expect(ref.current).toHaveObjectProperty("cssName", "initial-name");
     await expect(rerender(<GtkBox ref={ref} cssName="changed-name" />)).rejects.toThrow();
+});
+
+it("keeps an object whose construct-only string list is recreated with equal items", async () => {
+    const ref = createRef<Gtk.StringList>();
+    const units = ["Meters", "Feet"];
+    const { rerender } = await render(
+        <GtkDropDown model={<GtkStringList ref={ref} strings={units.map((u) => u)} />} />,
+    );
+    const model = ref.current;
+    await rerender(<GtkDropDown model={<GtkStringList ref={ref} strings={units.map((u) => u)} />} />);
+    expect(ref.current).toBe(model);
+    await expect(rerender(<GtkDropDown model={<GtkStringList ref={ref} strings={["Meters"]} />} />)).rejects.toThrow();
 });
 
 it("remounts with new constructor values when its key changes", async () => {

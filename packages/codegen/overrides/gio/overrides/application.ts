@@ -201,6 +201,7 @@ const buildApplicationClass = (base: AnyClass<Application>): AnyClass<ManagedApp
 
     const derived = registerClass(DerivedApplication, { typeName: derivedTypeName(base) });
     derivedApplicationClasses.add(derived);
+    derivedClasses.set(derived, derived);
 
     return derived;
 };

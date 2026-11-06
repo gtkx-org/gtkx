@@ -4,7 +4,7 @@ import * as gl from "@gtkx/gl";
 type AttributeBinding = readonly [index: number, name: string];
 
 const setShaderSource = (shader: number, source: string): void => {
-    gl.shaderSource(shader, 1, [source], [-1]);
+    gl.shaderSource(shader, 1, [source], null);
 };
 
 const compileShader = (type: number, source: string, name: string): number => {
