@@ -37,6 +37,7 @@ import {
     GtkCheckButton,
     GtkColumnView,
     GtkColumnViewColumn,
+    GtkCustomSorter,
     GtkDropTarget,
     GtkExpander,
     GtkFlowBox,
@@ -357,21 +358,25 @@ describe("default slots and non-widget children", () => {
         expect(controller?.getWidget()).toBeNull();
     });
 
-    it("keeps column objects ordered through insertion and removal", async () => {
+    it("keeps column objects ordered and sorted through insertion, moves and removal", async () => {
         const ref = createRef<Gtk.ColumnView>();
         const columns = (titles: string[]) => (
             <GtkColumnView ref={ref}>
                 {titles.map((title) => (
-                    <GtkColumnViewColumn key={title} title={title} />
+                    <GtkColumnViewColumn key={title} title={title} sorter={<GtkCustomSorter />} />
                 ))}
             </GtkColumnView>
         );
         const { rerender } = await render(columns(["A", "B"]));
         const model = ref.current?.getColumns();
         const first = model?.getItem(0);
+        const sorter = ref.current?.getSorter();
+        ref.current?.sortByColumn(model?.getItem(1) as Gtk.ColumnViewColumn, Gtk.SortType.DESCENDING);
         await rerender(columns(["B", "C", "A"]));
         expect(model?.getNItems()).toBe(3);
         expect(model?.getItem(2)).toBe(first);
+        expect(sorter).toHaveObjectProperty("primary-sort-column", model?.getItem(0));
+        expect(sorter).toHaveObjectProperty("primary-sort-order", Gtk.SortType.DESCENDING);
         await rerender(columns(["C"]));
         expect(model?.getNItems()).toBe(1);
         expect(model?.getItem(0)).toHaveObjectProperty("title", "C");

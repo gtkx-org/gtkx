@@ -257,6 +257,19 @@ const reorderTabPages = (view: Adw.TabView, children: readonly GObject.Object[])
     }
 };
 
+// GTK 4.22 places the header and cells of a column moved to a later position, or inserted before others, one
+// widget too far, so their focus and accessible order disagree with the column order. Moving a column to an
+// earlier position orders them correctly, so columns are only appended or moved toward the start.
+const orderColumns = (view: Gtk.ColumnView, children: readonly GObject.Object[]): void => {
+    const columns = view.getColumns();
+
+    for (const [index, child] of children.entries()) {
+        if (child instanceof Gtk.ColumnViewColumn && columns.getItem(index) !== child) {
+            view.insertColumn(index, child);
+        }
+    }
+};
+
 const textViewAnchorChildren: ElementBehavior<Gtk.TextView> = {
     attach: (view, child, info) => {
         const anchor = info.props[TEXT_CHILD_ANCHOR_PROP];
@@ -801,7 +814,11 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
         behaviors: [
             slot<Gtk.ColumnView, Gtk.ColumnViewColumn>("children", Gtk.ColumnViewColumn, {
                 attach: (view, column, info) => {
+                    view.appendColumn(column);
                     view.insertColumn(info.index, column);
+                },
+                reorder: (view, _column, info) => {
+                    orderColumns(view, info.children);
                 },
                 detach: (view, column) => {
                     view.removeColumn(column);
