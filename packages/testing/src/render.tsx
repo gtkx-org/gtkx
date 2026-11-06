@@ -1,4 +1,5 @@
 import type { Root, RootElement } from "@gtkx/react";
+import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { createRoot } from "@gtkx/react";
 import { isRootElement, ParentWindowContext, settleAccessible } from "@gtkx/react/internal";
@@ -24,6 +25,7 @@ type ActiveRender = {
     root: Root;
     window: Gtk.Window | null;
     errors: RenderErrorState;
+    application: Gio.Application | null;
 };
 
 type ResolvedContainer = {
@@ -90,6 +92,7 @@ const disposeActiveRender = async (active: ActiveRender): Promise<void> => {
         await flushRender(active, active.root.unmount);
     } finally {
         active.window?.destroy();
+        active.application?.quit();
     }
 };
 
@@ -229,7 +232,7 @@ const render = async <Q extends QueryMap = Record<never, never>>(
     const errors: RenderErrorState = { lastError: null };
     const root = createRoot(resolved.containerInfo, renderErrorHandlers(errors, options));
 
-    const active: ActiveRender = { root, window: resolved.window, errors };
+    const active: ActiveRender = { root, window: resolved.window, errors, application: null };
     activeRenders.add(active);
     addToCleanupQueue(disposeAllActiveRenders);
     addToCleanupQueue(clearScreen);
@@ -247,9 +250,17 @@ const render = async <Q extends QueryMap = Record<never, never>>(
         return options?.isReactStrictMode ? <StrictMode>{hosted}</StrictMode> : hosted;
     };
 
-    await flushRender(active, () => {
-        root.render(wrap(element));
-    });
+    const previousApplication = Gio.Application.getDefault();
+
+    try {
+        await flushRender(active, () => {
+            root.render(wrap(element));
+        });
+    } finally {
+        const application = Gio.Application.getDefault();
+        active.application = application === previousApplication ? null : application;
+    }
+
     const transients = presentHarnessWindow(resolved.window);
     await settleRender(resolved, options?.container, "render");
     await settleWindow(realizedWindow(presentHarnessTransients(transients)), findPresentedWindowFailure, "render");
@@ -283,8 +294,8 @@ const render = async <Q extends QueryMap = Record<never, never>>(
 };
 
 /**
- * Unmounts every active render and runs all registered cleanup callbacks,
- * resetting the screen and clipboard. Called automatically after each test.
+ * Unmounts every active render, quits the applications those renders started, and runs all
+ * registered cleanup callbacks, resetting the screen and clipboard. Called automatically after each test.
  */
 const cleanup = async (): Promise<void> => {
     await runCleanup();

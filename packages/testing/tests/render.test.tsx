@@ -92,6 +92,14 @@ const ApplicationProbe = (): ReactNode => {
     );
 };
 
+const LingeringApplication = ({ applicationId }: { applicationId: string }): ReactNode => (
+    <GtkApplication applicationId={applicationId} inactivityTimeout={60_000}>
+        <GtkApplicationWindow defaultWidth={100} defaultHeight={100}>
+            <GtkLabel name="lingering">Lingering</GtkLabel>
+        </GtkApplicationWindow>
+    </GtkApplication>
+);
+
 const expectFocusedEntry = (): void => {
     const root = entryRef.current?.getRoot();
     expect(root instanceof Gtk.Window ? root.isActive() : null).toBe(true);
@@ -425,6 +433,22 @@ describe("Gio.Application.getDefault", () => {
         expect(unrendered.getIsRegistered()).toBe(false);
         expect(Gio.Application.getDefault()).toBeNull();
         await renderApplicationProbe();
+    });
+
+    it("quits an application that would outlive its tree, so the next render registers the same ID", async () => {
+        const applicationId = `${APPLICATION_ID}.lingering`;
+        await render(<LingeringApplication applicationId={applicationId} />, { container: rootElement });
+        const first = Gio.Application.getDefault();
+        first?.hold();
+
+        try {
+            await cleanup();
+            await render(<LingeringApplication applicationId={applicationId} />, { container: rootElement });
+            expect(await screen.findByName("lingering")).toBeRooted();
+            expect(Gio.Application.getDefault()).not.toBe(first);
+        } finally {
+            first?.release();
+        }
     });
 });
 

@@ -125,7 +125,7 @@ import { rootElement } from "@gtkx/react";
 await render(<App />, { container: rootElement });
 ```
 
-`rootElement` expects a tree that creates a toplevel window; omit `container` for components without their own window. An `AdwApplicationWindow` registers with its application, so render a window component on its own inside `AdwApplication`. Use the `wrapper` option for context providers. `rerender` updates the rendered component; `unmount` removes it. Animations are disabled by default, and automatic cleanup removes rendered trees between tests. For hooks, use `renderHook` and assert on `result.current`.
+`rootElement` expects a tree that creates a toplevel window; omit `container` for components without their own window. An `AdwApplicationWindow` registers with its application, so render a window component on its own inside `AdwApplication`. Use the `wrapper` option for context providers. `rerender` updates the rendered component; `unmount` removes it. Animations are disabled by default, and automatic cleanup removes rendered trees between tests. Unmounting also quits the application a render started, even one that holds itself or waits out its `inactivityTimeout`, so the next render can register the same application ID. For hooks, use `renderHook` and assert on `result.current`.
 
 ### Module-level state
 
