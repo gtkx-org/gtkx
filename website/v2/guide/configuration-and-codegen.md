@@ -273,7 +273,7 @@ Use `gtkx docs --help` to choose an output directory or link root. These pages d
 
 ## What agents are given
 
-In an application, codegen also writes `.gtkx/reference` for coding agents and maintains a marked GTKX section in `AGENTS.md`. Text outside that section is preserved. It creates a `CLAUDE.md` import only when that file does not already exist.
+In an application, codegen also writes `.gtkx/reference` for coding agents and maintains a marked GTKX section in `AGENTS.md`. Text outside that section is preserved, and so is a section that a Markdown formatter has only rewrapped or realigned. It creates a `CLAUDE.md` import only when that file does not already exist.
 
 Commit the rules file and ignore `.gtkx/`, as scaffolded projects do. Set `agents.rules` or `agents.reference` to `false` to disable the corresponding output. Disabling the rules removes the GTKX section from `AGENTS.md`, and deletes that file and the `CLAUDE.md` import when nothing else remains in them. Disabling the reference also removes `.gtkx/reference` and its mention from the rules.
 

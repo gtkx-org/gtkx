@@ -92,11 +92,17 @@ const appendBlock = (contents: string, block: string): string => {
     return `${withTrailingNewline(contents)}\n${block}\n`;
 };
 
+const withoutLayout = (block: string): string => block.replaceAll(/\s+/g, " ");
+
 const replaceBlock = (contents: string, block: string): string => {
     const match = BLOCK_PATTERN.exec(contents);
 
     if (match === null) {
         return appendBlock(contents, block);
+    }
+
+    if (withoutLayout(match[0]) === withoutLayout(block)) {
+        return contents;
     }
 
     return contents.slice(0, match.index) + block + contents.slice(match.index + match[0].length);

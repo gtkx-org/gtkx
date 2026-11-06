@@ -1657,6 +1657,19 @@ describe("CLI commands", () => {
         expect((await format("AGENTS.md", rules)).code).toBe(rules);
     });
 
+    it("leaves agent rules that a Markdown formatter rewrapped unchanged", async () => {
+        using project = createProject({ codegen: true, libraries: ["Gio-2.0"], agents: { rules: true } });
+        const agentsPath = join(project.root, "AGENTS.md");
+        await invoke(["codegen", "--cwd", project.root]);
+        const { code: wrapped } = await format("AGENTS.md", readFileSync(agentsPath, "utf8"), {
+            proseWrap: "always",
+        });
+        writeFileSync(agentsPath, wrapped);
+
+        await invoke(["codegen", "--cwd", project.root]);
+        expect(readFileSync(agentsPath, "utf8")).toBe(wrapped);
+    });
+
     it("lists only the commands that the project's packages provide in the agent rules", async () => {
         using project = createProject({ codegen: true, libraries: ["Gio-2.0"], agents: { rules: true } });
         const rules = () => readFileSync(join(project.root, "AGENTS.md"), "utf8");
