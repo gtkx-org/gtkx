@@ -1,4 +1,6 @@
+use std::collections::HashSet;
 use std::ffi::c_void;
+use std::sync::{LazyLock, Mutex};
 
 use glib::translate::{IntoGlib as _, from_glib_none};
 use glib::{self, gobject_ffi};
@@ -17,6 +19,25 @@ use crate::host::panic_handler::guard_ffi_boundary;
 use crate::value::{self, ClosureHandle, pending_wrapper};
 
 pub struct VfuncCallback(ClosureHandle);
+
+static REGISTERED_TYPES: LazyLock<Mutex<HashSet<glib::ffi::GType>>> =
+    LazyLock::new(|| Mutex::new(HashSet::new()));
+
+/// Whether `type_` is, or derives from, a class `register_class` registered, so its instances can
+/// run JavaScript vfuncs.
+pub(crate) fn is_registered_type(type_: glib::Type) -> bool {
+    let registered = REGISTERED_TYPES
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let mut current = Some(type_);
+    while let Some(type_) = current {
+        if registered.contains(&type_.into_glib()) {
+            return true;
+        }
+        current = type_.parent();
+    }
+    false
+}
 
 impl FromNapiValue for VfuncCallback {
     unsafe fn from_napi_value(env: sys::napi_env, napi_val: sys::napi_value) -> Result<Self> {
@@ -159,7 +180,7 @@ impl ResolvedVfunc {
                 .cast::<u8>()
                 .add(byte_offset)
                 .cast::<*mut c_void>();
-            state.data_ref().set_native_parent(slot.read());
+            state.data_ref().set_vfunc_parent(slot.read());
             slot.write(state.code_ptr);
         }
         state
@@ -385,6 +406,11 @@ impl ClassRegistration {
             drop(unsafe { Box::from_raw(class_data) });
             anyhow::bail!("g_type_register_static returned G_TYPE_INVALID");
         }
+
+        REGISTERED_TYPES
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .insert(new_type);
 
         for iface in interfaces {
             unsafe { iface.add_to(new_type) };
