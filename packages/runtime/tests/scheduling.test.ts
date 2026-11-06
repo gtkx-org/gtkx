@@ -35,8 +35,8 @@ test.each([
     { mode: "quit", title: "quits safely from inside a GLib dispatch", output: "QUIT" },
     {
         mode: "descriptors",
-        title: "tracks removed, reused, closed, and unwatchable descriptors",
-        output: '["first","reused","closed","unwatchable"]',
+        title: "tracks removed, reused, closed, unwatchable, and duplicated descriptors",
+        output: '["first","reused","closed","unwatchable","duplicated"]',
     },
     {
         mode: "workers",

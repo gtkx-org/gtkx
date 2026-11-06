@@ -134,6 +134,7 @@ const runDescriptors = async (): Promise<void> => {
     const pipe = t.bind("libc.so.6", "pipe", [t.buffer], t.int32);
     const duplicate = t.bind("libc.so.6", "dup2", [t.int32, t.int32], t.int32);
     const moveAbove = t.bind("libc.so.6", "fcntl", [t.int32, t.int32, t.int32], t.int32);
+    const copyDescriptor = t.bind("libc.so.6", "dup", [t.int32], t.int32);
     const descriptors = new Int32Array(2);
     const createPipe = (): { input: number; output: number } => {
         assert.equal(pipe(descriptors), 0);
@@ -230,6 +231,22 @@ const runDescriptors = async (): Promise<void> => {
     assert.equal(remove(unwatchableSource), true);
     events.push("unwatchable");
     closeSync(regularFile);
+    ({ input, output } = createPipe());
+    const copy = copyDescriptor(input);
+    assert(typeof copy === "number" && copy >= 0);
+    const duplicatedSource = watch(0, input, 1, () => true);
+    await nextTurn();
+    writeSync(output, "a");
+    assert.equal(remove(duplicatedSource), true);
+    closeSync(input);
+    await nextTurn();
+    const idleStart = performance.eventLoopUtilization();
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    const { utilization } = performance.eventLoopUtilization(idleStart);
+    closeSync(copy);
+    closeSync(output);
+    assert(utilization < 0.5, "A closed duplicated descriptor kept the event loop busy");
+    events.push("duplicated");
     quit();
     process.stdout.write(JSON.stringify(events));
 };

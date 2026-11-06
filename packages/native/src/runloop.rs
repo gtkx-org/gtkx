@@ -142,20 +142,31 @@ fn desired_epoll_events(fds: &[GPollFD]) -> HashMap<c_int, u32> {
     desired
 }
 
-/// Points the private epoll set at `fd`, re-adding it when the descriptor was closed and its number
-/// reused since the last iteration, because the kernel drops a closed descriptor from every set.
-fn watch_descriptor(epoll: c_int, fd: c_int, events: u32) -> bool {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Registration {
+    Modified,
+    Added,
+    Unwatchable,
+}
+
+/// Points the private epoll set at `fd`, adding it when the set has no registration for the open
+/// file the number now refers to.
+fn watch_descriptor(epoll: c_int, fd: c_int, events: u32) -> Registration {
     let mut event = libc::epoll_event {
         events,
         u64: u64::from(fd.unsigned_abs()),
     };
     if unsafe { libc::epoll_ctl(epoll, libc::EPOLL_CTL_MOD, fd, &raw mut event) } == 0 {
-        return true;
+        return Registration::Modified;
     }
     if std::io::Error::last_os_error().raw_os_error() != Some(libc::ENOENT) {
-        return false;
+        return Registration::Unwatchable;
     }
-    unsafe { libc::epoll_ctl(epoll, libc::EPOLL_CTL_ADD, fd, &raw mut event) == 0 }
+    if unsafe { libc::epoll_ctl(epoll, libc::EPOLL_CTL_ADD, fd, &raw mut event) } == 0 {
+        Registration::Added
+    } else {
+        Registration::Unwatchable
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -179,8 +190,13 @@ fn wakeup_for(timeout: c_int, sources_ready: bool, has_unwatchable_fds: bool) ->
 /// handle. `GLib` closes and reuses descriptors whenever its sources do, so registering them with
 /// libuv directly would leave stale watchers that remove or refuse Node's own handles on reused
 /// numbers.
+///
+/// The kernel keeps a registration until every duplicate of its open file is closed, and a closed
+/// number can no longer remove it. When a watched number turns out closed or reused, the whole set
+/// is replaced, so a registration whose file a duplicate keeps alive cannot stay ready forever.
 struct RunloopState {
     ctx: *mut GMainContext,
+    uv_loop: *mut c_void,
     prepare: *mut c_void,
     timer: *mut c_void,
     epoll: c_int,
@@ -247,7 +263,17 @@ impl RunloopState {
 
     fn reconcile_watched(&mut self) -> bool {
         let desired = desired_epoll_events(&self.fds[..self.n_fds]);
+        if self.register(&desired) {
+            self.replace_epoll_set();
+            self.register(&desired);
+        }
+        desired.keys().any(|fd| !self.watched.contains(fd))
+    }
 
+    /// Updates the set to `desired`, returning whether a watched number was closed or reused, so
+    /// that its registration may have outlived it.
+    fn register(&mut self, desired: &HashMap<c_int, u32>) -> bool {
+        let mut orphaned = false;
         let stale: Vec<c_int> = self
             .watched
             .iter()
@@ -256,21 +282,47 @@ impl RunloopState {
             .collect();
         for fd in stale {
             self.watched.remove(&fd);
-            unsafe {
-                libc::epoll_ctl(self.epoll, libc::EPOLL_CTL_DEL, fd, std::ptr::null_mut());
-            }
+            orphaned |= unsafe {
+                libc::epoll_ctl(self.epoll, libc::EPOLL_CTL_DEL, fd, std::ptr::null_mut())
+            } != 0;
         }
 
-        let mut has_unwatchable_fds = false;
-        for (fd, events) in desired {
-            if watch_descriptor(self.epoll, fd, events) {
-                self.watched.insert(fd);
-            } else {
+        for (&fd, &events) in desired {
+            let registration = watch_descriptor(self.epoll, fd, events);
+            orphaned |= registration != Registration::Modified && self.watched.contains(&fd);
+            if registration == Registration::Unwatchable {
                 self.watched.remove(&fd);
-                has_unwatchable_fds = true;
+            } else {
+                self.watched.insert(fd);
             }
         }
-        has_unwatchable_fds
+        orphaned
+    }
+
+    fn replace_epoll_set(&mut self) {
+        let epoll = unsafe { libc::epoll_create1(libc::EPOLL_CLOEXEC) };
+        if epoll < 0 {
+            error_reporter::report_str(&format!(
+                "Failed to replace the GLib descriptor set: {}",
+                std::io::Error::last_os_error()
+            ));
+            return;
+        }
+        let poller = match start_poller(self.uv_loop, epoll) {
+            Ok(poller) => poller,
+            Err((call, rc)) => {
+                unsafe { libc::close(epoll) };
+                error_reporter::report_str(&format!(
+                    "{call} failed while replacing the GLib descriptor set (uv error {rc})"
+                ));
+                return;
+            }
+        };
+        close_uv_handle(self.poller);
+        unsafe { libc::close(self.epoll) };
+        self.epoll = epoll;
+        self.poller = poller;
+        self.watched.clear();
     }
 
     fn arm_timer(&self, wakeup: Wakeup) {
@@ -320,6 +372,23 @@ unsafe extern "C" fn on_prepare(_handle: *mut c_void) {
 unsafe extern "C" fn on_timer(_handle: *mut c_void) {}
 
 unsafe extern "C" fn on_poll(_handle: *mut c_void, _status: c_int, _events: c_int) {}
+
+fn start_poller(uv_loop: *mut c_void, epoll: c_int) -> Result<*mut c_void, (&'static str, c_int)> {
+    let uv = uv();
+    let poller = alloc_uv_handle(UV_POLL);
+    let rc = unsafe { (uv.poll_init)(uv_loop, poller, epoll) };
+    if rc != 0 {
+        unsafe { free_uv_handle(poller) };
+        return Err(("uv_poll_init", rc));
+    }
+    let rc = unsafe { (uv.poll_start)(poller, UV_READABLE, on_poll) };
+    if rc != 0 {
+        close_uv_handle(poller);
+        return Err(("uv_poll_start", rc));
+    }
+    unsafe { (uv.unreference)(poller) };
+    Ok(poller)
+}
 
 fn context_owner() -> std::sync::MutexGuard<'static, Option<ThreadId>> {
     CONTEXT_OWNER
@@ -387,29 +456,10 @@ pub fn install(env: &Env, dispatch_budget: Duration) -> napi::Result<()> {
         return Err(fail_install(ctx, epoll, &[prepare], "uv_timer_init", rc));
     }
 
-    let poller = alloc_uv_handle(UV_POLL);
-    let rc = unsafe { (uv.poll_init)(uv_loop, poller, epoll) };
-    if rc != 0 {
-        unsafe { free_uv_handle(poller) };
-        return Err(fail_install(
-            ctx,
-            epoll,
-            &[prepare, timer],
-            "uv_poll_init",
-            rc,
-        ));
-    }
-
-    let rc = unsafe { (uv.poll_start)(poller, UV_READABLE, on_poll) };
-    if rc != 0 {
-        return Err(fail_install(
-            ctx,
-            epoll,
-            &[prepare, timer, poller],
-            "uv_poll_start",
-            rc,
-        ));
-    }
+    let poller = match start_poller(uv_loop, epoll) {
+        Ok(poller) => poller,
+        Err((call, rc)) => return Err(fail_install(ctx, epoll, &[prepare, timer], call, rc)),
+    };
 
     let rc = unsafe { (uv.prepare_start)(prepare, on_prepare) };
     if rc != 0 {
@@ -425,12 +475,12 @@ pub fn install(env: &Env, dispatch_budget: Duration) -> napi::Result<()> {
     unsafe {
         (uv.unreference)(prepare);
         (uv.unreference)(timer);
-        (uv.unreference)(poller);
     }
 
     RUNLOOP.with(|slot| {
         *slot.borrow_mut() = Some(RunloopState {
             ctx,
+            uv_loop,
             prepare,
             timer,
             epoll,
