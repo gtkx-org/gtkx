@@ -4,6 +4,7 @@ import * as Gdk from "@gtkx/gi/gdk";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
+    AdwAlertDialog,
     AdwBin,
     AdwBottomSheet,
     AdwClamp,
@@ -69,6 +70,7 @@ import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { ItemFactory } from "../helpers/list-view-render.js";
 
 const containers: { name: string; wrap: (child: ReactNode) => ReactNode }[] = [
+    { name: "AdwAlertDialog", wrap: (child) => <AdwAlertDialog heading="Extra child">{child}</AdwAlertDialog> },
     { name: "AdwBin", wrap: (child) => <AdwBin>{child}</AdwBin> },
     { name: "AdwClamp", wrap: (child) => <AdwClamp>{child}</AdwClamp> },
     { name: "AdwSplitButton", wrap: (child) => <AdwSplitButton>{child}</AdwSplitButton> },

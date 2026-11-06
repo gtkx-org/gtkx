@@ -362,8 +362,8 @@ const setterSlot = <P extends GObject.Object, C extends GObject.Object>(
             attach: (parent, child) => {
                 callMethod<P, C | null>(parent, setter, child);
             },
-            detach: (parent) => {
-                callMethod<P, C | null>(parent, setter, null);
+            detach: (parent, _child, info) => {
+                callMethod<P, C | null>(parent, setter, info.remaining.at(-1) ?? null);
             },
         }),
     );
