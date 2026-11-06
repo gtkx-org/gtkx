@@ -1,8 +1,13 @@
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { loadConfig } from "@gtkx/config";
-import { configDependenciesFor, type McpSettings, resolveMcpSettings } from "@gtkx/config/internal";
-import { createLogger, installGracefulShutdown, type Logger } from "@gtkx/utils";
+import {
+    configDependenciesFor,
+    LIBRARY_APPLICATION_ID,
+    type McpSettings,
+    resolveMcpSettings,
+} from "@gtkx/config/internal";
+import { createLogger, errorMessage, installGracefulShutdown, type Logger } from "@gtkx/utils";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { existsSync } from "node:fs";
@@ -18,6 +23,8 @@ import {
     DEFAULT_SUBTREE_DEPTH,
     fireEventParams,
     MAX_SUBTREE_WIDGETS,
+    pointerParams,
+    pressKeysParams,
     queryParams,
     screenshotParams,
     treeParams,
@@ -28,6 +35,7 @@ import {
 import {
     buildReferenceTools,
     createReferenceProvider,
+    projectRootOf,
     type ReferenceProvider,
     registerReferenceResources,
 } from "./reference.js";
@@ -76,7 +84,7 @@ type ServerLifecycle = {
 };
 
 type AppWindow = { id: string; title: string | null };
-type AppWithWindows = AppInfo & { windows?: AppWindow[] };
+type AppWithWindows = AppInfo & { windows?: AppWindow[]; error?: string };
 
 const { version } = packageManifest;
 const log: Logger = createLogger("mcp");
@@ -94,10 +102,15 @@ const INSTRUCTIONS =
     "fast refresh patches a component, re-read the tree or re-run the query instead of reusing an ID.";
 
 const APPLICATION_ID_DESCRIPTION =
-    "Application ID to query. If not specified, uses the first connected app. The tool waits briefly for the " +
-    "requested app to register.";
+    "Application ID to query. If not specified, uses the connected app from this server's project, or the first " +
+    "connected app when none is from it. `gtkx storybook` registers its explorer under the project's ID with a " +
+    "`.Storybook` suffix; the project's app is preferred over it, and while the project's app is reconnecting " +
+    "(when this server has just started, or after a `gtkx dev` restart) the tool waits for it instead of using " +
+    "the explorer. The tool waits briefly for the requested app to register.";
 
-const APP_TIMEOUT_DESCRIPTION = "Milliseconds to wait for the requested app to register (default: 10000).";
+const APP_TIMEOUT_DESCRIPTION =
+    "Milliseconds to wait for the requested app to register, or for the project's app to reconnect before " +
+    "falling back to another app (default: 10000).";
 
 const WIDGET_ID_DESCRIPTION =
     "Widget ID obtained from `gtkx_get_widget_tree`, `gtkx_query_widgets`, or `gtkx_get_widget_props`. " +
@@ -154,9 +167,11 @@ const listAppsShape = {
 const queryWidgetsShape = {
     ...applicationIdShape,
     ...describeParams(queryParams.shape, {
-        by: "Query type",
-        value: "Value to search for",
-        options: "Additional query options",
+        by:
+            'What to compare value with: "role" the accessible role (such as "button" or "checkbox"), "text" ' +
+            'the text the widget renders, "labelText" its label, and "name" all of these plus the widget name.',
+        value: "Value to search for, matched whole unless options.exact is false",
+        options: "Query options",
     }),
 };
 
@@ -166,6 +181,34 @@ const typeShape = {
         widgetId: WIDGET_ID_DESCRIPTION,
         text: "Text to type",
         clear: "Clear existing text before typing",
+    }),
+};
+
+const pressKeysShape = {
+    ...applicationIdShape,
+    ...describeParams(pressKeysParams.shape, {
+        widgetId:
+            `${WIDGET_ID_DESCRIPTION} A widget that can take focus, or passes it to a child as a menu button ` +
+            "does to its button, is focused first, as a user would before typing. One that cannot, such as the switch inside a switch row, leaves the window's focus where it " +
+            "is, and the result names its nearest ancestor that can take focus to press the keys on instead. Omit " +
+            "it to press the keys on the focused widget of the active window, or of the first window when none is " +
+            "active.",
+        keys:
+            "Keys to press in order. A plain character presses that key. Name other keys in braces: {Enter}, " +
+            "{Escape}, {Tab}, {Backspace}, {Delete}, {Space}, {ArrowUp}, {ArrowDown}, {ArrowLeft}, {ArrowRight}, " +
+            "{Home}, {End}, {PageUp}, {PageDown} and {F1} to {F12}. Hold a modifier with {Control>}, {Shift>}, " +
+            "{Alt>} or {Meta>} and release it with {/Control} and so on, so Ctrl+S is `{Control>}s{/Control}`.",
+    }),
+};
+
+const pointerShape = {
+    ...applicationIdShape,
+    ...describeParams(pointerParams.shape, {
+        widgetId: WIDGET_ID_DESCRIPTION,
+        input:
+            "One pointer token: [MouseLeft], [MouseRight] or [MouseMiddle] clicks that button, a trailing > " +
+            "presses and holds it ([MouseRight>]) and a leading / releases it ([/MouseRight]). click, down and " +
+            "up are the left button.",
     }),
 };
 
@@ -243,8 +286,8 @@ const appWithWindows = async (appRouter: AppRouter, app: AppInfo): Promise<AppWi
         const result = await appRouter.sendToApp<{ windows: AppWindow[] }>(app.applicationId, "app.getWindows", {});
 
         return { ...app, windows: result.windows };
-    } catch {
-        return app;
+    } catch (error) {
+        return { ...app, error: errorMessage(error) };
     }
 };
 
@@ -254,13 +297,13 @@ const listAppsTool = (appRouter: AppRouter): Tool =>
         title: "List apps",
         kind: "readOnly",
         description:
-            "List connected GTKX applications and their open windows. " +
-            "Returns the current snapshot immediately unless waitForApps is true.",
+            "List connected GTKX applications and their open windows. An app whose windows cannot be read, " +
+            "such as one an error stopped under `gtkx dev`, has `error` in place of `windows`. " +
+            "Returns the current snapshot unless waitForApps is true; only the first seconds of a new server " +
+            "session wait for running apps to reconnect.",
         inputSchema: listAppsShape,
         handler: async ({ waitForApps, timeout }) => {
-            if (waitForApps && !appRouter.hasConnectedApps()) {
-                await appRouter.waitForApp(undefined, timeout);
-            }
+            await (waitForApps ? appRouter.waitForAnyApp(timeout) : appRouter.waitForStartupReconnect());
 
             const apps = appRouter.getApps();
             const appsWithWindows = await Promise.all(apps.map((app) => appWithWindows(appRouter, app)));
@@ -319,14 +362,15 @@ const widgetPropsTool = (appRouter: AppRouter): Tool =>
         title: "Get widget properties",
         kind: "readOnly",
         description:
-            "Read a widget's type, accessible role, name, text, sensitivity, visibility, CSS classes, " +
+            "Read a widget's type, accessible role, accessible name, text, sensitivity, visibility, CSS classes, " +
             `and descendants. Defaults to ${String(DEFAULT_SUBTREE_DEPTH)} levels; \`maxDepth\` changes ` +
             `the depth. Results contain at most ${String(MAX_SUBTREE_WIDGETS)} widgets, in breadth-first ` +
             "order. `hiddenChildren` counts omitted direct children; query that widget's ID to expand it. " +
             "Use `gtkx_get_widget_tree` for an overview. Requested GObject `properties` appear first, " +
             "keyed by canonical kebab-case name with `{type, value}`. Enum/flags values use GType value " +
-            "names, 64-bit integers use decimal strings, and objects use their GType name plus `widgetId` " +
-            "for widgets. Unknown properties fail; values that cannot be converted include a `note`.",
+            "names, 64-bit integers use decimal strings, boxed values such as `GdkRGBA` use their string " +
+            "form, and objects use their GType name plus `widgetId` for widgets. Unknown properties fail; " +
+            "values that cannot be converted include a `note`.",
         inputSchema: widgetPropsShape,
         handler: async ({ applicationId, appTimeout, ...params }) => {
             const result = await appRouter.sendToApp(applicationId, "widget.getProps", params, appTimeout);
@@ -382,6 +426,62 @@ function buildInspectionTools(appRouter: AppRouter): Tool[] {
     ];
 }
 
+type ClickResult = { isHandled?: boolean };
+type PressKeysResult = {
+    unhandledKeys?: string[];
+    heldModifiers?: string[];
+    focusWidgetId?: string;
+    focusableAncestorId?: string;
+};
+
+const UNHANDLED_CLICK =
+    "Clicked, but nothing on the widget or its ancestors handled the click. GTK's own handling of clicks, as on a " +
+    "color chooser's swatch, needs a real pointer event, which this tool cannot send. If nothing changed, press " +
+    "{Space} or {Enter} on the widget with gtkx_press_keys.";
+
+const focusRedirectText = ({ focusWidgetId, focusableAncestorId }: PressKeysResult): string | null => {
+    if (focusWidgetId === undefined) {
+        return null;
+    }
+
+    const redirect =
+        `The widget cannot take focus and the window's focus is on widget ID "${focusWidgetId}", so keys that ` +
+        "neither the widget nor its ancestors take, such as {Space} and {Enter}, went to that focused widget instead.";
+
+    return focusableAncestorId === undefined
+        ? `${redirect} No ancestor of the widget can take focus.`
+        : `${redirect} To act on this widget, press the keys on widget ID "${focusableAncestorId}", its nearest ` +
+              "ancestor that can take focus.";
+};
+
+const heldModifiersText = (held: string[] | undefined): string | null => {
+    if (held === undefined || held.length === 0) {
+        return null;
+    }
+
+    return (
+        `${held.join(" and ")} ${held.length === 1 ? "stays" : "stay"} held for later key presses, clicks and ` +
+        `typing until released with \`${held.map((name) => `{/${name}}`).join("")}\`.`
+    );
+};
+
+const pressKeysSummary = (unhandledKeys: string[]): string =>
+    unhandledKeys.length === 0
+        ? "Pressed keys"
+        : `Pressed keys, but nothing on the widget or its ancestors handled ${unhandledKeys.join(", ")}. Check ` +
+          "that the keys went to the intended widget, and use gtkx_type to enter text.";
+
+const pressKeysText = (result: PressKeysResult): string => {
+    const notes = [focusRedirectText(result), heldModifiersText(result.heldModifiers)].filter((note) => note !== null);
+    const summary = pressKeysSummary(result.unhandledKeys ?? []);
+
+    if (notes.length === 0) {
+        return summary;
+    }
+
+    return `${summary}${summary.endsWith(".") ? "" : "."} ${notes.join(" ")}`;
+};
+
 function buildInteractionTools(appRouter: AppRouter): Tool[] {
     return [
         defineTool({
@@ -391,24 +491,86 @@ function buildInteractionTools(appRouter: AppRouter): Tool[] {
             description:
                 "Click a widget through userEvent.click. Works with " +
                 "buttons, checkboxes, switches, list and grid rows, tree expanders, and column headers: a " +
-                "row is selected, an expander toggles its row's expansion, and a header sorts its column.",
+                "row is selected, an expander toggles its row's expansion, and a header sorts its column. A widget " +
+                "a pointer cannot reach, such as one behind an open dialog, is refused with an error naming what " +
+                "blocks it. A widget inside one that cannot receive pointer input, such as a tab overview title, is " +
+                "refused with the widget ID of the ancestor a pointer lands on instead; click that ID. The result " +
+                "says when nothing on the widget or its ancestors handled the click, as with GTK's own widgets " +
+                "such as a color chooser's swatches, which need a real pointer; press {Space} or {Enter} on them " +
+                "with `gtkx_press_keys` instead.",
             inputSchema: widgetIdShape,
             handler: async ({ applicationId, appTimeout, ...params }) => {
-                await appRouter.sendToApp(applicationId, "widget.click", params, appTimeout);
+                const result = await appRouter.sendToApp<ClickResult>(
+                    applicationId,
+                    "widget.click",
+                    params,
+                    appTimeout,
+                );
 
-                return textContent("Clicked");
+                return textContent(result.isHandled === false ? UNHANDLED_CLICK : "Clicked");
             },
         }),
         defineTool({
             name: "gtkx_type",
             title: "Type text",
             kind: "action",
-            description: "Type text into an editable widget like Entry or TextView",
+            description:
+                "Type text into an editable widget like Entry or TextView. A newline is typed as text and does " +
+                "not submit; use `gtkx_press_keys` with {Enter} to activate an entry. Typing replaces text that " +
+                "is already selected, as it does for a user: GTK selects an entry's whole text when focus moves " +
+                "into it, such as when a dialog opens on it. Pass `clear` with the full text to set a value. A " +
+                "widget behind an open dialog is refused with an error naming the dialog, and typing while " +
+                "`gtkx_press_keys` holds a modifier is refused with an error naming it.",
             inputSchema: typeShape,
             handler: async ({ applicationId, appTimeout, ...params }) => {
                 await appRouter.sendToApp(applicationId, "widget.type", params, appTimeout);
 
                 return textContent("Typed text");
+            },
+        }),
+        defineTool({
+            name: "gtkx_press_keys",
+            title: "Press keys",
+            kind: "action",
+            description:
+                "Press keys through userEvent.keyboard, as a user would on the keyboard: {Enter} activates an " +
+                "entry and the dialog's default response, {Escape} closes a dialog or popover, and shortcuts " +
+                "such as `{Control>}s{/Control}` run the actions bound to them. Keys reach the widget's own key " +
+                "bindings first, such as arrows in a list or slider; otherwise {Tab}, `{Shift>}{Tab}{/Shift}` and " +
+                "arrows move focus between widgets. {Space} or {Enter} also selects or activates GTK's own " +
+                "widgets, such as a color chooser's swatches. The result names the keys that nothing on the " +
+                "widget or its ancestors handled. A modifier pressed with `{Control>}` stays held across calls " +
+                "until released with `{/Control}`, and the result names the modifiers left held. Use `gtkx_type` " +
+                "to enter text.",
+            inputSchema: pressKeysShape,
+            handler: async ({ applicationId, appTimeout, ...params }) => {
+                const result = await appRouter.sendToApp<PressKeysResult>(
+                    applicationId,
+                    "widget.pressKeys",
+                    params,
+                    appTimeout,
+                );
+
+                return textContent(pressKeysText(result));
+            },
+        }),
+        defineTool({
+            name: "gtkx_pointer",
+            title: "Press pointer button",
+            kind: "action",
+            description:
+                "Press a mouse button on a widget through userEvent.pointer, with one pointer token in `input`. " +
+                "`[MouseRight]` right-clicks: it reaches the click gestures on the " +
+                "widget and its ancestors that listen for the secondary button, such as a `GtkGestureClick` with " +
+                "`button={Gdk.BUTTON_SECONDARY}` that opens a context menu. `[MouseMiddle]` does the same for the " +
+                "middle button, and `[MouseLeft]` clicks like `gtkx_click`. Hold a button with `[MouseRight>]` " +
+                "and release it with `[/MouseRight]`. A widget behind an open dialog is refused with an error " +
+                "naming the dialog.",
+            inputSchema: pointerShape,
+            handler: async ({ applicationId, appTimeout, ...params }) => {
+                await appRouter.sendToApp(applicationId, "widget.pointer", params, appTimeout);
+
+                return textContent(`Applied ${params.input}`);
             },
         }),
         defineTool({
@@ -491,6 +653,8 @@ function startServer(state: ServerLifecycle): Promise<void> {
                 return;
             }
 
+            state.appRouter.markListening();
+
             log.info(`socket server listening on ${state.socketPath}`);
             if (state.transport === undefined) {
                 state.disconnectStdio = await connectStdio(state.mcpServer, () => stopServer(state));
@@ -545,9 +709,13 @@ const createMcpServer = (options: CreateMcpServerOptions): McpServerHandle => {
         log.warn(`MCP socket path exceeds the safe Unix byte budget; using private fallback ${socketPath}`);
     }
 
+    const workingDirectory = (): string => options.cwd ?? process.cwd();
     const registry = new ConnectionRegistry();
     const socketServer = new SocketServer(registry, socketAddress);
-    const appRouter = new AppRouter(registry);
+    const appRouter = new AppRouter(
+        registry,
+        (projectRoot) => projectRootOf(projectRoot) === projectRootOf(workingDirectory()),
+    );
     registry.addEventListener("error", logSocketError);
 
     appRouter.addEventListener("appRegistered", (event) => {
@@ -562,7 +730,7 @@ const createMcpServer = (options: CreateMcpServerOptions): McpServerHandle => {
     const mcpServer = new McpServer({ name: "gtkx-mcp", version: options.version }, { instructions: INSTRUCTIONS });
     const referenceProvider = createReferenceProvider({
         getAppRoot: () => appRouter.getProjectRoot(),
-        getWorkingDirectory: () => options.cwd ?? process.cwd(),
+        getWorkingDirectory: workingDirectory,
     });
     registerTools(mcpServer, appRouter, referenceProvider, options.settings ?? DEFAULT_SETTINGS);
     registerReferenceResources(mcpServer, referenceProvider);
@@ -572,7 +740,7 @@ const createMcpServer = (options: CreateMcpServerOptions): McpServerHandle => {
 
 const configuredSettings = async (cwd: string): Promise<McpSettings> => {
     try {
-        const { config } = await loadConfig(cwd);
+        const { config } = await loadConfig(cwd, { defaultApplicationId: LIBRARY_APPLICATION_ID });
 
         return resolveMcpSettings(config);
     } catch (error) {
