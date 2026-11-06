@@ -11,9 +11,11 @@ import type { ReadableProperties, WritableProperties } from "./property-types.js
 import { preserveArrayNull } from "./descriptors.js";
 import { fromNative } from "./native-value.js";
 import {
+    assertConstructValueValidates,
     coerceConstructPropertyValue,
     type ConstructProperty,
     constructPropertyFor,
+    convertPropertyValue,
     readableObjectPropertyFor,
     propertyValueType,
     writableObjectPropertyFor,
@@ -107,24 +109,26 @@ function constructPropertyForEntry(
     name: string,
     value: unknown,
 ): ConstructProperty | undefined {
-    if (value === undefined) {
-        return undefined;
-    }
-
     const binding = source.bindings[name];
 
     if (binding === undefined) {
         return constructPropertyFor(source.gtype, name, value, source.wrapper);
     }
 
-    return {
-        name: binding[0],
-        value: toValueForType(
+    if (value === undefined) {
+        return undefined;
+    }
+
+    const gValue = convertPropertyValue(source.wrapper, source.gtype, binding[0], value, () =>
+        toValueForType(
             binding[1],
             coerceConstructPropertyValue(source.gtype, binding[0], value),
             propertyValueType(source.gtype, binding[0]),
         ),
-    };
+    );
+    assertConstructValueValidates(source.wrapper, source.gtype, binding[0], value, gValue);
+
+    return { name: binding[0], value: gValue };
 }
 
 /**
@@ -132,8 +136,8 @@ function constructPropertyForEntry(
  *
  * @remarks
  * Properties declared through `registerConstructProperties` use their descriptors. Other
- * properties use the type's `GObject.ParamSpec`, accepting dashed or camelCased names. Unknown
- * properties and `undefined` values are skipped.
+ * properties use the type's `GObject.ParamSpec`, accepting dashed or camelCased names.
+ * `undefined` values are skipped.
  *
  * For types created with `registerClass`, the wrapper is bound before `constructed` runs. If
  * construction has already exposed the object to JavaScript, its existing wrapper is reused
@@ -143,7 +147,8 @@ function constructPropertyForEntry(
  * @param props Construct property names and values.
  * @param wrapper Wrapper to bind unless the object already has one.
  * @returns The supplied wrapper or the object's existing wrapper.
- * @throws {TypeError} When a ParamSpec-backed property is read-only or cannot hold the value's type.
+ * @throws {TypeError} When a name is neither a declared construct property nor a property the type
+ * installs, or when a ParamSpec-backed property is read-only or cannot hold the value's type.
  * @throws {RangeError} When a ParamSpec rejects the value.
  */
 function newObjectWithProperties<T extends object>(gtype: bigint, props: object, wrapper: T): T {
@@ -256,10 +261,9 @@ function setProperty(obj: object, propertyName: string, descriptorOrValue: unkno
         const property = writableObjectPropertyFor(obj, propertyName, descriptorOrValue, binding?.[1]);
         setObjectProperty(getHandle(obj), property.name, property.value);
     } else {
-        const value = toValueForType(
-            descriptorOrValue as Descriptor,
-            jsValue,
-            propertyValueType(getInstanceType(obj), propertyName),
+        const gtype = getInstanceType(obj);
+        const value = convertPropertyValue(obj, gtype, propertyName, jsValue, () =>
+            toValueForType(descriptorOrValue as Descriptor, jsValue, propertyValueType(gtype, propertyName)),
         );
         setObjectProperty(getHandle(obj), propertyName, value);
     }

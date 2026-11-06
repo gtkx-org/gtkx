@@ -24,7 +24,7 @@ Work through all seven flags:
 - `v2ValueReturns` unwraps returned `GObject.Value` instances and types their contents as `unknown`; narrow the value where it is used.
 - `v2FinishResults` removes a leading success boolean from multi-value promisified finish results when failure already rejects.
 - `v2InoutReturns` stops repeating an inout record or boxed value in the return tuple. The object passed in is still mutated.
-- `v2ResourceImports` replaces `#data/` imports with relative `?resource`, `?icon`, `?font`, or `?url` imports. Settings schemas use query-free relative imports. Run `gtkx build` to find stale specifiers.
+- `v2ResourceImports` replaces `#data/` imports with relative `?resource`, `?icon`, `?font`, or `?url` imports. Settings schemas use query-free relative imports. Remove the `#data/*` mapping from `package.json`, then run `gtkx build` to find stale specifiers; while the mapping remains, the build still resolves them.
 - `v2DefaultLibraries` binds Adwaita and GTK by default. Remove `Adw-1` and `Gtk-4.0` from `libraries`, then run the application and check its appearance.
 - `v2TreeShaking` retains only generated classes reached by the production bundle. Import a class as a value when `GObject.typeFromName` must find it, and replace side-effect-only generated-module imports.
 
@@ -66,8 +66,6 @@ Use `useToast().dismissAll()` in place of `useToastOverlay().dismissAll()`. `sho
 
 Import `createElementComponent` from `@gtkx/react` instead of `@gtkx/react/config`. The config subpath remains for renderer behavior and element registration APIs.
 
-Subscribe to native logs with `onLog(listener)` from `@gtkx/runtime` and release the subscription with `unsubscribe()`. The native addon is an internal implementation detail; application code should import runtime APIs.
-
 The generated wrapper-retention helper `retainWrapperClasses` now belongs to `@gtkx/runtime/internal`. Regenerate bindings with `gtkx codegen --force` after upgrading so their bootstrap imports match the runtime.
 
 ## Move GObject ownership into JSX
@@ -82,7 +80,7 @@ A form `ComboRow` now controls a non-nullable string field. Replace `null` or `u
 
 ## Update internationalization
 
-GTKX 2 delegates extraction and resource typing to `i18next-cli`. Keep translation calls in ESM files and use the exact names `t`, `useTranslation`, `Trans`, or `TransWithoutContext`. Replace aliases, `i18n.t(...)` calls, dynamic keys, CommonJS declarations, and ICU components with those static forms.
+GTKX 2 delegates extraction and resource typing to `i18next-cli`. Keep translation calls in ESM files and use the exact names `t`, `useTranslation`, `Trans`, or `TransWithoutContext`. Replace aliases, `i18n.t(...)` calls, dynamic keys, CommonJS declarations, and ICU components with those static forms. A `t` received through `withTranslation`, the `Translation` render prop or a function parameter is no longer extracted; import `t` from `@gtkx/i18n` or call `useTranslation()` there instead.
 
 Replace the removed positional plural overload with `count`, `defaultValue_one`, and `defaultValue_other` options. Run codegen after migrating. Generated declarations now use i18next's `CustomTypeOptions`, so remove uses of GTKX's `TranslationRegistry` and import shared types from `i18next` or `react-i18next`.
 

@@ -9,11 +9,13 @@ import {
 } from "./native.js";
 import { type AnyClass, walkClassChain } from "@gtkx/utils";
 import type { Descriptor } from "./descriptor-types.js";
+import { reportDroppedClass } from "./dropped-classes.js";
 import { forgetFundamentalWrapper, getFundamentalWrapper, setFundamentalWrapper } from "./fundamental-cache.js";
 import { copyLayerMembers, createMixinLayer, installMixins, type Mixin, type MixinReceiver } from "./mixin.js";
 import {
     TYPE_INVALID,
     TYPE_OBJECT,
+    isTypedEnum,
     type TypedClass,
     typeFundamental,
     typeInterfaces,
@@ -143,6 +145,7 @@ const vfuncRegistry: WeakMap<object, VfuncRegistry> = new WeakMap();
 const interfaceLayoutRegistry: Map<bigint, InterfaceLayout> = new Map();
 const wrapperClasses: WeakSet<AnyClass> = new WeakSet();
 const derivedClasses: WeakSet<AnyClass> = new WeakSet();
+const callScopedWrappers: WeakSet<object> = new WeakSet();
 const typeClassHandles: Map<bigint, ExternalObject<Handle>> = new Map();
 const wrapperClassResolvers: WeakMap<AnyClass, WrapperClassResolver> = new WeakMap();
 
@@ -178,6 +181,10 @@ function getInstanceType(instance: object): bigint {
 }
 
 function coerceGType(value: unknown): unknown {
+    if (isTypedEnum(value)) {
+        return value.__type__;
+    }
+
     if (typeof value !== "function") {
         return value;
     }
@@ -521,6 +528,10 @@ function getExactWrapperClass(type: bigint, label?: string): AnyClass {
     return cls;
 }
 
+function isRegisteredType(type: bigint): boolean {
+    return classRegistry.has(type);
+}
+
 function resolveWrapperClass(type: bigint): AnyClass | null {
     let currentType = type;
 
@@ -651,6 +662,10 @@ function createWrapper(handle: ExternalObject<Handle>, fallbackClass?: () => Any
 
     const cls = resolveComposedClass(runtimeType, fallbackClass);
 
+    if (fallbackClass === undefined) {
+        reportDroppedClass(runtimeType, isRegisteredType);
+    }
+
     if (!cls) {
         throw new Error(`Expected registered GLib type, got type ${String(runtimeType)}`);
     }
@@ -691,12 +706,20 @@ function describeValueKind(value: unknown): string {
     return instanceClassName(value);
 }
 
-/** Returns the native handle bound to a wrapper instance, throwing if none is set. */
+/**
+ * Returns the native handle bound to a wrapper instance.
+ *
+ * @throws {TypeError} When no handle is bound to the value, such as a function passed where a widget is expected.
+ */
 function getHandle(instance: object): ExternalObject<Handle> {
     const handle = handleMap.get(instance);
 
     if (handle === undefined) {
-        throw new Error(`No native handle associated with ${instanceClassName(instance)}`);
+        throw new TypeError(
+            typeof instance === "object"
+                ? `No native handle associated with ${instanceClassName(instance)}`
+                : `Expected a native instance, got ${describeValueKind(instance)}`,
+        );
     }
 
     return handle;
@@ -712,6 +735,15 @@ function setHandle(instance: object, handle: ExternalObject<Handle>): void {
 
 function bindCallScopedWrapper(handle: ExternalObject<Handle>, instance: object): void {
     setHandle(instance, handle);
+    callScopedWrappers.add(instance);
+}
+
+/**
+ * Whether a wrapper was created for a single call-scoped argument because its object had no live
+ * wrapper, so it carries none of the instance's JavaScript state.
+ */
+function isCallScopedWrapper(instance: object): boolean {
+    return callScopedWrappers.has(instance);
 }
 
 function registerWrapper(handle: ExternalObject<Handle>, instance: object): void {
@@ -763,6 +795,7 @@ export {
     getInterfaceProperties,
     getInterfaceVfuncRegistry,
     instanceClassName,
+    isCallScopedWrapper,
     registerWrapper,
     resolveWrapperType,
     wrapCallScopedObject,

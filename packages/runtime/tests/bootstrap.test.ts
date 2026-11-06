@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 
 const run = promisify(execFile);
 const fixture = fileURLToPath(new URL("./fixtures/bootstrap.ts", import.meta.url));
@@ -22,7 +22,15 @@ test.each(["@gtkx/runtime", "@gtkx/runtime/internal", "leaf"])(
     async (target) => {
         expect(await importBeforeWorker(target)).toHaveProperty(
             "error",
-            expect.stringContaining("GTKX is already running on another thread"),
+            expect.stringContaining(
+                "GTKX is already running on another thread, and only the thread that started it can use it.",
+            ),
         );
     },
 );
+
+test("importing the runtime again after vi.resetModules() throws", async () => {
+    vi.resetModules();
+
+    await expect(import("@gtkx/runtime")).rejects.toThrow();
+});

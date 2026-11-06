@@ -107,7 +107,7 @@ type BoxedOptions = {
     size?: number;
     /** Returns the wrapper class of the declared type, used when none is registered for the GType. */
     fallbackClass?: () => AnyClass;
-} & Pick<BoxedDescriptor, "isValueSafe">;
+} & Pick<BoxedDescriptor, "isValueSafe" | "isRefCounted">;
 
 /** Callback result, closure ownership, and lifetime options. */
 type CallbackOptions = Pick<
@@ -375,6 +375,10 @@ const applyBoxedOptions = (result: BoxedDescriptor, options: BoxedOptions): void
 
     if (options.isValueSafe === true) {
         result.isValueSafe = true;
+    }
+
+    if (options.isRefCounted === true) {
+        result.isRefCounted = true;
     }
 };
 

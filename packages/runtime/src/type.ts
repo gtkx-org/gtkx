@@ -25,6 +25,18 @@ type TypedClass = {
     __type__: bigint;
 };
 
+const enumTypeTag: unique symbol = Symbol("gtkx.enumType");
+
+/**
+ * Generated enumeration, flags or error domain object tagged with its GLib type through a `__type__`
+ * GType field, like the generated classes.
+ */
+type TypedEnum = {
+    /** GType the enumeration or flags type is registered under. */
+    readonly __type__: bigint;
+    readonly [enumTypeTag]: true;
+};
+
 type ResolvableKind = "enum" | "flags" | "boxed" | "matchInfo" | "fundamental" | "array";
 type ResolvableDescriptor = Extract<Descriptor, { kind: ResolvableKind }>;
 
@@ -137,6 +149,9 @@ function lazyType(name: string): () => bigint {
 
 const isTypedClass = (value: unknown): value is TypedClass =>
     typeof value === "object" && value !== null && "__type__" in value && typeof value.__type__ === "bigint";
+
+const isTypedEnum = (value: unknown): value is TypedEnum =>
+    typeof value === "object" && value !== null && Object.hasOwn(value, enumTypeTag);
 
 /** Returns whether `type` is `ancestorType` or descends from it. */
 function typeIsA(type: bigint, ancestorType: bigint): boolean {
@@ -324,8 +339,10 @@ export {
     isStringHashTable,
     getErrorType,
     getStrvType,
+    enumTypeTag,
     isResolvableDescriptor,
     isTypedClass,
+    isTypedEnum,
     typeIsA,
     typeParent,
     typeInterfacePrerequisites,
@@ -339,4 +356,5 @@ export {
     resolveFundamentalType,
     resolveDescriptorType,
     type TypedClass,
+    type TypedEnum,
 };
