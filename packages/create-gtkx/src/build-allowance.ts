@@ -305,8 +305,13 @@ const packageManagerPin = (root: string, packageManager: PackageManager, isInWor
     pinnedPackageManager(root, packageManager) ??
     (packageManager === "yarn" && !isInWorkspace ? installingYarnPin(root) : null);
 
+/**
+ * The workspace globs of `field`, given as a list or, as npm and Yarn also accept, as an object with a
+ * `packages` list.
+ */
 const workspacePatterns = (settings: unknown, field: string): string[] => {
-    const patterns = isRecord(settings) ? settings[field] : undefined;
+    const value = isRecord(settings) ? settings[field] : undefined;
+    const patterns = isRecord(value) ? value.packages : value;
 
     return Array.isArray(patterns) ? patterns.filter((pattern) => typeof pattern === "string") : [];
 };

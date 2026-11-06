@@ -280,33 +280,42 @@ describe("scaffold command", () => {
         },
     );
 
-    it("leaves the build scripts of an app in an npm workspace to the workspace root", async () => {
-        using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-npm-workspace-"));
-        const root = JSON.stringify({
-            name: "kitchen",
-            private: true,
-            workspaces: ["apps/*"],
-            allowScripts: { esbuild: true },
-        });
-        writeFileSync(join(directory.path, "package.json"), root);
-        const target = join(directory.path, "apps/example");
-        const { status, output } = await create(target, ["--package-manager", "npm"]);
-        expect(status).toBe(0);
-        expect(JSON.parse(read(target, "package.json"))).not.toHaveProperty("allowScripts");
-        expect(read(directory.path, "package.json")).toBe(root);
-        expect(output).toContain(join(directory.path, "package.json"));
-        expect(output).toContain('"@swc/core": true');
-        expect(output).not.toContain('"esbuild": true');
-        expect(existsSync(join(target, ".npmrc"))).toBe(false);
-        expect(output).toContain(
-            `${join(directory.path, ".npmrc")}:\n│  min-release-age-exclude[]=@gtkx/*\n│  min-release-age-exclude[]=create-gtkx`,
-        );
-        expect(JSON.parse(read(directory.path, ".mcp.json"))).toEqual({
-            mcpServers: {
-                gtkx: { command: "npm", args: ["exec", "--no", "--workspace", "apps/example", "--", "gtkx", "mcp"] },
-            },
-        });
-    });
+    it.each([
+        { form: "array", workspaces: ["apps/*"] },
+        { form: "object", workspaces: { packages: ["apps/*"] } },
+    ])(
+        "leaves the build scripts of an app in an npm workspace with $form workspaces to the workspace root",
+        async ({ workspaces }) => {
+            using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-npm-workspace-"));
+            const root = JSON.stringify({
+                name: "kitchen",
+                private: true,
+                workspaces,
+                allowScripts: { esbuild: true },
+            });
+            writeFileSync(join(directory.path, "package.json"), root);
+            const target = join(directory.path, "apps/example");
+            const { status, output } = await create(target, ["--package-manager", "npm"]);
+            expect(status).toBe(0);
+            expect(JSON.parse(read(target, "package.json"))).not.toHaveProperty("allowScripts");
+            expect(read(directory.path, "package.json")).toBe(root);
+            expect(output).toContain(join(directory.path, "package.json"));
+            expect(output).toContain('"@swc/core": true');
+            expect(output).not.toContain('"esbuild": true');
+            expect(existsSync(join(target, ".npmrc"))).toBe(false);
+            expect(output).toContain(
+                `${join(directory.path, ".npmrc")}:\n│  min-release-age-exclude[]=@gtkx/*\n│  min-release-age-exclude[]=create-gtkx`,
+            );
+            expect(JSON.parse(read(directory.path, ".mcp.json"))).toEqual({
+                mcpServers: {
+                    gtkx: {
+                        command: "npm",
+                        args: ["exec", "--no", "--workspace", "apps/example", "--", "gtkx", "mcp"],
+                    },
+                },
+            });
+        },
+    );
 
     it("typechecks the configuration files of a TypeScript project", async () => {
         using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-tsconfig-"));
