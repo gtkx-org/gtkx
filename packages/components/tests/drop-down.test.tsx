@@ -319,6 +319,32 @@ describe.each([DropDown, ComboRow])("dropdown value rendering", (Component) => {
         expect(screen.getByText(/^As Needed at/)).toHaveTextContent("As Needed at 2");
     });
 
+    it("updates the unfiltered index when hidden items are inserted before a match", async () => {
+        const renderListItem = ({ item, index }: { item: string; index: number }): ReactNode => (
+            <GtkLabel>{`${item} at ${String(index)}`}</GtkLabel>
+        );
+        const everyDay = { id: "every", value: "Every Day" };
+        const specificDays = { id: "specific", value: "Specific Days" };
+        const asNeeded = { id: "needed", value: "As Needed" };
+        const draw = (items: IdItem[]): ReactNode => (
+            <AdwPreferencesGroup halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
+                <Component items={items} renderListItem={renderListItem} enableSearch />
+            </AdwPreferencesGroup>
+        );
+        const { rerender } = await render(draw([everyDay, specificDays, asNeeded]));
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.COMBO_BOX));
+        await userEvent.type(await screen.findByRole(Gtk.AccessibleRole.SEARCH_BOX), "As");
+        await waitFor(() => {
+            expect(screen.queryByText("Every Day at 0")).toBeNull();
+        });
+
+        await rerender(draw([everyDay, { id: "zulu", value: "Zulu" }, specificDays, asNeeded]));
+
+        await waitFor(() => {
+            expect(screen.getByText(/^As Needed at/)).toHaveTextContent("As Needed at 3");
+        });
+    });
+
     it.each([null, undefined, ""])("leaves an empty display for %s", async (value) => {
         await renderValue(<Component items={[{ id: "choice", value }]} />);
         expect(screen.getByRole(Gtk.AccessibleRole.COMBO_BOX)).toHaveDisplayValue("");

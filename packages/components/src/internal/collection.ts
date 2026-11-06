@@ -4,6 +4,7 @@ import type { CollectionIndex } from "./collection-index.js";
 import type { CollectionModel, SlotRef } from "./collection-model.js";
 import type { MatchedRows } from "./tree-order.js";
 import { slotPathAt, slotRefFor } from "./collection-model.js";
+import { orderFor } from "./tree-expansion.js";
 import { findIds, findRows } from "./tree-order.js";
 
 type Collection = Pick<CollectionModel, "expansion" | "rowAt" | "subscribe" | "getVersion"> & {
@@ -31,9 +32,7 @@ function rowsFor(gtkModel: CollectionModel, ids: string[]): MatchedRows {
 }
 
 function positionFor(gtkModel: CollectionModel, id: string): number {
-    const [first = -1] = rowsFor(gtkModel, [id]).positions;
-
-    return first;
+    return orderFor(gtkModel.expansion).positions.get(id) ?? -1;
 }
 
 function refAt(model: Gtk.FlattenListModel | null, position: number): SlotRef | null {

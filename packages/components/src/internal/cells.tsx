@@ -101,6 +101,7 @@ type ItemIdentity = {
     itemKey: string;
     item: ListItem | undefined;
     position: number;
+    index: number;
     isExpanded: boolean;
 };
 
@@ -426,12 +427,7 @@ function useItemSlot(
                   item: identity.item,
                   position,
                   row,
-                  args: itemArgs(
-                      identity.item,
-                      collectionIndex(collection, identity.item, position),
-                      row,
-                      identity.isExpanded,
-                  ),
+                  args: itemArgs(identity.item, identity.index, row, identity.isExpanded),
               };
     }
 
@@ -445,11 +441,13 @@ function itemIdentity(
 ): ItemIdentity {
     const ref = slotRefFor(entry.host.getItem());
     const item = ref === null ? undefined : collection.itemAt(ref);
+    const position = entry.host.getPosition();
 
     return {
         itemKey: ref === null || item === undefined ? "" : ref.key,
         item,
-        position: entry.host.getPosition(),
+        position,
+        index: item === undefined ? 0 : collectionIndex(collection, item, position),
         isExpanded: item !== undefined && (expandedIds?.includes(item.id) ?? false),
     };
 }
@@ -459,6 +457,7 @@ function isSameItemIdentity(previous: ItemIdentity, next: ItemIdentity): boolean
         previous.item === next.item &&
         previous.itemKey === next.itemKey &&
         previous.position === next.position &&
+        previous.index === next.index &&
         previous.isExpanded === next.isExpanded
     );
 }
@@ -512,6 +511,7 @@ function renderedIdentity(entry: CellEntry<PositionedHost>, slot: ItemSlot | nul
         itemKey: slot?.itemKey ?? "",
         item: slot?.item,
         position: slot?.position ?? entry.host.getPosition(),
+        index: slot?.args.index ?? 0,
         isExpanded: slot?.args.isExpanded ?? false,
     };
 }

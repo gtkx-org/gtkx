@@ -12,6 +12,7 @@ type VisibleRow = {
 type VisibleOrder = {
     expandedPaths: string[];
     expandedIds: string[];
+    positions: Map<string, number>;
 };
 
 type MatchedRows = {
@@ -39,6 +40,7 @@ function walkLevel(options: WalkOptions, level: Level, state: WalkState): void {
 
     for (const [slot, item] of level.items.entries()) {
         const isOpen = open?.has(slot) ?? false;
+        state.order.positions.set(item.id, state.position);
         options.visit?.({ item, position: state.position, isOpen, isMarked: marked?.has(slot) ?? false });
         state.position += 1;
 
@@ -57,7 +59,7 @@ function walkLevel(options: WalkOptions, level: Level, state: WalkState): void {
 }
 
 function walkVisible(options: WalkOptions): VisibleOrder {
-    const state: WalkState = { position: 0, order: { expandedPaths: [], expandedIds: [] } };
+    const state: WalkState = { position: 0, order: { expandedPaths: [], expandedIds: [], positions: new Map() } };
 
     for (const level of options.index.groups) {
         walkLevel(options, level, state);
