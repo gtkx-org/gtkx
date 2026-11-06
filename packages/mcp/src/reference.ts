@@ -104,8 +104,8 @@ const SYMBOL_KIND = z.enum([
 const SYMBOL_DESCRIPTION =
     "Qualified symbol name (`Adw.Toast`, `Gtk.Orientation`, `GLib.idleAdd`), JSX element name (`AdwToast`), " +
     "bare symbol name when unambiguous (`Toast`), or a class, interface or record member named after its owner " +
-    "(`Gio.File.replaceContentsAsync`, `Gtk.Window.close-request`, `Gdk.RGBA.red`), which returns only that " +
-    "member's section. A member a class inherits resolves to the ancestor or interface that documents it.";
+    "(`Gio.File.replaceContentsAsync`, `Gtk.Window.close-request`, `Gdk.RGBA.red`) or after the JSX element of " +
+    "its class (`AdwToast.title`), which returns only that member's section. A member a class inherits resolves to the ancestor or interface that documents it.";
 
 const PROJECT_ROOT_DESCRIPTION =
     "Directory of the GTKX project whose bindings to document, absolute or relative to the working directory. " +
@@ -130,7 +130,8 @@ const searchApiShape = {
         .string()
         .describe(
             "Case-insensitive substring of a symbol or member name, e.g. `headerbar`, `replaceContentsAsync` or " +
-                "`close-request`. Include the owner to list its members: `Gio.File.replace`.",
+                "`close-request`. Include the owner, or the JSX element of a class, to list its members: " +
+                "`Gio.File.replace` or `GtkButton.icon`.",
         ),
     namespace: z.string().optional().describe("Restrict matches to one namespace (e.g. `Adw`)."),
     kind: SYMBOL_KIND.optional().describe("Restrict matches to one symbol or member kind."),

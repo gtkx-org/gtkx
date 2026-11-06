@@ -133,8 +133,8 @@ type ApiLookupResult =
 type ApiSearchOptions = {
     /**
      * Text matched case-insensitively against each symbol's name and its qualified `Namespace.Name` form,
-     * and against each member's name; a query containing a dot also matches `Owner.member` and
-     * `Namespace.Owner.member`.
+     * and against each member's name; a query containing a dot also matches `Owner.member`,
+     * `Namespace.Owner.member`, and `Element.member` for the JSX element of a class.
      */
     query: string;
     /** GIR namespace to keep, matched case-insensitively; every namespace when omitted. */
@@ -405,7 +405,7 @@ const searchScore = (name: string, qualified: string[], query: string): number =
     return 0;
 };
 
-const memberEntries = (owner: MemberOwnerEntry, library: Library): MemberEntry[] =>
+const memberEntries = (owner: MemberOwnerEntry, library: Library, elementName: string | undefined): MemberEntry[] =>
     memberSections(owner, library).flatMap((section) =>
         section.members
             .filter((member) => member.origin === undefined)
@@ -422,6 +422,7 @@ const memberEntries = (owner: MemberOwnerEntry, library: Library): MemberEntry[]
                     lowerQualified: [
                         `${ownerName}.${lowerName}`,
                         `${owner.namespace.name.toLowerCase()}.${ownerName}.${lowerName}`,
+                        ...(elementName === undefined ? [] : [`${elementName.toLowerCase()}.${lowerName}`]),
                     ],
                 };
             }),
@@ -639,10 +640,31 @@ class ApiReference {
         return narrowToExactMatches(candidates, trimmed, isQualified);
     }
 
+    private elementNameOf(owner: MemberOwnerEntry): string | undefined {
+        return owner.kind === "record"
+            ? undefined
+            : this.elementsByClass.get(`${owner.namespace.name}.${owner.klass.name}`);
+    }
+
     private memberIndex(): MemberEntry[] {
-        this.members ??= this.entries.filter(isMemberOwner).flatMap((owner) => memberEntries(owner, this.library));
+        this.members ??= this.entries
+            .filter(isMemberOwner)
+            .flatMap((owner) => memberEntries(owner, this.library, this.elementNameOf(owner)));
 
         return this.members;
+    }
+
+    private memberOwnersOf(entry: SymbolEntry): MemberOwnerEntry[] {
+        if (isMemberOwner(entry)) {
+            return [entry];
+        }
+
+        const owner =
+            entry.kind === "element"
+                ? this.ownerEntry(entry.element.namespace.name, entry.element.klass.name)
+                : undefined;
+
+        return owner === undefined ? [] : [owner];
     }
 
     private scoreSymbols(query: string, namespaceFilter: string | undefined, kinds: KindSet | undefined): ScoredItem[] {
@@ -755,7 +777,13 @@ class ApiReference {
         }
 
         const name = trimmed.slice(separator + 1);
-        const owners = this.lookupCandidates(trimmed.slice(0, separator), undefined).filter(isMemberOwner);
+        const owners = [
+            ...new Set(
+                this.lookupCandidates(trimmed.slice(0, separator), undefined).flatMap((entry) =>
+                    this.memberOwnersOf(entry),
+                ),
+            ),
+        ];
         const matches = narrowToExactMembers(
             owners.flatMap((owner) => this.findMembers(owner, name, kind)),
             name,
@@ -799,9 +827,9 @@ class ApiReference {
     /**
      * Resolves a name to a single symbol and renders its reference page, or to a single member of a class,
      * interface or record and renders that member's section. A symbol name may be bare (`Toast`) or
-     * qualified (`Adw.Toast`); a member is named after its owner (`Gio.File.replaceContentsAsync` or
-     * `File.replaceContentsAsync`), and a member a class inherits resolves to the ancestor or interface
-     * documenting it. Names are matched case-insensitively, and dashes in signal names are optional; a name
+     * qualified (`Adw.Toast`); a member is named after its owner (`Gio.File.replaceContentsAsync`,
+     * `File.replaceContentsAsync`, or the JSX element `AdwToast.title` for the class it renders), and a member a
+     * class inherits resolves to the ancestor or interface documenting it. Names are matched case-insensitively, and dashes in signal names are optional; a name
      * several symbols or members answer to is reported as ambiguous rather than picked between.
      *
      * @param kind Restricts the match to one kind, which is how a class and its JSX element, or a signal and

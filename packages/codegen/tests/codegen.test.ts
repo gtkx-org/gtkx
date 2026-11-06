@@ -1058,6 +1058,17 @@ describe("generated bindings", () => {
             expect.arrayContaining([expect.objectContaining({ name: "ObjectClass.listProperties", kind: "method" })]),
         );
         expect(reference.lookup("Gio.ApplicationClass")).toMatchObject({ outcome: "notFound" });
+        expect(reference.lookup("GSimpleAction.enabled")).toMatchObject({
+            outcome: "page",
+            symbol: { name: "SimpleAction.enabled", kind: "property" },
+        });
+        expect(reference.lookup("GMemoryInputStream.close", "method")).toMatchObject({
+            outcome: "page",
+            symbol: { name: "InputStream.close" },
+        });
+        expect(reference.search({ query: "GSimpleAction.enab" })).toEqual([
+            expect.objectContaining({ name: "SimpleAction.enabled", kind: "property" }),
+        ]);
     });
 
     it("exposes only signal pointer slots whose ownership can be honored", async () => {
