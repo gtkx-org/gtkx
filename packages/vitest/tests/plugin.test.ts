@@ -121,7 +121,7 @@ describe("headless Vitest integration", () => {
         writeFileSync(
             join(directory.path, "vitest.config.mjs"),
             `import gtkx from ${JSON.stringify(pluginPath)};
-            export default { plugins: [gtkx()], test: { include: ["*.test.mjs"], bail: 1 } };`,
+            export default { plugins: [gtkx()], test: { include: ["*.test.mjs"], bail: 1, maxWorkers: 2 } };`,
         );
         const names = ["first", "second"];
         for (const name of names) {
