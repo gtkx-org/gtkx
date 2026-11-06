@@ -20,6 +20,16 @@ pub enum BoxedTypeSource {
     TypeGetter,
 }
 
+/// How a callback reads a value its caller lends it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Lending {
+    /// The callback borrows the caller's instance until it returns.
+    Borrow,
+    /// Copying takes another reference to the same instance, so the callback keeps that
+    /// reference and the value outlives the call.
+    Reference,
+}
+
 #[derive(Debug, Clone)]
 pub struct BoxedCodec {
     pub ownership: Ownership,
@@ -31,6 +41,7 @@ pub struct BoxedCodec {
     pub size: Option<usize>,
     pub inline: bool,
     pub value_safe: bool,
+    pub lending: Lending,
     pub abi_fields: Option<Vec<Codec>>,
 }
 
@@ -279,6 +290,10 @@ impl Decoder for BoxedCodec {
         transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
         if transfer.is_full() {
+            return unsafe { self.read_value(env, ptr, context, transfer) };
+        }
+
+        if self.lending == Lending::Reference && !self.caller_allocated {
             return unsafe { self.read_value(env, ptr, context, transfer) };
         }
 

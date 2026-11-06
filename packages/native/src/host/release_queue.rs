@@ -184,6 +184,14 @@ pub(crate) fn defer(work: impl FnOnce() + 'static) {
     LOCAL.with_borrow_mut(|queue| queue.source = Some(source));
 }
 
+/// Runs the cleanup already queued on this thread now instead of on the next idle iteration, so it
+/// can still call into JavaScript. Does nothing once the queue is retiring.
+pub(crate) fn flush() {
+    if !is_retiring() {
+        drain();
+    }
+}
+
 fn drain() {
     if LOCAL.with_borrow_mut(|queue| std::mem::replace(&mut queue.draining, true)) {
         return;

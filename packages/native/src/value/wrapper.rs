@@ -1,5 +1,5 @@
 use std::cell::{Cell, RefCell};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::ffi::c_void;
 use std::ptr::NonNull;
 use std::rc::Rc;
@@ -24,6 +24,7 @@ pub struct WrapperHandle {
     napi_ref: Cell<sys::napi_ref>,
     generation: Cell<u64>,
     wrapper_strong: Cell<bool>,
+    holds_toggle: Cell<bool>,
     notification_id: usize,
 }
 
@@ -133,7 +134,7 @@ pub(crate) unsafe fn active_identity(gobject: *mut glib::gobject_ffi::GObject) -
     let handle = unsafe { handle_qdata(gobject) }?;
     let handle = unsafe { handle.as_ref() };
 
-    (!handle.napi_ref.get().is_null() && handle.generation.get() != 0)
+    (!handle.napi_ref.get().is_null() && handle.generation.get() != 0 && handle.holds_toggle.get())
         .then_some(handle.notification_id)
 }
 
@@ -294,34 +295,39 @@ pub unsafe fn install(
 ) -> (Rc<WrapperHandle>, u64) {
     if let Some(nn) = unsafe { handle_qdata(gobject) } {
         let handle = unsafe { nn.as_ref() };
-        let generation = handle.generation.get() + 1;
-        let outgoing = handle.napi_ref.replace(napi_ref);
-        let outgoing_was_strong = handle.wrapper_strong.replace(true);
-        handle.generation.set(generation);
-        release_outgoing_ref(outgoing, outgoing_was_strong);
-        (Rc::clone(handle), generation)
-    } else {
-        let handle = Rc::new(WrapperHandle {
-            napi_ref: Cell::new(napi_ref),
-            generation: Cell::new(1),
-            wrapper_strong: Cell::new(true),
-            notification_id: register_toggle_owner(),
-        });
-        unsafe {
-            borrow_object(gobject).set_qdata::<Rc<WrapperHandle>>(quark(), Rc::clone(&handle));
+        if handle.holds_toggle.get() {
+            let generation = handle.generation.get() + 1;
+            let outgoing = handle.napi_ref.replace(napi_ref);
+            let outgoing_was_strong = handle.wrapper_strong.replace(true);
+            handle.generation.set(generation);
+            release_outgoing_ref(outgoing, outgoing_was_strong);
+            return (Rc::clone(handle), generation);
         }
-        LIVE_TOGGLE_REFS.with_borrow_mut(|live| {
-            live.insert(gobject as usize, handle.notification_id);
-        });
         unsafe {
-            glib::gobject_ffi::g_object_add_toggle_ref(
-                gobject,
-                Some(on_toggle_notify),
-                toggle_data(&handle),
-            );
+            drop(borrow_object(gobject).steal_qdata::<Rc<WrapperHandle>>(quark()));
         }
-        (handle, 1)
     }
+    let handle = Rc::new(WrapperHandle {
+        napi_ref: Cell::new(napi_ref),
+        generation: Cell::new(1),
+        wrapper_strong: Cell::new(true),
+        holds_toggle: Cell::new(true),
+        notification_id: register_toggle_owner(),
+    });
+    unsafe {
+        borrow_object(gobject).set_qdata::<Rc<WrapperHandle>>(quark(), Rc::clone(&handle));
+    }
+    LIVE_TOGGLE_REFS.with_borrow_mut(|live| {
+        live.insert(gobject as usize, handle.notification_id);
+    });
+    unsafe {
+        glib::gobject_ffi::g_object_add_toggle_ref(
+            gobject,
+            Some(on_toggle_notify),
+            toggle_data(&handle),
+        );
+    }
+    (handle, 1)
 }
 
 /// # Safety
@@ -348,7 +354,7 @@ pub unsafe fn schedule_cleanup(
         let Some(handle) = handle else {
             return;
         };
-        if handle.generation.get() != generation {
+        if handle.generation.get() != generation || !handle.holds_toggle.get() {
             return;
         }
         if !release_borrows(handle.notification_id) {
@@ -383,6 +389,196 @@ pub unsafe fn schedule_cleanup(
     });
 }
 
+fn is_live_toggle(gobject: usize, notification_id: usize) -> bool {
+    LIVE_TOGGLE_REFS.with_borrow(|live| live.get(&gobject) == Some(&notification_id))
+}
+
+/// Whether the wrapper's own toggle reference is the only reference left on `gobject`, while the
+/// wrapper is still installed.
+///
+/// # Safety
+///
+/// `gobject` must be live, which holds for every object `LIVE_TOGGLE_REFS` lists, and the call
+/// must happen on the thread `install` ran on.
+unsafe fn is_unowned(gobject: usize, notification_id: usize) -> bool {
+    let gobject = gobject as *mut glib::gobject_ffi::GObject;
+    let Some(handle) = (unsafe { handle_qdata(gobject) }) else {
+        return false;
+    };
+    let handle = unsafe { handle.as_ref() };
+    let borrowed = unsafe { borrow_object(gobject) };
+
+    handle.notification_id == notification_id
+        && !handle.napi_ref.get().is_null()
+        && handle.generation.get() != 0
+        && borrowed.ref_count() == 1
+        && !surface::awaits_destroy(&borrowed)
+}
+
+/// Drops the toggle reference of an object that native code still references, so it is disposed
+/// when its native owners let it go, as in C, instead of when its wrapper is collected. The wrapper
+/// stays installed and strongly held, so the object's JavaScript state outlives its disposal; a
+/// later wrapper for an object that survives starts afresh.
+///
+/// # Safety
+///
+/// `gobject` must be live and listed in `LIVE_TOGGLE_REFS`, on the thread `install` ran on.
+unsafe fn detach_owned(gobject: *mut glib::gobject_ffi::GObject) {
+    let Some(handle) = (unsafe { handle_qdata(gobject) }) else {
+        return;
+    };
+    let handle = Rc::clone(unsafe { handle.as_ref() });
+    let object = unsafe { borrow_object(gobject) };
+    if object.ref_count() < 2
+        || surface::is_surface(&object)
+        || !borrow_ids(handle.notification_id).is_empty()
+    {
+        return;
+    }
+    TOGGLE_OWNERS
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .remove(&handle.notification_id);
+    LIVE_TOGGLE_REFS.with_borrow_mut(|live| {
+        live.remove(&(gobject as usize));
+    });
+    apply_wrapper_level(&handle, handle.napi_ref.get(), true);
+    handle.holds_toggle.set(false);
+    unsafe {
+        glib::gobject_ffi::g_object_remove_toggle_ref(
+            gobject,
+            Some(on_toggle_notify),
+            toggle_data(&handle),
+        );
+    }
+}
+
+fn detach_owned_objects() {
+    let owned: Vec<_> = LIVE_TOGGLE_REFS.with_borrow(|live| {
+        live.iter()
+            .filter(|&(&gobject, _)| {
+                unsafe { borrow_object(gobject as *mut glib::gobject_ffi::GObject) }.ref_count() > 1
+            })
+            .map(|(&gobject, &id)| (gobject, id))
+            .collect()
+    });
+    for (gobject, id) in owned {
+        if is_live_toggle(gobject, id) {
+            unsafe { detach_owned(gobject as *mut glib::gobject_ffi::GObject) };
+        }
+    }
+}
+
+fn release_rank(gobject: usize, widget: Option<glib::Type>) -> u8 {
+    let type_ = unsafe { borrow_object(gobject as *mut glib::gobject_ffi::GObject) }.type_();
+    if widget.is_some_and(|widget| type_.is_a(widget)) {
+        0
+    } else if crate::api::register_class::is_registered_type(type_) {
+        1
+    } else {
+        2
+    }
+}
+
+/// The objects only their wrappers reference that come first in the release order, as
+/// `(object, notification id)` pairs in the order they were first wrapped.
+fn next_unowned_objects(visited: &HashSet<usize>) -> Vec<(usize, usize)> {
+    let widget = glib::Type::from_name("GtkWidget");
+    let mut ranked: Vec<_> = LIVE_TOGGLE_REFS.with_borrow(|live| {
+        live.iter()
+            .filter(|&(&gobject, &id)| !visited.contains(&id) && unsafe { is_unowned(gobject, id) })
+            .map(|(&gobject, &id)| (release_rank(gobject, widget), id, gobject))
+            .collect()
+    });
+    let Some(first) = ranked.iter().map(|&(rank, ..)| rank).min() else {
+        return Vec::new();
+    };
+    ranked.retain(|&(rank, ..)| rank == first);
+    ranked.sort_unstable_by_key(|&(_, id, _)| id);
+    ranked
+        .into_iter()
+        .map(|(_, id, gobject)| (gobject, id))
+        .collect()
+}
+
+/// Drops the toggle reference of an object that only its wrapper still references, which disposes
+/// and finalizes it while JavaScript runs. The wrapper stays installed during disposal, so the
+/// object's own JavaScript vfuncs and signal handlers still reach it, and is detached afterwards:
+/// the JavaScript wrapper stays collectable and its handle reports the object as ended.
+///
+/// # Safety
+///
+/// `gobject` must be live and listed in `LIVE_TOGGLE_REFS`, on the thread `install` ran on.
+unsafe fn release_unowned_object(gobject: *mut glib::gobject_ffi::GObject) {
+    let Some(handle) = (unsafe { handle_qdata(gobject) }) else {
+        return;
+    };
+    let handle = Rc::clone(unsafe { handle.as_ref() });
+    let generation = handle.generation.get();
+    if !release_borrows(handle.notification_id)
+        || handle.generation.get() != generation
+        || unsafe { borrow_object(gobject) }.ref_count() != 1
+    {
+        return;
+    }
+    let finalized = crate::handle::finalization_flag(&*unsafe { borrow_object(gobject) });
+    TOGGLE_OWNERS
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .remove(&handle.notification_id);
+    LIVE_TOGGLE_REFS.with_borrow_mut(|live| {
+        live.remove(&(gobject as usize));
+    });
+    unsafe {
+        glib::gobject_ffi::g_object_remove_toggle_ref(
+            gobject,
+            Some(on_toggle_notify),
+            toggle_data(&handle),
+        );
+    }
+    handle.holds_toggle.set(false);
+    if !finalized.load(Ordering::Acquire) {
+        unsafe {
+            drop(borrow_object(gobject).steal_qdata::<Rc<WrapperHandle>>(quark()));
+        }
+    }
+    let napi_ref = handle.napi_ref.replace(std::ptr::null_mut());
+    release_outgoing_ref(napi_ref, handle.wrapper_strong.replace(false));
+    handle.generation.set(0);
+}
+
+/// Gives up every toggle reference wrappers hold while JavaScript can still run, so teardown that
+/// calls back into JavaScript, such as a view clearing a JavaScript list model or a subclass's
+/// `vfuncDispose`, runs as it does during the application's run. Pending cleanup runs first, and
+/// handles only JavaScript holds give up the object references they keep.
+/// Objects native code still references keep their wrappers but lose the toggle references, so
+/// each is disposed when its native owners let it go, as in C, often inside the teardown of an
+/// object released here; objects GTK keeps until the process ends are never disposed. Objects only
+/// their wrappers reference are then released, which can leave more of them, until none is left.
+/// Widgets go first, then instances of registered classes, then other objects, each in the order
+/// they were first wrapped, so the views and JavaScript classes whose teardown calls back into
+/// JavaScript still find the models, items and other objects their JavaScript state holds.
+/// Surfaces and objects in a wrapper borrow keep their toggle references for the environment's own
+/// teardown.
+pub(crate) fn release_unowned() {
+    let mut visited = HashSet::new();
+    loop {
+        release_queue::flush();
+        crate::handle::release_unshared_reference_holders();
+        detach_owned_objects();
+        let round = next_unowned_objects(&visited);
+        if round.is_empty() {
+            break;
+        }
+        for (gobject, id) in round {
+            visited.insert(id);
+            if is_live_toggle(gobject, id) && unsafe { is_unowned(gobject, id) } {
+                unsafe { release_unowned_object(gobject as *mut glib::gobject_ffi::GObject) };
+            }
+        }
+    }
+}
+
 fn toggle_data(handle: &WrapperHandle) -> *mut c_void {
     handle.notification_id as *mut c_void
 }
@@ -405,7 +601,10 @@ unsafe extern "C" fn on_toggle_notify(
         if owner.is_current_thread() {
             if release_queue::is_retiring()
                 || !LIVE_TOGGLE_REFS
-                    .with_borrow(|live| live.get(&(gobject as usize)) == Some(&notification_id))
+                    .try_with(|live| {
+                        live.borrow().get(&(gobject as usize)) == Some(&notification_id)
+                    })
+                    .unwrap_or(false)
             {
                 return;
             }
