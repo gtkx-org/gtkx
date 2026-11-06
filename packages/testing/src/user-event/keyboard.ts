@@ -551,7 +551,7 @@ const focusWithin = (widget: Gtk.Widget): Gtk.Widget | null => {
     const root = widget.getRoot();
     const focus = root instanceof Gtk.Window ? root.getFocus() : null;
 
-    return focus !== null && focus.isAncestor(widget) ? focus : null;
+    return focus?.getMapped() === true && focus.isAncestor(widget) ? focus : null;
 };
 
 const propagationChain = (widget: Gtk.Widget): Gtk.Widget[] => {

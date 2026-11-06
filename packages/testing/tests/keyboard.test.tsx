@@ -279,6 +279,7 @@ describe("keyboard focus movement", () => {
 
     it("sends keys without a target to the window when its focus widget is not mapped", async () => {
         let created = 0;
+        let hiddenPresses = 0;
         const closedRef = createRef<Gtk.Button>();
 
         await render(
@@ -308,7 +309,19 @@ describe("keyboard focus movement", () => {
                         <GtkButton label="Shown" />
                     </GtkStackPage>
                     <GtkStackPage name="closed">
-                        <GtkButton ref={closedRef} label="Closed" />
+                        <GtkButton
+                            ref={closedRef}
+                            label="Closed"
+                            controllers={
+                                <GtkEventControllerKey
+                                    onKeyPressed={() => {
+                                        hiddenPresses++;
+
+                                        return true;
+                                    }}
+                                />
+                            }
+                        />
                     </GtkStackPage>
                 </GtkStack>
             </GtkBox>,
@@ -320,6 +333,7 @@ describe("keyboard focus movement", () => {
         if (window instanceof Gtk.Window) window.setFocus(closed ?? null);
         await userEvent.keyboard("{Control>}n{/Control}");
         expect(created).toBe(1);
+        expect(hiddenPresses).toBe(0);
     });
 
     it("sends later keys of one sequence to the widget focus moved to outside the target", async () => {
