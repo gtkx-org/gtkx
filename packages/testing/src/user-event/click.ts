@@ -2,7 +2,7 @@ import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { hasSignalListener } from "@gtkx/runtime/internal";
 import { callBooleanGetter, getCallableMethod, getWidgetTypeName, hasWidgetMethod } from "../widget-getters.js";
-import { queryAllControllers } from "./controller.js";
+import { queryAllControllers, receivesEventsFor, runsFor } from "./controller.js";
 import { wrapPointerEvent } from "./event-wrapper.js";
 import { hasIndexedChildren, selectContainerChild, SELECTED_PROBE, unselectOtherChildren } from "./indexed-children.js";
 import { isClickTransparent, type NativeClick, nativeClickFor } from "./native-click.js";
@@ -11,7 +11,7 @@ import type { UserEventState } from "./state.js";
 type PressPoint = { x: number; y: number };
 type ClickPhase = "pressed" | "released";
 type ClickSite = { gestures: Gtk.GestureClick[]; point: PressPoint };
-type ClickScope = { isClicked: boolean; isInternalAllowed: boolean };
+type ClickScope = { clicked: Gtk.Widget; isInternalAllowed: boolean };
 type DirectClick = { sites: ClickSite[]; outcome: NativeClick | null };
 type CurrentEventPatch = {
     getCurrentButton?: Gtk.GestureClick["getCurrentButton"] | undefined;
@@ -159,21 +159,35 @@ const hasClickHandlers = (gesture: Gtk.GestureClick): boolean => hasSignalListen
 const isInternalGesture = (gesture: Gtk.GestureClick): boolean => !hasSignalListener(gesture);
 const isPrimaryGesture = (gesture: Gtk.GestureClick): boolean => PRIMARY_BUTTONS.has(gesture.getButton());
 
-const clickGestures = (widget: Gtk.Widget): Gtk.GestureClick[] =>
-    queryAllControllers(widget, Gtk.GestureClick).filter((gesture) => isPrimaryGesture(gesture));
+const clickGestures = (widget: Gtk.Widget, clicked: Gtk.Widget): Gtk.GestureClick[] =>
+    queryAllControllers(widget, Gtk.GestureClick).filter(
+        (gesture) => isPrimaryGesture(gesture) && runsFor(gesture, widget, clicked),
+    );
 
-const getAuthoredClickGestures = (widget: Gtk.Widget): Gtk.GestureClick[] =>
-    clickGestures(widget).filter((gesture) => hasClickHandlers(gesture));
+const getAuthoredClickGestures = (widget: Gtk.Widget, clicked: Gtk.Widget): Gtk.GestureClick[] =>
+    clickGestures(widget, clicked).filter((gesture) => hasClickHandlers(gesture));
 
-const gestureTargetFor = (widget: Gtk.Widget, isInternalAllowed: boolean): ClickTarget | null => {
-    const gestures = clickGestures(widget);
+const authoredTargetFor = (widget: Gtk.Widget, clicked: Gtk.Widget): ClickTarget | null => {
+    const gestures = getAuthoredClickGestures(widget, clicked);
+
+    return gestures.length > 0 ? { widget, container: null, gestures, isClaiming: false, native: null } : null;
+};
+
+const gestureTargetFor = (widget: Gtk.Widget, clicked: Gtk.Widget, isInternalAllowed: boolean): ClickTarget | null => {
+    const gestures = clickGestures(widget, clicked);
 
     if (widget instanceof Gtk.Button) {
         return { widget, container: null, gestures, isClaiming: true, native: null };
     }
 
     if (widget instanceof Gtk.WindowHandle) {
-        return { widget, container: null, gestures: getAuthoredClickGestures(widget), isClaiming: true, native: null };
+        return {
+            widget,
+            container: null,
+            gestures: getAuthoredClickGestures(widget, clicked),
+            isClaiming: true,
+            native: null,
+        };
     }
 
     const container = containerFor(widget);
@@ -188,10 +202,10 @@ const gestureTargetFor = (widget: Gtk.Widget, isInternalAllowed: boolean): Click
         };
     }
 
-    const authored = gestures.filter((gesture) => hasClickHandlers(gesture));
+    const authored = authoredTargetFor(widget, clicked);
 
-    if (authored.length > 0) {
-        return { widget, container: null, gestures: authored, isClaiming: false, native: null };
+    if (authored !== null) {
+        return authored;
     }
 
     if (isInternalAllowed && gestures.some((gesture) => isInternalGesture(gesture))) {
@@ -201,22 +215,39 @@ const gestureTargetFor = (widget: Gtk.Widget, isInternalAllowed: boolean): Click
     return null;
 };
 
+/**
+ * The click target a widget forms for a press on `scope.clicked`. Past the clicked widget's event limit, such as the
+ * popover it sits in, only authored gestures without a propagation limit receive the press: GTK's own click gestures
+ * keep the default same-native limit.
+ */
 const clickTargetFor = (widget: Gtk.Widget, scope: ClickScope): ClickTarget | null => {
+    const { clicked } = scope;
+
     if (isClickTransparent(widget)) {
         return null;
     }
 
-    const native = nativeClickFor(widget, scope.isClicked);
-
-    if (native !== null) {
-        return { widget, container: null, gestures: getAuthoredClickGestures(widget), isClaiming: true, native };
+    if (!receivesEventsFor(widget, Gtk.PropagationLimit.SAME_NATIVE, clicked)) {
+        return authoredTargetFor(widget, clicked);
     }
 
-    return gestureTargetFor(widget, scope.isInternalAllowed);
+    const native = nativeClickFor(widget, widget === clicked);
+
+    if (native !== null) {
+        return {
+            widget,
+            container: null,
+            gestures: getAuthoredClickGestures(widget, clicked),
+            isClaiming: true,
+            native,
+        };
+    }
+
+    return gestureTargetFor(widget, clicked, scope.isInternalAllowed);
 };
 
 const isSelfClickTarget = (widget: Gtk.Widget): boolean =>
-    isClickTransparent(widget) || clickTargetFor(widget, { isClicked: true, isInternalAllowed: false }) !== null;
+    isClickTransparent(widget) || clickTargetFor(widget, { clicked: widget, isInternalAllowed: false }) !== null;
 
 const nextClickWidget = (current: Gtk.Widget, target: ClickTarget | null): Gtk.Widget | null =>
     target?.isClaiming === true ? null : current.getParent();
@@ -226,8 +257,7 @@ const collectClickTargets = (widget: Gtk.Widget): ClickTarget[] => {
     let current: Gtk.Widget | null = widget;
 
     while (current !== null) {
-        const isClicked = current === widget;
-        const scope = { isClicked, isInternalAllowed: !isClicked && targets.length === 0 };
+        const scope = { clicked: widget, isInternalAllowed: current !== widget && targets.length === 0 };
         const target = clickTargetFor(current, scope);
         const next = nextClickWidget(current, target);
 
@@ -249,7 +279,7 @@ const targetSites = (clicked: Gtk.Widget, target: ClickTarget): ClickSite[] => {
         return [site];
     }
 
-    return [site, { gestures: getAuthoredClickGestures(container), point: getClickPoint(clicked, container) }];
+    return [site, { gestures: getAuthoredClickGestures(container, clicked), point: getClickPoint(clicked, container) }];
 };
 
 const isSingleClickActivating = (container: Gtk.Widget): boolean =>
@@ -315,7 +345,10 @@ const applyContainerClick: NativeClick = (widget, nPress) => {
 const directClickFor = (widget: Gtk.Widget): DirectClick => {
     const native = nativeClickFor(widget, true);
     const container = native === null ? containerFor(widget) : null;
-    const gestures = native !== null || container !== null ? getAuthoredClickGestures(widget) : clickGestures(widget);
+    const gestures =
+        native !== null || container !== null
+            ? getAuthoredClickGestures(widget, widget)
+            : clickGestures(widget, widget);
     const target: ClickTarget = { widget, container, gestures, isClaiming: true, native };
 
     return { sites: targetSites(widget, target), outcome: native ?? (container === null ? null : applyContainerClick) };
@@ -329,14 +362,17 @@ const listensForButton = (gesture: Gtk.GestureClick, button: number): boolean =>
 
 /**
  * The press sites a non-primary button reaches: the authored click gestures listening for that button on the widget
- * and its ancestors, as GTK propagates the press up the tree. Widgets react to these buttons only through gestures.
+ * and its ancestors that GTK runs for the press, as it propagates up the tree. Widgets react to these buttons only
+ * through gestures.
  */
 const buttonSitesFor = (widget: Gtk.Widget, button: number): ClickSite[] => {
     const sites: ClickSite[] = [];
 
     for (let current: Gtk.Widget | null = widget; current !== null; current = current.getParent()) {
-        const gestures = queryAllControllers(current, Gtk.GestureClick).filter(
-            (gesture) => listensForButton(gesture, button) && hasClickHandlers(gesture),
+        const owner = current;
+        const gestures = queryAllControllers(owner, Gtk.GestureClick).filter(
+            (gesture) =>
+                listensForButton(gesture, button) && hasClickHandlers(gesture) && runsFor(gesture, owner, widget),
         );
 
         if (gestures.length > 0) {

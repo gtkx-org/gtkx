@@ -7,6 +7,7 @@ import type { UserEventState } from "./state.js";
 import { getEditableDelegate } from "../editable.js";
 import { fireEvent } from "../fire-event.js";
 import { ancestors, descendants } from "../traversal.js";
+import { receivesEventsFor } from "./controller.js";
 import { wrapEvent } from "./event-wrapper.js";
 import { usageError } from "../usage-error.js";
 import { getWidgetTypeName } from "../widget-getters.js";
@@ -428,13 +429,6 @@ const didDispatchAccelsOnWindow = (window: Gtk.Window, keyval: number, modifiers
 
     return false;
 };
-
-const isEventLimit = (widget: Gtk.Widget): boolean => widget instanceof Gtk.Native || widget.getLimitEvents();
-
-const eventLimitOf = (widget: Gtk.Widget): Gtk.Widget | undefined => [widget, ...ancestors(widget)].find(isEventLimit);
-
-const receivesEventsFor = (owner: Gtk.Widget, limit: Gtk.PropagationLimit, target: Gtk.Widget): boolean =>
-    limit === Gtk.PropagationLimit.NONE || eventLimitOf(owner) === eventLimitOf(target);
 
 const didDispatchApplicationAccels = (target: Gtk.Widget, keyval: number, modifiers: number): boolean => {
     const root = target.getRoot();

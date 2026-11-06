@@ -1,4 +1,5 @@
-import type * as Gtk from "@gtkx/gi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
+import { ancestors } from "../traversal.js";
 import { requireWidget } from "../widget-target.js";
 import { usageError } from "../usage-error.js";
 
@@ -89,14 +90,30 @@ type ControllerOwner<T extends Gtk.EventController> = {
     controllers: T[];
 };
 
+const isEventLimit = (widget: Gtk.Widget): boolean => widget instanceof Gtk.Native || widget.getLimitEvents();
+
+const eventLimitOf = (widget: Gtk.Widget): Gtk.Widget | undefined => [widget, ...ancestors(widget)].find(isEventLimit);
+
+const receivesEventsFor = (owner: Gtk.Widget, limit: Gtk.PropagationLimit, target: Gtk.Widget): boolean =>
+    limit === Gtk.PropagationLimit.NONE || eventLimitOf(owner) === eventLimitOf(target);
+
+/** Whether GTK runs a controller of `owner` for an event on `target`: its phase is not none and its limit admits it. */
+const runsFor = (controller: Gtk.EventController, owner: Gtk.Widget, target: Gtk.Widget): boolean =>
+    controller.getPropagationPhase() !== Gtk.PropagationPhase.NONE &&
+    receivesEventsFor(owner, controller.getPropagationLimit(), target);
+
 const findControllerOwner = <T extends Gtk.EventController>(
     target: Gtk.Accessible,
     controllerType: ControllerConstructor<T>,
 ): ControllerOwner<T> => {
-    let widget: Gtk.Widget | null = requireWidget(target);
+    const origin = requireWidget(target);
+    let widget: Gtk.Widget | null = origin;
 
     while (widget !== null) {
-        const controllers = queryAllControllers(widget, controllerType);
+        const owner: Gtk.Widget = widget;
+        const controllers = queryAllControllers(owner, controllerType).filter((controller) =>
+            runsFor(controller, owner, origin),
+        );
 
         if (controllers.length > 0) {
             return { widget, controllers };
@@ -132,5 +149,7 @@ export {
     getController,
     getOrCreateControllers,
     findControllerOwner,
+    receivesEventsFor,
+    runsFor,
     type ControllerConstructor,
 };

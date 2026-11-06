@@ -44,7 +44,9 @@ import {
     GtkListBox,
     GtkListBoxRow,
     GtkListView,
+    GtkMenuButton,
     GtkMultiSelection,
+    GtkPopover,
     GtkShortcut,
     GtkShortcutController,
     GtkShortcutTrigger,
@@ -614,6 +616,48 @@ describe("userEvent.click", () => {
         expect(events).toEqual(["item pressed", "item released", "item pressed", "item released"]);
     });
 
+    it("skips click gestures GTK does not run: phase none, or a press from inside a popover", async () => {
+        const presses: string[] = [];
+        const listen = (name: string, button: number, phase = Gtk.PropagationPhase.BUBBLE) => (
+            <GtkGestureClick key={name} button={button} propagationPhase={phase} onPressed={() => presses.push(name)} />
+        );
+
+        await render(
+            <GtkBox
+                controllers={[
+                    listen("outer primary", Gdk.BUTTON_PRIMARY),
+                    listen("outer secondary", Gdk.BUTTON_SECONDARY),
+                ]}
+            >
+                <GtkLabel
+                    label="Idle"
+                    controllers={[
+                        listen("idle primary", Gdk.BUTTON_PRIMARY, Gtk.PropagationPhase.NONE),
+                        listen("idle secondary", Gdk.BUTTON_SECONDARY, Gtk.PropagationPhase.NONE),
+                    ]}
+                />
+                <GtkMenuButton
+                    label="Menu"
+                    popover={
+                        <GtkPopover>
+                            <GtkLabel label="Inside" />
+                        </GtkPopover>
+                    }
+                />
+            </GtkBox>,
+        );
+
+        const idle = await screen.findByText("Idle");
+        await userEvent.click(idle);
+        await userEvent.pointer(idle, "[MouseRight]");
+        expect(presses).toEqual(["outer primary", "outer secondary"]);
+        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Menu" }));
+        const inside = await screen.findByText("Inside");
+        await userEvent.click(inside);
+        await userEvent.pointer(inside, "[MouseRight]");
+        expect(presses).toEqual(["outer primary", "outer secondary"]);
+    });
+
     it("rejects a pointer input it does not know", async () => {
         const { button } = await renderClickButton();
         const input: string = "[MouseBack]";
@@ -1138,7 +1182,16 @@ describe("userEvent gestures", () => {
                     />,
                 ]}
             >
-                <GtkBox>
+                <GtkBox
+                    controllers={
+                        <GtkGestureLongPress
+                            propagationPhase={Gtk.PropagationPhase.NONE}
+                            onPressed={() => {
+                                presses.push([-1, -1]);
+                            }}
+                        />
+                    }
+                >
                     <GtkLabel name="nested-gesture" marginStart={10} marginTop={20}>
                         Nested
                     </GtkLabel>
