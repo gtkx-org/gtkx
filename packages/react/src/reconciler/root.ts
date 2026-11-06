@@ -40,9 +40,12 @@ type Root = {
 declare const opaqueRoot: unique symbol;
 const log: Logger = createLogger("react");
 const activeRoots: Set<OpaqueRoot> = new Set();
+const quitListeners: Set<() => void> = new Set();
 
-const rethrowUncaughtRenderError = (error: unknown): never => {
-    throw error;
+const rethrowUncaughtRenderError = (error: unknown): void => {
+    queueMicrotask(() => {
+        throw error;
+    });
 };
 
 const logCaughtRenderError = (error: unknown): void => {
@@ -108,13 +111,31 @@ const createRoot = (container: Container = rootElement, options: RootOptions = {
 };
 
 /**
- * Unmounts every render root that currently holds a mounted tree.
+ * Registers a listener that {@link quit} calls before it unmounts the render roots.
+ *
+ * @returns A function that removes the listener.
+ */
+const onQuit = (listener: () => void): (() => void) => {
+    quitListeners.add(listener);
+
+    return () => {
+        quitListeners.delete(listener);
+    };
+};
+
+/**
+ * Unmounts every render root that currently holds a mounted tree and quits each application element it unmounts, as
+ * `application.quit()` does, so the application ends even while it holds itself with `hold()`.
  *
  * @returns `Gdk.EVENT_STOP` when at least one root came down, so a close-request handler keeps GTK4 from closing the
  * window itself, and `Gdk.EVENT_PROPAGATE` when there was nothing to unmount, so the default handler still runs.
  */
 const quit = (): typeof Gdk.EVENT_PROPAGATE | typeof Gdk.EVENT_STOP => {
     const containers = [...activeRoots];
+
+    for (const listener of [...quitListeners]) {
+        listener();
+    }
 
     for (const container of containers) {
         unmountContainer(container);
@@ -131,4 +152,4 @@ const quit = (): typeof Gdk.EVENT_PROPAGATE | typeof Gdk.EVENT_STOP => {
 const createPortal = (children: ReactNode, container: Container, key?: string): ReactPortal =>
     reconciler.createPortal(children, container, null, key ?? null);
 
-export { createRoot, quit, createPortal, type CaughtErrorInfo, type Root, type RootOptions };
+export { createRoot, quit, onQuit, createPortal, type CaughtErrorInfo, type Root, type RootOptions };

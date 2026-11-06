@@ -1,7 +1,6 @@
 import type * as Adw from "@gtkx/gi/adw";
 import type * as Gdk from "@gtkx/gi/gdk";
 import type * as GLib from "@gtkx/gi/glib";
-import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { CSSProperties, ReactNode } from "react";
 
@@ -17,12 +16,37 @@ type ConstructOnlyPropNames<Props> = typeof constructOnlyProps extends keyof Pro
     ? keyof NonNullable<Props[typeof constructOnlyProps]>
     : never;
 
-/** One entry of a `GMenu`'s `items` prop; `submenu` and `section` nest further menus. */
-type MenuItem = {
+/** Text and GtkBuilder menu attributes of a menu item, written onto the item when it is inserted. */
+type MenuItemAttributes = {
     /** Text shown for the entry, or the heading of the submenu or section it introduces. */
     label?: string | null;
     /** Detailed action name the entry activates, ignored when `submenu` or `section` is given. */
     action?: string | null;
+    /**
+     * ID of a widget placed in the entry instead of a label: the `customChildren` key of the
+     * `GtkPopoverMenu`, `GtkPopoverMenuBar` or `GtkMenuButton` showing the menu.
+     */
+    custom?: string | null;
+    /** Hides the entry while its action is disabled or missing, or in a macOS menu bar. */
+    hiddenWhen?: "action-disabled" | "action-missing" | "macos-menubar" | null;
+    /** Accelerator shown beside the entry, in `Gtk.acceleratorParse` syntax such as `<Control>n`. */
+    accel?: string | null;
+    /** Name of the icon shown for the entry or the submenu it opens. */
+    icon?: string | null;
+    /** Name of the icon shown instead of the label in a section displayed as a row of buttons. */
+    verbIcon?: string | null;
+    /** Whether `label` is Pango markup. */
+    useMarkup?: boolean | null;
+    /** Name of a boolean action tracking whether the entry's submenu is open. */
+    submenuAction?: string | null;
+    /** Shows the section the entry introduces as a row of buttons. */
+    displayHint?: "horizontal-buttons" | "circular-buttons" | "inline-buttons" | null;
+    /** Text direction of a section the entry introduces with the `horizontal-buttons` hint. */
+    textDirection?: "rtl" | "ltr" | "none" | null;
+};
+
+/** One entry of a `GMenu`'s `items` prop; `submenu` and `section` nest further menus. */
+type MenuItem = MenuItemAttributes & {
     /** Entries of a separate menu the labelled entry opens. */
     submenu?: MenuItem[];
     /** Entries appended below the label as an inline section, used only when `submenu` is absent. */
@@ -166,6 +190,7 @@ type StyleProperties = Pick<
     | "animationPlayState"
     | "animationTimingFunction"
     | "background"
+    | "backgroundBlendMode"
     | "backgroundClip"
     | "backgroundColor"
     | "backgroundImage"
@@ -175,12 +200,33 @@ type StyleProperties = Pick<
     | "backgroundSize"
     | "border"
     | "borderBottom"
+    | "borderBottomColor"
+    | "borderBottomLeftRadius"
+    | "borderBottomRightRadius"
+    | "borderBottomStyle"
+    | "borderBottomWidth"
     | "borderColor"
+    | "borderImage"
+    | "borderImageRepeat"
+    | "borderImageSlice"
+    | "borderImageSource"
+    | "borderImageWidth"
     | "borderLeft"
+    | "borderLeftColor"
+    | "borderLeftStyle"
+    | "borderLeftWidth"
     | "borderRadius"
     | "borderRight"
+    | "borderRightColor"
+    | "borderRightStyle"
+    | "borderRightWidth"
     | "borderStyle"
     | "borderTop"
+    | "borderTopColor"
+    | "borderTopLeftRadius"
+    | "borderTopRightRadius"
+    | "borderTopStyle"
+    | "borderTopWidth"
     | "borderWidth"
     | "boxShadow"
     | "caretColor"
@@ -188,9 +234,19 @@ type StyleProperties = Pick<
     | "filter"
     | "font"
     | "fontFamily"
+    | "fontFeatureSettings"
+    | "fontKerning"
     | "fontSize"
+    | "fontStretch"
     | "fontStyle"
     | "fontVariant"
+    | "fontVariantAlternates"
+    | "fontVariantCaps"
+    | "fontVariantEastAsian"
+    | "fontVariantLigatures"
+    | "fontVariantNumeric"
+    | "fontVariantPosition"
+    | "fontVariationSettings"
     | "fontWeight"
     | "letterSpacing"
     | "lineHeight"
@@ -227,12 +283,15 @@ type StyleProperties = Pick<
     | "transitionTimingFunction"
 >;
 
+/** Custom properties, such as `"--accent-bg-color"`, which the widget and its descendants read through `var()`. */
+type CustomProperties = Partial<Record<`--${string}`, string | number>>;
+
 /**
  * Style declarations for one widget. A key starting with `&` nests a block under a selector derived from
  * it, such as `"&:hover"` or `"& label"`. GTK4 CSS covers paint and typography only, so layout properties
  * such as `display`, `width` and `gap` are deliberately absent; use the widget's own layout props instead.
  */
-type Style = StyleProperties & Partial<Record<`&${string}`, StyleProperties>>;
+type Style = StyleProperties & CustomProperties & Partial<Record<`&${string}`, StyleProperties & CustomProperties>>;
 
 /** Objects a widget takes through a method call rather than a property. */
 type GtkWidgetProps = {
@@ -265,10 +324,22 @@ type MenuProps = {
     items?: MenuItem[] | null | undefined;
 } & ChildrenProps;
 
-type MenuItemProps = Pick<MenuItem, "label" | "action"> & {
+type MenuItemProps = MenuItemAttributes & {
     submenu?: ReactNode;
     section?: ReactNode;
 };
+
+/** Props of an element whose generated menu shows widgets in its `custom` items. */
+type CustomChildrenProps = {
+    /**
+     * Widgets shown in the menu, keyed by the `custom` attribute of the item each one replaces, like
+     * `<child type="ID">` in GtkBuilder. They stay in place when the menu model or its items change.
+     */
+    customChildren?: Record<string, ReactNode> | null | undefined;
+};
+
+/** Props of a `Gtk.MenuButton` element. */
+type GtkMenuButtonProps = CustomChildrenProps & ChildrenProps;
 
 type AdwToggleGroupProps = ChildrenProps &
     (
@@ -416,8 +487,8 @@ type GtkApplicationProps = {
 
 /** Props of a `Gtk.DropTarget` element. */
 type GtkDropTargetProps = {
-    /** GTypes the target accepts a drop of. */
-    types?: GObject.Type[] | null | undefined;
+    /** GTypes or generated classes the target accepts a drop of. */
+    types?: Parameters<Gtk.DropTarget["setGtypes"]>[0] | undefined;
 };
 
 /** Props of a `Gtk.DrawingArea` element. */
@@ -520,6 +591,8 @@ export {
     type ActionMapProps,
     type MenuProps,
     type MenuItemProps,
+    type CustomChildrenProps,
+    type GtkMenuButtonProps,
     type AdwToggleGroupProps,
     type GtkShortcutControllerProps,
     type GtkCallbackActionElementProps,

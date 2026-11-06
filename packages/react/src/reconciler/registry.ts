@@ -29,6 +29,10 @@ type DetachInfo = {
     adopted: GObject.Object | null;
     /** Props of the child element. */
     props: Props;
+    /** Objects the same behavior keeps attached in this slot after the child leaves, in their JSX order. */
+    remaining: readonly GObject.Object[];
+    /** Whether the parent is being removed with the child, rather than the child leaving a parent that stays. */
+    isParentRemoved: boolean;
 };
 
 type ProjectElementConfig = NonNullable<NonNullable<Config["elements"]>["config"]>[string];
@@ -44,7 +48,10 @@ type ElementBehavior<T extends GObject.Object = GObject.Object> = {
     detach?: (object: T, child: GObject.Object, info: DetachInfo) => void;
     /** Returns the object the container adopts for a child, overriding whatever `attach` returned. */
     resolve?: (object: T, child: GObject.Object) => GObject.Object | null;
-    /** Applies changed props and returns the names it consumed, which are then not set as GObject properties. */
+    /**
+     * Applies changed props and returns the names it consumed, which are then not set as GObject properties.
+     * A prop that no behavior consumes and that is not a property of the element throws.
+     */
     update?: (object: T, prev: Props, next: Props) => Iterable<string> | undefined;
     /**
      * Props the behavior can only apply while the element is being built, because the library exposes no
@@ -60,7 +67,10 @@ type ElementPropsExport = NonNullable<ProjectElementConfig["props"]>;
 
 /** How one GLib type is rendered. */
 type ElementConfig<T extends GObject.Object = GObject.Object> = ProjectElementConfig & {
-    /** Behaviors bound to the type, consulted in registration order and inherited by its subtypes. */
+    /**
+     * Behaviors bound to the type, consulted in registration order and inherited by its subtypes. When several
+     * slots accept a child, the one declared for the child's most specific type places it.
+     */
     behaviors?: ElementBehavior<T>[];
 };
 

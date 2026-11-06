@@ -4,7 +4,6 @@
         "Container",
         "ProjectElementConfig",
         "SettingValue",
-        "SettingsSchema",
         "SettingsSchemaKeys",
         "SettingsSchemaValues",
         "UseBindSettingOptions",

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import * as Adw from "@gtkx/gi/adw";
+import * as Gdk from "@gtkx/gi/gdk";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
@@ -7,7 +8,10 @@ import {
     AdwBottomSheet,
     AdwClamp,
     AdwClampScrollable,
+    AdwHeaderBar,
     AdwEntryRow,
+    AdwNavigationPage,
+    AdwNavigationSplitView,
     AdwOverlaySplitView,
     AdwPreferencesDialog,
     AdwPreferencesGroup,
@@ -21,6 +25,7 @@ import {
     AdwToastOverlay,
     AdwToggle,
     AdwToggleGroup,
+    AdwToolbarView,
     AdwWrapBox,
     AdwWindow,
 } from "@gtkx/jsx/adw";
@@ -32,6 +37,7 @@ import {
     GtkCheckButton,
     GtkColumnView,
     GtkColumnViewColumn,
+    GtkCustomSorter,
     GtkDropTarget,
     GtkExpander,
     GtkFlowBox,
@@ -49,15 +55,17 @@ import {
     GtkRevealer,
     GtkScrolledWindow,
     GtkSearchBar,
+    GtkSearchEntry,
     GtkStringList,
     GtkTextView,
     GtkTreeExpander,
     GtkViewport,
     GtkWindowHandle,
 } from "@gtkx/jsx/gtk";
-import { render, screen } from "@gtkx/testing";
-import { createRef } from "react";
-import { describe, expect, it } from "vitest";
+import { typeFromName } from "@gtkx/runtime";
+import { render, screen, waitFor } from "@gtkx/testing";
+import { createRef, Suspense, use } from "react";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { ItemFactory } from "../helpers/list-view-render.js";
 
 const containers: { name: string; wrap: (child: ReactNode) => ReactNode }[] = [
@@ -111,6 +119,17 @@ const containers: { name: string; wrap: (child: ReactNode) => ReactNode }[] = [
     { name: "AdwWindow", wrap: (child) => <AdwWindow title="Content host">{child}</AdwWindow> },
 ];
 
+const builtinContainers = containers.filter(({ name }) => name !== "GtkAspectFrame");
+
+const observeStderr = () => {
+    const write = vi.spyOn(process.stderr, "write");
+    onTestFinished(() => {
+        write.mockRestore();
+    });
+
+    return write;
+};
+
 describe("default child adapters", () => {
     it.each(containers)("attaches, updates and removes $name content", async ({ wrap }) => {
         const ref = createRef<Gtk.Label>();
@@ -124,6 +143,105 @@ describe("default child adapters", () => {
         expect(ref.current).toBeNull();
         expect(label?.getRoot()).toBeNull();
         await unmount();
+    });
+
+    it.each(containers)("restores $name content after its Suspense fallback", async ({ wrap }) => {
+        const content = createRef<Gtk.Label>();
+        const fallback = createRef<Gtk.Label>();
+        const { promise, resolve } = Promise.withResolvers<void>();
+        const Content = ({ isLoading }: { isLoading: boolean }) => {
+            if (isLoading) {
+                use(promise);
+            }
+
+            return <GtkLabel ref={content}>Content</GtkLabel>;
+        };
+        const view = (isLoading: boolean) =>
+            wrap(
+                <Suspense fallback={<GtkLabel ref={fallback}>Loading</GtkLabel>}>
+                    <Content isLoading={isLoading} />
+                </Suspense>,
+            );
+        const { rerender } = await render(view(false));
+        const label = content.current;
+        const stderr = observeStderr();
+        await rerender(view(true));
+        expect(fallback.current?.getParent()).not.toBeNull();
+        resolve();
+        await waitFor(() => expect(fallback.current).toBeNull());
+        expect(content.current).toBe(label);
+        expect(label?.getParent()).not.toBeNull();
+        expect(label?.getVisible()).toBe(true);
+        expect(stderr).not.toHaveBeenCalled();
+    });
+
+    it.each(builtinContainers)("warns when $name holds two visible children", async ({ wrap }) => {
+        const stderr = observeStderr();
+        await render(
+            wrap(
+                <>
+                    <GtkLabel>First</GtkLabel>
+                    <GtkLabel>Second</GtkLabel>
+                </>,
+            ),
+        );
+        expect(stderr).toHaveBeenCalled();
+    });
+
+    it("warns about two visible children in a content or property slot, but not about hidden ones", async () => {
+        const stderr = observeStderr();
+        await render(
+            <AdwToolbarView>
+                <GtkSearchEntry visible={false} />
+                <GtkLabel>Content</GtkLabel>
+            </AdwToolbarView>,
+        );
+        expect(stderr).not.toHaveBeenCalled();
+        await render(
+            <AdwToolbarView>
+                <GtkSearchEntry />
+                <GtkLabel>Content</GtkLabel>
+            </AdwToolbarView>,
+        );
+        expect(stderr).toHaveBeenCalledTimes(1);
+        await render(
+            <AdwHeaderBar
+                titleWidget={
+                    <>
+                        <GtkLabel>Title</GtkLabel>
+                        <GtkLabel>Subtitle</GtkLabel>
+                    </>
+                }
+            />,
+        );
+        expect(stderr).toHaveBeenCalledTimes(2);
+    });
+
+    it("names the props that take a hidden child when warning about a single-child slot", async () => {
+        const stderr = observeStderr();
+        await render(
+            <AdwNavigationSplitView>
+                <AdwNavigationPage title="Feeds">
+                    <GtkLabel>Feeds</GtkLabel>
+                </AdwNavigationPage>
+                <AdwNavigationPage title="Articles">
+                    <GtkLabel>Articles</GtkLabel>
+                </AdwNavigationPage>
+            </AdwNavigationSplitView>,
+        );
+        expect(stderr).toHaveBeenCalledTimes(1);
+        const warning = String(stderr.mock.calls[0]?.[0]);
+        expect(warning).toContain("sidebar={<AdwNavigationPage />}");
+        expect(warning).not.toContain("<GtkBox>");
+        await render(
+            <AdwToolbarView>
+                <GtkSearchEntry />
+                <GtkLabel>Content</GtkLabel>
+            </AdwToolbarView>,
+        );
+        const toolbarWarning = String(stderr.mock.calls[1]?.[0]);
+        expect(toolbarWarning).toContain("<GtkBox>");
+        expect(toolbarWarning).toContain("topBar={<GtkSearchEntry />}");
     });
 
     it("accepts a scrollable widget and replaces it without retaining the old child", async () => {
@@ -156,6 +274,20 @@ describe("default child adapters", () => {
         await rerender(wrap(["C"]));
         expect(screen.queryByText("A")).toBeNull();
         expect(screen.queryByText("B")).toBeNull();
+    });
+
+    it.each([
+        { name: "GtkBox", wrap: (children: ReactNode) => <GtkBox>{children}</GtkBox> },
+        { name: "GtkListBox", wrap: (children: ReactNode) => <GtkListBox>{children}</GtkListBox> },
+        { name: "GtkFlowBox", wrap: (children: ReactNode) => <GtkFlowBox>{children}</GtkFlowBox> },
+    ])("keeps keyboard focus in a moved $name child", async ({ wrap: container }) => {
+        const wrap = (names: string[]) => container(names.map((name) => <GtkButton key={name} label={name} />));
+        const { rerender } = await render(wrap(["A", "B", "C"]));
+        const moved = screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "A" });
+        moved.grabFocus();
+        await rerender(wrap(["B", "C", "A"]));
+        expect(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "C" })).toAppearBefore(moved);
+        expect(moved).toHaveFocus();
     });
 });
 
@@ -211,7 +343,7 @@ describe("default slots and non-widget children", () => {
 
     it("updates the accepted native types of a drop controller", async () => {
         const ref = createRef<Gtk.DropTarget>();
-        const target = (types: bigint[]) => (
+        const target = (types: NonNullable<Parameters<Gtk.DropTarget["setGtypes"]>[0]>) => (
             <GtkLabel controllers={<GtkDropTarget ref={ref} types={types} />}>Drop here</GtkLabel>
         );
         const { rerender, unmount } = await render(target([GObject.TYPE_STRING]));
@@ -220,25 +352,31 @@ describe("default slots and non-widget children", () => {
         expect(controller?.getWidget()).toBe(screen.getByText("Drop here"));
         await rerender(target([GObject.TYPE_INT]));
         expect(controller?.getGtypes()).toEqual([GObject.TYPE_INT]);
+        await rerender(target([Gdk.FileList]));
+        expect(controller?.getGtypes()).toEqual([typeFromName("GdkFileList")]);
         await unmount();
         expect(controller?.getWidget()).toBeNull();
     });
 
-    it("keeps column objects ordered through insertion and removal", async () => {
+    it("keeps column objects ordered and sorted through insertion, moves and removal", async () => {
         const ref = createRef<Gtk.ColumnView>();
         const columns = (titles: string[]) => (
             <GtkColumnView ref={ref}>
                 {titles.map((title) => (
-                    <GtkColumnViewColumn key={title} title={title} />
+                    <GtkColumnViewColumn key={title} title={title} sorter={<GtkCustomSorter />} />
                 ))}
             </GtkColumnView>
         );
         const { rerender } = await render(columns(["A", "B"]));
         const model = ref.current?.getColumns();
         const first = model?.getItem(0);
+        const sorter = ref.current?.getSorter();
+        ref.current?.sortByColumn(model?.getItem(1) as Gtk.ColumnViewColumn, Gtk.SortType.DESCENDING);
         await rerender(columns(["B", "C", "A"]));
         expect(model?.getNItems()).toBe(3);
         expect(model?.getItem(2)).toBe(first);
+        expect(sorter).toHaveObjectProperty("primary-sort-column", model?.getItem(0));
+        expect(sorter).toHaveObjectProperty("primary-sort-order", Gtk.SortType.DESCENDING);
         await rerender(columns(["C"]));
         expect(model?.getNItems()).toBe(1);
         expect(model?.getItem(0)).toHaveObjectProperty("title", "C");

@@ -2,12 +2,37 @@ import type { SignalHandler } from "@gtkx/runtime";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { coerceObjectProperty, getInstanceType, signalForHandlerName, TYPE_INVALID } from "@gtkx/runtime";
-import { drain, isDeepEqual, kebabCase, lowerFirst, unsanitizeIdentifier } from "@gtkx/utils";
+import { getObjectPropertyDefault } from "@gtkx/runtime/internal";
+import {
+    camelCase,
+    CONSTRUCT_ONLY_PROP_CHANGE,
+    drain,
+    isDeepEqual,
+    kebabCase,
+    lowerFirst,
+    unsanitizeIdentifier,
+} from "@gtkx/utils";
+import { closestMatch } from "leven";
 import type { ElementBehavior, Props } from "./registry.js";
 import { applyAccessibleProps, isAccessibleProp } from "../utils/accessible-props.js";
-import { getPropertyName, hasProperty, isReadableProperty, type TypeInfo, typeInfoFor } from "./metadata.js";
+import { slotNameOf } from "./behaviors.js";
+import {
+    getPropertyName,
+    hasProperty,
+    isKnownProp,
+    isReadableProperty,
+    type TypeInfo,
+    typeInfoFor,
+} from "./metadata.js";
 import { type ElementNode, type SignalTarget } from "./node.js";
-import { applyMutation, applyWrite, connectHandler, disconnectHandler } from "./signals.js";
+import {
+    applyMutation,
+    applyPlacement,
+    applyWrite,
+    connectHandler,
+    disconnectHandler,
+    settleQueuedNotifies,
+} from "./signals.js";
 import { updateStyle } from "./style.js";
 import { bufferText, hasSameText, isContentPaintableProp, markTextDirty, TEXT_PROP } from "./text.js";
 
@@ -20,6 +45,7 @@ const NOTIFY_PREFIX = "onNotify";
 const HANDLER_NAME = /^on[A-Z]/;
 const accessibleDirty: Map<ElementNode, Props> = new Map();
 const dependentPropsDirty: Set<ElementNode> = new Set();
+const dependentValuesBefore: Map<ElementNode, Props> = new Map();
 
 const isHandlerName = (name: string): boolean => HANDLER_NAME.test(name);
 const notifiedAccessor = (name: string): string => lowerFirst(name.slice(NOTIFY_PREFIX.length));
@@ -30,6 +56,52 @@ const unknownSignalError = (typeName: string, name: string): Error =>
             `signal the element carries, or declare the one '${name}' stands for on ${typeName} when ` +
             "its class is registered.",
     );
+
+const FOREIGN_PROPS: Map<string, string> = new Map([
+    ["class", "cssClasses"],
+    ["className", "cssClasses"],
+    ["disabled", "sensitive"],
+    ["hidden", "visible"],
+]);
+
+const nearestProp = (name: string, candidates: string[]): string | undefined => {
+    const spelled = FOREIGN_PROPS.get(name) ?? camelCase(name);
+
+    if (spelled !== name && candidates.includes(spelled)) {
+        return spelled;
+    }
+
+    return closestMatch(name, candidates, { maxDistance: Math.max(2, Math.floor(name.length / 3)) });
+};
+
+const isSlotName = (info: TypeInfo, name: string): boolean =>
+    info.behaviors.some((behavior) => slotNameOf(behavior) === name);
+
+const unknownPropError = (target: SignalTarget, info: TypeInfo, name: string, consumed: Set<string>): Error => {
+    const candidates = [...Object.keys(info.properties), ...consumed].filter(
+        (candidate) => !info.omittedProps.has(candidate),
+    );
+    const nearest = nearestProp(name, candidates);
+    const hint =
+        nearest === undefined
+            ? `Check the element reference for the props <${target.typeName}> takes.`
+            : `Did you mean '${nearest}'?`;
+
+    return new Error(`<${target.typeName}> has no prop '${name}'. ${hint}`);
+};
+
+const assertKnownProp = (
+    target: SignalTarget,
+    info: TypeInfo,
+    delta: Omit<PropDelta, "prevValue">,
+    consumed: Set<string>,
+): void => {
+    const { name, value } = delta;
+
+    if (value !== null && value !== undefined && !isKnownProp(info, target.object, name) && !isSlotName(info, name)) {
+        throw unknownPropError(target, info, name, consumed);
+    }
+};
 
 const lookedUpSignal = (target: SignalTarget, name: string): string => {
     const type = getInstanceType(target.object);
@@ -77,9 +149,23 @@ const writeValue = (object: GObject.Object, name: string, value: unknown): void 
     });
 };
 
+const paramSpecDefault = (object: GObject.Object, name: string): unknown => {
+    const property = getPropertyName(object, name);
+
+    return property === undefined ? null : getObjectPropertyDefault(object, property);
+};
+
 const resetPlain = (object: GObject.Object, info: TypeInfo, name: string): void => {
     if (Object.hasOwn(info.defaults, name)) {
         writeValue(object, name, info.defaults[name]);
+
+        return;
+    }
+
+    const value = paramSpecDefault(object, name);
+
+    if (value !== null) {
+        writeValue(object, name, value);
     }
 };
 
@@ -108,7 +194,7 @@ const isBufferText = (node: ElementNode, name: string): node is ElementNode & { 
 
 const propText = (value: unknown): string => (typeof value === "string" ? value : JSON.stringify(value));
 
-const applyEntry = (node: ElementNode, info: TypeInfo, delta: PropDelta): void => {
+const applyEntry = (node: ElementNode, info: TypeInfo, delta: PropDelta, consumed: Set<string>): void => {
     const { name, value, prevValue } = delta;
 
     if (value !== undefined && isBufferText(node, name)) {
@@ -123,11 +209,21 @@ const applyEntry = (node: ElementNode, info: TypeInfo, delta: PropDelta): void =
         return;
     }
 
-    const isInitialNull = value === null && prevValue === undefined;
+    assertKnownProp(node, info, delta, consumed);
 
-    if (!isInitialNull) {
-        setOrReset(node.object, info, name, value);
+    if (value === null && prevValue === undefined) {
+        return;
     }
+
+    if (value instanceof GObject.Object || prevValue instanceof GObject.Object) {
+        placeDependingProps(node, () => {
+            applyPlacement(node, () => setOrReset(node.object, info, name, value));
+        });
+
+        return;
+    }
+
+    setOrReset(node.object, info, name, value);
 };
 
 const eachChangedName = (prev: Props, next: Props, visit: (name: string) => void): void => {
@@ -143,16 +239,35 @@ const eachChangedName = (prev: Props, next: Props, visit: (name: string) => void
 };
 
 const propChangeError = (typeName: string, name: string): Error =>
-    new Error(
-        `Cannot change the construct-only prop '${name}' of <${typeName}> after it is created. ` +
-            "It is only accepted while the element is being built, so give the element a key that " +
-            `changes with '${name}' and React will build a new one.`,
+    Object.assign(
+        new Error(
+            `Cannot change the construct-only prop '${name}' of <${typeName}> after it is created. ` +
+                "It is only accepted while the element is being built, so give the element a key that " +
+                `changes with '${name}' and React will build a new one.`,
+        ),
+        { code: CONSTRUCT_ONLY_PROP_CHANGE },
     );
 
 const hasAppliedValue = (value: unknown): boolean => (Array.isArray(value) ? value.length > 0 : value !== undefined);
 
+type EquatableValue = { equal: (other: EquatableValue) => boolean };
+
+const isEquatableValue = (value: unknown): value is EquatableValue =>
+    typeof value === "object" && value !== null && typeof Reflect.get(value, "equal") === "function";
+
+const isSameArray = (prev: unknown[], next: unknown[]): boolean =>
+    prev.length === next.length && prev.every((item, index) => isSameNativeValue(item, next[index]));
+
+const isSameNativeValue = (prev: unknown, next: unknown): boolean =>
+    Object.is(prev, next) ||
+    (Array.isArray(prev) && Array.isArray(next) && isSameArray(prev, next)) ||
+    (isEquatableValue(prev) &&
+        isEquatableValue(next) &&
+        Object.getPrototypeOf(prev) === Object.getPrototypeOf(next) &&
+        prev.equal(next));
+
 const isConstructOnlyChange = (info: TypeInfo, name: string, change: PropChange): boolean =>
-    info.constructOnly.has(name) && !Object.is(change.prev[name], change.next[name]);
+    info.constructOnly.has(name) && !isSameNativeValue(change.prev[name], change.next[name]);
 
 const isDeclaredConstructOnlyChange = (info: TypeInfo, name: string, change: PropChange): boolean =>
     info.declaredConstructOnly.has(name) &&
@@ -203,7 +318,7 @@ const applyValueEntries = (node: ElementNode, info: TypeInfo, change: PropChange
             return;
         }
 
-        applyEntry(node, info, { name, value: change.next[name], prevValue: change.prev[name] });
+        applyEntry(node, info, { name, value: change.next[name], prevValue: change.prev[name] }, consumed);
     });
 };
 
@@ -262,6 +377,7 @@ const flushAccessible = (): void => {
 const discardAccessible = (node: ElementNode): void => {
     accessibleDirty.delete(node);
     dependentPropsDirty.delete(node);
+    dependentValuesBefore.delete(node);
 };
 
 const applyElementProps = (node: ElementNode, prev: Props, next: Props, initialized?: Props): void => {
@@ -298,6 +414,7 @@ const applyAdoptedProps = (target: SignalTarget, prev: Props, next: Props): void
             return;
         }
 
+        assertKnownProp(target, info, { name, value: next[name] }, consumed);
         setOrReset(object, info, name, next[name]);
     });
 
@@ -305,25 +422,57 @@ const applyAdoptedProps = (target: SignalTarget, prev: Props, next: Props): void
     applyHandlers(target, info, prev, next);
 };
 
+const isRestorableProp = (node: ElementNode, info: TypeInfo, name: string, value: unknown): boolean =>
+    value !== undefined &&
+    isReadableProperty(info, name) &&
+    info.construct.has(name) &&
+    !isSkippedValueName(name, info, node.behaviorProps) &&
+    (value === null || typeof value !== "object" || value instanceof GObject.Object);
+
+const restorableProps = (node: ElementNode): [string, unknown][] => {
+    const info = typeInfoFor(node.typeName);
+
+    return Object.entries(node.props).filter(([name, value]) => isRestorableProp(node, info, name, value));
+};
+
+/**
+ * Restores every construct prop of a newly built `node` that construction left at another value.
+ */
 const markDependentPropsDirty = (node: ElementNode): void => {
+    dependentValuesBefore.set(node, {});
     dependentPropsDirty.add(node);
 };
 
+/**
+ * Runs a write that places a native object on `node`, then restores the construct props that placing it changed.
+ * Props that kept their value through the placement are left alone, so a value the user changed survives.
+ */
+const placeDependingProps = (node: ElementNode, write: () => void): void => {
+    if (!dependentValuesBefore.has(node)) {
+        dependentValuesBefore.set(
+            node,
+            Object.fromEntries(restorableProps(node).map(([name]) => [name, Reflect.get(node.object, name)])),
+        );
+    }
+
+    write();
+    dependentPropsDirty.add(node);
+};
+
+const isChangedByPlacement = (before: Props, name: string, current: unknown): boolean =>
+    !Object.hasOwn(before, name) || !Object.is(before[name], current);
+
 const restoreDependentProps = (node: ElementNode): void => {
-    const info = typeInfoFor(node.typeName);
+    const before = dependentValuesBefore.get(node) ?? {};
+    dependentValuesBefore.delete(node);
 
     applyMutation(() => {
-        for (const [name, value] of Object.entries(node.props)) {
-            if (
-                value === undefined ||
-                !isReadableProperty(info, name) ||
-                !info.construct.has(name) ||
-                isSkippedValueName(name, info, node.behaviorProps) ||
-                (value !== null && typeof value === "object" && !(value instanceof GObject.Object))
-            ) {
-                continue;
-            }
-            if (!Object.is(Reflect.get(node.object, name), value)) {
+        for (const [name, value] of restorableProps(node)) {
+            const current: unknown = Reflect.get(node.object, name);
+
+            if (Object.is(current, value)) {
+                settleQueuedNotifies(node, name);
+            } else if (isChangedByPlacement(before, name, current)) {
                 writeValue(node.object, name, value);
             }
         }
@@ -338,8 +487,9 @@ export {
     discardAccessible,
     flushAccessible,
     flushDependentProps,
-    markDependentPropsDirty,
+    placeDependingProps,
     applyElementProps,
     applyAdoptedProps,
     assertPropsCanChange,
+    propChangeError,
 };

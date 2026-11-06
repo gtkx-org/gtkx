@@ -22,10 +22,14 @@ type SettingsSchemaValues = Record<string, Readonly<Record<string, number>> | re
 
 type WithChoices<T, C extends string> = T extends string ? C : T extends (infer Item)[] ? WithChoices<Item, C>[] : T;
 
-/** A GSettings schema, as described by the modules GTKX generates from a project's `.gschema.xml` files. */
+/**
+ * A GSettings schema object that `useSetting` and `useBindSetting` read keys through.
+ * The modules GTKX generates from a project's `.gschema.xml` imports match it, and an `as const` object
+ * written by hand can describe a schema installed on the system, such as `org.gnome.desktop.interface`.
+ */
 type SettingsSchema<
     K extends SettingsSchemaKeys = SettingsSchemaKeys,
-    V extends SettingsSchemaValues = Record<never, never>,
+    V extends SettingsSchemaValues = SettingsSchemaValues,
 > = {
     /** Schema id it is looked up by, such as `org.gtkx.Example`. */
     id: string;
@@ -33,6 +37,7 @@ type SettingsSchema<
     path: string | null;
     /** Kind of every key the schema declares, which types reads and writes of that key. */
     keys: K;
+    /** Value of each nick of an `enum` key, or the allowed strings of a key with `<choices>`. */
     values?: V;
 };
 

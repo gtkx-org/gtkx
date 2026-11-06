@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { error, pickBy, warn } from "@gtkx/utils";
+import { error, pickBy } from "@gtkx/utils";
 import process from "node:process";
 import { type ElementType, type ReactNode, type Ref, useLayoutEffect, useRef, useState } from "react";
 import {
@@ -9,6 +9,8 @@ import {
 import { ApplicationContext } from "../hooks/use-application.js";
 import { useMergedRef } from "../hooks/use-merged-refs.js";
 import { reconciler } from "../reconciler/host-config.js";
+import { onQuit } from "../reconciler/root.js";
+import { programName } from "../utils/program-name.js";
 import { createPortaledComponent } from "./portaled.js";
 
 type ApplicationComponentProps = {
@@ -26,6 +28,7 @@ type ApplicationLifecycle = {
     generation: number;
     hasCommitted: boolean;
     isMounted: boolean;
+    isQuitting: boolean;
     settled: boolean;
     releaseStartup: (() => void) | null;
 };
@@ -44,22 +47,10 @@ const holdForStartup = (lifecycle: ApplicationLifecycle): void => {
     };
 };
 
-const commandLine = (applicationId: string | null): string[] => [
-    applicationId?.split(".").at(-1) ?? "gtkx",
-    ...process.argv.slice(2),
-];
+const commandLine = (applicationId: string | null): string[] => [programName(applicationId), ...process.argv.slice(2)];
 
-const reportOwnedApplicationId = (application: Gtk.Application): void => {
-    if (!application.getIsRegistered() || !application.getIsRemote()) {
-        return;
-    }
-
-    warn(
-        `Another process already owns ${application.applicationId ?? "this application ID"}, so this process ` +
-            "registered as a remote instance and can never show a window. Quit that instance or change " +
-            "applicationId, then start this application again.",
-    );
-};
+const isRemoteInstance = (application: Gtk.Application): boolean =>
+    application.getIsRegistered() && application.getIsRemote();
 
 const startApplication = (
     lifecycle: ApplicationLifecycle,
@@ -72,6 +63,10 @@ const startApplication = (
     const generation = lifecycle.generation;
     void completion.then(
         (exitStatus) => {
+            if (isRemoteInstance(application)) {
+                application.quit();
+            }
+
             if (lifecycle.generation === generation) {
                 onComplete();
             }
@@ -89,7 +84,6 @@ const startApplication = (
             }
         },
     );
-    reportOwnedApplicationId(application);
 };
 
 const useApplicationLifecycle = (
@@ -116,6 +110,7 @@ const useApplicationLifecycle = (
                       generation: 0,
                       hasCommitted: false,
                       isMounted: true,
+                      isQuitting: false,
                       settled: false,
                       releaseStartup: null,
                   };
@@ -140,7 +135,11 @@ const useApplicationLifecycle = (
             reconciler.flushSyncFromReconciler(() => setActivated(false));
         };
         application.on("activate", onActivate);
+        application.on("open", onActivate);
         application.on("shutdown", onShutdown);
+        const stopWatchingQuit = onQuit(() => {
+            lifecycle.isQuitting = true;
+        });
 
         if (lifecycle === previous) {
             if (lifecycle.activated) {
@@ -165,7 +164,7 @@ const useApplicationLifecycle = (
                 onComplete();
 
                 if (lifecycle.isMounted) {
-                    setFailure({ error: cause });
+                    reconciler.flushSyncFromReconciler(() => setFailure({ error: cause }));
                 } else {
                     process.exitCode = 1;
                     error("Application shutdown failed:", cause);
@@ -176,10 +175,12 @@ const useApplicationLifecycle = (
         return () => {
             lifecycle.isMounted = false;
             application.off("activate", onActivate);
+            application.off("open", onActivate);
             application.off("shutdown", onShutdown);
+            stopWatchingQuit();
             lifecycle.releaseStartup?.();
 
-            if (lifecycle.settled) {
+            if (lifecycle.settled || lifecycle.isQuitting) {
                 application.quit();
             }
 
