@@ -19,10 +19,21 @@ type StorybookSession = {
 const startStorybook = (options: {
     /** Gio application identifier assigned to the explorer application. */
     applicationId: string;
+    /** Story to select once it is loaded, such as the one a restarted explorer was showing. */
+    initialStoryId?: string | undefined;
+    /** Called with the identifier of each story the explorer selects. */
+    onStorySelected?: ((id: string) => void) | undefined;
 }): StorybookSession => {
     const catalog = new StoryCatalog();
     const root = createRoot(undefined, { onUncaughtError: catalog.reportError.bind(catalog) });
-    root.render(createElement(Storybook, { catalog, applicationId: options.applicationId }));
+    root.render(
+        createElement(Storybook, {
+            catalog,
+            applicationId: options.applicationId,
+            initialStoryId: options.initialStoryId,
+            onStorySelected: options.onStorySelected,
+        }),
+    );
 
     return {
         updateStories: (sources, preview) => catalog.load(sources, preview),

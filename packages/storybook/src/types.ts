@@ -154,21 +154,28 @@ type StoryModule = {
     default: unknown;
 };
 
+/** Args of a story export: the component metadata's args, or the args type the story declares itself. */
+type StoryArgs<TModule extends StoryModule, TStory> =
+    TStory extends StoryAnnotations<ArgsFrom<TModule["default"]>>
+        ? ArgsFrom<TModule["default"]>
+        : TStory extends StoryAnnotations<infer TArgs extends object>
+          ? TArgs
+          : never;
+
 /** Named module exports whose types match CSF3 stories, excluding module bookkeeping. */
 type StoryKeys<TModule extends StoryModule> = {
     [Key in keyof TModule]: Key extends "default" | "__esModule" | "__namedExportsOrder"
         ? never
-        : TModule[Key] extends StoryAnnotations<ArgsFrom<TModule["default"]>>
-          ? Key
-          : never;
+        : [StoryArgs<TModule, TModule[Key]>] extends [never]
+          ? never
+          : Key;
 }[keyof TModule] &
     string;
 
 /** Composed stories keyed by their original named exports. */
-type ComposedStories<TModule extends StoryModule> = Record<
-    StoryKeys<TModule>,
-    ComposedStory<ArgsFrom<TModule["default"]>>
->;
+type ComposedStories<TModule extends StoryModule> = {
+    [Key in StoryKeys<TModule>]: ComposedStory<StoryArgs<TModule, TModule[Key]>>;
+};
 
 export type {
     Args,
