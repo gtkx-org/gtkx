@@ -11,6 +11,8 @@ import gtkx from "../dist/vitest-plugin.js";
 import { createProject } from "./project.js";
 
 const frenchEnvironment = { ...process.env, LANG: "fr_FR.UTF-8", LC_ALL: "fr_FR.UTF-8", LANGUAGE: "fr" };
+const chineseEnvironment = { ...process.env, LANG: "zh_CN.UTF-8", LC_ALL: "zh_CN.UTF-8", LANGUAGE: "zh_CN" };
+const unsupportedLocaleEnvironment = { ...process.env, LANG: "xx_YY.UTF-8", LC_ALL: "xx_YY.UTF-8", LANGUAGE: "fr" };
 
 describe("runtime configuration", () => {
     it("keeps the preloaded configuration when it changes before Vite starts", async () => {
@@ -63,11 +65,13 @@ describe("runtime configuration", () => {
         });
         project.write("LICENSE", "MIT License\nCopyright GTKX\nPermission is hereby granted, free of charge.\n");
         project.write("icon.svg", '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"/>');
-        project.write("po/LINGUAS", "fr\n");
+        project.write("po/LINGUAS", "fr\nzh_CN\n");
         project.write("po/fr.po", readFileSync(new URL("../../i18n/tests/fixtures/fr.po", import.meta.url), "utf8"));
         project.write(
             "src/message.ts",
-            'import { t } from "@gtkx/i18n"; export const greeting = t("Hello, {{name}}!", { name: "Ada" });',
+            `import { t } from "@gtkx/i18n";
+            const files = t("{{count}} file", { count: 2, defaultValue_one: "{{count}} file", defaultValue_other: "{{count}} files" });
+            export const greeting = t("Hello, {{name}}!", { name: "Ada" }) + " " + files;`,
         );
         project.write(
             "src/index.ts",
@@ -75,17 +79,37 @@ describe("runtime configuration", () => {
         );
 
         await runCommand(createCommand(), { rawArgs: ["build", "--cwd", project.root] });
-        const runBundle = (path: string) =>
+        const runBundle = (path: string, env = frenchEnvironment) =>
             execFileSync(process.execPath, [path], {
                 encoding: "utf8",
-                env: frenchEnvironment,
+                env,
                 timeout: 30_000,
             });
-        expect(runBundle(join(project.root, "dist/bundle.mjs"))).toContain("Bonjour, Ada !");
+        expect(runBundle(join(project.root, "dist/bundle.mjs"))).toContain("Bonjour, Ada ! 2 fichiers");
+        expect(runBundle(join(project.root, "dist/bundle.mjs"), chineseEnvironment)).toContain("Hello, Ada! 2 files");
+        expect(runBundle(join(project.root, "dist/bundle.mjs"), unsupportedLocaleEnvironment)).toContain("Hello, Ada!");
+        const translateName = (locale: string, name: string) =>
+            project.write(
+                `po/${locale}.po`,
+                `${readFileSync(join(project.root, `po/${locale}.po`), "utf8")}\nmsgid "CLI Example"\nmsgstr "${name}"\n`,
+            );
+        const configPath = join(project.root, "gtkx.config.ts");
+        project.write(
+            "gtkx.config.ts",
+            readFileSync(configPath, "utf8").replace("Exercises translated deployment", "Ships translated catalogs"),
+        );
+        translateName("fr", "CLI Example");
+        translateName("zh_CN", "CLI 示例");
         await runCommand(createCommand(), {
             rawArgs: ["deploy", "--cwd", project.root, "--skip-build", "--print-manifests", "--target", "deb"],
         });
         const stage = join(project.root, "build", process.arch, "stage");
+        const metainfo = readFileSync(join(stage, "share/metainfo/org.gtkx.example.metainfo.xml"), "utf8");
+        expect(metainfo.match(/<name xml:lang="[^"]+">[^<]*<\/name>/g)?.toSorted()).toEqual([
+            '<name xml:lang="fr">CLI Example</name>',
+            '<name xml:lang="zh-Hans-CN">CLI 示例</name>',
+        ]);
+        expect(metainfo).toContain("<summary>Ships translated catalogs</summary>");
         const relocated = join(project.root, "relocated");
         cpSync(stage, relocated, { recursive: true });
         const [binary] = readdirSync(join(relocated, "lib"));
@@ -93,7 +117,7 @@ describe("runtime configuration", () => {
         expect(runBundle(join(relocated, "lib", binary, "bundle.mjs"))).toContain("Bonjour, Ada !");
         const manifestPath = "dist/gtkx-schemas.json";
         const manifest = readFileSync(join(project.root, manifestPath), "utf8");
-        project.write(manifestPath, manifest.replace(/"formatVersion":\s*4/, '"formatVersion":3'));
+        project.write(manifestPath, manifest.replace(/"formatVersion":\s*5/, '"formatVersion":4'));
         await expect(
             runCommand(createCommand(), {
                 rawArgs: ["deploy", "--cwd", project.root, "--skip-build", "--print-manifests", "--target", "deb"],

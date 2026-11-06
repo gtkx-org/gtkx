@@ -6,9 +6,6 @@
     "include": ["src/**/*", "env.d.ts"],
     "references": [
         {
-            "path": "../i18n/tsconfig.lib.json"
-        },
-        {
             "path": "../create-gtkx/tsconfig.lib.json"
         },
         {
@@ -34,6 +31,9 @@
         },
         {
             "path": "../storybook/tsconfig.lib.json"
+        },
+        {
+            "path": "../i18n/tsconfig.lib.json"
         },
         {
             "path": "../testing/tsconfig.lib.json"

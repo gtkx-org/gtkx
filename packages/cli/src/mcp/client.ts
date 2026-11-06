@@ -4,17 +4,22 @@ import {
     isConnectionClosedError,
     type JSONRPCRequest,
     ProtocolConnection,
+    RECONNECT_DELAY_MS,
     resolveMcpSocketPath,
     type Result,
 } from "@gtkx/mcp/internal";
 import { error, errorMessage, info, normalizeError } from "@gtkx/utils";
 import * as net from "node:net";
 import { dispatch } from "./handlers.js";
+import type { TestingModuleLoader } from "./testing-loader.js";
 import { WidgetRegistry } from "./widget-registry.js";
 
 type McpClientOptions = {
     socketPath?: string;
     applicationId: string;
+    lastApplicationError: () => string | null;
+    loadTesting: TestingModuleLoader;
+    reportUncaughtError: (cause: unknown) => void;
 };
 
 type ConnectCallbacks = {
@@ -27,7 +32,6 @@ type ConnectSettler = {
     fail: (error: Error) => void;
 };
 
-const RECONNECT_DELAY_MS = 2000;
 const REGISTER_TIMEOUT_MS = 30_000;
 const DISCONNECT_ERROR_CODES: Set<string> = new Set(["ENOENT", "ECONNREFUSED", "EPIPE", "ECONNRESET"]);
 
@@ -63,10 +67,16 @@ class McpClient {
     private isStopping = false;
     private pendingConnectReject: ((error: Error) => void) | null = null;
     private registry = new WidgetRegistry();
+    private lastApplicationError: () => string | null;
+    private loadTesting: TestingModuleLoader;
+    private reportUncaughtError: (cause: unknown) => void;
 
     constructor(options: McpClientOptions) {
         this.socketPath = resolveMcpSocketPath(options.socketPath);
         this.applicationId = options.applicationId;
+        this.lastApplicationError = options.lastApplicationError;
+        this.loadTesting = options.loadTesting;
+        this.reportUncaughtError = options.reportUncaughtError;
     }
 
     private handleClose(): void {
@@ -96,7 +106,9 @@ class McpClient {
             info("Registered with MCP server");
             settle.succeed();
         } catch (registerError) {
-            error("Failed to register with MCP server:", errorMessage(registerError));
+            if (!isConnectionClosedError(registerError)) {
+                error("Failed to register with MCP server:", errorMessage(registerError));
+            }
             settle.fail(normalizeError(registerError));
         }
     }
@@ -156,12 +168,29 @@ class McpClient {
         const defaultApp = Gio.Application.getDefault();
 
         if (!(defaultApp instanceof Gtk.Application)) {
-            throw new TypeError("Application not initialized");
+            throw new TypeError(this.notRunningMessage());
         }
 
         this.registry.refresh();
 
-        return dispatch(request.method, request.params, { app: defaultApp, registry: this.registry });
+        return dispatch(request.method, request.params, {
+            registry: this.registry,
+            loadTesting: this.loadTesting,
+            reportUncaughtError: this.reportUncaughtError,
+        });
+    }
+
+    private notRunningMessage(): string {
+        const applicationError = this.lastApplicationError();
+
+        if (applicationError === null) {
+            return "Application not initialized";
+        }
+
+        return (
+            "The application is not running. The last error gtkx dev reported for it was: " +
+            `${applicationError}\nFix the error and save the file; gtkx dev then restarts the application.`
+        );
     }
 
     async connect(): Promise<void> {

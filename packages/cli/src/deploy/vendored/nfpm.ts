@@ -64,9 +64,12 @@ const downloadNfpm = async (dir: string, binary: string): Promise<string> => {
     return binary;
 };
 
+const configuredNfpm = (root: string, override: string): string =>
+    override.includes("/") ? resolve(root, override) : override;
+
 const resolveNfpm = async (root: string, override?: string): Promise<string> => {
     if (override !== undefined) {
-        return override.includes("/") ? resolve(root, override) : override;
+        return configuredNfpm(root, override);
     }
 
     const dir = cacheDir(["nfpm", NFPM_VERSION]);
@@ -74,4 +77,4 @@ const resolveNfpm = async (root: string, override?: string): Promise<string> => 
     return downloadNfpm(dir, join(dir, "nfpm"));
 };
 
-export { resolveNfpm };
+export { configuredNfpm, resolveNfpm };

@@ -36,7 +36,7 @@ const nfpmTarget = (packager: NfpmPackager): DeployTarget => ({
     prefix: PREFIX,
     isHostOnly: false,
     tools: [TAR],
-    render: (payload) => renderManifests(payload, packager),
+    render: (payload) => Promise.try(() => renderManifests(payload, packager)),
     pack: (payload) => packPackage(payload, packager),
 });
 

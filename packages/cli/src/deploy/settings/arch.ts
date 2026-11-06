@@ -28,6 +28,8 @@ const assertKnownArch = (name: string): DeployArchName => {
 
 const resolveArch = (name: DeployArchName): DeployArch => ARCH_TABLE[name];
 
+const supportedArches = (): DeployArch[] => Object.values(ARCH_TABLE);
+
 const hostArchName = (): DeployArchName => assertKnownArch(process.arch);
 
 const isHostArch = (name: DeployArchName): boolean => name === hostArchName();
@@ -51,4 +53,13 @@ const archesFor = (names: string[]): [DeployArchName, ...DeployArchName[]] => {
     return [first, ...rest];
 };
 
-export { archesFor, elfMachineFor, hostArchName, isHostArch, KNOWN_ARCH_NAMES, parseArchList, resolveArch };
+export {
+    archesFor,
+    elfMachineFor,
+    hostArchName,
+    isHostArch,
+    KNOWN_ARCH_NAMES,
+    parseArchList,
+    resolveArch,
+    supportedArches,
+};

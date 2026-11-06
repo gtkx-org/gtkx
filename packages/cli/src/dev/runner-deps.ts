@@ -2,44 +2,50 @@ import type { ConfigLoader } from "@gtkx/config";
 import * as Gio from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
 import { onExit } from "@gtkx/runtime";
-import { info, installGracefulShutdown } from "@gtkx/utils";
+import { info, installGracefulShutdown, warn } from "@gtkx/utils";
 import { readFile } from "node:fs/promises";
 import { createServer } from "vite";
 import type { ApplicationState, DevRunnerDeps } from "./runner.js";
 import { hasUnstagedFontImport } from "../internal/font-staging.js";
+import { openWorkerSources } from "../internal/worker-sources.js";
 import type { ProjectStaging } from "../internal/project-staging.js";
-import { startMcpClient, stopMcpClient } from "../mcp/index.js";
+import { reportMcpApplicationError, startMcpClient, stopMcpClient } from "../mcp/index.js";
 import {
+    cacheTestingModule,
     mergeTestingModule,
-    setTestingModuleLoader,
     type TestingInternalModule,
     type TestingPublicModule,
 } from "../mcp/testing-loader.js";
-import { isRefreshBoundary, performRefresh, staleExportName } from "../refresh-runtime.js";
+import { incompatibleExportName, isRefreshBoundary, performRefresh, staleExportName } from "../refresh-runtime.js";
 import { gtkxFastRefresh } from "../vite-plugins/fast-refresh/swc-refresh.js";
+import { gtkxGlobalStyles } from "../vite-plugins/global-styles.js";
 import { gtkxVitePlugins } from "../vite-plugins/index.js";
 import { gtkxReactDomPrebundle } from "../vite-plugins/react-dom-prebundle.js";
 import { type CatalogWrites, createCatalogWrites } from "./catalog-writes.js";
 
 type DevRunnerDepsOptions = {
-    applicationId: string;
+    translationDomain: string;
+    mcpApplicationId: string;
     loadConfig: ConfigLoader;
     mcpSocketPath?: string | undefined;
     staging: ProjectStaging;
     localeDir?: string | null | undefined;
+    hasStoreChanged: () => boolean;
 };
 
 const DEV_MODE = "development";
 const APPLICATION_POLL_INTERVAL_MS = 50;
+const PENDING_WORK_GRACE_MS = 3000;
 const registeredApplications: WeakSet<object> = new WeakSet();
+let remoteApplicationId: string | null = null;
 
-const currentApplicationId = (): string | null => Gio.Application.getDefault()?.applicationId ?? null;
+const currentApplicationId = (): string | null => Gio.Application.getDefault()?.applicationId ?? remoteApplicationId;
 
 const currentApplicationRegistrationState = (): ApplicationState => {
     const application = Gio.Application.getDefault();
 
     if (application === null) {
-        return "unregistered";
+        return remoteApplicationId === null ? "unregistered" : "remote";
     }
 
     if (!application.getIsRegistered()) {
@@ -51,13 +57,35 @@ const currentApplicationRegistrationState = (): ApplicationState => {
     return application.getIsRemote() ? "remote" : "primary";
 };
 
+const watchApplicationRegistration = (): void => {
+    GObject.ObjectClass.peek(Gio.Application);
+    const signalId = GObject.signalLookup("handle-local-options", Gio.Application);
+    const hookId = GObject.signalAddEmissionHook(signalId, 0, (_hint, values) => {
+        const application = values[0]?.getObject();
+
+        if (application instanceof Gio.Application) {
+            const handlerId = application.connect("notify::is-registered", () => {
+                application.disconnect(handlerId);
+
+                if (application.getIsRegistered() && application.getIsRemote()) {
+                    remoteApplicationId = application.applicationId;
+                }
+            });
+        }
+
+        return true;
+    });
+
+    onExit(() => GObject.signalRemoveEmissionHook(signalId, hookId));
+};
+
 const watchApplicationShutdown = (onShutdown: () => void): void => {
     GObject.ObjectClass.peek(Gio.Application);
     const signalId = GObject.signalLookup("shutdown", Gio.Application);
     const hookId = GObject.signalAddEmissionHook(signalId, 0, (_hint, values) => {
         const application = values[0]?.getObject();
 
-        if (application && application === Gio.Application.getDefault()) {
+        if (application && (application === Gio.Application.getDefault() || registeredApplications.has(application))) {
             registeredApplications.add(application);
             onShutdown();
         }
@@ -82,9 +110,20 @@ const waitForApplicationId = async (timeoutMs: number, shouldKeepWaiting: () => 
 
 const readFileRevision = (path: string): Promise<string> => readFile(path, "utf8");
 
+const hasApplicationErrorHandler = (): boolean => process.listenerCount("uncaughtException") > 1;
+
+const watchUncaughtErrors = (onUncaughtError: (cause: unknown) => void): void => {
+    process.on("uncaughtException", (cause) => {
+        if (!hasApplicationErrorHandler()) {
+            onUncaughtError(cause);
+        }
+    });
+};
+
 const devPlugins =
     (configFile: string, catalogWrites: CatalogWrites, options: DevRunnerDepsOptions): DevRunnerDeps["plugins"] =>
     (entryPath) => [
+        gtkxGlobalStyles(),
         ...gtkxVitePlugins({
             mode: DEV_MODE,
             entryPath,
@@ -99,6 +138,53 @@ const devPlugins =
         gtkxReactDomPrebundle(),
     ];
 
+const withoutResources = (resources: readonly string[], excluded: readonly string[]): string[] => {
+    const remaining = [...excluded];
+
+    return resources.filter((resource) => {
+        const index = remaining.indexOf(resource);
+
+        if (index === -1) {
+            return true;
+        }
+
+        remaining.splice(index, 1);
+
+        return false;
+    });
+};
+
+const describeResources = (resources: readonly string[]): string => {
+    const counts = Map.groupBy(resources, (resource) => resource);
+
+    return [...counts]
+        .map(([resource, { length }]) => (length === 1 ? resource : `${resource} (${length})`))
+        .join(", ");
+};
+
+const warnAboutPendingWork = (runnerResources: readonly string[]): void => {
+    const pending = withoutResources(process.getActiveResourcesInfo(), runnerResources);
+    const holders = pending.length === 0 ? "" : `: ${describeResources(pending)}`;
+
+    warn(
+        `The application quit ${PENDING_WORK_GRACE_MS / 1000} s ago, but pending work still keeps the process running${holders}. ` +
+            "A built application would keep running without a window until that work ends; clear timers and abort requests when components unmount, and avoid module-level timers.",
+    );
+};
+
+const createExitWhenIdle = (): ((code: number) => void) => {
+    const runnerResources = process.getActiveResourcesInfo();
+
+    return (code) => {
+        process.exitCode = code;
+        process.channel?.unref();
+        setTimeout(() => {
+            warnAboutPendingWork(runnerResources);
+            process.exit(code);
+        }, PENDING_WORK_GRACE_MS).unref();
+    };
+};
+
 const createDevRunnerDeps = (
     configFile: string,
     deployOutDir: string | undefined,
@@ -107,9 +193,10 @@ const createDevRunnerDeps = (
 ): DevRunnerDeps => ({
     createServer,
     waitForApplicationId,
-    applicationId: options.applicationId,
-    startMcpClient: (applicationId, loadAppModule) => {
-        setTestingModuleLoader(async () => {
+    translationDomain: options.translationDomain,
+    mcpApplicationId: options.mcpApplicationId,
+    startMcpClient: (applicationId, loadAppModule, reportUncaughtError) => {
+        const loadTesting = cacheTestingModule(async () => {
             const [publicApi, internals] = await Promise.all([
                 loadAppModule("@gtkx/testing") as Promise<TestingPublicModule>,
                 loadAppModule("@gtkx/testing/internal") as Promise<TestingInternalModule>,
@@ -118,15 +205,21 @@ const createDevRunnerDeps = (
             return mergeTestingModule(publicApi, internals);
         });
 
-        return startMcpClient(applicationId, options.mcpSocketPath);
+        return startMcpClient(applicationId, loadTesting, reportUncaughtError, options.mcpSocketPath);
     },
     stopMcpClient,
+    reportApplicationError: reportMcpApplicationError,
+    watchApplicationRegistration,
     watchApplicationShutdown,
-    watchUncaughtErrors: (onUncaughtError) => {
-        process.on("uncaughtException", onUncaughtError);
-        process.on("unhandledRejection", onUncaughtError);
+    watchUncaughtErrors,
+    hasApplicationErrorHandler,
+    watchWorkerSources: (onSource) => {
+        openWorkerSources().onmessage = (event) => {
+            onSource(String(event.data));
+        };
     },
     getApplicationRegistrationState: currentApplicationRegistrationState,
+    hasStoreChanged: options.hasStoreChanged,
     installShutdownHandlers: (onSignal) => {
         installGracefulShutdown({ onSignal });
     },
@@ -139,6 +232,7 @@ const createDevRunnerDeps = (
     },
     performRefresh,
     isRefreshBoundary,
+    incompatibleExportName,
     staleExportName,
     readFileRevision,
     hasWrittenCatalog: catalogWrites.hasWritten,
@@ -147,6 +241,7 @@ const createDevRunnerDeps = (
     plugins: devPlugins(configFile, catalogWrites, options),
     log: info,
     exit: (code: number): never => process.exit(code),
+    exitWhenIdle: createExitWhenIdle(),
 });
 
 const defaultDevRunnerDeps = (

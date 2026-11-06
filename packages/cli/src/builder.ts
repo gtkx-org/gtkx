@@ -28,16 +28,25 @@ const buildDefaults: InlineConfig = {
         outDir: DEFAULT_OUT_DIR,
         minify: true,
         cssMinify: false,
+        rolldownOptions: {
+            output: {
+                minify: { compress: true, mangle: true, codegen: { removeWhitespace: false } },
+            },
+        },
     },
 };
+
+const projectRelative = (root: string, path: string): string =>
+    posix.normalize(relative(root, resolve(root, path)).replaceAll("\\", "/"));
 
 const forcedConfig = async (options: BuildOptions, root: string, assetsDir: string): Promise<InlineConfig> => {
     const { entry, shouldPreserveI18nMetadata = true } = options;
     const buildManifest = createBuildManifestCollector();
     const loadedConfig = await loadConfig(root, { mode: BUILD_MODE, configFile: options.configFile });
     const buildConfigIdentity = {
-        configFile: posix.normalize(relative(root, loadedConfig.configFile).replaceAll("\\", "/")),
+        configFile: projectRelative(root, loadedConfig.configFile),
         configDigest: configDigest(loadedConfig.config),
+        entry: projectRelative(root, entry),
     };
 
     return {
@@ -53,15 +62,16 @@ const forcedConfig = async (options: BuildOptions, root: string, assetsDir: stri
                 shouldPreserveI18nMetadata,
                 configFile: options.configFile,
             }),
-            gtkxWorker(),
+            gtkxWorker(root),
             gtkxNative(root),
-            gtkxBuildManifest(root, buildManifest, buildConfigIdentity),
-            gtkxSelfContained(),
+            gtkxBuildManifest(buildManifest, buildConfigIdentity),
+            gtkxSelfContained(root),
         ],
         build: {
             ssr: entry,
             assetsInlineLimit: 0,
             rolldownOptions: {
+                cwd: root,
                 output: {
                     format: "es",
                     entryFileNames: ENTRY_FILE_NAMES,

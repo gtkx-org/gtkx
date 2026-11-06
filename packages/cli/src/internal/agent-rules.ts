@@ -1,6 +1,8 @@
 import { errorCode } from "@gtkx/utils";
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { markdownTable } from "markdown-table";
+import { findDepPkgJsonPath } from "vitefu";
 import { REFERENCE_PATH } from "../codegen/reference.js";
 
 type AgentRulesResult = {
@@ -16,7 +18,39 @@ const END_MARKER = "<!-- END:gtkx-agent-rules -->";
 const BLOCK_PATTERN = /<!-- BEGIN:gtkx-agent-rules -->[\s\S]*?<!-- END:gtkx-agent-rules -->/;
 const TOP_LEVEL_HEADING = /^# /m;
 
-const rulesBody = (heading: string): string[] => [
+const referenceRules = [
+    `Read \`${REFERENCE_PATH}/index.md\` before writing widget code. It is generated from this project's own ` +
+        "GIR libraries and is the authority on which props, signals and methods exist. Do not infer a prop from " +
+        "another toolkit, from a C function name, or from a similar element.",
+    "",
+];
+
+const projectCommands = async (root: string, hasReference: boolean): Promise<string[][]> => {
+    const commands = [
+        { command: "gtkx dev", description: "Run the app with fast refresh" },
+        {
+            command: "gtkx storybook",
+            description: "Explore native component stories with controls and actions",
+            packageName: "@gtkx/storybook",
+        },
+        { command: "gtkx codegen", description: `Regenerate bindings${hasReference ? " and this reference" : ""}` },
+        { command: "gtkx cleanup", description: "Remove stale headless runtime and compile cache directories" },
+        { command: "tsc --noEmit", description: "Typecheck", packageName: "typescript" },
+        { command: "vitest run", description: "Run the tests", packageName: "vitest" },
+    ];
+    const isAvailable = await Promise.all(
+        commands.map(
+            async ({ packageName }) =>
+                packageName === undefined || (await findDepPkgJsonPath(packageName, root)) !== undefined,
+        ),
+    );
+
+    return commands
+        .filter((_, index) => isAvailable[index])
+        .map(({ command, description }) => [`\`${command}\``, description]);
+};
+
+const rulesBody = (heading: string, hasReference: boolean, commands: string[][]): string[] => [
     `${heading} GTKX`,
     "",
     "GTKX applications are Adwaita-first, with GTK4 underneath. Most GNOME UI code in your training data is C, " +
@@ -34,18 +68,8 @@ const rulesBody = (heading: string): string[] => [
         "`@gtkx/gi/<namespace>`. Both are generated for this project by `gtkx codegen`, not installed from npm, " +
         "so they match the GIR libraries this project declares.",
     "",
-    `Read \`${REFERENCE_PATH}/index.md\` before writing widget code. It is generated from this project's own ` +
-        "GIR libraries and is the authority on which props, signals and methods exist. Do not infer a prop from " +
-        "another toolkit, from a C function name, or from a similar element.",
-    "",
-    "| Command | What it does |",
-    "| --- | --- |",
-    "| `gtkx dev` | Run the app with fast refresh |",
-    "| `gtkx storybook` | Explore native component stories with controls and actions |",
-    "| `gtkx codegen` | Regenerate bindings and this reference |",
-    "| `gtkx cleanup` | Remove stale headless runtime and compile cache directories |",
-    "| `tsc --noEmit` | Typecheck |",
-    "| `vitest run` | Run the tests |",
+    ...(hasReference ? referenceRules : []),
+    markdownTable([["Command", "What it does"], ...commands]),
     "",
     "Never call UI work done without looking at the running app. With `gtkx dev` up, the gtkx MCP server " +
         "exposes the live widget tree, queries, clicks and screenshots; use them to confirm the change landed.",
@@ -54,7 +78,8 @@ const rulesBody = (heading: string): string[] => [
         "committing the block with your work keeps the tree clean.",
 ];
 
-const renderBlock = (heading: string): string => [BEGIN_MARKER, "", ...rulesBody(heading), "", END_MARKER].join("\n");
+const renderBlock = (heading: string, hasReference: boolean, commands: string[][]): string =>
+    [BEGIN_MARKER, "", ...rulesBody(heading, hasReference, commands), "", END_MARKER].join("\n");
 
 const headingFor = (contents: string): string => (TOP_LEVEL_HEADING.test(contents) ? "##" : "#");
 const withTrailingNewline = (contents: string): string => (contents.endsWith("\n") ? contents : `${contents}\n`);
@@ -67,6 +92,8 @@ const appendBlock = (contents: string, block: string): string => {
     return `${withTrailingNewline(contents)}\n${block}\n`;
 };
 
+const withoutLayout = (block: string): string => block.replaceAll(/\s+/g, " ");
+
 const replaceBlock = (contents: string, block: string): string => {
     const match = BLOCK_PATTERN.exec(contents);
 
@@ -74,13 +101,17 @@ const replaceBlock = (contents: string, block: string): string => {
         return appendBlock(contents, block);
     }
 
+    if (withoutLayout(match[0]) === withoutLayout(block)) {
+        return contents;
+    }
+
     return contents.slice(0, match.index) + block + contents.slice(match.index + match[0].length);
 };
 
-const nextContents = (contents: string): string => {
+const nextContents = (contents: string, hasReference: boolean, commands: string[][]): string => {
     const heading = headingFor(contents.replace(BLOCK_PATTERN, ""));
 
-    return replaceBlock(contents, renderBlock(heading));
+    return replaceBlock(contents, renderBlock(heading, hasReference, commands));
 };
 
 const readOrUndefined = (path: string): string | undefined => {
@@ -119,12 +150,13 @@ const hasWrittenClaudeImport = (root: string): boolean => {
     }
 };
 
-const upsertAgentRules = (root: string): AgentRulesResult => {
+const upsertAgentRules = async (root: string, hasReference: boolean): Promise<AgentRulesResult> => {
     const agentsPath = join(root, AGENTS_FILENAME);
     const existing = readOrUndefined(agentsPath) ?? "";
+    const commands = await projectCommands(root, hasReference);
     const files: string[] = [];
 
-    if (hasWritten(agentsPath, nextContents(existing))) {
+    if (hasWritten(agentsPath, nextContents(existing, hasReference, commands))) {
         files.push(AGENTS_FILENAME);
     }
 
@@ -135,4 +167,31 @@ const upsertAgentRules = (root: string): AgentRulesResult => {
     return { isWritten: files.length > 0, files };
 };
 
-export { upsertAgentRules };
+const removeAgentRules = (root: string): void => {
+    const agentsPath = join(root, AGENTS_FILENAME);
+    const existing = readOrUndefined(agentsPath);
+
+    if (existing === undefined || !BLOCK_PATTERN.test(existing)) {
+        return;
+    }
+
+    const remaining = existing
+        .replace(BLOCK_PATTERN, "")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
+
+    if (remaining !== "") {
+        writeFileSync(agentsPath, `${remaining}\n`);
+
+        return;
+    }
+
+    rmSync(agentsPath);
+    const claudePath = join(root, CLAUDE_FILENAME);
+
+    if (readOrUndefined(claudePath) === CLAUDE_CONTENTS) {
+        rmSync(claudePath);
+    }
+};
+
+export { removeAgentRules, upsertAgentRules };

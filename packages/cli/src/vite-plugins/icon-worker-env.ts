@@ -1,12 +1,11 @@
 import type { UserConfig } from "vite";
 import type { Plugin } from "vitest/config";
-import { createConfigLoader, viteProjectRoot } from "@gtkx/config/internal";
+import type { ConfigLoader } from "@gtkx/config";
+import { viteProjectRoot } from "@gtkx/config/internal";
 import { stageProjectIcons } from "../internal/icon-staging.js";
 import { prependXdgDataDir } from "../internal/xdg-data-dirs.js";
 
-function gtkxIconWorkerEnv(configFile?: string): Plugin {
-    const loadConfig = createConfigLoader({ configFile });
-
+function gtkxIconWorkerEnv(loadConfig: ConfigLoader): Plugin {
     return {
         name: "gtkx:icon-worker-env",
         enforce: "pre",

@@ -3,12 +3,16 @@ import { logger } from "@gtkx/utils";
 
 const ERROR_EXIT_CODE = 1;
 
-const printError = (cause: unknown): never => {
-    const message = cause instanceof Error ? cause.message : String(cause);
-    logger.error(message);
+const reportedErrors = (cause: unknown): unknown[] =>
+    cause instanceof SuppressedError ? [...reportedErrors(cause.suppressed), ...reportedErrors(cause.error)] : [cause];
 
-    if (cause instanceof Error && cause.stack !== undefined) {
-        logger.debug(cause.stack);
+const printError = (cause: unknown): never => {
+    for (const error of reportedErrors(cause)) {
+        logger.error(error instanceof Error ? error.message : String(error));
+
+        if (error instanceof Error && error.stack !== undefined) {
+            logger.debug(error.stack);
+        }
     }
 
     process.exit(ERROR_EXIT_CODE);
@@ -18,17 +22,28 @@ const withErrorBoundary = <T extends ArgsDef>(
     command: CommandDef<T>,
     onError?: (cause: unknown) => never,
 ): CommandDef<T> => {
-    const run = command.run;
-    if (run === undefined || onError === undefined) return command;
+    const { setup, run } = command;
+    if (onError === undefined) return command;
     return {
         ...command,
-        run: async (context): Promise<unknown> => {
-            try {
-                return await run(context);
-            } catch (error) {
-                return onError(error);
-            }
-        },
+        ...(setup !== undefined && {
+            setup: async (context): Promise<void> => {
+                try {
+                    await setup(context);
+                } catch (error) {
+                    onError(error);
+                }
+            },
+        }),
+        ...(run !== undefined && {
+            run: async (context): Promise<unknown> => {
+                try {
+                    return await run(context);
+                } catch (error) {
+                    return onError(error);
+                }
+            },
+        }),
     };
 };
 

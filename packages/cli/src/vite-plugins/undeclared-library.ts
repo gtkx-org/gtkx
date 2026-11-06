@@ -2,14 +2,20 @@ import type { StoreOptions } from "@gtkx/codegen";
 import type { ConfigLoader } from "@gtkx/config";
 import type { Plugin, UserConfig } from "vite";
 import { discoverGirNamespaces, resolveGirPath, resolveStore } from "@gtkx/codegen";
+import { storeViewDir } from "@gtkx/codegen/internal";
 import { createConfigLoader, viteProjectRoot } from "@gtkx/config/internal";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
+type ProjectSettings = {
+    girPath: string[];
+    isCodegenDisabled: boolean;
+};
+
 type PluginState = {
     root: string;
     loadConfig: ConfigLoader;
-    girPath: string[] | null;
+    settings: ProjectSettings | null;
 };
 
 type GeneratedModule = {
@@ -22,13 +28,16 @@ type GeneratedModule = {
 const GENERATED_MODULE_PATTERN = /^@gtkx\/(gi|jsx)\/([a-z0-9]+)$/;
 const DEFAULT_LIBRARY_NAMESPACES: Set<string> = new Set(["adw", "gtk"]);
 
-const girSearchPaths = async (state: PluginState): Promise<string[]> => {
-    if (state.girPath === null) {
+const loadProjectSettings = async (state: PluginState): Promise<ProjectSettings> => {
+    if (state.settings === null) {
         const { config } = await state.loadConfig.load(state.root);
-        state.girPath = resolveGirPath(config.girPath, state.root);
+        state.settings = {
+            girPath: resolveGirPath(config.girPath, state.root),
+            isCodegenDisabled: config.codegen === false,
+        };
     }
 
-    return state.girPath;
+    return state.settings;
 };
 
 const getNamespace = (identifier: string): string => identifier.slice(0, identifier.indexOf("-")).toLowerCase();
@@ -106,22 +115,66 @@ const undeclaredLibraryError = (source: string, namespace: string, girPath: stri
     );
 };
 
-const unresolvedModuleError = async (state: PluginState, generated: GeneratedModule): Promise<Error> => {
+const reusedStoreError = (source: string, namespace: string, girPath: string[]): Error => {
+    const identifier = findGirIdentifier(girPath, namespace) ?? namespace;
+    const remedy = DEFAULT_LIBRARY_NAMESPACES.has(namespace)
+        ? "Run gtkx codegen in the project that generates the binding store"
+        : `Add "${identifier}" to \`libraries\` in the project that generates the binding store and run gtkx codegen there`;
+
+    return new Error(
+        `Cannot resolve "${source}": the installed binding store has no "${identifier}" bindings, and this ` +
+            "project reuses that store without generating bindings (`codegen: false`), so its own `libraries` " +
+            `are not generated. ${remedy}, or remove \`codegen: false\` from gtkx.config.ts.`,
+    );
+};
+
+const unsharedLibraryError = (source: string, namespace: string, girPath: string[]): Error => {
+    const identifier = findGirIdentifier(girPath, namespace) ?? namespace;
+
+    return new Error(
+        `Cannot resolve "${source}": "${identifier}" is not in this project's \`libraries\`. Another project ` +
+            "sharing the generated bindings declares it, but each project can import only the libraries it " +
+            `declares and their dependencies. Add "${identifier}" to \`libraries\` in gtkx.config.ts, then run ` +
+            "gtkx dev or gtkx build again.",
+    );
+};
+
+const isOutsideView = (root: string, options: StoreOptions, namespace: string): boolean => {
+    const viewDir = storeViewDir(root, options);
+
+    return viewDir !== null && !existsSync(join(viewDir, namespace, "index.js"));
+};
+
+const unresolvedModuleError = async (
+    state: PluginState,
+    generated: GeneratedModule,
+    resolverError?: unknown,
+): Promise<unknown> => {
     const options = getStoreOptions(state.root, generated.kind);
     const exportKey = `./${generated.namespace}`;
 
-    if (options !== null && hasStoreModule(options.storeDir, exportKey)) {
-        return unreachableStoreError(generated, options);
+    if (options === null || !hasStoreModule(options.storeDir, exportKey)) {
+        const { girPath, isCodegenDisabled } = await loadProjectSettings(state);
+
+        return isCodegenDisabled
+            ? reusedStoreError(generated.source, generated.namespace, girPath)
+            : undeclaredLibraryError(generated.source, generated.namespace, girPath);
     }
 
-    return undeclaredLibraryError(generated.source, generated.namespace, await girSearchPaths(state));
+    if (isOutsideView(state.root, options, generated.namespace)) {
+        const { girPath } = await loadProjectSettings(state);
+
+        return unsharedLibraryError(generated.source, generated.namespace, girPath);
+    }
+
+    return resolverError ?? unreachableStoreError(generated, options);
 };
 
 function gtkxUndeclaredLibrary(loadConfig: ConfigLoader = createConfigLoader()): Plugin {
     const state: PluginState = {
         root: "",
         loadConfig,
-        girPath: null,
+        settings: null,
     };
 
     return {
@@ -142,7 +195,11 @@ function gtkxUndeclaredLibrary(loadConfig: ConfigLoader = createConfigLoader()):
                     return;
                 }
 
-                const resolved = await this.resolve(source, importer, { ...options, skipSelf: true });
+                const resolved = await this.resolve(source, importer, { ...options, skipSelf: true }).catch(
+                    async (error: unknown) => {
+                        throw await unresolvedModuleError(state, generated, error);
+                    },
+                );
 
                 if (resolved !== null) {
                     return;

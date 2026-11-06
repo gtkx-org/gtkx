@@ -1,7 +1,16 @@
 import type { ReactNode, Ref, RefObject } from "react";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
-import { AdwActionRow, AdwExpanderRow, AdwHeaderBar, AdwToolbarView } from "@gtkx/jsx/adw";
+import type * as WebKit from "@gtkx/gi/webkit";
+import {
+    AdwActionRow,
+    AdwButtonRow,
+    AdwEntryRow,
+    AdwExpanderRow,
+    AdwHeaderBar,
+    AdwSwitchRow,
+    AdwToolbarView,
+} from "@gtkx/jsx/adw";
 import {
     GtkApplicationWindow,
     GtkBox,
@@ -10,15 +19,17 @@ import {
     GtkHeaderBar,
     GtkLabel,
     GtkListBox,
+    GtkListBoxRow,
     GtkMenuButton,
     GtkOverlay,
     GtkPaned,
     GtkPopover,
     GtkStack,
 } from "@gtkx/jsx/gtk";
+import { WebKitUserContentManager, WebKitWebView } from "@gtkx/jsx/webkit";
 import { createPortal, useApplication } from "@gtkx/react";
 import { act, render, screen, userEvent, waitFor, within } from "@gtkx/testing";
-import { createRef } from "react";
+import { createRef, useState } from "react";
 import { describe, expect, it } from "vitest";
 import { createApplicationRenderer } from "../helpers/application-render.js";
 
@@ -229,6 +240,28 @@ function OptionalPortal({ shouldShowPortal }: { shouldShowPortal: boolean }) {
     return <>{shouldShowPortal && createPortal(<GtkApplicationWindow title="Portal" />, app)}</>;
 }
 
+const CITIES = ["Paris", "Prague", "Rome"];
+function CitySearch() {
+    const [text, setText] = useState("");
+    const matches = CITIES.filter((city) => text !== "" && city.startsWith(text));
+
+    return (
+        <GtkEntry onChanged={(entry) => setText(entry.getText())}>
+            {matches.length > 0 && (
+                <GtkPopover visible autohide={false}>
+                    <GtkListBox>
+                        {matches.map((city) => (
+                            <GtkListBoxRow key={city}>
+                                <GtkLabel>{city}</GtkLabel>
+                            </GtkListBoxRow>
+                        ))}
+                    </GtkListBox>
+                </GtkPopover>
+            )}
+        </GtkEntry>
+    );
+}
+
 function TitledPortal({ title }: { title: string }) {
     const app = useApplication();
 
@@ -256,6 +289,48 @@ describe("render - Slot", () => {
         expect(popover.getParent()).toBe(entry);
         await unmount();
         expect(popover.getParent()).toBeNull();
+    });
+
+    it("attaches a popover to the button it is placed in", async () => {
+        const buttonRef = createRef<Gtk.Button>();
+        const popoverRef = createRef<Gtk.Popover>();
+        const app = (open: boolean) => (
+            <GtkButton ref={buttonRef} label="Details">
+                <GtkPopover ref={popoverRef} visible={open}>
+                    <GtkLabel>Button details</GtkLabel>
+                </GtkPopover>
+            </GtkButton>
+        );
+        const { rerender } = await render(app(false));
+        const button = mountedRef(buttonRef);
+
+        expect(mountedRef(popoverRef).getParent()).toBe(button);
+        await rerender(app(true));
+        expect(await screen.findByText("Button details")).toBeRooted();
+        expect(button.getLabel()).toBe("Details");
+    });
+
+    it("shows a popover rendered open once its window is on screen", async () => {
+        const popoverRef = createRef<Gtk.Popover>();
+        await render(
+            <GtkEntry>
+                <GtkPopover ref={popoverRef} visible>
+                    <GtkLabel>Suggestions</GtkLabel>
+                </GtkPopover>
+            </GtkEntry>,
+        );
+
+        expect(await screen.findByText("Suggestions")).toBeRooted();
+        await waitFor(() => {
+            expect(popoverRef.current?.getMapped()).toBe(true);
+        });
+    });
+
+    it("keeps a popover open when its content mounts with it", async () => {
+        await render(<CitySearch />);
+        await userEvent.type(await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX), "P");
+
+        expect(await screen.findByText("Prague")).toBeRooted();
     });
 
     it("sets slot child via ReactNode prop", async () => {
@@ -434,6 +509,50 @@ describe("render - Slot", () => {
         expect(panedRef.current).toHaveObjectProperty("startChild", startRef.current);
         expect(panedRef.current).toHaveObjectProperty("endChild", endRef.current);
     });
+
+    it("builds an element given to a construct-only prop before its parent and passes it at construction", async () => {
+        const webViewRef = createRef<WebKit.WebView>();
+        const managerRef = createRef<WebKit.UserContentManager>();
+        const messages: string[] = [];
+
+        await render(
+            <WebKitWebView
+                ref={webViewRef}
+                userContentManager={
+                    <WebKitUserContentManager
+                        ref={managerRef}
+                        onScriptMessageReceived={(value) => {
+                            messages.push(value.toString());
+                        }}
+                    />
+                }
+            />,
+        );
+
+        const manager = mountedRef(managerRef);
+        expect(mountedRef(webViewRef).getUserContentManager()).toBe(manager);
+
+        await act(() => {
+            manager.registerScriptMessageHandler("probe", null);
+            mountedRef(webViewRef).loadHtml(
+                "<script>window.webkit.messageHandlers.probe.postMessage('ready')</script>",
+                null,
+            );
+        });
+
+        await waitFor(() => {
+            expect(messages).toEqual(["ready"]);
+        });
+    });
+
+    it("rejects replacing the element of a construct-only prop after construction", async () => {
+        function App({ manager }: { manager: string }) {
+            return <WebKitWebView userContentManager={<WebKitUserContentManager key={manager} />} />;
+        }
+
+        const { rerender } = await render(<App manager="first" />);
+        await expect(rerender(<App manager="second" />)).rejects.toThrow();
+    });
 });
 
 describe("render - ContainerProp", () => {
@@ -494,6 +613,24 @@ describe("render - ContainerProp", () => {
             }
             expect(labelRefs[1]?.current).toBeNull();
             expect(labelRefs[2]?.current).toBeNull();
+        });
+
+        it.each([
+            ["AdwActionRow", AdwActionRow],
+            ["AdwSwitchRow", AdwSwitchRow],
+            ["AdwEntryRow", AdwEntryRow],
+            ["AdwExpanderRow", AdwExpanderRow],
+            ["AdwButtonRow", AdwButtonRow],
+        ])("rejects a default child of %s instead of replacing the row's own content", async (_name, Row) => {
+            await expect(
+                render(
+                    <GtkListBox>
+                        <Row title="Autosave">
+                            <GtkButton label="Reset" />
+                        </Row>
+                    </GtkListBox>,
+                ),
+            ).rejects.toThrow();
         });
 
         it("adds child as prefix via prefix", async () => {
@@ -863,6 +1000,20 @@ describe("render - ContainerProp", () => {
                 secondRef,
             );
         });
+
+        it("rejects a child passed under a method name such as packStart", async () => {
+            await expect(
+                // @ts-expect-error packStart is a Gtk.HeaderBar method, not a prop
+                render(<GtkHeaderBar packStart={<GtkLabel>Start</GtkLabel>} />),
+            ).rejects.toThrow();
+        });
+
+        it("rejects a child passed under a name that is neither a prop nor a method", async () => {
+            await expect(
+                // @ts-expect-error titelWidget is a typo of titleWidget
+                render(<GtkHeaderBar titelWidget={<GtkLabel>Title</GtkLabel>} />),
+            ).rejects.toThrow();
+        });
     });
 
     describe("AdwToolbarView (top/bottom)", () => {
@@ -975,6 +1126,41 @@ describe("render - ContainerProp", () => {
             expect(toolbar.getTopBarHeight()).toBeGreaterThan(0);
             expect(toolbar.getBottomBarHeight()).toBeGreaterThan(0);
         });
+
+        it("accepts top, bottom and the deprecated aliases while they hold no bar", async () => {
+            const toolbarRef = createRef<Adw.ToolbarView>();
+            const topRef = createRef<Adw.HeaderBar>();
+
+            function App({ hasTop }: { hasTop: boolean }) {
+                return (
+                    <AdwToolbarView
+                        ref={toolbarRef}
+                        top={hasTop && <AdwHeaderBar ref={topRef} />}
+                        bottom={false}
+                        topBar={false}
+                        bottomBar={[]}
+                    >
+                        <GtkLabel>Content</GtkLabel>
+                    </AdwToolbarView>
+                );
+            }
+
+            const { rerender } = await render(<App hasTop={false} />);
+            expect(mountedRef(toolbarRef).getTopBarHeight()).toBe(0);
+            await rerender(<App hasTop />);
+            expect(mountedRef(toolbarRef)).toContainElement(topRef.current);
+        });
+
+        it("rejects a bar passed under a misspelled slot name", async () => {
+            await expect(
+                render(
+                    // @ts-expect-error topBars is a typo of topBar
+                    <AdwToolbarView topBars={<AdwHeaderBar />}>
+                        <GtkLabel>Content</GtkLabel>
+                    </AdwToolbarView>,
+                ),
+            ).rejects.toThrow("top");
+        });
     });
 
     describe("GtkListBox (placeholder)", () => {
@@ -999,6 +1185,10 @@ describe("render - ContainerProp", () => {
             await rerender(<App shouldShowPlaceholder={false} />);
             expect(placeholder.getParent()).toBeNull();
         });
+
+        it("accepts a placeholder that holds no widget", async () => {
+            await expect(render(<GtkListBox placeholder={false} />)).resolves.toBeDefined();
+        });
     });
 
     describe("GtkOverlay (overlay)", () => {
@@ -1013,6 +1203,16 @@ describe("render - ContainerProp", () => {
             );
 
             expect(mountedRef(overlayChildRef).getParent()).toBe(mountedRef(overlayRef));
+        });
+
+        it("accepts overlay and the deprecated overlays while they hold no widget", async () => {
+            await expect(
+                render(
+                    <GtkOverlay overlay={false} overlays={[]}>
+                        <GtkLabel>Main</GtkLabel>
+                    </GtkOverlay>,
+                ),
+            ).resolves.toBeDefined();
         });
     });
 });

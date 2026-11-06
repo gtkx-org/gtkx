@@ -15,6 +15,11 @@ type LibraryPackages = PackageNames & {
     extra: Relations;
 };
 
+type UncoveredLibrary = {
+    library: string;
+    sharedLibraries: string[];
+};
+
 const SONAME_SUFFIX = "()(64bit)";
 const GLES_SONAME = `libGLESv2.so.2${SONAME_SUFFIX}`;
 const NO_EXTRA: Relations = { deb: [], rpm: [] };
@@ -46,6 +51,9 @@ const debRelation = (name: string, minimum: string | undefined): string =>
 const rpmRelation = (name: string, minimum: string | undefined): string =>
     minimum === undefined ? name : `${name} >= ${minimum}`;
 
+const sharedLibrariesOf = (settings: DeploySettings, library: string): string[] =>
+    settings.sharedLibraries[library] ?? [];
+
 const libraryDepends = (settings: DeploySettings): Relations => {
     const deb: string[] = [];
     const rpm: string[] = [];
@@ -53,16 +61,27 @@ const libraryDepends = (settings: DeploySettings): Relations => {
     for (const library of settings.libraries) {
         const packages = DEPENDS_BY_LIBRARY[library];
 
-        if (packages === undefined) {
-            continue;
+        if (packages !== undefined) {
+            const minimum = settings.minimumLibraryVersions[library];
+            deb.push(debRelation(packages.deb, minimum), ...packages.extra.deb);
+            rpm.push(rpmRelation(packages.rpm, minimum), ...packages.extra.rpm);
         }
 
-        const minimum = settings.minimumLibraryVersions[library];
-        deb.push(debRelation(packages.deb, minimum), ...packages.extra.deb);
-        rpm.push(rpmRelation(packages.rpm, minimum), ...packages.extra.rpm);
+        rpm.push(...sharedLibrariesOf(settings, library).map((soname) => `${soname}${SONAME_SUFFIX}`));
     }
 
     return { deb, rpm };
+};
+
+const uncoveredDebLibraries = (settings: DeploySettings): UncoveredLibrary[] => {
+    if ((settings.deploy.depends?.deb ?? []).length > 0) {
+        return [];
+    }
+
+    return settings.libraries
+        .filter((library) => DEPENDS_BY_LIBRARY[library] === undefined)
+        .map((library) => ({ library, sharedLibraries: sharedLibrariesOf(settings, library) }))
+        .filter((uncovered) => uncovered.sharedLibraries.length > 0);
 };
 
 const glibcDepends = (glibcMinimum: string | null): Relations =>
@@ -95,4 +114,4 @@ const resolveDepends = (settings: DeploySettings, glibcMinimum: string | null): 
     };
 };
 
-export { resolveDepends };
+export { resolveDepends, uncoveredDebLibraries };
