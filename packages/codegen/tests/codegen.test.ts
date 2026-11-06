@@ -167,6 +167,8 @@ describe("generated bindings", () => {
             const connected: boolean = socket.connect(address, null);
             // @ts-expect-error a socket connects to an address
             socket.connect("localhost");
+            // @ts-expect-error a socket connects to an address
+            socket.connect();
             class StoreBase extends GObject implements ListModelImpl {
                 vfuncGetItemType(): bigint { return TYPE_OBJECT; }
                 vfuncGetNItems(): number { return 0; }

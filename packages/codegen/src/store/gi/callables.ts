@@ -134,7 +134,7 @@ const renderShadowingClassInstanceMember: InstanceMemberRenderer = instanceMembe
 
         const signature = memberSignatureText(context, callable, name, { finishFn });
 
-        return `${memberDoc(context, callable, finishFn)}${signature};\n${name}(...args: never[]): any;\n${implementation}`;
+        return `${memberDoc(context, callable, finishFn)}${signature};\n${name}(this: never, ...args: never[]): any;\n${implementation}`;
     },
 );
 
