@@ -106,7 +106,9 @@ class McpClient {
             info("Registered with MCP server");
             settle.succeed();
         } catch (registerError) {
-            error("Failed to register with MCP server:", errorMessage(registerError));
+            if (!isConnectionClosedError(registerError)) {
+                error("Failed to register with MCP server:", errorMessage(registerError));
+            }
             settle.fail(normalizeError(registerError));
         }
     }

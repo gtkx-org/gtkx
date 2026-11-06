@@ -21,6 +21,7 @@ import {
     unlinkSync,
     writeFileSync,
 } from "node:fs";
+import { createServer, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { setTimeout } from "node:timers/promises";
@@ -2406,6 +2407,62 @@ describe("CLI commands", () => {
             project.write("po/fr.po", catalog);
             await expect.poll(() => readFileSync(readyPath, "utf8"), { timeout: 30_000 }).toBe("Bonjour, Ada !");
         });
+    });
+
+    it("reconnects without an error when the MCP server closes during registration", async () => {
+        using project = createProject({ codegen: true });
+        const readyPath = join(project.root, "ready.txt");
+        project.write(
+            "src/index.ts",
+            `import { Application } from "@gtkx/gi/gio";
+            import { applicationId } from "virtual:gtkx-config";
+            import { writeFileSync } from "node:fs";
+            export const application = new Application({ applicationId });
+            application.setDefault();
+            application.register(null);
+            application.hold();
+            writeFileSync(${JSON.stringify(readyPath)}, applicationId);`,
+        );
+        const socketPath = join(project.root, "mcp.sock");
+        const connections: Socket[] = [];
+        const server = createServer((socket) => {
+            connections.push(socket);
+            const isFirst = connections.length === 1;
+            socket.on("data", (data) => {
+                if (isFirst && data.toString().includes("app.register")) socket.destroy();
+            });
+        });
+        server.listen(socketPath);
+        await once(server, "listening");
+        const session = spawn(
+            process.execPath,
+            [join(project.root, "node_modules/@gtkx/cli/bin/gtkx.js"), "dev", "--headless", "--size", "640x480"],
+            {
+                cwd: project.root,
+                env: {
+                    ...Object.fromEntries(
+                        Object.entries(process.env).filter(
+                            ([name]) => !name.startsWith("VITEST") && name !== "DISPLAY",
+                        ),
+                    ),
+                    GTKX_MCP_SOCKET_PATH: socketPath,
+                },
+            },
+        );
+        let output = "";
+        session.stdout.on("data", (chunk: Buffer) => (output += chunk.toString()));
+        session.stderr.on("data", (chunk: Buffer) => (output += chunk.toString()));
+        const exited = once(session, "exit");
+        try {
+            await expect.poll(() => connections.length, { timeout: 60_000 }).toBeGreaterThan(1);
+        } finally {
+            session.kill("SIGTERM");
+            await exited;
+            for (const socket of connections) socket.destroy();
+            server.close();
+        }
+        expect(output).toContain("Disconnected from MCP server");
+        expect(output).not.toContain("Failed to register");
     });
 
     it("keeps the running app registered while configuration is invalid and restarts after repair", async () => {
