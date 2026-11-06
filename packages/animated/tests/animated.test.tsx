@@ -5,6 +5,7 @@ import {
     type AnimatedProps,
     config,
     type FluidValue,
+    Globals,
     type SpringValue,
     useSpring,
 } from "@gtkx/animated";
@@ -27,7 +28,7 @@ import {
 } from "@gtkx/jsx/gtk";
 import { render, screen, waitFor } from "@gtkx/testing";
 import { createRef, useEffect } from "react";
-import { describe, expect, expectTypeOf, it } from "vitest";
+import { describe, expect, expectTypeOf, it, onTestFinished } from "vitest";
 
 type OpacityProps = { labelRef: RefObject<Gtk.Label | null>; to: number; duration?: number };
 type SwitchProps = { labelRef: RefObject<Gtk.Label | null>; mode: "first" | "second" | "static" };
@@ -289,6 +290,23 @@ describe("animated - spring values on widgets", () => {
         await waitFor(() => {
             expect(springs.opacity?.idle).toBe(true);
         }, SETTLE);
+    });
+
+    it("keeps an application's skipAnimation while only reduced motion changes", async () => {
+        const labelRef = createRef<Gtk.Label>();
+        const settings = defaultSettings();
+        const { rerender } = await render(<Fade labelRef={labelRef} to={0} />, ANIMATED);
+        onTestFinished(() => {
+            settings.gtkInterfaceReducedMotion = Gtk.ReducedMotion.NO_PREFERENCE;
+            Globals.assign({ skipAnimation: false });
+        });
+
+        Globals.assign({ skipAnimation: true });
+        settings.gtkInterfaceReducedMotion = Gtk.ReducedMotion.REDUCE;
+        settings.gtkInterfaceReducedMotion = Gtk.ReducedMotion.NO_PREFERENCE;
+        await rerender(<Fade labelRef={labelRef} to={1} duration={10000} />);
+
+        await expectOpacity(labelRef.current, 1);
     });
 
     it("drives a widget property through its frames to the target", async () => {
