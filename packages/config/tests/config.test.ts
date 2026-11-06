@@ -3,8 +3,47 @@ import { spawnSync } from "node:child_process";
 import { mkdtempDisposableSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
-import { defineConfig, loadConfig, mergeConfig } from "../src/index.js";
+import { describe, expect, expectTypeOf, it } from "vitest";
+import type { z } from "zod";
+import type { configSchema } from "../src/config.js";
+import {
+    type AgentsOptions,
+    type Config,
+    type DeployAppImageOptions,
+    type DeployAppImageSigningOptions,
+    type DeployBrandingOptions,
+    type DeployDebOptions,
+    type DeployDebPackageRelationOptions,
+    type DeployDebSigningOptions,
+    type DeployDesktopActionOptions,
+    type DeployDeveloperOptions,
+    type DeployExtraFileOptions,
+    type DeployFileAssociationOptions,
+    type DeployFlatpakOptions,
+    type DeployFlatpakSigningOptions,
+    type DeployFlatpakSourceOptions,
+    type DeployNodeOptions,
+    type DeployOptions,
+    type DeployPackageRelationOptions,
+    type DeployRelationsOptions,
+    type DeployReleaseOptions,
+    type DeployRpmOptions,
+    type DeployRpmSigningOptions,
+    type DeployScreenshotOptions,
+    type DeployScriptsOptions,
+    type DeploySigningOptions,
+    type DeployToolsOptions,
+    type DeprecationsOptions,
+    defineConfig,
+    type ElementConfigOptions,
+    type ElementPropsExport,
+    type ElementsOptions,
+    loadConfig,
+    type McpOptions,
+    mergeConfig,
+    type ModuleExport,
+    type ReactCompilerOptions,
+} from "../src/index.js";
 import createConfigPlugin from "../src/vite-plugin.js";
 
 const project = () => mkdtempDisposableSync(join(tmpdir(), "gtkx-config-test-"));
@@ -35,7 +74,12 @@ describe("project configuration", () => {
         });
         expect(merged).toMatchObject({ applicationId: "org.gtkx.base", codegen: false });
         mkdirSync(join(directory.path, "config"));
-        writeFileSync(join(directory.path, "gtkx.config.ts"), config("org.gtkx.default"));
+        mkdirSync(join(directory.path, "shared"));
+        writeFileSync(join(directory.path, "gtkx.config.ts"), 'export default { extends: "./shared" };');
+        writeFileSync(
+            join(directory.path, "shared/gtkx.config.json"),
+            '{"applicationId":"org.gtkx.default","codegen":false}',
+        );
         writeFileSync(
             join(directory.path, "config/custom.ts"),
             `export default {
@@ -46,6 +90,39 @@ describe("project configuration", () => {
         const selected = await loadConfig(directory.path, { configFile: "config/custom.ts", mode: "development" });
         expect(selected.config.applicationId).toBe("org.gtkx.development");
         expect((await loadConfig(directory.path)).config.applicationId).toBe("org.gtkx.default");
+        expect((await loadConfig(directory.path, { configFile: "gtkx.config.ts" })).config.applicationId).toBe(
+            "org.gtkx.default",
+        );
+    });
+
+    it("keeps the production application ID as the translation domain in every environment", () => {
+        using directory = project();
+        const script = `
+            import assert from "node:assert/strict";
+            import { mkdirSync, writeFileSync } from "node:fs";
+            import { join } from "node:path";
+            import { loadConfig } from ${JSON.stringify(new URL("../src/index.ts", import.meta.url).href)};
+            const root = ${JSON.stringify(directory.path)};
+            writeFileSync(join(root, "gtkx.config.ts"), 'export default { extends: "./base.json", applicationId: "org.gtkx.app", $development: { applicationId: "org.gtkx.app.Devel" } };');
+            writeFileSync(join(root, "base.json"), JSON.stringify({
+                codegen: false,
+                $development: { codegen: true },
+                $production: { applicationId: "org.gtkx.shared" },
+            }));
+            const summary = async (mode) => {
+                const { config, translationDomain } = await loadConfig(root, { mode });
+                return [config.applicationId, config.codegen, translationDomain];
+            };
+            assert.deepEqual(await summary("development"), ["org.gtkx.app.Devel", true, "org.gtkx.app"]);
+            assert.deepEqual(await summary("production"), ["org.gtkx.app", false, "org.gtkx.app"]);
+            assert.deepEqual(await summary("test"), ["org.gtkx.app", false, "org.gtkx.app"]);
+        `;
+        const result = spawnSync(process.execPath, ["--input-type=module", "-e", script], {
+            encoding: "utf8",
+            timeout: 30_000,
+        });
+        expect(result.stderr).toBe("");
+        expect(result.status).toBe(0);
     });
 
     it("loads named ESM exports and configuration metadata", () => {
@@ -188,12 +265,45 @@ describe("project configuration", () => {
         expect(result.stderr.match(/ignores graduated future flags/g)).toHaveLength(2);
     });
 
+    it("loads a configuration without an application ID only for a package that is not an application", async () => {
+        using directory = project();
+        const library = defineConfig({ libraries: ["Gio-2.0"], codegen: false });
+        writeFileSync(join(directory.path, "gtkx.config.ts"), `export default ${JSON.stringify(library)};`);
+        await expect(loadConfig(directory.path)).rejects.toThrow("is required to run, build or deploy an application");
+        expect(await loadConfig(directory.path, { defaultApplicationId: "org.gtkx.Library" })).toMatchObject({
+            isApplication: false,
+            translationDomain: "org.gtkx.Library",
+            config: { applicationId: "org.gtkx.Library", libraries: ["Gio-2.0"] },
+        });
+        using application = project();
+        writeFileSync(join(application.path, "gtkx.config.ts"), config());
+        expect(await loadConfig(application.path, { defaultApplicationId: "org.gtkx.Library" })).toMatchObject({
+            isApplication: true,
+            config: { applicationId: "org.gtkx.test" },
+        });
+    });
+
     it("rejects missing, invalid and out-of-project configurations", async () => {
         using directory = project();
         await expect(loadConfig(directory.path)).rejects.toThrow();
         writeFileSync(join(directory.path, "gtkx.config.ts"), config("invalid"));
         await expect(loadConfig(directory.path)).rejects.toThrow();
         await expect(loadConfig(directory.path, { configFile: "../elsewhere.ts" })).rejects.toThrow("inside");
+    });
+
+    it.each(["breaks", "preDepends"])("rejects RPM entries for the Debian-only %s relation", async (relation) => {
+        using directory = project();
+        writeFileSync(
+            join(directory.path, "gtkx.config.json"),
+            JSON.stringify({
+                applicationId: "org.gtkx.test",
+                codegen: false,
+                deploy: { relations: { [relation]: { deb: ["other"], rpm: ["other"] } } },
+            }),
+        );
+        await expect(loadConfig(directory.path)).rejects.toThrow(
+            new RegExp(`Unrecognized key: "rpm"[\\s\\S]*deploy\\.relations\\.${relation}`),
+        );
     });
 
     it("serves the resolved project configuration through Vite", async () => {
@@ -212,5 +322,49 @@ describe("project configuration", () => {
         } finally {
             await server.close();
         }
+    });
+
+    it("declares every documented configuration type exactly as its schema validates it", () => {
+        type Validated = z.infer<typeof configSchema>;
+        type Elements = NonNullable<Validated["elements"]>;
+        type ElementEntry = NonNullable<Elements["config"]>[string];
+        type Deploy = NonNullable<Validated["deploy"]>;
+        type Relations = NonNullable<Deploy["relations"]>;
+        type Signing = NonNullable<Deploy["signing"]>;
+        type Flatpak = NonNullable<Deploy["flatpak"]>;
+        type ExtraFile = Exclude<NonNullable<Deploy["extraFiles"]>[string], string>;
+        expectTypeOf<Config>().toEqualTypeOf<Validated>();
+        expectTypeOf<ReactCompilerOptions>().toEqualTypeOf<Exclude<NonNullable<Validated["reactCompiler"]>, boolean>>();
+        expectTypeOf<ElementsOptions>().toEqualTypeOf<Elements>();
+        expectTypeOf<ElementConfigOptions>().toEqualTypeOf<ElementEntry>();
+        expectTypeOf<ModuleExport>().toEqualTypeOf<NonNullable<ElementEntry["component"]>>();
+        expectTypeOf<ElementPropsExport>().toEqualTypeOf<NonNullable<ElementEntry["props"]>>();
+        expectTypeOf<AgentsOptions>().toEqualTypeOf<NonNullable<Validated["agents"]>>();
+        expectTypeOf<McpOptions>().toEqualTypeOf<NonNullable<Validated["mcp"]>>();
+        expectTypeOf<DeprecationsOptions>().toEqualTypeOf<NonNullable<Validated["deprecations"]>>();
+        expectTypeOf<DeployOptions>().toEqualTypeOf<Deploy>();
+        expectTypeOf<DeployPackageRelationOptions>().toEqualTypeOf<NonNullable<Deploy["depends"]>>();
+        expectTypeOf<DeployDebPackageRelationOptions>().toEqualTypeOf<NonNullable<Relations["breaks"]>>();
+        expectTypeOf<DeployRelationsOptions>().toEqualTypeOf<Relations>();
+        expectTypeOf<DeployDeveloperOptions>().toEqualTypeOf<NonNullable<Deploy["developer"]>>();
+        expectTypeOf<DeployScreenshotOptions>().toEqualTypeOf<NonNullable<Deploy["screenshots"]>[number]>();
+        expectTypeOf<DeployReleaseOptions>().toEqualTypeOf<NonNullable<Deploy["releases"]>[number]>();
+        expectTypeOf<DeployFileAssociationOptions>().toEqualTypeOf<NonNullable<Deploy["fileAssociations"]>[number]>();
+        expectTypeOf<DeployDesktopActionOptions>().toEqualTypeOf<NonNullable<Deploy["desktopActions"]>[string]>();
+        expectTypeOf<DeployBrandingOptions>().toEqualTypeOf<NonNullable<Deploy["branding"]>>();
+        expectTypeOf<DeployExtraFileOptions>().toEqualTypeOf<ExtraFile>();
+        expectTypeOf<DeployNodeOptions>().toEqualTypeOf<NonNullable<Deploy["node"]>>();
+        expectTypeOf<DeployScriptsOptions>().toEqualTypeOf<NonNullable<Deploy["scripts"]>>();
+        expectTypeOf<DeployToolsOptions>().toEqualTypeOf<NonNullable<Deploy["tools"]>>();
+        expectTypeOf<DeployDebOptions>().toEqualTypeOf<NonNullable<Deploy["deb"]>>();
+        expectTypeOf<DeployRpmOptions>().toEqualTypeOf<NonNullable<Deploy["rpm"]>>();
+        expectTypeOf<DeployAppImageOptions>().toEqualTypeOf<NonNullable<Deploy["appimage"]>>();
+        expectTypeOf<DeployFlatpakOptions>().toEqualTypeOf<Flatpak>();
+        expectTypeOf<DeployFlatpakSourceOptions>().toEqualTypeOf<NonNullable<Flatpak["source"]>>();
+        expectTypeOf<DeploySigningOptions>().toEqualTypeOf<Signing>();
+        expectTypeOf<DeployDebSigningOptions>().toEqualTypeOf<NonNullable<Signing["deb"]>>();
+        expectTypeOf<DeployRpmSigningOptions>().toEqualTypeOf<NonNullable<Signing["rpm"]>>();
+        expectTypeOf<DeployFlatpakSigningOptions>().toEqualTypeOf<NonNullable<Signing["flatpak"]>>();
+        expectTypeOf<DeployAppImageSigningOptions>().toEqualTypeOf<NonNullable<Signing["appimage"]>>();
     });
 });
