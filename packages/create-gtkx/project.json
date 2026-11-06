@@ -6,6 +6,22 @@
         "lint-oxlint": {
             "dependsOn": ["^build"]
         },
+        "_build:ranges": {
+            "cache": true,
+            "inputs": [
+                "{projectRoot}/scripts/**/*",
+                "{projectRoot}/package.json",
+                "{workspaceRoot}/packages/react/package.json",
+                "{workspaceRoot}/packages/testing/package.json",
+                "{workspaceRoot}/packages/cli/package.json",
+                "{workspaceRoot}/pnpm-workspace.yaml"
+            ],
+            "outputs": ["{projectRoot}/dependency-ranges.json"],
+            "command": "pnpm run _build:ranges",
+            "options": {
+                "cwd": "{projectRoot}"
+            }
+        },
         "_build:templates": {
             "cache": true,
             "inputs": ["{projectRoot}/src/templates/**/*"],
@@ -16,7 +32,10 @@
             }
         },
         "build": {
-            "dependsOn": ["^build", "_build:templates"]
+            "dependsOn": ["^build", "_build:ranges", "_build:templates"]
+        },
+        "test": {
+            "dependsOn": ["...", "_build:ranges"]
         },
         "typecheck": {
             "dependsOn": ["build", "^typecheck"]
