@@ -1,5 +1,5 @@
 import type { PositionalArgDef, StringArgDef } from "citty";
-import { statSync } from "node:fs";
+import { realpathSync, statSync } from "node:fs";
 import { extname, resolve } from "node:path";
 import { applicationArgsHint } from "./application-args.js";
 
@@ -33,7 +33,7 @@ const entryArg: { entry: PositionalArgDef; cwd: StringArgDef } = {
     ...cwdArg,
 };
 
-const resolveCwd = (args: { cwd?: string }): string => (args.cwd ? resolve(args.cwd) : process.cwd());
+const resolveCwd = (args: { cwd?: string }): string => (args.cwd ? realpathSync(args.cwd) : process.cwd());
 const isFile = (path: string): boolean => statSync(path, { throwIfNoEntry: false })?.isFile() === true;
 
 const missingDefaultEntryError = (cwd: string): Error =>
