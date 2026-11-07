@@ -105,6 +105,7 @@ const DEV_STAGING_PREFIX = "resources-dev";
 const MANIFEST_FILENAME = "package.json";
 const DATA_PREFIX = "#data/";
 const BUNDLED_QUERY_MENTION_RE = /[?&](?:icon|resource)(?:[=&]|$)/;
+const WEB_WORKER_QUERY_RE = /[?&](?:shared)?worker(?:&|$)/;
 /* TODO: Drop this query once Vite's Rolldown keeps the `custom` options of overlapping resolves apart. Until then a
  * resource stylesheet can lose RESOURCE_RESOLVE_OPTION and become an injected `gtkx:css` module, whose filter
  * excludes queried sources. https://github.com/rolldown/rolldown/issues/11180
@@ -692,6 +693,13 @@ const rejectInvalidSpecifier = (source: string): void => {
         throw new Error(
             `${JSON.stringify(source)} must choose ?resource for a GResource, ?icon for a themed icon, ` +
                 "?font for a bundled font, or ?url for an emitted file",
+        );
+    }
+
+    if (WEB_WORKER_QUERY_RE.test(source)) {
+        throw new Error(
+            `${JSON.stringify(source)} imports a web worker, which Node.js cannot run; start it with ` +
+                `new Worker(new URL(${JSON.stringify(stripQuery(source))}, import.meta.url)) from node:worker_threads`,
         );
     }
 };
