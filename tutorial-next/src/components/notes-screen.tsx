@@ -3,7 +3,17 @@ import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
 import { useTranslation } from "@gtkx/i18n";
 import { AdwSpinner, AdwStatusPage } from "@gtkx/jsx/adw";
-import { GtkBox, GtkButton, GtkLabel, GtkScrolledWindow, GtkSearchEntry } from "@gtkx/jsx/gtk";
+import {
+    GtkBox,
+    GtkButton,
+    GtkCallbackAction,
+    GtkLabel,
+    GtkScrolledWindow,
+    GtkSearchEntry,
+    GtkShortcut,
+    GtkShortcutController,
+    GtkShortcutTrigger,
+} from "@gtkx/jsx/gtk";
 import type { SplitViewScreenProps } from "@gtkx/navigation";
 import { useState } from "react";
 import { type RootParamList, useOpenNoteName } from "../navigation.js";
@@ -42,12 +52,25 @@ const NoteRow = ({ note }: { note: Note }) => (
     </GtkBox>
 );
 
+const FocusShortcut = ({ target }: { target: Gtk.Widget | null }) => (
+    <GtkShortcutController
+        scope={Gtk.ShortcutScope.GLOBAL}
+        shortcuts={
+            <GtkShortcut
+                trigger={<GtkShortcutTrigger accelerator="<Control>f" />}
+                action={<GtkCallbackAction callback={() => target?.grabFocus() ?? false} />}
+            />
+        }
+    />
+);
+
 const NotesScreen = ({ navigation }: SplitViewScreenProps<RootParamList, "Notes">) => {
     const { t } = useTranslation();
     const { notes } = useNotes();
     const openName = useOpenNoteName();
     const [query, setQuery] = useState("");
     const [selectedTag, setSelectedTag] = useState(ALL_NOTES);
+    const [searchEntry, setSearchEntry] = useState<Gtk.SearchEntry | null>(null);
     const matches = useNoteSearch(notes, query.trim());
 
     if (notes === null) {
@@ -80,7 +103,7 @@ const NotesScreen = ({ navigation }: SplitViewScreenProps<RootParamList, "Notes"
         .sort((a, b) => b.modified - a.modified);
 
     return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} controllers={<FocusShortcut target={searchEntry} />}>
             <GtkBox
                 orientation={Gtk.Orientation.VERTICAL}
                 spacing={6}
@@ -90,6 +113,7 @@ const NotesScreen = ({ navigation }: SplitViewScreenProps<RootParamList, "Notes"
                 marginEnd={6}
             >
                 <GtkSearchEntry
+                    ref={setSearchEntry}
                     accessibleLabel={t("Search Notes")}
                     placeholderText={t("Search notes")}
                     text={query}

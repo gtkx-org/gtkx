@@ -10,6 +10,7 @@ const Shortcuts = ({ onClose }: { onClose: () => void }) => (
             <AdwShortcutsItem title={t("Quit")} accelerator="<Control>q" />
         </AdwShortcutsSection>
         <AdwShortcutsSection title={t("Notes")}>
+            <AdwShortcutsItem title={t("Search notes")} accelerator="<Control>f" />
             <AdwShortcutsItem title={t("Rename note")} accelerator="F2" />
             <AdwShortcutsItem title={t("Show preview")} accelerator="<Control><Shift>p" />
         </AdwShortcutsSection>

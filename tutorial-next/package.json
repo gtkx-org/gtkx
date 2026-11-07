@@ -22,6 +22,7 @@
         "@gtkx/i18n": "^2.0.0-beta.12",
         "@gtkx/navigation": "^2.0.0-beta.12",
         "@gtkx/react": "^2.0.0-beta.12",
+        "@gtkx/runtime": "^2.0.0-beta.12",
         "@react-navigation/core": "^7.24.0",
         "mdast-util-from-markdown": "^2.1.0",
         "minisearch": "^7.2.0",

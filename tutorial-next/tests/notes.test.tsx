@@ -29,6 +29,12 @@ const editorText = (view: Gtk.TextView): string => {
     return buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false);
 };
 
+const typeEachKey = async (view: Gtk.TextView, text: string): Promise<void> => {
+    for (const key of text) {
+        await userEvent.type(view, key);
+    }
+};
+
 describe("Notes", () => {
     it("lists the Markdown files in the folder, newest first", async () => {
         await render(<App />, { container: rootElement });
@@ -186,6 +192,21 @@ describe("Notes", () => {
         expect(await screen.findByRole(Gtk.AccessibleRole.HEADING, { name: "Groceries" })).toBeVisible();
     });
 
+    it("completes a link to another note after [[", async () => {
+        await render(<App />, { container: rootElement });
+
+        const editor = await openNote("Groceries");
+        await typeEachKey(editor, "[[read");
+        await userEvent.click(await within(editor).findByText("Reading list"));
+
+        expect(editorText(editor)).toMatch(/\[Reading list\]\(<Reading list\.md>\)$/);
+        await waitFor(() => {
+            expect(readFileSync(join(notesFolder(), "Groceries.md"), "utf8")).toContain(
+                "[Reading list](<Reading list.md>)",
+            );
+        });
+    });
+
     it("shows each note's first paragraph as plain text", async () => {
         await render(<App />, { container: rootElement });
 
@@ -231,6 +252,15 @@ describe("Notes", () => {
             expect(screen.queryByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Reading list" })).toBeNull();
         });
         expect(screen.getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Groceries" })).toBeDefined();
+    });
+
+    it("focuses the search entry on Ctrl+F", async () => {
+        await render(<App />, { container: rootElement });
+
+        const editor = await openNote("Groceries");
+        await userEvent.keyboard(editor, "{Control>}f{/Control}");
+
+        expect(screen.getByRole(Gtk.AccessibleRole.SEARCH_BOX, { name: "Search Notes" })).toHaveFocus();
     });
 
     it("says when a note can't be saved", async () => {
