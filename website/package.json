@@ -20,6 +20,7 @@
         "@gtkx/css": "workspace:*",
         "@gtkx/i18n": "workspace:*",
         "@gtkx/navigation": "workspace:*",
+        "@gtkx/storybook": "workspace:*",
         "@gtkx/testing": "workspace:*",
         "@react-navigation/core": "^7.24.0",
         "@types/mdast": "^4.0.4",

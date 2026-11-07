@@ -1231,6 +1231,9 @@ importers:
       '@gtkx/navigation':
         specifier: workspace:*
         version: link:../packages/navigation
+      '@gtkx/storybook':
+        specifier: workspace:*
+        version: link:../packages/storybook
       '@gtkx/testing':
         specifier: workspace:*
         version: link:../packages/testing

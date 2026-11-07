@@ -5,7 +5,8 @@ import { AdwApplication, AdwApplicationWindow, AdwHeaderBar, AdwToolbarView } fr
 import { GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { NavigationContainer } from "@gtkx/navigation";
 import { rootElement } from "@gtkx/react";
-import { render, screen, userEvent, waitFor, within } from "@gtkx/testing";
+import { StoryCatalog, Storybook } from "@gtkx/storybook/explorer";
+import { act, render, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -35,9 +36,12 @@ import { App as ActionsMenusShortcuts } from "./tutorial/actions-menus-shortcuts
 import { App as TrashAndToasts } from "./tutorial/trash-and-toasts/src/app.js";
 import { App as PreferencesAndTheming } from "./tutorial/preferences-and-theming/src/app.js";
 import { App as NoteLinks } from "./tutorial/note-links/src/app.js";
+import * as previewStories from "./tutorial/storybook/src/preview/markdown-preview.stories.js";
 import { defaultFolder } from "./tutorial/the-notes-folder/src/notes/files.js";
 import { App as FirstWindow } from "./tutorial/your-first-window/src/app.js";
 import { Mail as TabMail } from "./guide/navigation-tabs.js";
+
+const storyCatalog = new StoryCatalog();
 
 const outputDir = fileURLToPath(new URL("../public/figures/", import.meta.url));
 
@@ -277,6 +281,30 @@ const figures: [name: string, element: ReactNode, options?: FigureOptions][] = [
                 const editor = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { name: "Note text" });
                 await userEvent.type(editor, "[[");
                 await within(editor).findByText("Trip to Lisbon");
+            },
+        },
+    ],
+    [
+        "tutorial-storybook",
+        <Storybook
+            catalog={storyCatalog}
+            applicationId="dev.gtkx.Notes.Storybook"
+            initialStoryId="preview-markdown--formatting"
+        />,
+        {
+            prepare: async () => {
+                await act(() =>
+                    storyCatalog.load([
+                        {
+                            id: "src/preview/markdown-preview.stories.tsx",
+                            title: "src/preview/markdown-preview",
+                            load: () => Promise.resolve(previewStories),
+                        },
+                    ]),
+                );
+                const window = Gtk.Window.listToplevels().find((widget) => widget instanceof Adw.ApplicationWindow);
+                window?.setDefaultSize(880, 540);
+                await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Formatting" });
             },
         },
     ],
