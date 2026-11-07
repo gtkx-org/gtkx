@@ -176,7 +176,7 @@ const SplitView = (props: SplitViewProps): ReactNode => {
                                 describe={describe}
                             />
                         ) : (
-                            <AdwToolbarView topBar={<AdwHeaderBar showTitle={false} />}>
+                            <AdwToolbarView top={<AdwHeaderBar showTitle={false} />}>
                                 {contentPlaceholder}
                             </AdwToolbarView>
                         )}
