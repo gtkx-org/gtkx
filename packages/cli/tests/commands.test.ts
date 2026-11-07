@@ -871,7 +871,7 @@ describe("CLI commands", () => {
         }
     });
 
-    it("runs workers with asset imports in development, tests and production and restarts for their edits", async () => {
+    it("runs workers with asset imports in development, tests and production, restarts for their edits and rejects web worker imports", async () => {
         using project = createProject();
         using shared = mkdtempDisposableSync(join(tmpdir(), "gtkx-cli-shared-"));
         const readyPath = join(project.root, "worker.json");
@@ -974,6 +974,11 @@ describe("CLI commands", () => {
         expect(result().inline).toBe("data:text/plain;base64,d29ya2VyIGFzc2V0");
         expect(result().label).toBe("shared");
         expect(result().path).toMatch(new RegExp(`^${RegExp.escape(join(project.root, "dist"))}/`));
+
+        for (const query of ["worker", "sharedworker"]) {
+            project.write("src/index.ts", `import ReadWorker from "./workers/read.ts?${query}";\nnew ReadWorker();`);
+            await expect(invoke(["build", "--cwd", project.root])).rejects.toThrow();
+        }
     });
 
     it("refreshes component state and restarts for import and bundled asset changes", async () => {
