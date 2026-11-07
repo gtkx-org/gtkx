@@ -35,7 +35,7 @@ Yarn's gate does not apply to `npx`.
 
 Use ESM `import` and `export` in application code, configuration files, and their local helpers. Convert `.cjs` and `.cts` files to ESM. Configuration runs through Node's native loader, so TypeScript configuration must use erasable syntax. Storybook main configuration uses `.ts`, `.mts`, `.js`, or `.mjs`; keep JSX in previews and stories. External CommonJS dependencies remain supported through ESM imports.
 
-Stop running apps and dev sessions before the first `gtkx codegen --force` after upgrading. Codegen replaces older generated-store layouts with a new snapshot. GI-only generation removes obsolete JSX bindings owned by the project; installing React again regenerates them.
+Stop running apps and dev sessions before the first [`gtkx codegen --force`](/v2/guide/cli#gtkx-codegen) after upgrading. Codegen replaces older generated-store layouts with a new snapshot. GI-only generation removes obsolete JSX bindings owned by the project; installing React again regenerates them.
 
 ## Clean up the configuration
 

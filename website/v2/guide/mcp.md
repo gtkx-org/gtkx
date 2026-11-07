@@ -33,7 +33,7 @@ From the project root, register the server with your client:
 npx gtkx mcp init --client claude
 ```
 
-The command supports `claude`, `cursor`, `vscode`, `opencode`, and `codex`. It preserves other server entries and the file's indentation, and replaces an older `gtkx` entry. A JSON file with comments is left unchanged, and the command prints the entry to add to it. A scaffolded project already includes the Claude configuration.
+[`--client`](/v2/guide/cli#gtkx-mcp-init) accepts `claude`, `cursor`, `vscode`, `opencode`, and `codex`. It preserves other server entries and the file's indentation, and replaces an older `gtkx` entry. A JSON file with comments is left unchanged, and the command prints the entry to add to it. A scaffolded project already includes the Claude configuration.
 
 For Codex, the command writes a `[mcp_servers.gtkx]` table to the project's `.codex/config.toml`. Codex reads that file from the directory it starts in and every parent up to the Git root, but only in a project you trust: answer yes to Codex's trust prompt, which records `trust_level = "trusted"` for the project in `~/.codex/config.toml`. When the file already declares `gtkx` in another form, such as an inline table, a sub-table or a multi-line value, the command leaves the file unchanged and prints the table to use instead.
 
@@ -47,7 +47,7 @@ npx gtkx dev
 
 The app connects automatically, and either side can start first. The connection is available during development; production builds exclude it.
 
-For a session without a display, run `npx gtkx dev --headless`. Use Ctrl+C to stop the session. See [headless development](/v2/guide/testing#headless-development) for display options.
+For a session without a display, run [`npx gtkx dev --headless`](/v2/guide/cli#gtkx-dev). Use Ctrl+C to stop the session. See [headless development](/v2/guide/testing#headless-development) for display options.
 
 ## Inspect and verify changes
 
@@ -104,7 +104,7 @@ export default defineConfig({
 
 `*` matches any text, and a leading `!` removes matches. A list containing only exclusions starts with all tools. Otherwise, patterns add and remove tools in order, starting with none.
 
-Command-line flags override the project settings for one client:
+[Command-line options](/v2/guide/cli#gtkx-mcp) override the project settings for one client:
 
 ```bash
 npx --no gtkx mcp --read-only --tools "gtkx_*_api,gtkx_get_widget_tree"

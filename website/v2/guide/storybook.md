@@ -25,7 +25,7 @@ export default defineConfig({
 });
 ```
 
-Patterns are relative to the GTKX project root. Your `gtkx.config.ts` still defines the application settings and additional GIR libraries. [Asset imports](/v2/guide/assets) work as they do in the application. Start the explorer with `npx gtkx storybook`; add `--headless --size 1280x900` when you need a private display.
+Patterns are relative to the GTKX project root. Your `gtkx.config.ts` still defines the application settings and additional GIR libraries. [Asset imports](/v2/guide/assets) work as they do in the application. Start the explorer with `npx gtkx storybook`; add [`--headless --size 1280x900`](/v2/guide/cli#gtkx-storybook) when you need a private display.
 
 ### Stories from a shared package
 

@@ -11,7 +11,7 @@ GTKX packages are released together under one version. To move a project to the 
 npx gtkx upgrade
 ```
 
-Pass a version or dist-tag to choose one, as in `npx gtkx upgrade 2.0.1`, and `--cwd <dir>` to upgrade a project outside the current directory. To move a 1.x project to 2.0, follow [Upgrading to 2.0](/v2/guide/upgrading-to-2) instead.
+Pass a version or dist-tag to choose one, as in `npx gtkx upgrade 2.0.1`, and [`--cwd <dir>`](/v2/guide/cli#gtkx-upgrade) to upgrade a project outside the current directory. To move a 1.x project to 2.0, follow [Upgrading to 2.0](/v2/guide/upgrading-to-2) instead.
 
 ## What the command changes
 

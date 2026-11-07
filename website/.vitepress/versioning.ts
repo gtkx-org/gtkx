@@ -51,6 +51,7 @@ const guideGroups: DocumentationGroup[] = [
             { text: "Scaffold Options", path: "guide/scaffold-options" },
             { text: "Configuration and Codegen", path: "guide/configuration-and-codegen" },
             { text: "Workspaces", path: "guide/workspaces" },
+            { text: "CLI", path: "guide/cli" },
         ],
     },
     {

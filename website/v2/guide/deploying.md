@@ -53,14 +53,14 @@ since the app bundles them itself. Keep development icons in a separate director
 | `rpm`      | `.rpm`                                 | Fedora and other RPM distributions           |
 | `appimage` | `.AppImage`                            | A downloadable executable file               |
 
-Flatpak is the default. Set `deploy.targets` for the project's usual formats, or override them for one run:
+Flatpak is the default. Set `deploy.targets` for the project's usual formats, or override them for one run with [`--target`](/v2/guide/cli#gtkx-deploy):
 
 ```bash
 gtkx deploy --target deb,rpm
 ```
 
 Packages are written to `build/out`. Manifests and staged files are under `build/<arch>/`. `deploy.outDir: "packages"`
-or `gtkx deploy --out packages` changes this deployment directory to `packages`, with finished artifacts in `packages/out`.
+or [`gtkx deploy --out packages`](/v2/guide/cli#gtkx-deploy) changes this deployment directory to `packages`, with finished artifacts in `packages/out`.
 
 ### Build tools
 
@@ -93,7 +93,7 @@ GTKX validates the desktop entry and AppStream metadata. AppStream errors and un
 target. Other AppStream warnings are fatal when source-mode Flatpak is selected, including previews.
 Prebuilt Flatpak, Debian, RPM, and AppImage deployments report them and continue.
 
-Remove `--print-manifests` to build the package:
+Remove [`--print-manifests`](/v2/guide/cli#gtkx-deploy) to build the package:
 
 ```bash
 npm run deploy -- --target rpm
@@ -108,7 +108,7 @@ gtkx build
 gtkx deploy --skip-build
 ```
 
-`--skip-build` always reads `dist/`, regardless of the deployment's `--out` directory. Keep
+[`--skip-build`](/v2/guide/cli#gtkx-deploy) always reads `dist/`, regardless of the deployment's `--out` directory. Keep
 `dist/gtkx-schemas.json` beside the bundle: it records the build's entry, configuration, imported schemas, and
 dependency notices. Deployment rejects a build of another entry, such as a helper built without `--out`, a
 different production configuration, or an older metadata format; rebuild to update it. Changes to the `deploy`
@@ -119,7 +119,7 @@ directory below the project root, outside `dist/`; symlinked output paths and un
 
 ### Architectures
 
-Deployment uses the host architecture unless `deploy.architectures` or `--arch` selects `x64`, `arm64`, or both:
+Deployment uses the host architecture unless `deploy.architectures` or [`--arch`](/v2/guide/cli#gtkx-deploy) selects `x64`, `arm64`, or both:
 
 ```bash
 gtkx deploy --target deb,rpm --arch x64,arm64

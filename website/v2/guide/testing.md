@@ -90,13 +90,13 @@ beforeEach(() => {
 
 ### Headless development
 
-`gtkx dev --headless` runs the app in the same environment as a test worker, with its own display, session bus and in-memory settings, so settings changed in the session are gone when it stops. `--size` sets the display size, which defaults to `1024x768`:
+[`gtkx dev --headless`](/v2/guide/cli#gtkx-dev) runs the app in the same environment as a test worker, with its own display, session bus and in-memory settings, so settings changed in the session are gone when it stops. `--size` sets the display size, which defaults to `1024x768`:
 
 ```bash
 gtkx dev --headless --size 1280x720
 ```
 
-Use Ctrl+C to stop the session and release its display. Later development or test runs reclaim sessions left by interrupted runs; `gtkx cleanup --dry-run` lists them and `gtkx cleanup` removes them.
+Use Ctrl+C to stop the session and release its display. Later development or test runs reclaim sessions left by interrupted runs; [`gtkx cleanup --dry-run`](/v2/guide/cli#gtkx-cleanup) lists them and `gtkx cleanup` removes them.
 
 ### Sway in a restricted container
 

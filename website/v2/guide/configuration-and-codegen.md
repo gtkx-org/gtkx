@@ -48,14 +48,14 @@ For shared configuration, `mergeConfig(base, override)` applies the override ove
 
 ### Selecting another configuration
 
-`gtkx dev`, `gtkx codegen`, `gtkx build`, `gtkx deploy` and `gtkx storybook` accept `--config`:
+`gtkx dev`, `gtkx codegen`, `gtkx build`, `gtkx deploy` and `gtkx storybook` accept [`--config`](/v2/guide/cli#gtkx-dev):
 
 ```bash
 gtkx dev --config gtkx.enterprise.config.ts
 gtkx build --config gtkx.enterprise.config.ts
 ```
 
-The path is relative to the project root selected by `--cwd` and must stay inside it. For tests, pass the same path as `gtkx({ configFile: "gtkx.enterprise.config.ts" })` in `vitest.config.ts`.
+The path is relative to the project root selected by [`--cwd`](/v2/guide/cli#gtkx-dev) and must stay inside it. For tests, pass the same path as `gtkx({ configFile: "gtkx.enterprise.config.ts" })` in `vitest.config.ts`.
 
 Builds use the selected configuration throughout generation and bundling. `gtkx deploy --skip-build --config ...` rejects a bundle created with another config file or different production settings.
 
@@ -105,9 +105,9 @@ import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
 
 Both packages use namespace subpaths; neither has a bare root import. Use [`@gtkx/cairo`](/v2/guide/cairo) for Cairo.
 
-Leave generation enabled for an ordinary application. `codegen: false` is for projects that reuse an installed binding store. If a generated store needs rebuilding, run `gtkx codegen --force` in the project that generates it.
+Leave generation enabled for an ordinary application. `codegen: false` is for projects that reuse an installed binding store. If a generated store needs rebuilding, run [`gtkx codegen --force`](/v2/guide/cli#gtkx-codegen) in the project that generates it.
 
-Concurrent generation waits up to ten minutes for each binding-store lock. Use `gtkx codegen --lock-timeout 900000` to change that wait in milliseconds, or pass `lockTimeoutMs` to the `@gtkx/codegen` `runCodegen` API.
+Concurrent generation waits up to ten minutes for each binding-store lock. Use [`gtkx codegen --lock-timeout 900000`](/v2/guide/cli#gtkx-codegen) to change that wait in milliseconds, or pass `lockTimeoutMs` to the `@gtkx/codegen` `runCodegen` API.
 
 ### Library initialization
 
@@ -180,7 +180,7 @@ For most `GValue` inputs, pass a JavaScript value directly. See [Native Values](
 gtkx docs
 ```
 
-`--out` chooses another directory and `--base-path` the URL root of the links between pages. The pages describe the project's configured libraries and element props, including props imported through `elements.config`. Rerun the command after changing those inputs. The [MCP](/v2/guide/mcp) reference tools read the current configuration and need no rerun.
+[`--out`](/v2/guide/cli#gtkx-docs) chooses another directory and [`--base-path`](/v2/guide/cli#gtkx-docs) the URL root of the links between pages. The pages describe the project's configured libraries and element props, including props imported through `elements.config`. Rerun the command after changing those inputs. The [MCP](/v2/guide/mcp) reference tools read the current configuration and need no rerun.
 
 ## What agents are given
 

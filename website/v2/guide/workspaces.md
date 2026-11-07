@@ -20,7 +20,7 @@ Apps that resolve the same directory share one set of bindings, generated for th
 - a version of a GIR namespace, such as `Soup-2.4` and `Soup-3.0`
 - the copies of `@gtkx/runtime`, `@gtkx/cairo`, `@gtkx/react`, `react` or `@types/react` they resolve
 
-Keep these aligned across the workspace, for example with a [pnpm catalog](https://pnpm.io/catalogs). After changing `girPath` or `elements` in every app, run `gtkx codegen --force` in one of them; the others share its bindings again the next time they generate theirs.
+Keep these aligned across the workspace, for example with a [pnpm catalog](https://pnpm.io/catalogs). After changing `girPath` or `elements` in every app, run [`gtkx codegen --force`](/v2/guide/cli#gtkx-codegen) in one of them; the others share its bindings again the next time they generate theirs.
 
 Each app still imports only the libraries it declares and their dependencies, which are also what `gtkx deploy` requires of the installed system. Codegen gives an app that shares bindings its own `@gtkx/gi` and `@gtkx/jsx` packages, which expose those namespaces and link them to the shared bindings. They live in the app's `node_modules/.gtkx`, as a single project's bindings do, so the scaffold's `tsconfig.json` paths and editors keep finding them after any package install. An app at the workspace root, where the bindings are written, sees every namespace.
 
