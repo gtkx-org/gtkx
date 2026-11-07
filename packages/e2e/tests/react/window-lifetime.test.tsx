@@ -1,5 +1,9 @@
+import * as Adw from "@gtkx/gi/adw";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
+import { getHandle, t } from "@gtkx/runtime";
+import { isNativeHandleAlive, type NativeHandle, resolveFunction } from "@gtkx/runtime/internal";
+import { waitFor } from "@gtkx/testing";
 import { expect, it } from "vitest";
 
 type DefaultWrite = (window: Gtk.Window, widget: Gtk.Widget | null) => void;
@@ -51,6 +55,56 @@ async function collectUntilReleased(...references: WeakRef<object>[]): Promise<v
     }
 }
 
+const setDataFull = t.bind(
+    "libgobject-2.0.so.0",
+    "g_object_set_data_full",
+    [t.object(), t.string(), t.object("full"), t.buffer],
+    t.void,
+);
+const unref = resolveFunction("libgobject-2.0.so.0", "g_object_unref");
+
+function finalizationWitness(object: GObject.Object): NativeHandle {
+    const witness = getHandle(new GObject.Object());
+    setDataFull(getHandle(object), "gtkx-test-finalization-witness", witness, unref);
+
+    return witness;
+}
+
+async function closeAfterFocusedBreakpoint(): Promise<{
+    binWitness: NativeHandle;
+    focusedWitness: NativeHandle;
+    focused: WeakRef<Gtk.Button>;
+    retained: Set<Gtk.Button>;
+    released: WeakRef<object>[];
+}> {
+    const focused = new Gtk.Button({ label: "Focused" });
+    const breakpoint = new Adw.Breakpoint({ condition: Adw.BreakpointCondition.parse("max-width: 1px") });
+    const window = new Adw.Window({ content: focused, defaultWidth: 400, defaultHeight: 300 });
+    window.addBreakpoint(breakpoint);
+    window.present();
+    await waitFor(() => {
+        expect(focused.getWidth()).toBeGreaterThan(0);
+    });
+
+    focused.grabFocus();
+    breakpoint.setCondition(Adw.BreakpointCondition.parse("max-width: 10000px"));
+    await waitFor(() => {
+        expect(window.getCurrentBreakpoint()).toBe(breakpoint);
+    });
+
+    const bin = focused.getParent();
+    expect(bin).toBeInstanceOf(Adw.BreakpointBin);
+    window.destroy();
+
+    return {
+        binWitness: finalizationWitness(bin as GObject.Object),
+        focusedWitness: finalizationWitness(focused),
+        focused: new WeakRef(focused),
+        retained: new Set([focused]),
+        released: [new WeakRef(window), new WeakRef(bin as object)],
+    };
+}
+
 function setDefault(window: Gtk.Window, write: DefaultWrite, label: string): WeakRef<Gtk.Button> {
     const widget = new Gtk.Button({ label });
     write(window, widget);
@@ -100,4 +154,20 @@ it("collects a destroyed window and a default widget that refers back to it", as
 
     expect(references.window.deref()).toBeUndefined();
     expect(references.widget.deref()).toBeUndefined();
+});
+
+it("keeps a breakpoint bin allocated until the widget focused across its breakpoint is finalized", async () => {
+    const { binWitness, focusedWitness, focused, retained, released } = await closeAfterFocusedBreakpoint();
+    await collectUntilReleased(...released);
+    await collect(5);
+
+    expect(released.map((reference) => reference.deref())).toEqual([undefined, undefined]);
+    expect(isNativeHandleAlive(binWitness)).toBe(true);
+
+    retained.clear();
+    await collectUntilReleased(focused);
+    await collect(5);
+
+    expect(isNativeHandleAlive(focusedWitness)).toBe(false);
+    expect(isNativeHandleAlive(binWitness)).toBe(false);
 });
