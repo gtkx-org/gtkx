@@ -2,7 +2,7 @@ import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { rootElement } from "@gtkx/react";
 import * as Adw from "@gtkx/gi/adw";
-import { render, screen, userEvent, waitFor, within } from "@gtkx/testing";
+import { act, render, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import {
     chmodSync,
     existsSync,
@@ -301,7 +301,9 @@ describe("Notes", () => {
                 name: "Preferences",
             }),
         );
-        Gio.Settings.new(schema.id).setString("folder", otherFolder);
+        await act(() => {
+            Gio.Settings.new(schema.id).setString("folder", otherFolder);
+        });
 
         const ideas = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, {
             name: "Ideas",
