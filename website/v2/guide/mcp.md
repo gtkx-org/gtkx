@@ -47,7 +47,7 @@ npx gtkx dev
 
 The app connects automatically, and either side can start first. The connection is available during development; production builds exclude it.
 
-For a session without a display, run `npx gtkx dev --headless`. Use Ctrl+C to stop the session. See [headless development](/v2/guide/testing#setup) for display options.
+For a session without a display, run `npx gtkx dev --headless`. Use Ctrl+C to stop the session. See [headless development](/v2/guide/testing#headless-development) for display options.
 
 ## Inspect and verify changes
 
