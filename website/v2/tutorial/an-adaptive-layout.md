@@ -58,6 +58,13 @@ When the content stack is empty, `useSelection` returns `null`. The sidebar's `l
 ## Run it
 
 1. Narrow the window past the `500sp` threshold. The task list appears alone with a back arrow because `initialRouteName="Tasks"` opens it at startup.
+
+   <figure class="result">
+       <img class="result-light" src="/figures/tutorial-an-adaptive-layout-light.png" width="360" height="294" loading="lazy" alt="The Tasks window at its 360-pixel minimum width shows only the task list: a back arrow and the title Personal in the header bar, then the Add a task… entry and the rows Welcome to Tasks and Water the plants." />
+       <img class="result-dark" src="/figures/tutorial-an-adaptive-layout-dark.png" width="360" height="294" loading="lazy" alt="The Tasks window at its 360-pixel minimum width shows only the task list: a back arrow and the title Personal in the header bar, then the Add a task… entry and the rows Welcome to Tasks and Water the plants." />
+       <figcaption>Captured from <a href="#collapse-below-a-breakpoint"><code>src/components/window.tsx</code></a> at the minimum width.</figcaption>
+   </figure>
+
 2. Go back to the sidebar. Select a list, then try the back arrow, <kbd>Escape</kbd>, <kbd>Alt</kbd> + <kbd>Left</kbd>, or a touchpad back gesture.
 3. Return to the sidebar and widen the window. No row is selected, and the content pane shows **Nothing Selected**. Select a list to restore its tasks.
 4. Enable Large Text in the desktop accessibility settings and resize again. The panes should collapse at a wider window size. Restore your preferred text size afterward.

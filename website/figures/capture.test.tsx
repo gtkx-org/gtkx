@@ -1,9 +1,10 @@
 import * as Adw from "@gtkx/gi/adw";
+import * as Gtk from "@gtkx/gi/gtk";
 import { AdwApplication, AdwApplicationWindow, AdwHeaderBar, AdwToolbarView } from "@gtkx/jsx/adw";
 import { GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { NavigationContainer } from "@gtkx/navigation";
 import { rootElement } from "@gtkx/react";
-import { render, screen } from "@gtkx/testing";
+import { render, screen, waitFor } from "@gtkx/testing";
 import { fileURLToPath } from "node:url";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
@@ -23,6 +24,7 @@ import { App as ListOfTasks } from "./tutorial/a-list-of-tasks/src/app.js";
 import { App as TaskStore } from "./tutorial/the-task-store/src/app.js";
 import { App as CompletingAndDeleting } from "./tutorial/completing-and-deleting/src/app.js";
 import { App as ListsAndTheSidebar } from "./tutorial/lists-and-the-sidebar/src/app.js";
+import { App as AnAdaptiveLayout } from "./tutorial/an-adaptive-layout/src/app.js";
 import { App as FirstWindow } from "./tutorial/your-first-window.js";
 
 const outputDir = fileURLToPath(new URL("../public/figures/", import.meta.url));
@@ -74,12 +76,27 @@ function NavigationWindow({
     );
 }
 
-const figures: [name: string, element: ReactNode][] = [
+async function narrowWindow(): Promise<void> {
+    const window = screen.getByText("Welcome to Tasks").getRoot();
+
+    if (!(window instanceof Gtk.Window)) {
+        throw new Error("the task list has no window");
+    }
+
+    window.setDefaultSize(360, 294);
+    await waitFor(() => {
+        expect(window.getWidth()).toBe(360);
+        expect(screen.queryByText("Shopping")).toBeNull();
+    });
+}
+
+const figures: [name: string, element: ReactNode, prepare?: () => Promise<void>][] = [
     ["tutorial-your-first-window", <FirstWindow />],
     ["tutorial-a-list-of-tasks", <ListOfTasks />],
     ["tutorial-the-task-store", <TaskStore />],
     ["tutorial-completing-and-deleting", <CompletingAndDeleting />],
     ["tutorial-lists-and-the-sidebar", <ListsAndTheSidebar />],
+    ["tutorial-an-adaptive-layout", <AnAdaptiveLayout />, narrowWindow],
     [
         "guide-components-list-view",
         <SampleWindow title="ListView">
@@ -154,14 +171,15 @@ const figures: [name: string, element: ReactNode][] = [
     ],
 ];
 
-const captures = figures.flatMap(([name, element]) =>
-    schemes.map(([scheme, colorScheme]) => ({ file: `${name}-${scheme}.png`, element, colorScheme })),
+const captures = figures.flatMap(([name, element, prepare]) =>
+    schemes.map(([scheme, colorScheme]) => ({ file: `${name}-${scheme}.png`, element, prepare, colorScheme })),
 );
 
 describe("documentation figures", () => {
-    it.each(captures)("captures $file", async ({ file, element, colorScheme }) => {
+    it.each(captures)("captures $file", async ({ file, element, prepare, colorScheme }) => {
         Adw.StyleManager.getDefault().setColorScheme(colorScheme);
         await render(element, { container: rootElement });
+        await prepare?.();
         expect(Adw.StyleManager.getDefault().getDark()).toBe(colorScheme === Adw.ColorScheme.FORCE_DARK);
         await screen.screenshot({ scale: 2, path: `${outputDir}${file}` });
     });
