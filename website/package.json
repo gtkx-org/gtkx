@@ -24,6 +24,7 @@
         "@react-navigation/core": "^7.24.0",
         "@types/mdast": "^4.0.4",
         "mdast-util-from-markdown": "^2.1.0",
+        "minisearch": "^7.2.0",
         "shiki": "^4.6.0",
         "typedoc": "^0.28.20",
         "typedoc-plugin-markdown": "^4.14.1",

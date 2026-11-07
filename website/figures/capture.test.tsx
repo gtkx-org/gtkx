@@ -4,7 +4,7 @@ import { AdwApplication, AdwApplicationWindow, AdwHeaderBar, AdwToolbarView } fr
 import { GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { NavigationContainer } from "@gtkx/navigation";
 import { rootElement } from "@gtkx/react";
-import { render, screen, userEvent, within } from "@gtkx/testing";
+import { render, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -28,6 +28,7 @@ import { App as SavingAndWatching } from "./tutorial/saving-and-watching/src/app
 import { App as MarkdownPreview } from "./tutorial/the-markdown-preview/src/app.js";
 import { App as FastRefresh } from "./tutorial/fast-refresh/src/app.js";
 import { App as AdaptiveLayout } from "./tutorial/an-adaptive-layout/src/app.js";
+import { App as SearchInAWorker } from "./tutorial/search-in-a-worker/src/app.js";
 import { defaultFolder } from "./tutorial/the-notes-folder/src/notes/files.js";
 import { App as FirstWindow } from "./tutorial/your-first-window/src/app.js";
 import { Mail as TabMail } from "./guide/navigation-tabs.js";
@@ -167,6 +168,23 @@ const figures: [name: string, element: ReactNode, options?: FigureOptions][] = [
                 );
                 await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Back" });
                 await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { name: "Note text" });
+            },
+        },
+    ],
+    [
+        "tutorial-search-in-a-worker",
+        <SearchInAWorker />,
+        {
+            before: () => seedNotes(defaultFolder()),
+            prepare: async () => {
+                await userEvent.type(
+                    await screen.findByRole(Gtk.AccessibleRole.SEARCH_BOX, { name: "Search Notes" }),
+                    "kickoff",
+                );
+                await waitFor(() => {
+                    expect(screen.queryByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Recipes" })).toBeNull();
+                });
+                expect(screen.getAllByRole(Gtk.AccessibleRole.LIST_ITEM)).toHaveLength(2);
             },
         },
     ],

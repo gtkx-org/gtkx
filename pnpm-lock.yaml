@@ -1243,6 +1243,9 @@ importers:
       mdast-util-from-markdown:
         specifier: ^2.1.0
         version: 2.1.0(supports-color@7.2.0)
+      minisearch:
+        specifier: ^7.2.0
+        version: 7.2.0
       shiki:
         specifier: ^4.6.0
         version: 4.6.0
