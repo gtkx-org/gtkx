@@ -45,6 +45,7 @@
         "scripts/register-workspace-loader.ts",
         "packages/gl/scripts/codegen.ts",
         "packages/codegen/scripts/typecheck-bindings.ts",
+        "packages/codegen/scripts/typecheck-overrides.ts",
         "packages/create-gtkx/scripts/dependency-ranges.ts",
         "examples/*/src/{app,index}.{ts,tsx}",
         "examples/*/src/**/*.stories.tsx",
