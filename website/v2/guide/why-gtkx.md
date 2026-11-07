@@ -35,4 +35,4 @@ GTKX builds on [React](https://react.dev), [Vite](https://vite.dev), [Vitest](ht
 
 ## Next
 
-[Getting Started](/v2/guide/getting-started) opens a first window. The [tutorial](/v2/tutorial/) builds Tasks, a task manager with persistence and navigation.
+[Comparisons](/v2/guide/comparisons) sets GTKX beside GJS, node-gtk, React Native, and gtk4-rs and Relm4. [Getting Started](/v2/guide/getting-started) opens a first window. The [tutorial](/v2/tutorial/) builds Tasks, a task manager with persistence and navigation.

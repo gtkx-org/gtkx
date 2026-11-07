@@ -41,6 +41,7 @@ const guideGroups: DocumentationGroup[] = [
         text: "Introduction",
         items: [
             { text: "Why GTKX", path: "guide/why-gtkx" },
+            { text: "Comparisons", path: "guide/comparisons" },
             { text: "Getting Started", path: GUIDE_ROOT },
             { text: "Scaffold Options", path: "guide/scaffold-options" },
             { text: "Configuration and Codegen", path: "guide/configuration-and-codegen" },
