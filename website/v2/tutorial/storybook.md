@@ -4,37 +4,59 @@ description: "Write stories for the Markdown preview and explore its states in S
 
 # Develop the Preview in Storybook
 
-Write stories for the Markdown preview and develop its rendering one state at a time in Storybook.
+Render the Markdown preview on its own, with one story for each kind of Markdown, and change how it renders without opening a note in the app.
 
-::: info Being written
-This chapter belongs to the Notes tutorial for GTKX 2.0 and is not written yet. The headings below are its plan; the [finished app](https://github.com/gtkx-org/gtkx/tree/main/tutorial) already contains the code.
-:::
+The preview shows whatever the open note holds, so checking a nested list or a heading level in the app means first writing a note that has one. A story fixes that input instead: it renders `MarkdownPreview` with Markdown of its own. `@gtkx/storybook` shows the stories in a native explorer window; [Storybook](/v2/guide/storybook) covers it in full.
 
 ## Set up Storybook
 
-Install the explorer, then add `"storybook": "gtkx storybook"` to the `scripts` in `package.json`. See [Storybook](/v2/guide/storybook) for the configuration options.
+Install the explorer as a development dependency:
 
 ```sh
 npm install -D @gtkx/storybook@beta
 ```
 
-`.storybook/main.ts` tells the explorer where the stories are:
+Add a script that starts it to `package.json`:
+
+```json{4} [package.json]
+{
+    "scripts": {
+        "dev": "gtkx dev",
+        "storybook": "gtkx storybook"
+    }
+}
+```
+
+`.storybook/main.ts` tells the explorer where the stories are, as patterns relative to the project root:
 
 <<< @/figures/tutorial/storybook/.storybook/main.ts [.storybook/main.ts]
 
 ## Write stories
 
-Stories render the preview with fixed Markdown: headings, lists, code, links and tags. The metadata sets the arguments every story shares, and each story overrides `text` or `tags`. `onActivateLink` is recorded as an action, so clicking a link in the Links story lists its URI under Actions.
+A stories file sits next to the component it renders and follows Storybook's [Component Story Format](https://storybook.js.org/docs/api/csf). Its default export, the metadata, names the component and the [arguments](https://storybook.js.org/docs/writing-stories/args) every story starts from. Each named export is a story that overrides some of them. Create `src/preview/markdown-preview.stories.tsx`:
 
 <<< @/figures/tutorial/storybook/src/preview/markdown-preview.stories.tsx [src/preview/markdown-preview.stories.tsx]
 
+- `title` groups the stories under Preview/Markdown in the explorer's sidebar.
+- `args` gives `MarkdownPreview` empty Markdown, no tags and a link handler. Each story sets `text` to the Markdown it shows, and Tagged also sets `tags`.
+- The explorer infers a [control](https://storybook.js.org/docs/essentials/controls) from each argument's value, as Storybook does. A text control is a one-line entry, too small for the Markdown of most stories, and the explorer has no control for a list such as `tags`, so the metadata turns both off with `control: false`. Formatting, whose Markdown fits on one line, turns its text control back on.
+- `action: "activate-link"` lists each call to `onActivateLink` under Actions, with the link's target, and still calls the handler from `args`. That handler returns `true`, which tells the label the link is handled (see [Follow links](/v2/tutorial/the-markdown-preview#follow-links)), so GTK doesn't try to open it.
+
+The stories import `MarkdownPreview` rather than define it, because Fast Refresh updates a component only when it lives in its own module. [Test the App](/v2/tutorial/testing) renders the same stories in its tests.
+
 ## Run Storybook
 
-`npm run storybook` opens the explorer. Its application ID is the app's with a `.Storybook` suffix, so it runs beside `npm run dev`.
+```sh
+npm run storybook
+```
+
+The explorer lists the stories in its sidebar. Selecting one shows the preview beside the story's Controls and Actions. Its application ID is the app's with a `.Storybook` suffix, `dev.gtkx.Notes.Storybook`. Under the app's own ID, a second launch would only activate the running app (see [The application element](/v2/guide/application-lifecycle#the-application-element)), so the explorer runs beside `npm run dev`.
 
 ## Run it
 
-Select Formatting in the sidebar. Edit its text control: the preview renders each change. Save `markdown-preview.tsx` and the story updates in place, as the app does with Fast Refresh.
+Select Formatting and edit its text control: the preview renders each change as you type. Select Links and click a link: Actions lists `activate-link` with the link's target.
+
+Keep the explorer open, change `src/preview/markdown-preview.tsx` and save it: the story updates in place, as the app does with [Fast Refresh](/v2/tutorial/fast-refresh).
 
 <figure class="result">
     <img class="result-light" src="/figures/tutorial-storybook-light.png" width="880" height="540" loading="lazy" alt="The GTKX Storybook window with the Preview/Markdown stories in the sidebar and Formatting selected: the preview shows bold, italic and inline code, and the Controls panel shows the story's Markdown text." />
