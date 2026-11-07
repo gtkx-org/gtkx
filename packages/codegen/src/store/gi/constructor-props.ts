@@ -145,26 +145,39 @@ const requiresFactoryInitialization = (context: ModuleContext, klass: GirClass):
     return false;
 };
 
+const isAbstractClass = (context: ModuleContext, klass: GirClass): boolean =>
+    klass.isAbstract || isFundamentalClass(context, klass) || requiresFactoryInitialization(context, klass);
+
 const initializationMessage = (qualified: string, hint: string | undefined): string => {
     const reason = `Cannot construct ${qualified} with new: it must be initialized by a factory`;
 
     return hint === undefined ? `${reason}.` : `${reason}; use ${qualified}.${hint} instead.`;
 };
 
+const renderConstructionGuard = (spec: ClassConstructorSpec, message: string): string => {
+    const rejection = `throw new globalThis.Error(${sourceStringLiteral(message)});`;
+
+    if (!spec.hasParent) {
+        return renderBlock("constructor()", rejection);
+    }
+
+    // TypeScript requires a super call in a derived constructor, and rejects one after an unconditional throw as
+    // unreachable. new.target is always set in a constructor, so the guard still throws before the parent runs.
+    return renderBlock("constructor()", `${renderBlock("if (new.target)", rejection)}\nsuper();`);
+};
+
 const renderInitializationGuard = (context: ModuleContext, spec: ClassConstructorSpec): string => {
     const qualified = `${context.namespace.name}.${spec.className}`;
     const hint = constructionHint(context, spec.klass, spec.callables);
-    const message = sourceStringLiteral(initializationMessage(qualified, hint));
 
-    return renderBlock("constructor()", `throw new globalThis.Error(${message});`);
+    return renderConstructionGuard(spec, initializationMessage(qualified, hint));
 };
 
 const renderFundamentalGuard = (context: ModuleContext, spec: ClassConstructorSpec): string => {
     const qualified = `${context.namespace.name}.${spec.className}`;
     const hint = constructionHint(context, spec.klass, spec.callables);
-    const message = sourceStringLiteral(fundamentalMessage(qualified, hint));
 
-    return renderBlock("constructor()", `throw new globalThis.Error(${message});`);
+    return renderConstructionGuard(spec, fundamentalMessage(qualified, hint));
 };
 
 const renderClassConstructor = (context: ModuleContext, spec: ClassConstructorSpec): string | undefined => {
@@ -239,4 +252,4 @@ const renderTranslatingConstructor = (
     return renderBlock(`constructor(props: ${className}ConstructorProps${defaultProps})`, "super(props);");
 };
 
-export { isFundamentalClass, renderConstructorPropsInterface, renderClassConstructor, requiresFactoryInitialization };
+export { isAbstractClass, isFundamentalClass, renderConstructorPropsInterface, renderClassConstructor };

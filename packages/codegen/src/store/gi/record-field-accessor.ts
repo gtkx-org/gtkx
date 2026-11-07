@@ -18,6 +18,7 @@ import {
     hasUnknownLengthArray,
     isByteSequence,
     isUnboundedArray,
+    primitiveCategoryThroughAliases,
 } from "../../analysis/type-shape.js";
 import { indent, renderBlock } from "../../writer/emit.js";
 import { getDoc } from "./doc-spec.js";
@@ -812,6 +813,11 @@ const inlineArraySetterBlock = (options: InlineArrayAccessorOptions): string => 
     return renderBlock(`set ${jsName}(__value: ${writeType})`, body);
 };
 
+const BIGINT_VIEW_NUMBER_CATEGORIES: Set<PrimitiveCategory | undefined> = new Set(["int64", "uint64"]);
+
+const canWriteTypedArrayView = (context: ModuleContext, element: TypeId): boolean =>
+    !BIGINT_VIEW_NUMBER_CATEGORIES.has(primitiveCategoryThroughAliases(context.library, element));
+
 const renderInlineArrayAccessor = (context: ModuleContext, target: StructArrayTarget): string | undefined => {
     const resolution = resolveInlineArray(context, target);
 
@@ -828,7 +834,10 @@ const renderInlineArrayAccessor = (context: ModuleContext, target: StructArrayTa
         context,
         jsName,
         readType: renderTsType(context, field.type, false),
-        writeType: renderParameterTsType(context, field.type, { isValueWidened: false }),
+        writeType: renderParameterTsType(context, field.type, {
+            isValueWidened: false,
+            canAcceptTypedArrayViews: canWriteTypedArrayView(context, resolution.element),
+        }),
         descriptor: context.hoistDescriptor(
             renderDescriptor(context, resolution.element, "none", { isInline: true, isReceived: true }),
         ),

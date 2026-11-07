@@ -7,6 +7,7 @@ import { underlyingType } from "../../analysis/type-shape.js";
 import { type GirParameter, isCallerAllocatedOut, isInoutParameter } from "../../gir/parameter.js";
 import { isBoxedRecord } from "../../gir/record.js";
 import { EXTERNAL_CALLER_ALLOCATORS } from "../../gir/external-namespaces.js";
+import { isAbstractClass } from "./constructor-props.js";
 import { recordInlineSize } from "./record-layout.js";
 import { isConstructibleRecord } from "./value-marshalable.js";
 
@@ -81,7 +82,7 @@ const callerOutAllocation = (context: ModuleContext, parameter: GirParameter): C
     }
 
     if (type.kind === "class") {
-        return { ...name, strategy: "construct" };
+        return isAbstractClass(context, type.value) ? undefined : { ...name, strategy: "construct" };
     }
 
     return type.kind === "record" ? recordCallerOutAllocation(context, name, type) : undefined;

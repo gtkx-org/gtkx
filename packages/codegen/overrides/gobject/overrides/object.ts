@@ -30,7 +30,10 @@ declare module "../gobject.js" {
          *
          * @param handlerId Id of the handler to disconnect.
          */
-        disconnect<TThis>(this: TThis & SignalMethodReceiver<TThis, "disconnect">, handlerId: SignalHandlerId): void;
+        disconnect<TThis extends object>(
+            this: TThis & SignalMethodReceiver<TThis, "disconnect">,
+            handlerId: SignalHandlerId,
+        ): void;
 
         /**
          * Connects a handler that runs on every emission of `sigName`, remembering it so `off` can
@@ -41,7 +44,7 @@ declare module "../gobject.js" {
          * @param isAfter Run the handler after the default handler rather than before it.
          * @returns The same object, so calls chain.
          */
-        on<TThis, K extends SignalName<TThis>>(
+        on<TThis extends object, K extends SignalName<TThis>>(
             this: TThis & SignalMethodReceiver<TThis, "on">,
             sigName: K,
             callback: SignalHandlerFor<TThis, K>,
@@ -56,7 +59,7 @@ declare module "../gobject.js" {
          * @param isAfter Run the handler after the default handler rather than before it.
          * @returns The same object, so calls chain.
          */
-        once<TThis, K extends SignalName<TThis>>(
+        once<TThis extends object, K extends SignalName<TThis>>(
             this: TThis & SignalMethodReceiver<TThis, "once">,
             sigName: K,
             callback: SignalHandlerFor<TThis, K>,
@@ -70,7 +73,7 @@ declare module "../gobject.js" {
          * @param callback The handler that was connected.
          * @returns The same object, so calls chain.
          */
-        off<TThis, K extends SignalName<TThis>>(
+        off<TThis extends object, K extends SignalName<TThis>>(
             this: TThis & SignalMethodReceiver<TThis, "off">,
             sigName: K,
             callback: SignalHandlerFor<TThis, K>,
@@ -166,14 +169,14 @@ BindingGroup.prototype.bindFull = function (
     );
 };
 
-GObject.prototype.disconnect = function (this: GObject, handlerId: SignalHandlerId): void {
+GObject.prototype.disconnect = function <TThis extends object>(this: TThis, handlerId: SignalHandlerId): void {
     disconnectSignal(this, handlerId);
 };
 
-GObject.prototype.on = function <TThis extends object>(
+GObject.prototype.on = function <TThis extends object, K extends SignalName<TThis>>(
     this: TThis,
-    signal: string,
-    handler: SignalHandler,
+    signal: K,
+    handler: SignalHandler & SignalHandlerFor<TThis, K>,
     isAfter?: boolean,
 ): TThis {
     onSignal(this, signal, handler, isAfter);
@@ -181,10 +184,10 @@ GObject.prototype.on = function <TThis extends object>(
     return this;
 };
 
-GObject.prototype.once = function <TThis extends object>(
+GObject.prototype.once = function <TThis extends object, K extends SignalName<TThis>>(
     this: TThis,
-    signal: string,
-    handler: SignalHandler,
+    signal: K,
+    handler: SignalHandler & SignalHandlerFor<TThis, K>,
     isAfter?: boolean,
 ): TThis {
     onceSignal(this, signal, handler, isAfter);
@@ -192,7 +195,11 @@ GObject.prototype.once = function <TThis extends object>(
     return this;
 };
 
-GObject.prototype.off = function <TThis extends object>(this: TThis, signal: string, handler: SignalHandler): TThis {
+GObject.prototype.off = function <TThis extends object, K extends SignalName<TThis>>(
+    this: TThis,
+    signal: K,
+    handler: SignalHandler & SignalHandlerFor<TThis, K>,
+): TThis {
     offSignal(this, signal, handler);
 
     return this;
