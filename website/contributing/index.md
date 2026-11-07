@@ -7,7 +7,7 @@ description: "Set up the GTKX repository, locate the code for a change, and chec
 
 Start with [Development Setup](/contributing/development) to build GTKX and run an example. Read the [Development Principles](/contributing/principles) for package boundaries, coding standards, and testing policy.
 
-This section follows `main` and is shared across documentation versions. To build an application, use the versioned [Guide](/v2/guide/why-gtkx) or [Tutorial](/v2/tutorial/).
+This section follows `main` and is shared across documentation versions. To build an application, use the versioned [Guide](/v2/guide/getting-started) or [Tutorial](/v2/tutorial/).
 
 ## Get oriented
 

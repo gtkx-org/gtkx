@@ -32,16 +32,16 @@ type VersionLink = {
 
 type VersionPageLookup = (version: DocumentationVersion, path: string) => boolean;
 
-const GUIDE_ROOT = "guide/why-gtkx";
+const GUIDE_ROOT = "guide/getting-started";
 const TUTORIAL_ROOT = "tutorial/";
 const REFERENCE_ROOT = "reference/";
 
 const guideGroups: DocumentationGroup[] = [
     {
-        text: "Getting Started",
+        text: "Introduction",
         items: [
-            { text: "Why GTKX", path: GUIDE_ROOT },
-            { text: "Getting Started", path: "guide/getting-started" },
+            { text: "Why GTKX", path: "guide/why-gtkx" },
+            { text: "Getting Started", path: GUIDE_ROOT },
             { text: "Scaffold Options", path: "guide/scaffold-options" },
             { text: "Configuration and Codegen", path: "guide/configuration-and-codegen" },
         ],
