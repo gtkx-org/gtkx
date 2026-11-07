@@ -167,7 +167,7 @@ const appendEnumWithCompanion = (
 
     context.module.appendDeclaration({
         name: localName,
-        code: `${doc}enum ${localName} {\n${indent(blocks.join("\n"), 1)}\n}`,
+        code: `${doc}enum ${localName} {\n${indent(blocks.join("\n"), 1)}\n}\n\nexport type { ${localName} };`,
         isLocal: true,
     });
 
