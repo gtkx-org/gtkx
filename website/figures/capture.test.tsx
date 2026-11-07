@@ -37,6 +37,7 @@ import { App as TrashAndToasts } from "./tutorial/trash-and-toasts/src/app.js";
 import { App as PreferencesAndTheming } from "./tutorial/preferences-and-theming/src/app.js";
 import { App as NoteLinks } from "./tutorial/note-links/src/app.js";
 import { App as Internationalization } from "./tutorial/internationalization/src/app.js";
+import { App as Packaging } from "./tutorial/packaging/src/app.js";
 import { restoreMessages, translateMessages } from "./tutorial/locale.js";
 import * as previewStories from "./tutorial/storybook/src/preview/markdown-preview.stories.js";
 import { defaultFolder } from "./tutorial/the-notes-folder/src/notes/files.js";
@@ -329,6 +330,19 @@ const figures: [name: string, element: ReactNode, options?: FigureOptions][] = [
                 await screen.findByRole(Gtk.AccessibleRole.MENU_ITEM, { name: "Préférences" });
             },
             after: restoreMessages,
+        },
+    ],
+    [
+        "tutorial-packaging",
+        <Packaging />,
+        {
+            before: seedNotesWithSettings,
+            prepare: async () => {
+                await screen.findAllByRole(Gtk.AccessibleRole.LIST_ITEM);
+                await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Main Menu" }));
+                await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.MENU_ITEM, { name: "About Notes" }));
+                await screen.findByText("1.0.0");
+            },
         },
     ],
     [

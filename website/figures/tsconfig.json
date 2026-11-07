@@ -11,7 +11,8 @@
         "${configDir}/setup.ts",
         "${configDir}/guide/**/*.ts",
         "${configDir}/tutorial/**/*.ts",
-        "${configDir}/tutorial/*/.storybook/*.ts"
+        "${configDir}/tutorial/*/.storybook/*.ts",
+        "${configDir}/tutorial/*/package.json"
     ],
     "exclude": ["${configDir}/node_modules", "${configDir}/out-tsc"],
     "references": [
