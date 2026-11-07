@@ -59,31 +59,13 @@ Without `onClosed`, the close button and Escape do nothing and the dialog stays 
 
 `AdwAlertDialog` takes plain-text `heading` and `body` values and a `responses` array. Its `onResponse` prop receives the selected response ID and also answers the close request. Children appear between the body and the response buttons:
 
-```tsx
-import * as Adw from "@gtkx/gi/adw";
-import { AdwAlertDialog } from "@gtkx/jsx/adw";
-import { GtkEntry } from "@gtkx/jsx/gtk";
+<<< @/figures/guide/modals-rename-dialog.tsx
 
-const RenameDialog = ({ onResponse }: { onResponse: (id: string) => void }) => (
-    <AdwAlertDialog
-        heading="Rename"
-        body="Pick a new name for this list."
-        defaultResponse="rename"
-        closeResponse="cancel"
-        responses={[
-            { id: "cancel", label: "Cancel" },
-            {
-                id: "rename",
-                label: "Rename",
-                appearance: Adw.ResponseAppearance.SUGGESTED,
-            },
-        ]}
-        onResponse={onResponse}
-    >
-        <GtkEntry placeholderText="List name" activatesDefault />
-    </AdwAlertDialog>
-);
-```
+<figure class="result">
+    <img class="result-light" src="/figures/guide-modals-rename-dialog-light.png" width="480" height="360" loading="lazy" alt="A window titled Lists, dimmed behind an alert dialog with the heading Rename, the body Pick a new name for this list., an empty List name entry, and Cancel and Rename buttons, Rename highlighted." />
+    <img class="result-dark" src="/figures/guide-modals-rename-dialog-dark.png" width="480" height="360" loading="lazy" alt="A window titled Lists, dimmed behind an alert dialog with the heading Rename, the body Pick a new name for this list., an empty List name entry, and Cancel and Rename buttons, Rename highlighted." />
+    <figcaption>Captured from the sample above. <code>SUGGESTED</code> colors the Rename response.</figcaption>
+</figure>
 
 The tutorial builds dialogs in [Mount the dialogs](/v2/tutorial/actions-menus-shortcuts#mounting-dialogs), [Carry the task into confirmation](/v2/tutorial/trash-and-toasts#confirming-a-permanent-delete), and [Add the New List dialog](/v2/tutorial/trash-and-toasts#a-dialog-that-is-a-form).
 
@@ -91,34 +73,13 @@ The tutorial builds dialogs in [Mount the dialogs](/v2/tutorial/actions-menus-sh
 
 `AdwAboutDialog` accepts `links`, `creditSections`, `acknowledgementSections`, `legalSections`, and `otherApps` as arrays:
 
-```tsx
-import * as Gtk from "@gtkx/gi/gtk";
-import { AdwAboutDialog } from "@gtkx/jsx/adw";
+<<< @/figures/guide/modals-about-dialog.tsx
 
-const About = ({ onClose }: { onClose: () => void }) => (
-    <AdwAboutDialog
-        onClosed={onClose}
-        applicationName="Notes"
-        links={[{ title: "User Guide", url: "https://example.org/guide" }]}
-        creditSections={[{ name: "Design", people: ["Ada Lovelace"] }]}
-        acknowledgementSections={[{ name: "Thanks", people: ["Our translators"] }]}
-        legalSections={[
-            {
-                title: "Sample data",
-                copyright: "© Example",
-                licenseType: Gtk.License.MIT_X11,
-            },
-        ]}
-        otherApps={[
-            {
-                appid: "org.example.Calendar",
-                name: "Calendar",
-                summary: "Plan your day",
-            },
-        ]}
-    />
-);
-```
+<figure class="result">
+    <img class="result-light" src="/figures/guide-modals-about-dialog-light.png" width="480" height="600" loading="lazy" alt="A window titled Notes behind an about dialog headed Notes, with a Details row, a group of Credits, Legal and Acknowledgements rows, and a Calendar row reading Plan your day with an external link icon." />
+    <img class="result-dark" src="/figures/guide-modals-about-dialog-dark.png" width="480" height="600" loading="lazy" alt="A window titled Notes behind an about dialog headed Notes, with a Details row, a group of Credits, Legal and Acknowledgements rows, and a Calendar row reading Plan your day with an external link icon." />
+    <figcaption>Captured from the sample above. Libadwaita puts <code>links</code> under Details, gives each section array its own page, and lists <code>otherApps</code> at the bottom.</figcaption>
+</figure>
 
 Libadwaita cannot remove these entries. Each array becomes fixed when its first nonempty value is applied; equivalent arrays on later renders are accepted, and a different one throws. To change or remove a populated list, give the dialog a new React `key`. Legal-section copyright and custom license text accept Pango markup, so escape externally supplied plain text with `GLib.markupEscapeText`.
 

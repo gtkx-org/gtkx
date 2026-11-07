@@ -12,6 +12,8 @@ import { NameGrid } from "./guide/components-grid.js";
 import { AccentOverride } from "./guide/css-accent.js";
 import { Sidebar } from "./guide/components-list-box.js";
 import { TaskList } from "./guide/components-list-view.js";
+import { About } from "./guide/modals-about-dialog.js";
+import { RenameDialog } from "./guide/modals-rename-dialog.js";
 import { App as ListOfTasks } from "./tutorial/a-list-of-tasks/src/app.js";
 import { App as FirstWindow } from "./tutorial/your-first-window.js";
 
@@ -22,10 +24,20 @@ const schemes = [
     ["dark", Adw.ColorScheme.FORCE_DARK],
 ] as const;
 
-function SampleWindow({ title, children }: { title: string; children: ReactNode }) {
+function SampleWindow({
+    title,
+    width = 360,
+    height = 260,
+    children,
+}: {
+    title: string;
+    width?: number;
+    height?: number;
+    children: ReactNode;
+}) {
     return (
         <AdwApplication>
-            <AdwApplicationWindow title={title} defaultWidth={360} defaultHeight={260}>
+            <AdwApplicationWindow title={title} defaultWidth={width} defaultHeight={height}>
                 <AdwToolbarView top={<AdwHeaderBar />}>
                     <GtkScrolledWindow>{children}</GtkScrolledWindow>
                 </AdwToolbarView>
@@ -71,6 +83,18 @@ const figures: [name: string, element: ReactNode][] = [
         "guide-cairo-circle",
         <SampleWindow title="Cairo">
             <Circle />
+        </SampleWindow>,
+    ],
+    [
+        "guide-modals-rename-dialog",
+        <SampleWindow title="Lists" width={480} height={360}>
+            <RenameDialog onResponse={() => {}} />
+        </SampleWindow>,
+    ],
+    [
+        "guide-modals-about-dialog",
+        <SampleWindow title="Notes" width={480} height={600}>
+            <About onClose={() => {}} />
         </SampleWindow>,
     ],
 ];
