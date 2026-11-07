@@ -34,6 +34,7 @@ import { App as TagsAndFrontMatter } from "./tutorial/tags-and-front-matter/src/
 import { App as ActionsMenusShortcuts } from "./tutorial/actions-menus-shortcuts/src/app.js";
 import { App as TrashAndToasts } from "./tutorial/trash-and-toasts/src/app.js";
 import { App as PreferencesAndTheming } from "./tutorial/preferences-and-theming/src/app.js";
+import { App as NoteLinks } from "./tutorial/note-links/src/app.js";
 import { defaultFolder } from "./tutorial/the-notes-folder/src/notes/files.js";
 import { App as FirstWindow } from "./tutorial/your-first-window/src/app.js";
 import { Mail as TabMail } from "./guide/navigation-tabs.js";
@@ -91,6 +92,15 @@ type FigureOptions = {
     before?: () => void;
     prepare?: () => Promise<void>;
 };
+
+function seedNotesWithSettings() {
+    seedNotes(defaultFolder(), taggedNotes);
+    const settings = Gio.Settings.new("dev.gtkx.Notes");
+    const isDark = Adw.StyleManager.getDefault().getColorScheme() === Adw.ColorScheme.FORCE_DARK;
+    settings.setString("color-scheme", isDark ? "dark" : "light");
+    settings.setInt("window-width", 720);
+    settings.setInt("window-height", 480);
+}
 
 const figures: [name: string, element: ReactNode, options?: FigureOptions][] = [
     ["tutorial-your-first-window", <FirstWindow />],
@@ -248,19 +258,25 @@ const figures: [name: string, element: ReactNode, options?: FigureOptions][] = [
         "tutorial-preferences-and-theming",
         <PreferencesAndTheming />,
         {
-            before: () => {
-                seedNotes(defaultFolder(), taggedNotes);
-                const settings = Gio.Settings.new("dev.gtkx.Notes");
-                const isDark = Adw.StyleManager.getDefault().getColorScheme() === Adw.ColorScheme.FORCE_DARK;
-                settings.setString("color-scheme", isDark ? "dark" : "light");
-                settings.setInt("window-width", 720);
-                settings.setInt("window-height", 480);
-            },
+            before: seedNotesWithSettings,
             prepare: async () => {
                 await screen.findAllByRole(Gtk.AccessibleRole.LIST_ITEM);
                 await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Main Menu" }));
                 await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.MENU_ITEM, { name: "Preferences" }));
                 await screen.findByText("Notes Folder");
+            },
+        },
+    ],
+    [
+        "tutorial-note-links",
+        <NoteLinks />,
+        {
+            before: seedNotesWithSettings,
+            prepare: async () => {
+                await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Book club" }));
+                const editor = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { name: "Note text" });
+                await userEvent.type(editor, "[[");
+                await within(editor).findByText("Trip to Lisbon");
             },
         },
     ],

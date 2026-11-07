@@ -24,6 +24,9 @@
             "path": "../packages/cli"
         },
         {
+            "path": "../packages/runtime"
+        },
+        {
             "path": "../packages/i18n"
         },
         {
