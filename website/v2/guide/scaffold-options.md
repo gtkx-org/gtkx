@@ -95,4 +95,4 @@ The app gets its own `.mcp.json`, and the scaffold also adds a server named `gtk
 | Yarn 2 or newer | `yarn workspace my-app exec gtkx mcp`               |
 | Yarn 1          | `yarn --silent --cwd apps/my-app gtkx mcp`          |
 
-Other servers in the file and its indentation stay. When the root `.mcp.json` already has a GTKX server, such as an earlier app's, the scaffold adds none, because [one server drives every running GTKX app](/v2/guide/mcp#inspect-and-verify-changes). When the file is not a valid MCP configuration, the scaffold leaves it unchanged and prints the entry to add.
+Other servers in the file and its indentation stay. When the root `.mcp.json` already has a GTKX server, such as an earlier app's, the scaffold adds none, because [one server drives every running GTKX app](/v2/guide/mcp#several-apps). When the file is not a valid MCP configuration, the scaffold leaves it unchanged and prints the entry to add.
