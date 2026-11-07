@@ -44,8 +44,8 @@ Install the [headless test dependencies](/v2/guide/testing#setup), then run `npm
 
 ```txt
  ✓ tests/preview.test.tsx (3 tests)
- ✓ tests/notes.test.tsx (21 tests)
+ ✓ tests/notes.test.tsx (22 tests)
 
  Test Files  2 passed (2)
-      Tests  24 passed (24)
+      Tests  25 passed (25)
 ```

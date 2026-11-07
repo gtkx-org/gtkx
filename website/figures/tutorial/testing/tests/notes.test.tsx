@@ -6,12 +6,13 @@ import { render, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import {
     chmodSync,
     existsSync,
+    mkdirSync,
     readdirSync,
     readFileSync,
     rmSync,
     writeFileSync,
 } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import schema from "../data/dev.gtkx.Notes.gschema.xml";
 import { App } from "../src/app.js";
@@ -281,6 +282,46 @@ describe("Notes", () => {
                 Adw.ColorScheme.FORCE_DARK,
             );
         });
+    });
+
+    it("switches to another folder with the window and Preferences open", async () => {
+        const otherFolder = join(dirname(notesFolder()), "Other notes");
+        mkdirSync(otherFolder, { recursive: true });
+        writeFileSync(join(otherFolder, "Ideas.md"), IDEAS);
+        await render(<App />, { container: rootElement });
+        const window = (await openNote("Groceries")).getRoot();
+
+        await userEvent.click(
+            await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
+                name: "Main Menu",
+            }),
+        );
+        await userEvent.click(
+            await screen.findByRole(Gtk.AccessibleRole.MENU_ITEM, {
+                name: "Preferences",
+            }),
+        );
+        Gio.Settings.new(schema.id).setString("folder", otherFolder);
+
+        const ideas = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, {
+            name: "Ideas",
+        });
+        expect(ideas.getRoot()).toBe(window);
+        expect(
+            screen.queryByRole(Gtk.AccessibleRole.LIST_ITEM, {
+                name: "Groceries",
+            }),
+        ).toBeNull();
+        expect(
+            screen.queryByRole(Gtk.AccessibleRole.TEXT_BOX, {
+                name: "Note text",
+            }),
+        ).toBeNull();
+        expect(
+            await screen.findByRole(Gtk.AccessibleRole.COMBO_BOX, {
+                name: "Style",
+            }),
+        ).toBeDefined();
     });
 
     it("shows the open note as rendered Markdown", async () => {

@@ -199,7 +199,7 @@ msgstr ""
 msgid "Note text"
 msgstr ""
 
-#: src/notes/notes-provider.tsx:58
+#: src/notes/notes-provider.tsx:57
 msgid "Couldn’t save “{{name}}”"
 msgstr ""
 

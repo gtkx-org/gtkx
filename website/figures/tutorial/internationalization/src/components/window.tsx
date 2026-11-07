@@ -143,9 +143,15 @@ const Window = () => {
         );
     }, [colorScheme]);
 
+    useEffect(() => {
+        if (openNoteName() !== null) {
+            navigationRef.goBack();
+        }
+    }, [folder]);
+
     return (
         <ToastProvider overlayRef={toastOverlayRef}>
-            <NotesProvider key={folder} folder={folder}>
+            <NotesProvider folder={folder}>
                 <NotesWindow toastOverlayRef={toastOverlayRef} />
             </NotesProvider>
         </ToastProvider>

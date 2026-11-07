@@ -34,14 +34,21 @@ A module that imports the schema is enough for GTKX to compile it and type its k
 
 The window reads the folder and color scheme, and saves its size:
 
-<<< @/figures/tutorial/preferences-and-theming/src/components/window.tsx{2,11-12,16,66,88-90,94-107,111,117,121,127,134-144,148} [src/components/window.tsx]
+<<< @/figures/tutorial/preferences-and-theming/src/components/window.tsx{2,11-12,16,66,88-90,94-107,111,117,121,127,134-136,138-150,154} [src/components/window.tsx]
 
 - `Window` reads `folder` and `color-scheme` with `useSetting`, which re-renders when a key changes. See [Reading and writing a key](/v2/guide/native-state#reading-and-writing-a-key).
-- `key={folder}` remounts `NotesProvider` when the folder changes, so it reads and watches the new folder from scratch with a new saver. Everything inside the provider remounts with it, the window included: choosing a folder replaces the window and closes the Preferences dialog.
-- The effect applies the color scheme with [`Adw.StyleManager`](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/property.StyleManager.color-scheme.html). Every Adwaita widget follows it, and so do media queries in the app's own styles. See [Follow appearance preferences](/v2/guide/css#follow-appearance-preferences).
+- The first effect applies the color scheme with [`Adw.StyleManager`](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/property.StyleManager.color-scheme.html). Every Adwaita widget follows it, and so do media queries in the app's own styles. See [Follow appearance preferences](/v2/guide/css#follow-appearance-preferences).
+- The second effect closes the open note when the folder changes, because the note belongs to the old folder.
 - The `useBindSetting` calls keep `window-width` and `window-height` in step with the window's `defaultWidth` and `defaultHeight`, which GTK updates as the window is resized. They replace the fixed 720 by 480 from [Two screens in a split view](/v2/tutorial/the-note-editor#two-screens-in-a-split-view): the window opens at the size it had when it closed, and at 960 by 640 the first time. GNOME's [Saving and Loading Window State](https://developer.gnome.org/documentation/tutorials/save-state.html) describes the same bind. See [Binding a key to a property](/v2/guide/native-state#binding-a-key-to-a-property).
 - The `ref` stores the window in state, so the binds wait until it exists.
 - `Dialogs` receives `showError` from `useNoteCommands`, for the folder errors in [The preferences dialog](#the-preferences-dialog).
+
+`NotesProvider` now receives a folder that can change. It switches to the new folder in place, so the window and the Preferences dialog stay open:
+
+<<< @/figures/tutorial/preferences-and-theming/src/notes/notes-provider.tsx{53-62,64-68} [src/notes/notes-provider.tsx]
+
+- The saver writes to the folder it was created with, so `NotesProvider` keeps the folder of its current saver. When the `folder` prop differs, it creates a saver for the new folder and clears the list during the render, as React's [Adjusting some state when a prop changes](https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes) shows.
+- The effect depends on `folder` and `saver`, so its cleanup stops watching the old folder and writes the old saver's pending edits to the old folder. The effect then reads and watches the new folder.
 
 The preview state moves from the window to the `preview` key, so a note opens the way the last one was shown, even after a restart. `NoteScreen` and the `preview` action read the key with `useSetting`:
 
@@ -80,7 +87,7 @@ The `Dialog` union gains a `preferences` kind, and `Dialogs` passes the window's
 
 ## Run it
 
-Open Preferences with Ctrl+, and choose Dark: the window turns dark at once. Choose another notes folder: the window opens again on that folder's notes, and Preferences closes. Toggle the preview, resize the window and quit. The app opens again with the same style, folder, preview state and size.
+Open Preferences with Ctrl+, and choose Dark: the window turns dark at once. Choose another notes folder: the list shows that folder's notes, and Preferences stays open. Toggle the preview, resize the window and quit. The app opens again with the same style, folder, preview state and size.
 
 <figure class="result">
     <img class="result-light" src="/figures/tutorial-preferences-and-theming-light.png" width="720" height="480" loading="lazy" alt="The Notes window with the Preferences dialog open: an Appearance group with a Style row set to Light, and a Storage group with a Notes Folder row showing ~/Notes and a folder button." />

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: dev.gtkx.Notes\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-07 18:17+0100\n"
+"POT-Creation-Date: 2026-11-07 23:52+0100\n"
 "PO-Revision-Date: 2026-11-07 17:58+0100\n"
 "Last-Translator: GTKX contributors\n"
 "Language-Team: French\n"
@@ -201,7 +201,7 @@ msgstr "Nouvelle note (Ctrl+N)"
 msgid "Note text"
 msgstr "Texte de la note"
 
-#: src/notes/notes-provider.tsx:39
+#: src/notes/notes-provider.tsx:38
 msgid "Couldn’t save “{{name}}”"
 msgstr "Impossible d’enregistrer « {{name}} »"
 

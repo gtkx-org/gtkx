@@ -198,7 +198,7 @@ msgstr "Nouvelle note (Ctrl+N)"
 msgid "Note text"
 msgstr "Texte de la note"
 
-#: src/notes/notes-provider.tsx:58
+#: src/notes/notes-provider.tsx:57
 msgid "Couldn’t save “{{name}}”"
 msgstr "Impossible d’enregistrer « {{name}} »"
 

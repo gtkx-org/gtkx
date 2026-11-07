@@ -50,16 +50,22 @@ const NotesProvider = ({
 }) => {
     const [notes, setNotes] = useState<NoteMap | null>(null);
     const { show } = useToast();
-    const [saver] = useState(
-        () =>
-            new NoteSaver(folder, (name) => {
-                show({
-                    useMarkup: false,
-                    title: t("Couldn’t save “{{name}}”", { name }),
-                    timeout: 0,
-                });
-            }),
-    );
+    const createSaver = (): NoteSaver =>
+        new NoteSaver(folder, (name) => {
+            show({
+                useMarkup: false,
+                title: t("Couldn’t save “{{name}}”", { name }),
+                timeout: 0,
+            });
+        });
+    const [saver, setSaver] = useState(createSaver);
+    const [saverFolder, setSaverFolder] = useState(folder);
+
+    if (saverFolder !== folder) {
+        setSaverFolder(folder);
+        setSaver(createSaver());
+        setNotes(null);
+    }
 
     useEffect(() => {
         const controller = new AbortController();
