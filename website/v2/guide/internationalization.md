@@ -43,7 +43,7 @@ gtkx codegen
 
 GTKX creates `po/<applicationId>.pot`, initializes the listed PO files, and generates translation types. Translators edit each catalog's `msgstr` values. When `msginit` has no plural rule for a locale, such as `ar` or `zh_CN`, its catalog starts with a placeholder `Plural-Forms` header; replace it before translating plural messages. Run codegen again after changing messages to update the template and merge those changes into the catalogs. Review fuzzy entries before release; removed messages remain as obsolete entries.
 
-Messages come from the `src` directory, or the project root without one, and from the workspace packages the application uses from source, as described in [Monorepos](/v2/guide/configuration-and-codegen#monorepos). Their template locations are relative to the application, such as `../../packages/ui/src/rating.tsx:18`, and the application's catalogs translate them. Messages of packages installed from a registry are not extracted.
+Messages come from the `src` directory, or the project root without one, and from the workspace packages the application uses from source, as described in [Monorepos](/v2/guide/workspaces#monorepos). Their template locations are relative to the application, such as `../../packages/ui/src/rating.tsx:18`, and the application's catalogs translate them. Messages of packages installed from a registry are not extracted.
 
 ## Plurals and context
 

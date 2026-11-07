@@ -331,7 +331,7 @@ be available inside the project checkout. Without an explicit tag or commit, GTK
 commit. Source builds use Node.js from the SDK extension.
 
 Source mode needs a standalone project, with its lockfile and `packageManager` field in the application's
-directory. An app in a [workspace](/v2/guide/configuration-and-codegen#monorepos) shares the lockfile and package
+directory. An app in a [workspace](/v2/guide/workspaces#monorepos) shares the lockfile and package
 manager of the workspace root, so `gtkx deploy` stops with an error, including previews, when a workspace member
 selects source mode. Package a workspace member as a prebuilt Flatpak, or move it into its own repository to
 publish it from source.

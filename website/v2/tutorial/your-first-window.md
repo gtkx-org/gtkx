@@ -120,7 +120,7 @@ export function App() {
 }
 ```
 
-`top` is a JSX slot for the header bar. The status page goes in `children`, the toolbar view's content slot. GTKX uses named slots where a native container has several places for children; see [the JSX prop model](/v2/guide/configuration-and-codegen#the-jsx-prop-model).
+`top` is a JSX slot for the header bar. The status page goes in `children`, the toolbar view's content slot. GTKX uses named slots where a native container has several places for children; see [the JSX prop model](/v2/guide/jsx-elements#the-jsx-prop-model).
 
 The header bar picks up the window title. `AdwStatusPage` supplies the empty state until the next chapter adds tasks.
 

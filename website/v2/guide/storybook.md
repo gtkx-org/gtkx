@@ -29,7 +29,7 @@ Patterns are relative to the GTKX project root. Your `gtkx.config.ts` still defi
 
 ### Stories from a shared package
 
-In a [monorepo](/v2/guide/configuration-and-codegen#monorepos), an app's patterns can reach the stories of a shared component package, as Storybook monorepo configurations do:
+In a [monorepo](/v2/guide/workspaces#monorepos), an app's patterns can reach the stories of a shared component package, as Storybook monorepo configurations do:
 
 ```ts
 export default defineConfig({
@@ -39,7 +39,7 @@ export default defineConfig({
 
 Every matched file must lie inside the workspace root, the directory holding `pnpm-workspace.yaml` or the `package.json` with `workspaces`; the explorer stops with an error naming any file outside it. The explorer runs with the app's `gtkx.config.ts`, so the app has to declare the libraries the shared stories import. Stories without a `title` are named by their path from the workspace root, such as `packages/ui/src/badge`.
 
-To browse a shared package's stories on their own, add `@gtkx/cli`, `@gtkx/config`, `@gtkx/runtime`, `@gtkx/css`, `@gtkx/cairo` and `@gtkx/storybook` as development dependencies and run `gtkx storybook` in its directory. Like a [component library](/v2/guide/configuration-and-codegen#component-libraries), it needs no `applicationId`; its explorer registers as `org.gtkx.Library.Storybook`.
+To browse a shared package's stories on their own, add `@gtkx/cli`, `@gtkx/config`, `@gtkx/runtime`, `@gtkx/css`, `@gtkx/cairo` and `@gtkx/storybook` as development dependencies and run `gtkx storybook` in its directory. Like a [component library](/v2/guide/workspaces#component-libraries), it needs no `applicationId`; its explorer registers as `org.gtkx.Library.Storybook`.
 
 ## Define stories
 

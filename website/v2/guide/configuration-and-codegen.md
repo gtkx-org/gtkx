@@ -21,7 +21,7 @@ export default defineConfig({
 
 List additional libraries by GIR name and version, for example `libraries: ["WebKit-6.0"]`. Codegen starts from `Adw-1` and follows its GIR dependencies, including `Gtk-4.0`. Omit these two entries from `libraries`; listing them explicitly is an error.
 
-`defineConfig` provides editor completion. The CLI validates the configuration when it loads it. An application's ID uses a reverse-DNS name such as `com.example.Tasks`; `gtkx dev`, `gtkx build` and `gtkx deploy` stop when it is missing. Only a package that is not an application, such as a [component library](#component-libraries), leaves it out.
+`defineConfig` provides editor completion. The CLI validates the configuration when it loads it. An application's ID uses a reverse-DNS name such as `com.example.Tasks`; `gtkx dev`, `gtkx build` and `gtkx deploy` stop when it is missing. Only a package that is not an application, such as a [component library](/v2/guide/workspaces#component-libraries), leaves it out.
 
 Configuration modules and their local imports use ESM. Use `.ts`, `.mts`, `.js`, or `.mjs` files with `import` and `export`; TypeScript configuration runs through Node's native type stripping and must use erasable syntax. JSON, JSONC, JSON5, YAML, and TOML configuration files are also supported.
 
@@ -93,7 +93,7 @@ gtkx codegen
 
 GTKX generates modules under `node_modules/.gtkx` and links them as `@gtkx/gi` and `@gtkx/jsx`. They belong to the project and are not separate npm dependencies. `gtkx dev`, `gtkx build` and the Vitest plugin also generate them when they are missing or out of date.
 
-Both packages always describe the same libraries. A project without `@gtkx/react` gets only `@gtkx/gi`, and its `@gtkx/jsx` comes back once `@gtkx/react` is installed again. Projects that resolve the same dependency directory share their generated bindings, as described in [Monorepos](#monorepos).
+Both packages always describe the same libraries. A project without `@gtkx/react` gets only `@gtkx/gi`, and its `@gtkx/jsx` comes back once `@gtkx/react` is installed again. Projects that resolve the same dependency directory share their generated bindings, as described in [Workspaces](/v2/guide/workspaces#monorepos).
 
 Import classes, enums, and functions from GI modules, and elements from JSX modules:
 
@@ -150,121 +150,19 @@ const sink = pipeline.getByName("sink");
 
 ## Monorepos
 
-GTKX apps work in pnpm and npm workspaces with the package manager's default `node_modules` layout, and in Yarn workspaces whose root `.yarnrc.yml` sets `nodeLinker: node-modules`, alongside shared packages of components. `create gtkx apps/my-app` adds an app to an existing workspace and prints the settings the workspace root needs; see [Scaffold Options](/v2/guide/scaffold-options#workspaces).
-
-Codegen writes the bindings into the `node_modules` directory the GTKX packages are installed in. In a workspace this is usually the root: pnpm keeps every package under the root `node_modules/.pnpm`, and npm and Yarn hoist them there. The bindings link `@gtkx/runtime`, `@gtkx/cairo`, `@gtkx/react` and `react` from the app, so they load the same copies the app does.
-
-Apps that resolve the same directory share one set of bindings, generated for the union of their `libraries`. Codegen stops with an error naming the other app when apps sharing bindings differ in anything else:
-
-- `girPath` or `elements`
-- whether they use `@gtkx/react`
-- a version of a GIR namespace, such as `Soup-2.4` and `Soup-3.0`
-- the installed copies of the GTKX packages, `react` or `@types/react`
-
-Keep these aligned across the workspace, for example with a pnpm catalog. After changing `girPath` or `elements` in every app, run `gtkx codegen --force` in one of them; the others share its bindings again the next time they generate theirs.
-
-Each app still imports only the libraries it declares and their dependencies, which are also what `gtkx deploy` requires of the installed system. Codegen gives an app that shares bindings its own `@gtkx/gi` and `@gtkx/jsx` packages, which expose those namespaces and link them to the shared bindings. They live in the app's `node_modules/.gtkx`, as a single project's bindings do, so the scaffold's `tsconfig.json` paths and editors keep finding them after any package install. Importing a namespace that only another app declared fails in `gtkx dev`, `gtkx build` and Vitest with an error naming the library to add to `libraries`, Node reports the subpath as not exported, and `tsc` reports the namespace as having no exports. An app at the workspace root, where the bindings are written, sees all of them.
-
-A shared package declares `@gtkx/react` as a peer dependency and imports `@gtkx/gi` and `@gtkx/jsx` subpaths like an app. List it in the dependencies of each app that uses it, so `gtkx dev` loads it through Vite. A shared package resolves the bindings from the workspace root, so it can import any library some app declares; each app that uses it has to declare the libraries the package imports.
-
-GTKX treats the sources of the workspace packages an app uses as part of the app. These are the packages its dependencies, and theirs in turn, link from outside `node_modules`, such as workspace packages and `link:` or `file:` directories, that depend on `@gtkx/react` or `@gtkx/i18n`. Codegen, `gtkx dev`, `gtkx build` and `gtkx deploy` read their `src` directories as they read the app's:
-
-- Their [messages](/v2/guide/internationalization) go into the app's gettext template, `po/POTFILES.in` and translation types, at locations relative to the app such as `../../packages/ui/src/rating.tsx:18`, so the app's catalogs translate them. Their stories stay out of the catalogs.
-- Their `?icon=<name>` and `?resource=<path>` [imports](/v2/guide/assets) and the GSettings schemas they import are declared in the app's `node_modules/.gtkx/env.d.ts`, so the app's `tsc` accepts them. The app bundles and installs those schemas, and `gtkx deploy` requires a schema's file name to start with the app's ID, as for the app's own.
-- Saving one of their files in `gtkx dev` updates the app's template and declarations, as saving one of the app's does.
-
-Packages installed from a registry stay outside: their messages are not extracted, so a published [component library](#component-libraries) takes translated text from the app, for example as props.
-
-An app's [Storybook](/v2/guide/storybook#stories-from-a-shared-package) configuration can list a shared package's stories with a pattern such as `../../packages/ui/src/**/*.stories.tsx`. A shared package can also run its own tests and Storybook explorer without an `applicationId`, as a [component library](#component-libraries) does.
+Running several apps and shared packages in one pnpm, npm or Yarn workspace, and how they share bindings, is described in [Workspaces](/v2/guide/workspaces#monorepos).
 
 ## Component libraries
 
-A component library is a package of GTKX components that apps install, from their workspace or from a registry. It is not an application, so it has no `applicationId`. It needs a `gtkx.config.ts` only to list the GIR libraries its components import beyond Adwaita and GTK:
-
-```ts [gtkx.config.ts]
-import { defineConfig } from "@gtkx/config";
-
-export default defineConfig({
-    libraries: ["GtkSource-5"],
-});
-```
-
-`gtkx codegen`, `gtkx storybook` and the Vitest plugin work in such a package, with or without the file, while `gtkx dev`, `gtkx build` and `gtkx deploy` stop because they need an `applicationId`. Codegen writes no `AGENTS.md`, `CLAUDE.md` or `.gtkx/reference` there unless `agents.rules` or `agents.reference` is `true`.
-
-Its `package.json` lists `@gtkx/react` and `react` as peer dependencies, with any other GTKX package its components import at runtime, such as `@gtkx/css` or `@gtkx/cairo`, so that it uses the app's copies. It does not depend on `@gtkx/gi` or `@gtkx/jsx`: each app generates those for the libraries it declares, so an app that uses the package lists in `libraries` every GIR library the package imports beyond Adwaita and GTK. For building and testing, add the peer packages, `@gtkx/cairo`, `@gtkx/cli`, `@gtkx/config`, `@gtkx/runtime`, `@gtkx/testing`, `@types/node`, `@types/react`, `typescript` and `vitest` as development dependencies. Codegen links the generated bindings to the package's own `@gtkx/runtime` and `@gtkx/cairo`, which the GTK and GDK bindings import, so wherever the package manager does not hoist them, as pnpm does not, `gtkx codegen` stops with "Cannot resolve @gtkx/runtime" without the first and the tests fail with "Cannot find package '@gtkx/cairo'" without the second.
-
-```json [package.json]
-{
-    "name": "@example/ui",
-    "version": "0.1.0",
-    "type": "module",
-    "exports": {
-        ".": {
-            "types": "./dist/index.d.ts",
-            "default": "./dist/index.js"
-        }
-    },
-    "files": ["dist"],
-    "scripts": {
-        "build": "gtkx codegen && tsc -p tsconfig.build.json",
-        "typecheck": "gtkx codegen && tsc",
-        "test": "vitest run"
-    }
-}
-```
-
-Build it with `tsc` into JavaScript and declarations. Start from a scaffolded app's `tsconfig.json`, which resolves `@gtkx/gi` and `@gtkx/jsx` to the generated bindings, and copy its `src/gtkx-env.d.ts`, which types `import.meta.env` and asset imports such as `?icon`. Then add a build configuration that emits only the sources:
-
-```json [tsconfig.build.json]
-{
-    "extends": "./tsconfig.json",
-    "compilerOptions": {
-        "noEmit": false,
-        "declaration": true,
-        "outDir": "dist",
-        "rootDir": "src"
-    },
-    "include": ["src/**/*"],
-    "exclude": ["src/**/*.stories.tsx"]
-}
-```
-
-The output keeps its `@gtkx/gi` and `@gtkx/jsx` imports, in the JavaScript and in the declarations, so the app's own bindings resolve them when it builds and typechecks. `gtkx dev`, `gtkx build` and the Vitest plugin load an installed package that depends on `@gtkx/react` through Vite, so the app needs no extra configuration, and `gtkx build` bundles the package and lists it in `BUNDLED-NOTICES`. Publish the package with your package manager after building it, for example `npm publish`.
-
-Test the components with `@gtkx/testing` and the Vitest plugin, as in an app:
-
-```ts [vitest.config.ts]
-import gtkx from "@gtkx/cli/vitest-plugin";
-import { defineConfig } from "vitest/config";
-
-export default defineConfig({
-    plugins: [gtkx()],
-});
-```
-
-The tests run as the application `org.gtkx.Test`. To browse the components in the [Storybook explorer](/v2/guide/storybook), also add `@gtkx/storybook` and `@gtkx/css` as development dependencies and run `gtkx storybook`; the explorer registers as `org.gtkx.Library.Storybook`. In a workspace the package shares the bindings of the apps around it, under the rules described in [Monorepos](#monorepos).
+Building, testing and publishing a package of components that apps install is described in [Workspaces](/v2/guide/workspaces#component-libraries).
 
 ## The JSX prop model
 
-Generated elements follow the native API with GTKX naming conventions:
-
-- Properties use camelCase, such as `showTitleButtons`.
-- Signals use handler props, such as `onClicked`. GTKX passes the emitting object after the signal arguments.
-- Property notifications use `onNotifyX`, receiving the new value and the emitting object.
-- Object properties that accept elements can be expressed as JSX, with GTKX managing their lifetime. This includes construct-only ones, such as `userContentManager={<WebKitUserContentManager onScriptMessageReceived={...} />}` on a `WebKitWebView`: GTKX builds the prop's element first and passes its object when it constructs the parent, so the element must stay the same while the parent is mounted.
-- Elements that show one child, such as `GtkScrolledWindow`, `AdwClamp`, window content or `AdwToolbarView` content, show the last one passed. Development builds warn when such an element holds more than one visible child; wrap them in a `GtkBox`.
-- Child slots that no property backs take their GtkBuilder child type, such as `start` and `end` on a header bar or `top` and `bottom` on a toolbar view.
-- Refs expose the corresponding GI instance for imperative APIs.
-
-Handlers don't report what GTKX writes for you. Writing a prop doesn't call that property's `onNotifyX` handler, and signal handlers such as `onChanged`, `onRowSelected` or `onClosePage` stay quiet while a commit changes props or children. Properties the widget changes in reaction still notify: when adding or removing children changes a property, such as the selected page after the selected tab is removed, its `onNotifyX` handler runs once the commit and its layout effects have finished, with the value at that point. If the commit writes that property itself, as a controlled `visibleChildName` does, or the property ends at the value its prop asks for, as a `GtkDropDown`'s `selected={0}` does once its model is placed, the handler doesn't run.
-
-A prop the element does not have, such as a typo, a C-style name like `margin_top` or a prop from another toolkit, throws an error that names the element and, where it can, the closest prop it does have.
-
-Prefer JSX for object creation and child placement. The [generated element reference](#generating-element-reference-docs) shows the exact props, slots, and signals for each configured library.
+How element props, signals, notifications, child slots and refs map to the native API is described in [JSX Elements](/v2/guide/jsx-elements#the-jsx-prop-model).
 
 ### Member names
 
-Native methods keep their generated camelCase names, even when a name overlaps a GTKX signal or property helper. For example, `Gio.Socket.connect` connects the socket; use `GObject.signalConnect` to connect one of its signals. `GObject.getProperty` and `GObject.setProperty` reach native properties when another member owns their name. Property names use camelCase and values are typechecked.
+How native method names that overlap GTKX helpers are kept is described in [JSX Elements](/v2/guide/jsx-elements#member-names).
 
 ## Passing a GType
 

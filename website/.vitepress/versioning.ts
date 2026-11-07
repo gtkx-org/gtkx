@@ -45,11 +45,13 @@ const guideGroups: DocumentationGroup[] = [
             { text: "Getting Started", path: GUIDE_ROOT },
             { text: "Scaffold Options", path: "guide/scaffold-options" },
             { text: "Configuration and Codegen", path: "guide/configuration-and-codegen" },
+            { text: "Workspaces", path: "guide/workspaces" },
         ],
     },
     {
         text: "Building Interfaces",
         items: [
+            { text: "JSX Elements", path: "guide/jsx-elements" },
             { text: "Components", path: "guide/components" },
             { text: "Navigation", path: "guide/navigation" },
             { text: "Forms", path: "guide/forms" },
