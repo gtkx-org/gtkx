@@ -6,8 +6,8 @@ import { useDocumentationVersion } from "../composables/use-documentation-versio
 
 const { screenMenu = false } = defineProps<{ screenMenu?: boolean }>();
 const router = useRouter();
-const { page } = useData();
-const isDocumentation = computed(() => isDocumentationPath(page.value.relativePath));
+const { page, frontmatter } = useData();
+const isShown = computed(() => frontmatter.value.layout === "home" || isDocumentationPath(page.value.relativePath));
 const { version, link, isSamePage } = useDocumentationVersion();
 
 const selectedVersion = computed<string>({
@@ -25,7 +25,7 @@ const selectedVersion = computed<string>({
 </script>
 
 <template>
-    <label v-if="isDocumentation" class="version-select" :class="{ 'screen-menu': screenMenu }">
+    <label v-if="isShown" class="version-select" :class="{ 'screen-menu': screenMenu }">
         <span>Version</span>
         <select v-model="selectedVersion">
             <option v-for="entry in versions" :key="entry.id" :value="entry.id">{{ entry.label }}</option>

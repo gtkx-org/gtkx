@@ -69,3 +69,7 @@
 .tdim {
     color: var(--text-3);
 }
+
+.landing-page .VPHome {
+    margin-bottom: 0;
+}

@@ -4,7 +4,7 @@ html {
 }
 
 html:has(.landing) {
-    scroll-padding-top: calc(var(--nav-h) + 1rem);
+    scroll-padding-top: calc(var(--vp-nav-height) + 1rem);
 }
 
 @media (prefers-reduced-motion: reduce) {
