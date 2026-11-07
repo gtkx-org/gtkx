@@ -14,7 +14,7 @@ This chapter belongs to the Notes tutorial for GTKX 2.0 and is not written yet. 
 
 A Flatpak runs in a sandbox that sees only the files its permissions grant. Notes reads `Notes` in the Documents folder, so grant that folder in `deploy.flatpak.finishArgs`. The `:create` suffix creates it on first launch:
 
-<<< @/figures/tutorial/flatpak/gtkx.config.ts{49-51} [gtkx.config.ts]
+<<< @/figures/tutorial/flatpak/gtkx.config.ts{46-48} [gtkx.config.ts]
 
 GTKX adds these arguments to its display, IPC and GPU defaults; see [Customize a package](/v2/guide/deploying#customize-a-package). The sandbox reaches no other folder. A folder chosen in Preferences comes through the file chooser portal, which grants access but doesn't report changes other programs make there, so a notes folder kept elsewhere needs its own `--filesystem` permission to update live. The [Flatpak permission reference](https://docs.flatpak.org/en/latest/sandbox-permissions.html) lists the forms.
 

@@ -7,7 +7,6 @@ export default defineConfig({
     deploy: {
         name: "Notes",
         genericName: "Markdown Notes",
-        binaryName: "gtkx-notes",
         summary: "Write Markdown notes kept as plain files",
         description: [
             "Notes keeps each note as a Markdown file in a folder, so notes sync with any tool and outlive the app.",
@@ -16,8 +15,6 @@ export default defineConfig({
         ],
         categories: ["Utility", "TextEditor"],
         keywords: ["Notes", "Markdown", "Notebook", "Writing"],
-        developer: { id: "dev.gtkx", name: "GTKX", email: "hello@gtkx.dev" },
-        homepage: "https://gtkx.dev",
         urls: {
             bugtracker: "https://github.com/gtkx-org/gtkx/issues",
             "vcs-browser": "https://github.com/gtkx-org/gtkx",
@@ -41,11 +38,11 @@ export default defineConfig({
             },
         ],
         branding: { light: "#f8e45c", dark: "#865e3c" },
-        contentRating: {},
         isDbusActivatable: true,
         screenshotBaseUrl:
             "https://raw.githubusercontent.com/gtkx-org/gtkx/main/tutorial",
         targets: ["flatpak", "deb", "rpm", "appimage"],
+        depends: { deb: ["libgtksourceview-5-0"] },
         flatpak: {
             finishArgs: ["--filesystem=xdg-documents/Notes:create"],
         },
