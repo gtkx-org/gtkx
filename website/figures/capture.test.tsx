@@ -8,6 +8,7 @@ import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 import { EmployeeTable } from "./guide/components-column-view.js";
 import { NameGrid } from "./guide/components-grid.js";
+import { AccentOverride } from "./guide/css-accent.js";
 import { Sidebar } from "./guide/components-list-box.js";
 import { TaskList } from "./guide/components-list-view.js";
 import { App as ListOfTasks } from "./tutorial/a-list-of-tasks/src/app.js";
@@ -57,6 +58,12 @@ const figures: [name: string, element: ReactNode][] = [
         "guide-components-grid",
         <SampleWindow title="GtkGrid">
             <NameGrid />
+        </SampleWindow>,
+    ],
+    [
+        "guide-css-accent",
+        <SampleWindow title="CSS">
+            <AccentOverride />
         </SampleWindow>,
     ],
 ];

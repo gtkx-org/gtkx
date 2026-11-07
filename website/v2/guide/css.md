@@ -36,13 +36,13 @@ import { GtkButton } from "@gtkx/jsx/gtk";
 
 Keys starting with `--` set CSS custom properties, which the widget and its descendants read through `var()`. Overriding Adwaita's variables recolors a subtree:
 
-```tsx
-import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
+<<< @/figures/guide/css-accent.tsx
 
-<GtkBox style={{ "--accent-bg-color": "#26a269", "--accent-color": "#1b8553" }}>
-    <GtkButton label="Save" cssClasses={["suggested-action"]} />
-</GtkBox>;
-```
+<figure class="result">
+    <img class="result-light" src="/figures/guide-css-accent-light.png" width="360" height="260" loading="lazy" alt="A window titled CSS with a blue Publish button and a green Save button side by side." />
+    <img class="result-dark" src="/figures/guide-css-accent-dark.png" width="360" height="260" loading="lazy" alt="A window titled CSS with a blue Publish button and a green Save button side by side." />
+    <figcaption>Captured from the sample above. Only <strong>Save</strong>, inside the box that overrides the accent variables, turns green.</figcaption>
+</figure>
 
 A declaration in `style` takes precedence over the same declaration supplied through `cssClasses`. GTKX adds a generated class to apply the style; leave that class under GTKX's control.
 
