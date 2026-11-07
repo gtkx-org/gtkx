@@ -6,6 +6,9 @@ import { render, screen } from "@gtkx/testing";
 import { fileURLToPath } from "node:url";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
+import { EmployeeTable } from "./guide/components-column-view.js";
+import { NameGrid } from "./guide/components-grid.js";
+import { Sidebar } from "./guide/components-list-box.js";
 import { TaskList } from "./guide/components-list-view.js";
 import { App as ListOfTasks } from "./tutorial/a-list-of-tasks/src/app.js";
 import { App as FirstWindow } from "./tutorial/your-first-window.js";
@@ -36,6 +39,24 @@ const figures: [name: string, element: ReactNode][] = [
         "guide-components-list-view",
         <SampleWindow title="ListView">
             <TaskList />
+        </SampleWindow>,
+    ],
+    [
+        "guide-components-column-view",
+        <SampleWindow title="ColumnView">
+            <EmployeeTable />
+        </SampleWindow>,
+    ],
+    [
+        "guide-components-list-box",
+        <SampleWindow title="GtkListBox">
+            <Sidebar />
+        </SampleWindow>,
+    ],
+    [
+        "guide-components-grid",
+        <SampleWindow title="GtkGrid">
+            <NameGrid />
         </SampleWindow>,
     ],
 ];

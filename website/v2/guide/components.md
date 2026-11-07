@@ -55,22 +55,13 @@ A row's content is not the row a screen reader announces: GTK names a list row o
 
 `ColumnView<T, S>` renders a multi-column table. Columns come from the `columns` prop, each one requiring `id`, `title`, and `renderCell`. Sorting is controlled: `onSortChanged` reports the header click, and the caller sorts `items` before passing them in.
 
-```tsx
-import { ColumnView, type ColumnViewColumn } from "@gtkx/components";
-import { GtkLabel } from "@gtkx/jsx/gtk";
+<<< @/figures/guide/components-column-view.tsx
 
-const columns: ColumnViewColumn<Employee>[] = [
-    { id: "name", title: "Name", isSortable: true, renderCell: ({ item }) => <GtkLabel>{item.name}</GtkLabel> },
-];
-
-<ColumnView
-    sortColumn={sortColumn}
-    sortOrder={sortOrder}
-    onSortChanged={handleSortChange}
-    items={sortedEmployees.map((emp) => ({ id: emp.id, value: emp }))}
-    columns={columns}
-/>
-```
+<figure class="result">
+    <img class="result-light" src="/figures/guide-components-column-view-light.png" width="360" height="260" loading="lazy" alt="A window titled ColumnView with a table of four employees in Name and Team columns, sorted by name in ascending order." />
+    <img class="result-dark" src="/figures/guide-components-column-view-dark.png" width="360" height="260" loading="lazy" alt="A window titled ColumnView with a table of four employees in Name and Team columns, sorted by name in ascending order." />
+    <figcaption>Captured from the <a href="#columnview"><code>ColumnView</code> sample</a> above, sorted by the Name column.</figcaption>
+</figure>
 
 `ColumnView` also supports trees through `ListItem.children`, `expandedIds`, and `onExpandedChange`. The first visible column draws the expander and indentation; the other columns stay aligned at each depth. Hiding that column with `visible: false` moves the expander to the next visible column. Set `hasExpander` on a column to draw them there instead, such as the subject column of a message list whose status icons come first.
 
@@ -118,24 +109,13 @@ import { GtkInscription, GtkListView, GtkNoSelection } from "@gtkx/jsx/gtk";
 
 `GtkListBox` takes JSX rows directly, making it suitable for short lists such as a sidebar or settings group. Its `selectedIndex` prop controls the selected row:
 
-```tsx
-import { AdwActionRow } from "@gtkx/jsx/adw";
-import { GtkListBox } from "@gtkx/jsx/gtk";
+<<< @/figures/guide/components-list-box.tsx
 
-<GtkListBox
-    cssClasses={["navigation-sidebar"]}
-    selectedIndex={views.findIndex((view) => view.id === activeId)}
-    onRowSelected={(row) => {
-        if (!row) return;
-        const view = views[row.getIndex()];
-        if (view) setActiveId(view.id);
-    }}
->
-    {views.map((view) => (
-        <AdwActionRow key={view.id} title={view.title} />
-    ))}
-</GtkListBox>
-```
+<figure class="result">
+    <img class="result-light" src="/figures/guide-components-list-box-light.png" width="360" height="260" loading="lazy" alt="A window titled GtkListBox with a sidebar of four views; Today is selected." />
+    <img class="result-dark" src="/figures/guide-components-list-box-dark.png" width="360" height="260" loading="lazy" alt="A window titled GtkListBox with a sidebar of four views; Today is selected." />
+    <figcaption>Captured from the <a href="#gtklistbox"><code>GtkListBox</code> sample</a> above, with Today selected.</figcaption>
+</figure>
 
 Leave `selectedIndex` out for native selection, or set it to keep selection under application control. Use `-1` or `null` to clear it. If the desired row has not mounted yet, GTKX keeps the current selection and applies the index once that row exists.
 
@@ -206,21 +186,13 @@ Here `renameTab` updates the state the page's `title` prop comes from. Removing 
 
 GTK places a widget in a `GtkGrid` through the layout manager's child object, which GtkBuilder writes as a `<layout>` element and C code sets with `gtk_grid_attach`. Wrap each child of the grid in `GtkGridLayoutChild` and give it the cell's `column` and `row`, plus `columnSpan` or `rowSpan` to cover several cells:
 
-```tsx
-import { GtkButton, GtkGrid, GtkGridLayoutChild, GtkLabel } from "@gtkx/jsx/gtk";
+<<< @/figures/guide/components-grid.tsx
 
-<GtkGrid columnSpacing={6} rowSpacing={6}>
-    <GtkGridLayoutChild column={0} row={0}>
-        <GtkLabel label="Name" />
-    </GtkGridLayoutChild>
-    <GtkGridLayoutChild column={1} row={0}>
-        <GtkButton label="Edit" />
-    </GtkGridLayoutChild>
-    <GtkGridLayoutChild column={0} row={1} columnSpan={2}>
-        <GtkButton label="Save" />
-    </GtkGridLayoutChild>
-</GtkGrid>
-```
+<figure class="result">
+    <img class="result-light" src="/figures/guide-components-grid-light.png" width="360" height="260" loading="lazy" alt="A window titled GtkGrid with a Name label and an Edit button in the first row and a Save button spanning both columns in the second." />
+    <img class="result-dark" src="/figures/guide-components-grid-dark.png" width="360" height="260" loading="lazy" alt="A window titled GtkGrid with a Name label and an Edit button in the first row and a Save button spanning both columns in the second." />
+    <figcaption>Captured from the <a href="#grid-cells">grid sample</a> above.</figcaption>
+</figure>
 
 The grid creates the layout child for the widget, and changing `column` or `row` moves it. A child without the wrapper sits in the first cell. Other layout managers' child objects work the same way, such as `GtkFixedLayoutChild` for a widget's `transform` inside a `GtkFixed`, which [Animations](/v2/guide/animations#moving-widgets) animates.
 
