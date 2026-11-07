@@ -107,11 +107,11 @@ const Window = () => {
     }, [colorScheme]);
 
     return (
-        <NotesProvider key={folder} folder={folder}>
-            <ToastProvider overlayRef={toastOverlayRef}>
+        <ToastProvider overlayRef={toastOverlayRef}>
+            <NotesProvider key={folder} folder={folder}>
                 <NotesWindow toastOverlayRef={toastOverlayRef} />
-            </ToastProvider>
-        </NotesProvider>
+            </NotesProvider>
+        </ToastProvider>
     );
 };
 

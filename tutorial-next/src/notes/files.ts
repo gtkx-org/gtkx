@@ -2,8 +2,7 @@ import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import { access, mkdir, readdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-
-type Note = { name: string; text: string; modified: number };
+import { type Note, toNote } from "./note.js";
 
 const EXTENSION = ".md";
 
@@ -28,7 +27,7 @@ const readNote = async (folder: string, name: string): Promise<Note | null> => {
     try {
         const [text, info] = await Promise.all([readFile(path, "utf8"), stat(path)]);
 
-        return info.isFile() ? { name, text, modified: info.mtimeMs } : null;
+        return info.isFile() ? toNote(name, text, info.mtimeMs) : null;
     } catch (error) {
         if (isMissing(error)) {
             return null;
@@ -100,7 +99,6 @@ export {
     defaultFolder,
     isValidName,
     linkedNoteName,
-    type Note,
     noteName,
     readNote,
     readNotes,

@@ -1,6 +1,9 @@
+import { useToast } from "@gtkx/components";
+import { t } from "@gtkx/i18n";
 import { watch } from "node:fs";
 import { createContext, type ReactNode, use, useEffect, useState } from "react";
-import { createNote, type Note, noteName, readNote, readNotes, renameNote, trashNote } from "./files.js";
+import { createNote, noteName, readNote, readNotes, renameNote, trashNote } from "./files.js";
+import { type Note, toNote } from "./note.js";
 import { NoteSaver } from "./note-saver.js";
 
 type NoteMap = ReadonlyMap<string, Note>;
@@ -29,7 +32,13 @@ const withNote = (notes: NoteMap | null, name: string, note: Note | null): NoteM
 
 const NotesProvider = ({ folder, children }: { folder: string; children: ReactNode }) => {
     const [notes, setNotes] = useState<NoteMap | null>(null);
-    const [saver] = useState(() => new NoteSaver(folder));
+    const { show } = useToast();
+    const [saver] = useState(
+        () =>
+            new NoteSaver(folder, (name) => {
+                show({ useMarkup: false, title: t("Couldn’t save “{{name}}”", { name }), timeout: 0 });
+            }),
+    );
 
     useEffect(() => {
         const controller = new AbortController();
@@ -68,14 +77,14 @@ const NotesProvider = ({ folder, children }: { folder: string; children: ReactNo
     const create = async (base: string, text: string): Promise<string> => {
         const name = await createNote(folder, base, text);
         saver.remember(name, text);
-        setNotes((current) => withNote(current, name, { name, text, modified: Date.now() }));
+        setNotes((current) => withNote(current, name, toNote(name, text, Date.now())));
 
         return name;
     };
 
     const edit = (name: string, text: string): void => {
         saver.schedule(name, text);
-        setNotes((current) => withNote(current, name, { name, text, modified: Date.now() }));
+        setNotes((current) => withNote(current, name, toNote(name, text, Date.now())));
     };
 
     const rename = async (from: string, to: string): Promise<void> => {

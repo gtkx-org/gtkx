@@ -1,5 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
+import { useTranslation } from "@gtkx/i18n";
 import { AdwClamp } from "@gtkx/jsx/adw";
 import { GtkBox, GtkLabel, GtkScrolledWindow, GtkSeparator } from "@gtkx/jsx/gtk";
 import type { Blockquote, Code, Heading, List, Paragraph, RootContent } from "mdast";
@@ -108,18 +109,30 @@ const Block = ({ node }: { node: RootContent }) => {
 
 const Blocks = ({ nodes }: { nodes: RootContent[] }) => nodes.map((node, index) => <Block key={index} node={node} />);
 
+const Tags = ({ tags }: { tags: string[] }) => (
+    <GtkBox spacing={12}>
+        {tags.map((tag) => (
+            <GtkLabel key={tag} label={`#${tag}`} cssClasses={["caption-heading", "accent"]} />
+        ))}
+    </GtkBox>
+);
+
 type MarkdownPreviewProps = {
     text: string;
+    tags?: string[];
     onActivateLink?: (uri: string) => boolean;
 };
 
-const MarkdownPreview = ({ text, onActivateLink = () => false }: MarkdownPreviewProps) => {
+const MarkdownPreview = ({ text, tags = [], onActivateLink = () => false }: MarkdownPreviewProps) => {
+    const { t } = useTranslation();
     const tree = useMemo(() => fromMarkdown(text), [text]);
 
     return (
         <GtkScrolledWindow vexpand hscrollbarPolicy={Gtk.PolicyType.NEVER}>
             <AdwClamp maximumSize={720}>
                 <GtkBox
+                    accessibleRole={Gtk.AccessibleRole.DOCUMENT}
+                    accessibleLabel={t("Preview")}
                     orientation={Gtk.Orientation.VERTICAL}
                     spacing={12}
                     marginTop={18}
@@ -127,6 +140,7 @@ const MarkdownPreview = ({ text, onActivateLink = () => false }: MarkdownPreview
                     marginStart={18}
                     marginEnd={18}
                 >
+                    {tags.length > 0 && <Tags tags={tags} />}
                     <LinkContext value={onActivateLink}>
                         <Blocks nodes={tree.children} />
                     </LinkContext>

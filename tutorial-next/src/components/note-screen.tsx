@@ -38,7 +38,7 @@ const NoteScreen = ({ route }: SplitViewScreenProps<RootParamList, "Note">) => {
                 <NoteEditor key={name} text={note.text} onChange={(text) => edit(name, text)} />
             </GtkStackPage>
             <GtkStackPage name="preview">
-                <MarkdownPreview text={note.text} onActivateLink={openLinkedNote} />
+                <MarkdownPreview text={note.body} tags={note.tags} onActivateLink={openLinkedNote} />
             </GtkStackPage>
         </GtkStack>
     );

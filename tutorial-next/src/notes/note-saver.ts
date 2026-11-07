@@ -6,12 +6,15 @@ type PendingSave = { text: string; timer: NodeJS.Timeout };
 
 class NoteSaver {
     readonly #folder: string;
+    readonly #onError: (name: string, error: unknown) => void;
+    readonly #failing = new Set<string>();
     readonly #pending = new Map<string, PendingSave>();
     readonly #written = new Map<string, string>();
     readonly #writes = new Map<string, Promise<void>>();
 
-    constructor(folder: string) {
+    constructor(folder: string, onError: (name: string, error: unknown) => void) {
         this.#folder = folder;
+        this.#onError = onError;
     }
 
     schedule(name: string, text: string): void {
@@ -44,6 +47,7 @@ class NoteSaver {
 
     forget(name: string): void {
         this.#written.delete(name);
+        this.#failing.delete(name);
     }
 
     #flush(name: string): void {
@@ -55,8 +59,21 @@ class NoteSaver {
         this.#pending.delete(name);
         this.#written.set(name, entry.text);
         const previous = this.#writes.get(name) ?? Promise.resolve();
-        const write = previous.catch(() => undefined).then(() => writeNote(this.#folder, name, entry.text));
+        const write = previous.then(() => this.#write(name, entry.text));
         this.#writes.set(name, write);
+    }
+
+    async #write(name: string, text: string): Promise<void> {
+        try {
+            await writeNote(this.#folder, name, text);
+            this.#failing.delete(name);
+        } catch (error) {
+            this.#written.delete(name);
+            if (!this.#failing.has(name)) {
+                this.#failing.add(name);
+                this.#onError(name, error);
+            }
+        }
     }
 }
 
