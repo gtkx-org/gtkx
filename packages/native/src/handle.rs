@@ -25,8 +25,7 @@ const STRUCT_SIZE_HINT: usize = 256;
 
 pub const INVALIDATED_HANDLE: &str = "the instance a dispose or finalize override receives is only valid until the override returns, and memory a C caller lends to a callback only until that callback returns";
 
-pub const RELEASED_HANDLE: &str =
-    "the value was released early, such as by `$dispose()`, so nothing remains to reach through it";
+pub const RELEASED_HANDLE: &str = "the value was released early, such as by `[Symbol.dispose]()` or a `using` declaration, so nothing remains to reach through it";
 
 pub const NULL_HANDLE: &str =
     "the handle points at nothing, so there is no memory to reach through it";

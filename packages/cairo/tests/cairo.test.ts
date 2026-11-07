@@ -730,28 +730,42 @@ describe("Context — status", () => {
     });
 });
 
-describe("Context — $dispose", () => {
+describe("Context — Symbol.dispose", () => {
     it("drops the context's references to its target at once", () => {
         const surface = createTestSurface();
         const unused = surface.getReferenceCount();
         const ctx = Context.create(surface);
         expect(surface.getReferenceCount()).toBeGreaterThan(unused);
-        ctx.$dispose();
+        ctx[Symbol.dispose]();
         expect(surface.getReferenceCount()).toBe(unused);
+    });
+
+    it("releases a context declared with using when its block exits", () => {
+        const surface = createTestSurface();
+        const unused = surface.getReferenceCount();
+        let escaped: Context | undefined;
+        {
+            using ctx = Context.create(surface);
+            ctx.paint();
+            escaped = ctx;
+            expect(surface.getReferenceCount()).toBeGreaterThan(unused);
+        }
+        expect(surface.getReferenceCount()).toBe(unused);
+        expect(() => escaped?.paint()).toThrow(/released/);
     });
 
     it("rejects drawing through a disposed context", () => {
         const ctx = createTestContext();
-        ctx.$dispose();
+        ctx[Symbol.dispose]();
         expect(() => ctx.paint()).toThrow(/released/);
     });
 
-    it("ignores a second $dispose", () => {
+    it("ignores a second dispose", () => {
         const surface = createTestSurface();
         const unused = surface.getReferenceCount();
         const ctx = Context.create(surface);
-        ctx.$dispose();
-        ctx.$dispose();
+        ctx[Symbol.dispose]();
+        ctx[Symbol.dispose]();
         expect(surface.getReferenceCount()).toBe(unused);
     });
 });

@@ -300,7 +300,7 @@ const appendSegment = (ctx: Context, segment: PathData): void => {
  * path, source, transformation, clip and font state for one target surface. GTK hands one to draw callbacks
  * and snapshots, and `new Context(surface)` creates one for offscreen drawing.
  */
-class Context {
+class Context implements Disposable {
     static {
         registerWrapperClass(this, CONTEXT_TYPE);
     }
@@ -322,17 +322,24 @@ class Context {
 
     /**
      * Drops this context's reference to its `cairo_t` now instead of when the garbage collector
-     * reclaims the wrapper, as `cairo_destroy` does in C and `$dispose()` does in GJS. Call it once
-     * drawing is done on a context the app obtains itself, such as one from
-     * `Gtk.Snapshot.appendCairo` or `Context.create` on a long-lived surface: until then the context
-     * keeps its target alive, and Cairo copies a backing surface into each recording that still
-     * holds it when the app draws into it again.
+     * reclaims the wrapper, as `cairo_destroy` does in C. Release a context the app obtains itself,
+     * such as one from `Gtk.Snapshot.appendCairo` or `Context.create` on a long-lived surface, once
+     * drawing is done: until then the context keeps its target alive, and Cairo copies a backing
+     * surface into each recording that still holds it when the app draws into it again.
      *
-     * Every later call on the context throws. Calling `$dispose()` again does nothing, and on the
-     * context a draw callback receives it only ends that context early, because GTKX releases it
-     * when the callback returns anyway.
+     * A `using` declaration calls this when its block exits:
+     *
+     * ```ts
+     * using cr = snapshot.appendCairo(bounds);
+     * cr.setSourceSurface(surface, 0, 0);
+     * cr.paint();
+     * ```
+     *
+     * Every later call on the context throws. Calling it again does nothing, and on the context a
+     * draw callback receives it only ends that context early, because GTKX releases it when the
+     * callback returns anyway.
      */
-    $dispose(): void {
+    [Symbol.dispose](): void {
         releaseHandle(getHandle(this));
     }
 

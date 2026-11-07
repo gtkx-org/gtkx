@@ -62,12 +62,15 @@ describe("cairo values crossing the GI boundary", () => {
         expect(target).toBeInstanceOf(CONCRETE_SURFACE_CLASSES[target.getType()] ?? Surface);
     });
 
-    it("releases a snapshot's drawing context and its hold on the recording surface with $dispose", () => {
+    it("releases a snapshot's drawing context and its hold on the recording surface at the end of a using block", () => {
         const snapshot = new Gtk.Snapshot();
-        const cr = snapshot.appendCairo(new Graphene.Rect().init(0, 0, 8, 8));
-        const target = cr.getTarget();
-        const before = target.getReferenceCount();
-        cr.$dispose();
+        let target: Surface;
+        let before: number;
+        {
+            using cr = snapshot.appendCairo(new Graphene.Rect().init(0, 0, 8, 8));
+            target = cr.getTarget();
+            before = target.getReferenceCount();
+        }
         expect(target.getReferenceCount()).toBeLessThan(before);
         expect(snapshot.toNode()).toBeInstanceOf(Gsk.CairoNode);
     });
@@ -162,7 +165,7 @@ describe("PangoCairo text layout", () => {
         const failures: string[] = [];
         PangoCairo.contextSetShapeRenderer(layout.getContext(), () => {
             try {
-                cr.$dispose();
+                cr[Symbol.dispose]();
             } catch (error) {
                 failures.push(String(error));
             }
@@ -170,7 +173,7 @@ describe("PangoCairo text layout", () => {
         PangoCairo.showLayout(cr, layout);
         expect(failures).toHaveLength(1);
         expect(failures[0]).toContain("still in progress");
-        cr.$dispose();
+        cr[Symbol.dispose]();
         expect(() => cr.paint()).toThrow(/released/);
     });
 });

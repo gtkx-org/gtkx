@@ -33,7 +33,7 @@ const Circle = () => (
 );
 ```
 
-Draw only inside this callback: do not update widget properties or React state from it. Keep the context local to the callback. GTKX releases it when the callback returns, so the callback does not need to call `cr.$dispose()`. Code ported from GJS that does call it keeps working; any drawing through the context after that call throws.
+Draw only inside this callback: do not update widget properties or React state from it. Keep the context local to the callback. GTKX releases it when the callback returns, so the callback does not need to release it. Releasing it there anyway is harmless; any drawing through the context after that throws.
 
 Changing `drawFunc` queues a repaint, including when a render supplies a new callback. If drawing data changes without replacing the callback, call `queueDraw()` on the area obtained through its `ref`. Use the callback's dimensions when drawing; `contentWidth` and `contentHeight` request a size, which can differ from the allocated space.
 
@@ -85,25 +85,26 @@ An `ImageSurface` lets you draw without a widget. Create a context for it, then 
 ```ts
 import { Context, Format, ImageSurface, Status, statusToString } from "@gtkx/cairo";
 
-const surface = new ImageSurface(Format.ARGB32, 256, 256);
-const cr = Context.create(surface);
-cr.setSourceRgb(0.9, 0.3, 0.2);
-cr.paint();
-cr.$dispose();
+const writeSwatch = (path: string): void => {
+    const surface = new ImageSurface(Format.ARGB32, 256, 256);
+    using cr = Context.create(surface);
+    cr.setSourceRgb(0.9, 0.3, 0.2);
+    cr.paint();
 
-const status = surface.writeToPng("image.png");
-if (status !== Status.SUCCESS) throw new Error(statusToString(status));
+    const status = surface.writeToPng(path);
+    if (status !== Status.SUCCESS) throw new Error(statusToString(status));
+};
 ```
 
 `getData()` returns a copy of the image's pixels, including row padding. Editing that array does not change the surface; draw through its context to update it. Load a saved image with `ImageSurface.createFromPng(path)`.
 
 ## Release contexts you create
 
-A context obtained outside a draw callback holds its target surface until JavaScript garbage-collects it. This applies to the contexts from `Context.create(surface)` and from `snapshot.appendCairo(bounds)` in a widget's `vfuncSnapshot`, as well as those returned by other native calls. Call `cr.$dispose()` when you finish drawing, as C calls `cairo_destroy` and GJS calls `$dispose()`; the offscreen example above does.
+A context obtained outside a draw callback holds its target surface until JavaScript garbage-collects it. This applies to the contexts from `Context.create(surface)` and from `snapshot.appendCairo(bounds)` in a widget's `vfuncSnapshot`, as well as those returned by other native calls. Declare the context with [`using`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/using) so it is released when its block exits, where C calls `cairo_destroy`; the offscreen example above does. To release it at another point, call `cr[Symbol.dispose]()`.
 
-Releasing them matters most for contexts created on every frame. A snapshot context records the frame, and Cairo copies a backing surface into each recording that still holds it when the app draws into that surface again. Without `$dispose()`, a widget that paints a canvas it keeps updating can grow to gigabytes before the garbage collector runs. [Subclassing](/v2/guide/subclassing#draw-with-cairo-in-vfuncsnapshot) shows the pattern.
+Releasing them matters most for contexts created on every frame. A snapshot context records the frame, and Cairo copies a backing surface into each recording that still holds it when the app draws into that surface again. Without releasing them, a widget that paints a canvas it keeps updating can grow to gigabytes before the garbage collector runs. [Subclassing](/v2/guide/subclassing#draw-with-cairo-in-vfuncsnapshot) shows the pattern.
 
-After `$dispose()`, every call on the context throws. Calling `$dispose()` again does nothing. If a native call is still drawing with the context, for example when `$dispose()` runs in a callback that call invoked, `$dispose()` throws and leaves the context usable.
+Once released, every call on the context throws. Releasing it again does nothing. If a native call is still drawing with the context, for example when it is released in a callback that call invoked, the release throws and leaves the context usable.
 
 ## Handle errors
 
