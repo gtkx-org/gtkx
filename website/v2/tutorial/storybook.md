@@ -39,7 +39,7 @@ A stories file sits next to the component it renders and follows Storybook's [Co
 
 - `title` groups the stories under Preview/Markdown in the explorer's sidebar.
 - `args` gives `MarkdownPreview` empty Markdown, no tags and a link handler. Each story sets `text` to the Markdown it shows, and Tagged also sets `tags`.
-- The explorer infers a [control](https://storybook.js.org/docs/essentials/controls) from each argument's value, as Storybook does. A text control is a one-line entry, too small for the Markdown of most stories, and the explorer has no control for a list such as `tags`, so the metadata turns both off with `control: false`. Formatting, whose Markdown fits on one line, turns its text control back on.
+- The explorer shows a [control](https://storybook.js.org/docs/essentials/controls) only for an argument whose `argTypes` entry declares one. Formatting declares a text control for `text`. A text control is a one-line entry, so the other stories, whose Markdown spans several lines, have none.
 - `action: "activate-link"` lists each call to `onActivateLink` under Actions, with the link's target, and still calls the handler from `args`. That handler returns `true`, which tells the label the link is handled (see [Follow links](/v2/tutorial/the-markdown-preview#follow-links)), so GTK doesn't try to open it.
 
 The stories import `MarkdownPreview` rather than define it, because Fast Refresh updates a component only when it lives in its own module. [Test the App](/v2/tutorial/testing) renders the same stories in its tests.

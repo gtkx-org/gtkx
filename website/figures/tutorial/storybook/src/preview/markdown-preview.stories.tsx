@@ -10,9 +10,7 @@ const meta = {
         onActivateLink: () => true,
     },
     argTypes: {
-        text: { control: false },
-        tags: { control: false },
-        onActivateLink: { action: "activate-link", control: false },
+        onActivateLink: { action: "activate-link" },
     },
 } satisfies Meta<typeof MarkdownPreview>;
 
