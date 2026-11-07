@@ -1343,6 +1343,17 @@ describe("generated bindings", () => {
         expect(reference.lookup("Gst.ClockID")).toMatchObject({ outcome: "page" });
     });
 
+    it("names enumeration and flags types that consumer declarations infer", async () => {
+        using directory = createProject();
+        const { gi } = resolveStore(directory.path);
+        await runCodegen({ libraries: ["Gio-2.0"], girPath: resolveGirPath(undefined, directory.path), gi });
+        const consumer = `import { ApplicationFlags, FileType } from "@gtkx/gi/gio";
+            export const fileType = FileType.REGULAR;
+            export const flags = ApplicationFlags.HANDLES_OPEN;
+            export const defaults = { fileType: FileType.DIRECTORY, flags: ApplicationFlags.NON_UNIQUE };`;
+        expect(diagnostics(directory.path, consumer, { declaration: true })).toEqual([]);
+    });
+
     it("finds GIR files in the gir-1.0 directory under the introspection libdir", async () => {
         using directory = createProject();
         const bin = join(directory.path, "bin");
