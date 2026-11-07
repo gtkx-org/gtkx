@@ -61,7 +61,7 @@ const label = t("{{count}} file", {
 });
 ```
 
-Gettext chooses the translated form using the catalog's plural rule. Counts must be non-negative safe integers. GTKX extraction requires both source forms and rejects i18next options that cannot be represented by this gettext entry, such as ordinal plurals and zero-specific defaults. Write both options out even when the English forms read the same, as in `{{count}} installed`: the message still gets a plural entry, and languages such as Italian translate it with two forms.
+Gettext chooses the translated form using the catalog's plural rule. Counts must be non-negative safe integers. GTKX extraction requires both source forms and rejects i18next options that cannot be represented by this gettext entry, such as ordinal plurals and zero-specific defaults. Write both options out even when the English forms read the same, as in <span v-pre>`{{count}} installed`</span>: the message still gets a plural entry, and languages such as Italian translate it with two forms.
 
 A `Trans` component takes the same options through `tOptions`, with the count in its `count` prop:
 
@@ -131,7 +131,7 @@ Extraction follows `t` from its import or from a `useTranslation()` call in the 
 
 [Storybook](/v2/guide/storybook) stories stay out of the catalogs. Files matched by the `stories` patterns in `.storybook/main.ts`, or by `src/**/*.stories.*` without that file, are left out of `po/POTFILES.in` and the template, so translators never see story fixture text. A `t` call in a story still type-checks and shows its source text, and the components a story renders show their translations as in the application.
 
-Generated declarations under `node_modules/.gtkx` extend the upstream translation types. They check message keys and contexts, and the interpolation values of an options object. As in i18next, they do not require the options object itself or a plural message's `count`: `t("Hello, {{name}}!")` compiles and renders the placeholder unchanged. Run codegen after adding messages; do not edit the declarations.
+Generated declarations under `node_modules/.gtkx` extend the upstream translation types. They check message keys and contexts, and the interpolation values of an options object. As in i18next, they do not require the options object itself or a plural message's `count`: <span v-pre>`t("Hello, {{name}}!")`</span> compiles and renders the placeholder unchanged. Run codegen after adding messages; do not edit the declarations.
 
 ## Develop and build
 
@@ -159,6 +159,38 @@ LANG=fr_FR.UTF-8 LANGUAGE=fr gtkx dev
 ```
 
 Gettext translations follow the startup environment. Intl-based formatting uses the process's default locale. Changing i18next's language does not change libc's active gettext locale; restart the process to change the application's translation language.
+
+## Test translations
+
+The [Vitest plugin](/v2/guide/testing) does not compile catalogs, so tests render source text whatever the locale. To check translations, run those tests in their own configuration: gettext reads the locale when the process starts, so the configuration sets it for its workers, and `localeDir` points the plugin at catalogs that `gtkx build` compiled:
+
+```ts [vitest.i18n.config.ts]
+import gtkx from "@gtkx/cli/vitest-plugin";
+import { resolve } from "node:path";
+import { defineConfig } from "vitest/config";
+
+const localeDir = resolve(import.meta.dirname, "dist/locale");
+
+export default defineConfig({
+    plugins: [gtkx({ localeDir })],
+    test: {
+        include: ["tests/**/*.i18n.tsx"],
+        env: {
+            LANG: "fr_FR.UTF-8",
+            LANGUAGE: "fr",
+            LC_ALL: "fr_FR.UTF-8",
+        },
+    },
+});
+```
+
+Name those test files so the main configuration's `include` pattern skips them, as `*.i18n.tsx` does for `tests/**/*.test.{ts,tsx}`, and build before running them:
+
+```bash
+gtkx build && vitest run --config vitest.i18n.config.ts
+```
+
+The locale must be installed: `locale -a` lists it, and on Fedora 44 French comes with `glibc-langpack-fr`.
 
 ## Text direction
 

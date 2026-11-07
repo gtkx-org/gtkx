@@ -162,6 +162,8 @@ GTKX no longer reads `GTKX_LOCALE_DIR`. A Vitest configuration that tests compil
 plugins: [gtkx({ localeDir: resolve(import.meta.dirname, "dist/locale") })],
 ```
 
+See [Test translations](/v2/guide/internationalization#test-translations).
+
 ## Replace removed APIs
 
 | Replace                                     | With                                                           |

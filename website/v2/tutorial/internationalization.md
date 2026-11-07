@@ -85,6 +85,8 @@ Add a script that builds and runs them, and make `npm test` run both suites:
 }
 ```
 
+See [Test translations](/v2/guide/internationalization#test-translations).
+
 ## Run it
 
 The French locale must be installed: `locale -a` lists it, and on Fedora it comes with `glibc-langpack-fr`. Start the app in French:
