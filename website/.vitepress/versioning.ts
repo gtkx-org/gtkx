@@ -76,6 +76,7 @@ const guideGroups: DocumentationGroup[] = [
             { text: "Testing", path: "guide/testing" },
             { text: "Storybook", path: "guide/storybook" },
             { text: "App Inspection (MCP)", path: "guide/mcp" },
+            { text: "Troubleshooting", path: "guide/troubleshooting" },
         ],
     },
     {
@@ -84,6 +85,7 @@ const guideGroups: DocumentationGroup[] = [
             { text: "Assets and Build Output", path: "guide/assets" },
             { text: "Internationalization", path: "guide/internationalization" },
             { text: "Deploying", path: "guide/deploying" },
+            { text: "Updating GTKX", path: "guide/updating" },
             { text: "Upgrading to 2.0", path: "guide/upgrading-to-2" },
         ],
     },

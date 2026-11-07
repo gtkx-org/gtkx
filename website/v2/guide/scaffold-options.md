@@ -84,7 +84,7 @@ The package managers read these settings only from the workspace root. The scaff
 | npm             | `allowScripts` for `@swc/core` and `esbuild` in `package.json`, and the `min-release-age-exclude[]` lines in `.npmrc`                                                                 |
 | Yarn            | `nodeLinker: node-modules` and, with Yarn 4.10 or newer, the `npmPreapprovedPackages` exemptions in `.yarnrc.yml`; `dependenciesMeta` for `@swc/core` and `esbuild` in `package.json` |
 
-Until the root has them, pnpm skips the build scripts of `@swc/core` and `esbuild`, Yarn installs the workspace with Plug'n'Play, which GTKX does not support, and a release-age gate holds back a GTKX release published that day. When the install fails, the command prints the missing entries first; [Troubleshooting](/v2/guide/getting-started#troubleshooting) covers recovery.
+Until the root has them, pnpm skips the build scripts of `@swc/core` and `esbuild`, Yarn installs the workspace with Plug'n'Play, which GTKX does not support, and a release-age gate holds back a GTKX release published that day. When the install fails, the command prints the missing entries first; [Troubleshooting](/v2/guide/troubleshooting#dependency-installation-fails-while-scaffolding) covers recovery.
 
 The app gets its own `.mcp.json`, and the scaffold also adds a server named `gtkx` to the `.mcp.json` at the workspace root, where AI clients are usually opened. That server starts the app's MCP server through the workspace's package manager:
 

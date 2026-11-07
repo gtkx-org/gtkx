@@ -70,21 +70,7 @@ The [tutorial](/v2/tutorial/) follows development on `main` and may use APIs add
 
 ## The dev loop
 
-`npm run dev` runs `gtkx dev`, which opens the app and watches your source files. Fast Refresh applies most edits to the open window and keeps its state:
-
-- Editing a module that exports only components refreshes it in place.
-- Editing any other module, such as a custom hook or shared styles, refreshes the component modules that import it, directly or through other modules.
-- A component whose hook calls change remounts and resets only its own state.
-- Editing an imported stylesheet replaces its rules. Editing a module's `injectGlobal` rules adds the edited rules, while the earlier ones stay until the app restarts.
-
-These changes restart the app and reset its state:
-
-- an edit that reaches the entry module before a component module
-- a change to a module's runtime imports or re-exports
-- an edit to an imported resource or icon, or to a file a [worker](/v2/guide/workers) loaded
-- an edit that changes a construct-only prop, such as the `strings` of a `GtkStringList`
-- a lockfile change from installing or updating dependencies
-- any other change that Fast Refresh cannot patch
+`npm run dev` runs `gtkx dev`, which opens the app and watches your source files. Fast Refresh applies most edits to the open window and keeps its state; some edits [restart the app](/v2/guide/troubleshooting#the-app-restarts-instead-of-refreshing) instead.
 
 | Command          | Result                                                              |
 | ---------------- | ------------------------------------------------------------------- |
@@ -132,34 +118,11 @@ The starter's `<AdwApplication>` gets its application ID from `gtkx.config.ts`. 
 
 ## Updating GTKX
 
-GTKX packages are released together under one version. To move a project to the newest release on the dist-tag it follows, such as `beta`, run this from the project directory:
-
-```bash
-npx gtkx upgrade
-```
-
-Pass a version or dist-tag to choose one, as in `npx gtkx upgrade 2.0.1`. The command rewrites every GTKX package version in the project, or in each package of its workspace, including pnpm catalog entries, and keeps their range operators. A `peerDependencies` range, such as a shared package's `@gtkx/react`, moves only when it does not accept the new version, so a range like `^1.6.0 || ^2.0.0` stays as written. It then installs and deduplicates with the project's package manager. When the install leaves some GTKX packages on another version, for example through a Yarn catalog, `overrides` or `resolutions`, or a peer range it cannot rewrite still excludes the new version, the command fails and names them; change those and install again.
-
-Before installing, the command exempts GTKX's own packages from the package manager's [release-age gate](/v2/guide/scaffold-options#release-age-gates) at the project or workspace root, so a release published that day installs. If the install still fails, it restores each `package.json`, the lockfile and those settings, so the project stays on its previous release.
-
-The CLI of 2.0.0-beta.12 and earlier releases has no `upgrade` command. Run the newer one once with `npx @gtkx/cli@beta upgrade`; on a release day, [Upgrading to 2.0](/v2/guide/upgrading-to-2) shows how to run it past a release-age gate.
-
-`gtkx dev`, `gtkx build` and the other project commands warn when the installed GTKX packages are not all on one version. `npx gtkx <command> --help` describes a command's options.
+Run `npx gtkx upgrade` to move every GTKX package in the project to the newest release on the dist-tag it follows. [Updating GTKX](/v2/guide/updating) describes what it changes.
 
 ## Troubleshooting
 
-- **Missing GIR file:** install the library's development package, then run `npx gtkx codegen` from the project. For libraries outside the standard directories, set [`girPath`](/v2/guide/configuration-and-codegen#the-config-file).
-- **Native versions are too old:** use a distribution or development container that meets the minimums. Installing newer TypeScript packages does not upgrade GTK or libadwaita.
-- **No display connection:** run from a desktop terminal or configure your container's display and session access. Tests have a separate [headless setup](/v2/guide/testing#setup).
-- **Dependency installation failed:** the generated files remain in the project directory, but the scaffolder stops before initializing Git. Resolve the package manager's error, rerun its install command there, and run `git init` if you want the project under version control.
-- **Release-age gates:** the scaffolder exempts GTKX's own packages from the package manager's release-age gate in the project it creates (see [Scaffold Options](/v2/guide/scaffold-options#release-age-gates)), but the gate still applies to downloading the scaffolder. On the day of a GTKX release, `pnpm create gtkx@beta` with pnpm's `minimumReleaseAge` set refuses the new `create-gtkx`, and `npm create gtkx@beta` with npm's `min-release-age` set reports that no matching version was found. Start the project with `npm create gtkx@beta` and choose your package manager, as a Yarn project does, or exempt GTKX for that one command. npm ignores `min-release-age-exclude` when it downloads the scaffolder, so lift its gate for the download with `--min-release-age=0`; the scaffolder's own install still applies the gate:
-
-  ```bash
-  pnpm_config_minimum_release_age_exclude='["@gtkx/*","create-gtkx"]' pnpm create gtkx@beta
-  npm create --min-release-age=0 gtkx@beta
-  ```
-
-  A project created by an earlier scaffolder has no exemption. [`gtkx upgrade`](#updating-gtkx) adds it before installing; to install on a release day without upgrading, add the [entries](/v2/guide/scaffold-options#release-age-gates) yourself, or install again a day later.
+[Troubleshooting](/v2/guide/troubleshooting) covers missing GIR files, display connections, release-age gates, and edits that restart the app.
 
 ## Next
 
