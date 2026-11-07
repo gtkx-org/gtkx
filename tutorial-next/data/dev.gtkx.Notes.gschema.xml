@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<schemalist>
+<schemalist gettext-domain="dev.gtkx.Notes">
   <schema id="dev.gtkx.Notes" path="/dev/gtkx/Notes/">
     <key name="folder" type="s">
       <default>''</default>

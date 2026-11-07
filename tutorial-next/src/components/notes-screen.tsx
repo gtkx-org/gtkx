@@ -2,7 +2,7 @@ import { DropDown, ListView } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
 import { useTranslation } from "@gtkx/i18n";
-import { AdwSpinner, AdwStatusPage } from "@gtkx/jsx/adw";
+import { AdwSpinner, AdwStatusPage, AdwWindowTitle } from "@gtkx/jsx/adw";
 import {
     GtkBox,
     GtkButton,
@@ -63,6 +63,21 @@ const FocusShortcut = ({ target }: { target: Gtk.Widget | null }) => (
         }
     />
 );
+
+const NotesTitle = () => {
+    const { t } = useTranslation();
+    const { notes } = useNotes();
+    const subtitle =
+        notes === null
+            ? ""
+            : t("{{count}} note", {
+                  count: notes.size,
+                  defaultValue_one: "{{count}} note",
+                  defaultValue_other: "{{count}} notes",
+              });
+
+    return <AdwWindowTitle title={t("Notes")} subtitle={subtitle} />;
+};
 
 const NotesScreen = ({ navigation }: SplitViewScreenProps<RootParamList, "Notes">) => {
     const { t } = useTranslation();
@@ -151,4 +166,4 @@ const NotesScreen = ({ navigation }: SplitViewScreenProps<RootParamList, "Notes"
     );
 };
 
-export { NotesScreen };
+export { NotesScreen, NotesTitle };

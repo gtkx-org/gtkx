@@ -14,7 +14,7 @@ import { type Dialog, Dialogs } from "./dialogs.js";
 import { MainMenu } from "./main-menu.js";
 import { NoteMenu, PreviewToggle } from "./note-menu.js";
 import { NoteScreen } from "./note-screen.js";
-import { NotesScreen } from "./notes-screen.js";
+import { NotesScreen, NotesTitle } from "./notes-screen.js";
 import { useNoteCommands, WindowActions } from "./window-actions.js";
 
 const NoteNavigation = ({ onOpenNameChange }: { onOpenNameChange: (name: string | null) => void }) => {
@@ -34,6 +34,7 @@ const NoteNavigation = ({ onOpenNameChange }: { onOpenNameChange: (name: string 
                     component={NotesScreen}
                     options={{
                         title: t("Notes"),
+                        headerTitle: <NotesTitle />,
                         headerStart: (
                             <GtkButton
                                 iconName="document-new-symbolic"

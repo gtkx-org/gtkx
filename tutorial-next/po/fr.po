@@ -1,0 +1,296 @@
+# French translations for GTKX Notes.
+# Copyright (C) 2026 GTKX contributors
+# This file is distributed under the same license as the gtkx-notes package.
+# GTKX contributors, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: dev.gtkx.Notes\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-11-07 18:02+0100\n"
+"PO-Revision-Date: 2026-11-07 17:58+0100\n"
+"Last-Translator: GTKX contributors\n"
+"Language-Team: French\n"
+"Language: fr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: src/components/about.tsx:10 src/components/notes-screen.tsx:79
+#: src/components/shortcuts.tsx:12 src/components/window.tsx:36
+#: src/components/window.tsx:80
+#: po/.gtkx-metadata/dev.gtkx.Notes.template.desktop:3
+#: po/.gtkx-metadata/dev.gtkx.Notes.template.metainfo.xml:4
+#: po/.gtkx-metadata/dev.gtkx.Notes.template.metainfo.xml:25
+msgid "Notes"
+msgstr "Notes"
+
+#: src/components/about.tsx:18
+msgid "GTKX Contributors"
+msgstr "Contributeurs GTKX"
+
+#: src/components/about.tsx:19
+msgid "Markdown notes kept as plain files, built with GTKX."
+msgstr "Des notes Markdown gardées en fichiers ordinaires, construites avec GTKX."
+
+#: src/components/main-menu.tsx:9
+msgid "Main Menu"
+msgstr "Menu principal"
+
+#: src/components/main-menu.tsx:13 src/components/notes-screen.tsx:104
+msgid "New Note"
+msgstr "Nouvelle note"
+
+#: src/components/main-menu.tsx:16 src/components/preferences.tsx:82
+#: src/components/shortcuts.tsx:8
+msgid "Preferences"
+msgstr "Préférences"
+
+#: src/components/main-menu.tsx:17
+msgid "Keyboard Shortcuts"
+msgstr "Raccourcis clavier"
+
+#: src/components/main-menu.tsx:18
+msgid "About Notes"
+msgstr "À propos de Notes"
+
+#: src/components/note-menu.tsx:8
+msgid "Preview (Ctrl+Shift+P)"
+msgstr "Aperçu (Ctrl+Maj+P)"
+
+#: src/components/note-menu.tsx:16
+msgid "Note Menu"
+msgstr "Menu de la note"
+
+#: src/components/note-menu.tsx:22
+msgid "Rename…"
+msgstr "Renommer…"
+
+#: src/components/note-menu.tsx:23
+msgid "Move to Trash"
+msgstr "Mettre à la corbeille"
+
+#: src/components/note-screen.tsx:34
+msgid "Note Not Found"
+msgstr "Note introuvable"
+
+#: src/components/notes-screen.tsx:34
+msgid "Filter by Tag"
+msgstr "Filtrer par étiquette"
+
+#: src/components/notes-screen.tsx:35
+msgid "All Notes"
+msgstr "Toutes les notes"
+
+#: src/components/notes-screen.tsx:73
+msgid "{{count}} note"
+msgid_plural "{{count}} notes"
+msgstr[0] "{{count}} note"
+msgstr[1] "{{count}} notes"
+
+#: src/components/notes-screen.tsx:99
+msgid "No Notes"
+msgstr "Aucune note"
+
+#: src/components/notes-screen.tsx:100
+msgid "Notes are Markdown files in your notes folder"
+msgstr "Les notes sont des fichiers Markdown dans votre dossier de notes"
+
+#: src/components/notes-screen.tsx:132
+msgid "Search Notes"
+msgstr "Rechercher dans les notes"
+
+#: src/components/notes-screen.tsx:133 src/components/shortcuts.tsx:13
+msgid "Search notes"
+msgstr "Rechercher dans les notes"
+
+#: src/components/notes-screen.tsx:143
+msgid "No Results Found"
+msgstr "Aucun résultat"
+
+#: src/components/preferences.tsx:41
+msgid "Choose a Notes Folder"
+msgstr "Choisir un dossier de notes"
+
+#: src/components/preferences.tsx:43
+msgid "Notes Folder"
+msgstr "Dossier de notes"
+
+#: src/components/preferences.tsx:50
+msgid "Use the Default Folder"
+msgstr "Utiliser le dossier par défaut"
+
+#: src/components/preferences.tsx:58
+msgid "Choose Folder"
+msgstr "Choisir le dossier"
+
+#: src/components/preferences.tsx:83 src/components/shortcuts.tsx:6
+msgid "General"
+msgstr "Général"
+
+#: src/components/preferences.tsx:84
+msgid "Appearance"
+msgstr "Apparence"
+
+#: src/components/preferences.tsx:86
+msgid "Style"
+msgstr "Style"
+
+#: src/components/preferences.tsx:97
+msgid "Storage"
+msgstr "Stockage"
+
+#: src/components/rename-dialog.tsx:22
+msgid "Rename Note"
+msgstr "Renommer la note"
+
+#: src/components/rename-dialog.tsx:26
+msgid "Cancel"
+msgstr "Annuler"
+
+#: src/components/rename-dialog.tsx:29
+msgid "Rename"
+msgstr "Renommer"
+
+#: src/components/rename-dialog.tsx:43
+msgid "Note name"
+msgstr "Nom de la note"
+
+#: src/components/shortcuts.tsx:7
+msgid "New note"
+msgstr "Nouvelle note"
+
+#: src/components/shortcuts.tsx:9
+msgid "Keyboard shortcuts"
+msgstr "Raccourcis clavier"
+
+#: src/components/shortcuts.tsx:10
+msgid "Quit"
+msgstr "Quitter"
+
+#: src/components/shortcuts.tsx:14
+msgid "Rename note"
+msgstr "Renommer la note"
+
+#: src/components/shortcuts.tsx:15
+msgid "Show preview"
+msgstr "Afficher l’aperçu"
+
+#: src/components/window-actions.tsx:22
+msgid "Untitled"
+msgstr "Sans titre"
+
+#: src/components/window-actions.tsx:36
+msgid "“{{name}}” moved to Trash"
+msgstr "« {{name}} » a été mise à la corbeille"
+
+#: src/components/window-actions.tsx:37
+msgid "Undo"
+msgstr "Annuler"
+
+#: src/components/window.tsx:30
+msgid "No Note Selected"
+msgstr "Aucune note sélectionnée"
+
+#: src/components/window.tsx:41
+msgid "New Note (Ctrl+N)"
+msgstr "Nouvelle note (Ctrl+N)"
+
+#: src/editor/note-editor.tsx:47
+msgid "Note text"
+msgstr "Texte de la note"
+
+#: src/notes/notes-provider.tsx:39
+msgid "Couldn’t save “{{name}}”"
+msgstr "Impossible d’enregistrer « {{name}} »"
+
+#: src/preview/markdown-preview.tsx:135
+msgid "Preview"
+msgstr "Aperçu"
+
+#: src/settings.tsx:12
+msgid "Follow System"
+msgstr "Suivre le système"
+
+#: src/settings.tsx:13
+msgid "Light"
+msgstr "Clair"
+
+#: src/settings.tsx:14
+msgid "Dark"
+msgstr "Sombre"
+
+#: data/dev.gtkx.Notes.gschema.xml:6
+msgid "Notes folder"
+msgstr "Dossier de notes"
+
+#: data/dev.gtkx.Notes.gschema.xml:7
+msgid "Folder that holds the notes, or empty for Notes in the Documents folder"
+msgstr "Dossier qui contient les notes, ou vide pour Notes dans le dossier Documents"
+
+#: data/dev.gtkx.Notes.gschema.xml:16
+msgid "Color scheme"
+msgstr "Jeu de couleurs"
+
+#: data/dev.gtkx.Notes.gschema.xml:17
+msgid "Whether the app follows the system style or forces light or dark"
+msgstr "Si l’application suit le style du système ou impose le mode clair ou sombre"
+
+#: data/dev.gtkx.Notes.gschema.xml:21
+msgid "Show the preview"
+msgstr "Afficher l’aperçu"
+
+#: data/dev.gtkx.Notes.gschema.xml:22
+msgid "Whether notes open as rendered Markdown instead of in the editor"
+msgstr "Si les notes s’ouvrent en Markdown rendu plutôt que dans l’éditeur"
+
+#: data/dev.gtkx.Notes.gschema.xml:26
+msgid "Window width"
+msgstr "Largeur de la fenêtre"
+
+#: data/dev.gtkx.Notes.gschema.xml:30
+msgid "Window height"
+msgstr "Hauteur de la fenêtre"
+
+#: po/.gtkx-metadata/dev.gtkx.Notes.template.desktop:4
+msgid "Markdown Notes"
+msgstr "Notes Markdown"
+
+#: po/.gtkx-metadata/dev.gtkx.Notes.template.desktop:5
+#: po/.gtkx-metadata/dev.gtkx.Notes.template.metainfo.xml:5
+msgid "Write Markdown notes kept as plain files"
+msgstr "Écrire des notes Markdown gardées en fichiers ordinaires"
+
+#. Translators: Search terms to find this application. Do NOT translate or localize the semicolons! The list MUST also end with a semicolon!
+#: po/.gtkx-metadata/dev.gtkx.Notes.template.desktop:11
+msgid "Notes;Markdown;Notebook;Writing;"
+msgstr "Notes;Markdown;Carnet;Écriture;"
+
+#: po/.gtkx-metadata/dev.gtkx.Notes.template.metainfo.xml:9
+msgid "GTKX"
+msgstr "GTKX"
+
+#: po/.gtkx-metadata/dev.gtkx.Notes.template.metainfo.xml:12
+msgid "Notes keeps each note as a Markdown file in a folder, so notes sync with any tool and outlive the app."
+msgstr "Notes garde chaque note dans un fichier Markdown d’un dossier : les notes se synchronisent avec n’importe quel outil et survivent à l’application."
+
+#: po/.gtkx-metadata/dev.gtkx.Notes.template.metainfo.xml:13
+msgid "It previews Markdown, searches the full text, filters by tag, completes links to other notes, and shows changes made by other editors or sync tools as they happen."
+msgstr "Notes affiche un aperçu du Markdown, cherche dans le texte intégral, filtre par étiquette, complète les liens vers d’autres notes et montre en direct les modifications faites par d’autres éditeurs ou outils de synchronisation."
+
+#: po/.gtkx-metadata/dev.gtkx.Notes.template.metainfo.xml:26
+msgid "Markdown"
+msgstr "Markdown"
+
+#: po/.gtkx-metadata/dev.gtkx.Notes.template.metainfo.xml:27
+msgid "Notebook"
+msgstr "Carnet"
+
+#: po/.gtkx-metadata/dev.gtkx.Notes.template.metainfo.xml:28
+msgid "Writing"
+msgstr "Écriture"
+
+#: po/.gtkx-metadata/dev.gtkx.Notes.template.metainfo.xml:36
+msgid "Initial release."
+msgstr "Première version."
