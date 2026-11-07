@@ -200,7 +200,7 @@ Return whole numbers where the slot takes an integer, as `vfuncMeasure` does. GJ
 
 ### Draw with Cairo in `vfuncSnapshot`
 
-A widget that draws with Cairo from its own `vfuncSnapshot`, as many C widgets and gtk4-demo's Paint do, gets a context from `snapshot.appendCairo(bounds)`. Call `cr.$dispose()` once it has drawn, where C calls `cairo_destroy`:
+A widget that draws with Cairo from its own `vfuncSnapshot`, as many C widgets and gtk4-demo's Paint do, gets a context from `snapshot.appendCairo(bounds)`. Declare it with `using` so it is released once the method has drawn, where C calls `cairo_destroy`:
 
 ```ts
 import { type ImageSurface } from "@gtkx/cairo";
@@ -211,17 +211,16 @@ class CanvasBase extends Gtk.Widget {
     surface: ImageSurface | null = null;
 
     override vfuncSnapshot(snapshot: Gtk.Snapshot): void {
-        const cr = snapshot.appendCairo(new Graphene.Rect().init(0, 0, this.getWidth(), this.getHeight()));
+        using cr = snapshot.appendCairo(new Graphene.Rect().init(0, 0, this.getWidth(), this.getHeight()));
         if (this.surface) {
             cr.setSourceSurface(this.surface, 0, 0);
             cr.paint();
         }
-        cr.$dispose();
     }
 }
 ```
 
-The snapshot keeps what the context drew; `$dispose()` only drops the context. Without it, each frame's context stays alive until garbage collection, and Cairo keeps a copy of `surface` for every frame in which the app draws into it afterwards, so memory grows with every stroke. A `GtkDrawingArea` `drawFunc` needs no call. See [Release contexts you create](/v2/guide/cairo#release-contexts-you-create).
+The snapshot keeps what the context drew; releasing it only drops the context. Without `using`, each frame's context stays alive until garbage collection, and Cairo keeps a copy of `surface` for every frame in which the app draws into it afterwards, so memory grows with every stroke. A `GtkDrawingArea` `drawFunc` needs no call. See [Release contexts you create](/v2/guide/cairo#release-contexts-you-create).
 
 ### Slots with no generated member
 

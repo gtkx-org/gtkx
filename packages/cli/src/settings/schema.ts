@@ -148,7 +148,7 @@ const canonicalPath = (path: string): string => {
     }
 };
 
-const assertUniqueSchemaBasenames = (schemaFiles: string[]): void => {
+const uniqueSchemaFiles = (schemaFiles: string[]): string[] => {
     const owners: Map<string, string> = new Map();
     const canonicalFiles = sortStrings(new Set(schemaFiles.map((path) => canonicalPath(path))));
 
@@ -156,23 +156,24 @@ const assertUniqueSchemaBasenames = (schemaFiles: string[]): void => {
         const name = basename(filePath);
         const owner = owners.get(name);
 
-        if (owner !== undefined && owner !== filePath) {
+        if (owner === undefined) {
+            owners.set(name, filePath);
+        } else if (!readFileSync(owner).equals(readFileSync(filePath))) {
             throw new Error(
-                `Cannot generate types for both ${owner} and ${filePath}: relative GSettings schema imports are ` +
-                    `typed by basename, and both files are named ${name}. Rename one of them.`,
+                `${owner} and ${filePath} are both named ${name} but differ. GSettings schemas are installed and ` +
+                    "typed by file name, so copies of a schema must be identical. Make them identical, or rename one.",
             );
         }
-
-        owners.set(name, filePath);
     }
+
+    return [...owners.values()];
 };
 
 const stageAndCompileProjectSchemas = (
     root: string,
     staging: RetainedStagingDir = createRetainedStagingDir("schemas"),
 ): string | null => {
-    const { files: schemaFiles } = projectSchemaFiles(root);
-    assertUniqueSchemaBasenames(schemaFiles);
+    const schemaFiles = uniqueSchemaFiles(projectSchemaFiles(root).files);
 
     if (schemaFiles.length === 0) {
         return null;
@@ -239,9 +240,10 @@ const emitSchemaEnv = (rootDir: string): SchemaEnvResult => {
         return { path, isWritten: false };
     }
 
-    const importedFiles = findImportedSchemaFiles(imports);
-    assertUniqueSchemaBasenames(importedFiles);
-    const imported = parseProjectSchemas(importedFiles, getRelativeModuleSpecifier);
+    const imported = parseProjectSchemas(
+        uniqueSchemaFiles(findImportedSchemaFiles(imports)),
+        getRelativeModuleSpecifier,
+    );
     const assets = findAssetModuleSpecifiers(imports);
     const references = existsSync(i18nTypesPath(rootDir)) ? [`./${I18N_TYPES_FILENAME}`] : [];
     const content = renderEnvModule(imported, assets, { references });
@@ -254,7 +256,7 @@ export {
     SCHEMA_SUFFIX,
     prependSchemaDir,
     stageSchema,
-    assertUniqueSchemaBasenames,
+    uniqueSchemaFiles,
     projectRelativeSchemaPath,
     stageAndCompileProjectSchemas,
     emitSchemaEnv,

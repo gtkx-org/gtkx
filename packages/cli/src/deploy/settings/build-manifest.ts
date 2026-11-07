@@ -1,5 +1,5 @@
 import type { Config } from "@gtkx/config";
-import { sortStrings, toPosixPath } from "@gtkx/utils";
+import { toPosixPath } from "@gtkx/utils";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import type { DeploySettings } from "../types.js";
@@ -10,7 +10,7 @@ import {
     configDigest,
     type RecordedPackage,
 } from "../../internal/build-manifest.js";
-import { assertUniqueSchemaBasenames, projectRelativeSchemaPath, SCHEMA_SUFFIX } from "../../settings/schema.js";
+import { projectRelativeSchemaPath, SCHEMA_SUFFIX, uniqueSchemaFiles } from "../../settings/schema.js";
 
 type ResolvedBuildManifest = {
     packages: RecordedPackage[];
@@ -99,10 +99,8 @@ const readBuildManifest = (settings: DeploySettings, expected: ExpectedBuildConf
     assertBuildConfig(settings, manifestPath, manifest, expected);
     assertBuildEntry(settings, manifestPath, manifest, expected);
     const files = manifest.schemas.map((entry) => resolveRecordedSchema(settings.paths.root, manifestPath, entry));
-    const unique = sortStrings(new Set(files));
-    assertUniqueSchemaBasenames(unique);
 
-    return { packages: manifest.packages, schemaFiles: unique };
+    return { packages: manifest.packages, schemaFiles: uniqueSchemaFiles(files) };
 };
 
 export { readBuildManifest };
