@@ -6,7 +6,7 @@ import { hasSignalListener } from "@gtkx/runtime/internal";
 import type { UserEventState } from "./state.js";
 import { getEditableDelegate } from "../editable.js";
 import { fireEvent } from "../fire-event.js";
-import { ancestors, descendants } from "../traversal.js";
+import { ancestors, children, descendants } from "../traversal.js";
 import { receivesEventsFor } from "./controller.js";
 import { wrapEvent } from "./event-wrapper.js";
 import { usageError } from "../usage-error.js";
@@ -24,7 +24,9 @@ type ParseStep = { actions: KeyAction[]; next: number };
 type TypedStep = { text: string } | { actions: KeyAction[] };
 type TypedParseStep = { step: TypedStep; next: number };
 type KeyStopController = Gtk.EventControllerKey | Gtk.ShortcutController;
-type KeyStop = { widget: Gtk.Widget; controller: KeyStopController };
+type ControllerStop = { widget: Gtk.Widget; controller: KeyStopController };
+type CompletionStop = { widget: Gtk.Widget; completionList: Gtk.Widget };
+type KeyStop = ControllerStop | CompletionStop;
 type KeyTarget = { root: Gtk.Root | null; focus: Gtk.Widget | null };
 type MatchingShortcut = { shortcut: Gtk.Shortcut; host: Gtk.Widget; index: number };
 
@@ -507,6 +509,21 @@ const REAL_EVENT_KEY_HANDLERS: ((controller: Gtk.EventController, widget: Gtk.Wi
 const needsRealKeyEvent = (controller: Gtk.EventController, widget: Gtk.Widget): boolean =>
     REAL_EVENT_KEY_HANDLERS.some((needsEvent) => needsEvent(controller, widget));
 
+const SOURCE_COMPLETION_CONTROLLER_NAME = "gtk-source-completion";
+const SOURCE_COMPLETION_LIST_TYPE_NAME = "GtkSourceCompletionList";
+const SOURCE_COMPLETION_LIST_BOX_TYPE_NAME = "GtkSourceCompletionListBox";
+
+/**
+ * GtkSourceView's completion adds a key controller to the view. While the completion list shows, the controller hides
+ * the list on {Escape} and forwards every other key to the list's box with `gtk_event_controller_key_forward()`, where
+ * the box's bindings move the selection and choose the selected proposal. Emulated keys have no event to forward, so
+ * they take the same path through the box's own controllers.
+ */
+const completionListFor = (controller: Gtk.EventController, widget: Gtk.Widget): Gtk.Widget | null =>
+    controller.getName() === SOURCE_COMPLETION_CONTROLLER_NAME
+        ? (children(widget).find((child) => getWidgetTypeName(child) === SOURCE_COMPLETION_LIST_TYPE_NAME) ?? null)
+        : null;
+
 const isKeyStopController = (controller: Gtk.EventController, widget: Gtk.Widget): controller is KeyStopController => {
     if (controller instanceof Gtk.ShortcutController) {
         return controller.getScope() === Gtk.ShortcutScope.LOCAL;
@@ -518,21 +535,38 @@ const isKeyStopController = (controller: Gtk.EventController, widget: Gtk.Widget
     );
 };
 
+const keyStopFor = (controller: Gtk.EventController, widget: Gtk.Widget): KeyStop | null => {
+    const completionList = completionListFor(controller, widget);
+
+    if (completionList !== null) {
+        return { widget, completionList };
+    }
+
+    return isKeyStopController(controller, widget) ? { widget, controller } : null;
+};
+
 const keyStopsInPhase = (widget: Gtk.Widget, phase: Gtk.PropagationPhase, target: Gtk.Widget): KeyStop[] => {
     const stops: KeyStop[] = [];
 
     for (const controller of controllersOn(widget)) {
-        if (
+        const stop =
             controller.getPropagationPhase() === phase &&
-            receivesEventsFor(widget, controller.getPropagationLimit(), target) &&
-            isKeyStopController(controller, widget)
-        ) {
-            stops.push({ widget, controller });
+            receivesEventsFor(widget, controller.getPropagationLimit(), target)
+                ? keyStopFor(controller, widget)
+                : null;
+
+        if (stop !== null) {
+            stops.push(stop);
         }
     }
 
     return stops;
 };
+
+const forwardedKeyStops = (target: Gtk.Widget): KeyStop[] =>
+    [Gtk.PropagationPhase.CAPTURE, Gtk.PropagationPhase.TARGET, Gtk.PropagationPhase.BUBBLE].flatMap((phase) =>
+        keyStopsInPhase(target, phase, target),
+    );
 
 const focusWithin = (widget: Gtk.Widget): Gtk.Widget | null => {
     const root = widget.getRoot();
@@ -565,7 +599,29 @@ const keyPropagationChain = (widget: Gtk.Widget): KeyStop[] => {
     ];
 };
 
-const didStopHandlePress = (stop: KeyStop, keyval: number, modifiers: Gdk.ModifierType): boolean => {
+const didCompletionHandlePress = (completionList: Gtk.Widget, keyval: number, modifiers: Gdk.ModifierType): boolean => {
+    if (!completionList.getVisible()) {
+        return false;
+    }
+
+    if (keyval === Gdk.KEY_Escape) {
+        completionList.setVisible(false);
+
+        return false;
+    }
+
+    const box = descendants(completionList).find(
+        (descendant) => getWidgetTypeName(descendant) === SOURCE_COMPLETION_LIST_BOX_TYPE_NAME,
+    );
+
+    return box !== undefined && forwardedKeyStops(box).some((stop) => didStopHandlePress(stop, keyval, modifiers));
+};
+
+function didStopHandlePress(stop: KeyStop, keyval: number, modifiers: Gdk.ModifierType): boolean {
+    if ("completionList" in stop) {
+        return didCompletionHandlePress(stop.completionList, keyval, modifiers);
+    }
+
     const { controller, widget } = stop;
 
     if (controller instanceof Gtk.ShortcutController) {
@@ -573,7 +629,7 @@ const didStopHandlePress = (stop: KeyStop, keyval: number, modifiers: Gdk.Modifi
     }
 
     return controller.emit("key-pressed", keyval, 0, modifiers);
-};
+}
 
 const keyTargetFor = (widget: Gtk.Widget): KeyTarget => {
     const root = widget.getRoot();
@@ -610,7 +666,7 @@ const didHandlePress = (widget: Gtk.Widget, keyval: number, modifiers: Gdk.Modif
 
 const emitKeyReleased = (widget: Gtk.Widget, keyval: number, modifiers: Gdk.ModifierType): void => {
     for (const stop of keyPropagationChain(widget)) {
-        if (stop.controller instanceof Gtk.EventControllerKey) {
+        if ("controller" in stop && stop.controller instanceof Gtk.EventControllerKey) {
             stop.controller.emit("key-released", keyval, 0, modifiers);
         }
     }
