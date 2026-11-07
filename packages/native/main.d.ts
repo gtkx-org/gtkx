@@ -4,6 +4,7 @@ export {
     call,
     compileDescriptor,
     createFunction,
+    deferFinalization,
     emitSignal,
     getFundamentalIdentity,
     getObjectProperty,
