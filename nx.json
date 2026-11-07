@@ -160,7 +160,7 @@
         "versionPlans": {
             "ignorePatternsForPlanCheck": [
                 "/packages/*/tests/**",
-                "/packages/*/scripts/**",
+                "/packages/codegen/scripts/**",
                 "/packages/**/*.md",
                 "/packages/**/*.test.*",
                 "/packages/**/*.spec.*",
