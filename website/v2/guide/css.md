@@ -19,7 +19,7 @@ import { GtkLabel } from "@gtkx/jsx/gtk";
 
 Numeric lengths use pixels: `minHeight: 48` becomes `min-height: 48px`. Pass other units as strings. Setting `style` to `undefined` or `null` removes its declarations.
 
-Nested selectors start with `&`, which refers to the styled widget:
+Nested selectors start with `&`, which refers to the styled widget. Other parts of a selector match GTK's [CSS node names](https://docs.gtk.org/gtk4/css-overview.html#css-nodes), which each widget's API documentation lists, so `& label` matches the button's label:
 
 ```tsx
 import { GtkButton } from "@gtkx/jsx/gtk";
@@ -46,7 +46,7 @@ import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
 
 A declaration in `style` takes precedence over the same declaration supplied through `cssClasses`. GTKX adds a generated class to apply the style; leave that class under GTKX's control.
 
-Use `style` for values that change with an individual widget. GTKX batches these updates through a shared style provider, but frequent changes still make GTK recalculate styles. Prefer native animated properties or CSS transitions when they express the effect. See [Animations](/v2/guide/animations) for animated styles.
+Use `style` for values specific to one widget, such as a color computed from props. GTKX batches these updates through a shared style provider, but frequent changes still make GTK recalculate styles. Prefer native animated properties or CSS transitions when they express the effect. See [Animations](/v2/guide/animations) for animated styles.
 
 ## Create reusable classes
 
@@ -119,7 +119,26 @@ injectGlobal`
 `;
 ```
 
-A plain `.css` import also works: the GTKX CLI turns it into an `injectGlobal` call. Global rules remain installed for the application's lifetime. Relative `url()` references in the file, such as `background-image: url("../data/paper.png")`, are bundled as [`?resource`](/v2/guide/assets#import-project-data) files, and a relative `@import` loads that stylesheet before the file's own rules. Other `url()` values reach GTK unchanged: a `resource://` or `file://` URI loads, but an absolute path such as `url("/com/example/Tasks/paper.png")` draws nothing, because the installed stylesheet has no location to resolve it against; `gtkx dev` and `gtkx build` warn about it. In `css` and `style`, interpolate a `?resource` import instead: `url("resource://${paperPath}")`. During `gtkx dev`, editing a stylesheet replaces the rules that file installed, so removed rules stop applying, and the app keeps its state. Editing a module's `injectGlobal` rules re-runs the module, which adds the edited rules after the earlier ones, as Emotion does: a changed value takes effect, but a removed rule or a selector you moved keeps applying until the app restarts.
+### Import a stylesheet
+
+A plain `.css` import also works: the GTKX CLI turns it into an `injectGlobal` call. Global rules remain installed for the application's lifetime.
+
+Relative references in the file are bundled with the app. A relative `url()`, such as `background-image: url("../data/paper.png")`, becomes a [`?resource`](/v2/guide/assets#import-project-data) file, and a relative `@import` loads that stylesheet before the file's own rules.
+
+Other `url()` values reach GTK unchanged. A `resource://` or `file://` URI loads, but an absolute path such as `url("/com/example/Tasks/paper.png")` draws nothing, because the installed stylesheet has no location to resolve it against; `gtkx dev` and `gtkx build` warn about it. In `css` and `style`, interpolate a `?resource` import instead:
+
+```ts
+import { css } from "@gtkx/css";
+import paperPath from "../data/paper.png?resource";
+
+const paper = css`
+    background-image: url("resource://${paperPath}");
+`;
+```
+
+During `gtkx dev`, editing a stylesheet replaces the rules that file installed, so removed rules stop applying, and the app keeps its state. Editing a module's `injectGlobal` rules re-runs the module, which adds the edited rules after the earlier ones, as Emotion does: a changed value takes effect, but a removed rule or a selector you moved keeps applying until the app restarts.
+
+### Load Adwaita's `style.css`
 
 A stylesheet imported with [`?resource`](/v2/guide/assets#import-project-data) is bundled unchanged rather than installed. Use this for the `style.css` that [Adwaita loads](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/class.Application.html#automatic-resources) from the application's resource base path, as in a ported GNOME application:
 
@@ -132,11 +151,13 @@ GTK resolves `url()` values in that file against its resource path, so `url("pap
 
 ## Follow appearance preferences
 
-GTKX's stylesheet follows the color scheme resolved by [Adw.StyleManager](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/class.StyleManager.html), including an application override. It also follows the system's contrast preference and, on GTK 4.22 or later, reduced-motion preference.
+Media queries in `css`, `injectGlobal` and imported `.css` files follow the color scheme resolved by [Adw.StyleManager](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/class.StyleManager.html), including an application override. It also follows the system's contrast preference and, on GTK 4.22 or later, reduced-motion preference.
 
 Use theme variables in custom styles so their colors follow the active appearance. When a rule needs to change by preference, place its `@media` block inside `css`:
 
 ```ts
+import { css } from "@gtkx/css";
+
 const card = css`
     background: var(--card-bg-color);
     box-shadow: 0 1px 3px var(--shade-color);
@@ -154,9 +175,14 @@ See [Preferences and Theming](/v2/tutorial/preferences-and-theming) for an appli
 A `?font` import bundles the font and returns its family name. Pass that name directly to `fontFamily`:
 
 ```tsx
+import { GtkLabel } from "@gtkx/jsx/gtk";
 import bodyFont from "../data/fonts/Inter-Regular.otf?font";
 
 <GtkLabel label="Bundled" style={{ fontFamily: bodyFont }} />;
 ```
 
 To add a font for fallback coverage without selecting it, use a side-effect import such as `import "../data/fonts/NotoSansKR.otf?font";`. See [Import project data](/v2/guide/assets#import-project-data) for asset imports.
+
+## Next
+
+Continue with [Animations](/v2/guide/animations) to animate widget properties and `style` declarations with React Spring.
