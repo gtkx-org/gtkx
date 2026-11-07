@@ -6,6 +6,7 @@ import { afterAll } from "vitest";
 const home = mkdtempSync(join(tmpdir(), "gtkx-figures-"));
 
 for (const [name, directory] of [
+    ["HOME", "home"],
     ["XDG_DATA_HOME", "data"],
     ["XDG_CONFIG_HOME", "config"],
     ["XDG_CACHE_HOME", "cache"],

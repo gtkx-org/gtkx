@@ -1,4 +1,5 @@
 import * as Adw from "@gtkx/gi/adw";
+import * as Gtk from "@gtkx/gi/gtk";
 import { AdwApplication, AdwApplicationWindow, AdwHeaderBar, AdwToolbarView } from "@gtkx/jsx/adw";
 import { GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { NavigationContainer } from "@gtkx/navigation";
@@ -18,6 +19,9 @@ import { RenameDialog } from "./guide/modals-rename-dialog.js";
 import { App as DrawerApp } from "./guide/navigation-drawer.js";
 import { Mail as SplitMail } from "./guide/navigation-split-view.js";
 import { Notes } from "./guide/navigation-stack.js";
+import { seedNotes } from "./tutorial/notes.js";
+import { App as NotesFolder } from "./tutorial/the-notes-folder/src/app.js";
+import { defaultFolder } from "./tutorial/the-notes-folder/src/notes/files.js";
 import { App as FirstWindow } from "./tutorial/your-first-window/src/app.js";
 import { Mail as TabMail } from "./guide/navigation-tabs.js";
 
@@ -70,8 +74,23 @@ function NavigationWindow({
     );
 }
 
-const figures: [name: string, element: ReactNode, prepare?: () => Promise<void>][] = [
+type FigureOptions = {
+    before?: () => void;
+    prepare?: () => Promise<void>;
+};
+
+const figures: [name: string, element: ReactNode, options?: FigureOptions][] = [
     ["tutorial-your-first-window", <FirstWindow />],
+    [
+        "tutorial-the-notes-folder",
+        <NotesFolder />,
+        {
+            before: () => seedNotes(defaultFolder()),
+            prepare: async () => {
+                await screen.findAllByRole(Gtk.AccessibleRole.LIST_ITEM);
+            },
+        },
+    ],
     [
         "guide-components-list-view",
         <SampleWindow title="ListView">
@@ -146,15 +165,16 @@ const figures: [name: string, element: ReactNode, prepare?: () => Promise<void>]
     ],
 ];
 
-const captures = figures.flatMap(([name, element, prepare]) =>
-    schemes.map(([scheme, colorScheme]) => ({ file: `${name}-${scheme}.png`, element, prepare, colorScheme })),
+const captures = figures.flatMap(([name, element, options]) =>
+    schemes.map(([scheme, colorScheme]) => ({ file: `${name}-${scheme}.png`, element, options, colorScheme })),
 );
 
 describe("documentation figures", () => {
-    it.each(captures)("captures $file", async ({ file, element, prepare, colorScheme }) => {
+    it.each(captures)("captures $file", async ({ file, element, options, colorScheme }) => {
         Adw.StyleManager.getDefault().setColorScheme(colorScheme);
+        options?.before?.();
         await render(element, { container: rootElement });
-        await prepare?.();
+        await options?.prepare?.();
         expect(Adw.StyleManager.getDefault().getDark()).toBe(colorScheme === Adw.ColorScheme.FORCE_DARK);
         await screen.screenshot({ scale: 2, path: `${outputDir}${file}` });
     });
