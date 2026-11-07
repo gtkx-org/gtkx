@@ -164,7 +164,7 @@ Removing `textDirection`, passing `null`, or using `Gtk.TextDirection.NONE` rest
 
 ## Translate settings schemas
 
-Codegen, development, and builds also extract the `<summary>` and `<description>` of every [GSettings schema](/v2/guide/assets#import-project-data) your application imports, as a Meson project does by listing the schema in `po/POTFILES.in`. xgettext reads them with the ITS rules GLib installs with its development files (`glib2-devel` on Fedora), so a `<!-- Translators: -->` comment before an element reaches translators as well. Existing translations of those messages stay in the PO files.
+Codegen, development, and builds also extract the `<summary>` and `<description>` of every [GSettings schema](/v2/guide/assets#settings-schemas) your application imports, as a Meson project does by listing the schema in `po/POTFILES.in`. xgettext reads them with the ITS rules GLib installs with its development files (`glib2-devel` on Fedora), so a `<!-- Translators: -->` comment before an element reaches translators as well. Existing translations of those messages stay in the PO files.
 
 GLib translates the schema text shown by tools such as `gsettings describe` and dconf Editor from the domain named by the schema list's `gettext-domain` attribute. Set it to your production `applicationId`, the application's gettext domain:
 

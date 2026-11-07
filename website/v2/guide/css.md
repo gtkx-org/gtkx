@@ -123,7 +123,7 @@ injectGlobal`
 
 A plain `.css` import also works: the GTKX CLI turns it into an `injectGlobal` call. Global rules remain installed for the application's lifetime.
 
-Relative references in the file are bundled with the app. A relative `url()`, such as `background-image: url("../data/paper.png")`, becomes a [`?resource`](/v2/guide/assets#import-project-data) file, and a relative `@import` loads that stylesheet before the file's own rules.
+Relative references in the file are bundled with the app. A relative `url()`, such as `background-image: url("../data/paper.png")`, becomes a [`?resource`](/v2/guide/assets#resources) file, and a relative `@import` loads that stylesheet before the file's own rules.
 
 Other `url()` values reach GTK unchanged. A `resource://` or `file://` URI loads, but an absolute path such as `url("/com/example/Tasks/paper.png")` draws nothing, because the installed stylesheet has no location to resolve it against; `gtkx dev` and `gtkx build` warn about it. In `css` and `style`, interpolate a `?resource` import instead:
 
@@ -140,7 +140,7 @@ During `gtkx dev`, editing a stylesheet replaces the rules that file installed, 
 
 ### Load Adwaita's `style.css`
 
-A stylesheet imported with [`?resource`](/v2/guide/assets#import-project-data) is bundled unchanged rather than installed. Use this for the `style.css` that [Adwaita loads](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/class.Application.html#automatic-resources) from the application's resource base path, as in a ported GNOME application:
+A stylesheet imported with [`?resource`](/v2/guide/assets#resources) is bundled unchanged rather than installed. Use this for the `style.css` that [Adwaita loads](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/class.Application.html#automatic-resources) from the application's resource base path, as in a ported GNOME application:
 
 ```ts
 import "../data/style.css?resource=/com/example/Tasks/style.css";
@@ -181,7 +181,7 @@ import bodyFont from "../data/fonts/Inter-Regular.otf?font";
 <GtkLabel label="Bundled" style={{ fontFamily: bodyFont }} />;
 ```
 
-To add a font for fallback coverage without selecting it, use a side-effect import such as `import "../data/fonts/NotoSansKR.otf?font";`. See [Import project data](/v2/guide/assets#import-project-data) for asset imports.
+To add a font for fallback coverage without selecting it, use a side-effect import such as `import "../data/fonts/NotoSansKR.otf?font";`. See [Fonts](/v2/guide/assets#fonts) for font imports.
 
 ## Next
 
