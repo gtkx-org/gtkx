@@ -9,14 +9,6 @@ const TASK_FILTER = `<AdwToggleGroup activeName={filter}>
 </AdwToggleGroup>
 `;
 
-const CONFIG = `import { defineConfig } from "@gtkx/config";
-
-export default defineConfig({
-  applicationId: "com.example.myapp",
-  libraries: ["WebKit-6.0"],
-});
-`;
-
 const APP = `<AdwToolbarView top={<AdwHeaderBar />}>
   <GtkScale
     adjustment={<GtkAdjustment upper={100} />}
@@ -28,13 +20,41 @@ const APP = `<AdwToolbarView top={<AdwHeaderBar />}>
 </AdwToolbarView>
 `;
 
-const ECOSYSTEM = "npm install zod zustand";
+const TEST = `it("saves the display name", async () => {
+  await render(<SettingsPanel />);
+
+  const name = screen.getByRole(
+    Gtk.AccessibleRole.TEXT_BOX,
+    { name: "Display name" },
+  );
+  await userEvent.type(name, "Ada");
+  await userEvent.click(screen.getByRole(
+    Gtk.AccessibleRole.BUTTON,
+    { name: "Save" },
+  ));
+
+  expect(
+    await screen.findByText("Settings saved"),
+  ).toBeVisible();
+});
+`;
+
+const DEPLOY = `export default defineConfig({
+  applicationId: "com.example.Tasks",
+  applicationIcon: "data/icons",
+  deploy: {
+    summary: "Manage your tasks and to-dos",
+    categories: ["Office"],
+    targets: ["flatpak", "deb", "rpm", "appimage"],
+  },
+});
+`;
 
 const SNIPPETS = {
     taskFilter: { lang: "tsx", code: TASK_FILTER, mark: "AdwToggleGroup" },
-    config: { lang: "ts", code: CONFIG },
     app: { lang: "tsx", code: APP },
-    ecosystem: { lang: "bash", code: ECOSYSTEM },
+    test: { lang: "tsx", code: TEST },
+    deploy: { lang: "ts", code: DEPLOY },
 } satisfies Record<string, Snippet>;
 
 export { type Snippet, SNIPPETS };
