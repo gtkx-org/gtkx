@@ -1,5 +1,6 @@
+import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
-import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
+import { access, mkdir, readdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 type Note = { name: string; text: string; modified: number };
@@ -42,13 +43,61 @@ const readNotes = async (folder: string): Promise<Note[]> => {
 const writeNote = (folder: string, name: string, text: string): Promise<void> =>
     writeFile(notePath(folder, name), text);
 
-const freeName = (taken: ReadonlySet<string>, base: string): string => {
-    let name = base;
-    for (let number = 2; taken.has(name); number++) {
-        name = `${base} ${number}`;
-    }
+const exists = async (path: string): Promise<boolean> => {
+    try {
+        await access(path);
 
-    return name;
+        return true;
+    } catch (error) {
+        if (isMissing(error)) {
+            return false;
+        }
+
+        throw error;
+    }
 };
 
-export { defaultFolder, freeName, type Note, noteName, readNote, readNotes, writeNote };
+const renameNote = async (folder: string, from: string, to: string): Promise<void> => {
+    const target = notePath(folder, to);
+    if (await exists(target)) {
+        throw new Error(`${target} already exists`);
+    }
+    await rename(notePath(folder, from), target);
+};
+
+const trashNote = async (folder: string, name: string): Promise<void> => {
+    await Gio.File.newForPath(notePath(folder, name)).trashAsync(GLib.PRIORITY_DEFAULT);
+};
+
+const isValidName = (name: string): boolean =>
+    name.trim() === name && name !== "" && !name.startsWith(".") && !name.includes("/");
+
+const isTaken = (error: unknown): boolean => error instanceof Error && "code" in error && error.code === "EEXIST";
+
+const createNote = async (folder: string, base: string, text: string): Promise<string> => {
+    for (let number = 1; ; number++) {
+        const name = number === 1 ? base : `${base} ${number}`;
+        try {
+            await writeFile(notePath(folder, name), text, { flag: "wx" });
+
+            return name;
+        } catch (error) {
+            if (!isTaken(error)) {
+                throw error;
+            }
+        }
+    }
+};
+
+export {
+    createNote,
+    defaultFolder,
+    isValidName,
+    type Note,
+    noteName,
+    readNote,
+    readNotes,
+    renameNote,
+    trashNote,
+    writeNote,
+};

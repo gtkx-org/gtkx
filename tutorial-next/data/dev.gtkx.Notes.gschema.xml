@@ -6,5 +6,23 @@
       <summary>Notes folder</summary>
       <description>Folder that holds the notes, or empty for Notes in the Documents folder</description>
     </key>
+    <key name="color-scheme" type="s">
+      <choices>
+        <choice value="default"/>
+        <choice value="light"/>
+        <choice value="dark"/>
+      </choices>
+      <default>'default'</default>
+      <summary>Color scheme</summary>
+      <description>Whether the app follows the system style or forces light or dark</description>
+    </key>
+    <key name="window-width" type="i">
+      <default>960</default>
+      <summary>Window width</summary>
+    </key>
+    <key name="window-height" type="i">
+      <default>640</default>
+      <summary>Window height</summary>
+    </key>
   </schema>
 </schemalist>

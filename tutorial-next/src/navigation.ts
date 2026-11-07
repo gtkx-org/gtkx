@@ -19,6 +19,18 @@ const openNote = (name: string): void => {
     navigationRef.navigate("Note", { name });
 };
 
+const openNoteName = (): string | null => {
+    const route = navigationRef.isReady() ? navigationRef.getCurrentRoute() : undefined;
+
+    return route?.name === "Note" ? route.params.name : null;
+};
+
+const closeNoteIfOpen = (name: string): void => {
+    if (openNoteName() === name) {
+        navigationRef.goBack();
+    }
+};
+
 const useOpenNoteName = (): string | null =>
     useNavigationState<RootParamList, string | null>((state) => {
         const route = state.routes.at(-1);
@@ -26,4 +38,4 @@ const useOpenNoteName = (): string | null =>
         return route?.name === "Note" ? (route.params?.name ?? null) : null;
     });
 
-export { navigationRef, openNote, type RootParamList, Split, useOpenNoteName };
+export { closeNoteIfOpen, navigationRef, openNote, openNoteName, type RootParamList, Split, useOpenNoteName };
