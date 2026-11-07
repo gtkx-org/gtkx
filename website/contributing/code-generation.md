@@ -67,7 +67,7 @@ Overrides under [`packages/codegen/overrides`](https://github.com/gtkx-org/gtkx/
 
 Public class declarations include the interfaces runtime installs as mixins. Signal methods inherit shared runtime types, with generated metadata describing each class's signals.
 
-The [codegen tests](https://github.com/gtkx-org/gtkx/blob/main/packages/codegen/tests/codegen.test.ts) generate stores in temporary projects and typecheck representative valid and invalid GI and JSX consumers. Those projects link workspace packages and use `skipLibCheck: true`; declaration internals and isolated package installation require separate validation.
+The [codegen tests](https://github.com/gtkx-org/gtkx/blob/main/packages/codegen/tests/codegen.test.ts) generate stores in temporary projects and typecheck representative valid and invalid GI and JSX consumers. Those projects link workspace packages and use `skipLibCheck: true`. Codegen's `typecheck` target also generates declarations for the newest version of every installed GIR library and checks them without `skipLibCheck`. Isolated package installation requires separate validation.
 
 GI methods generally defer descriptor construction and native binding through runtime factories. Runtime resolves the native symbol lazily on the first call. Importing a namespace and calling one of its methods therefore have different initialization costs; see [Native Runtime](/contributing/native-runtime).
 
