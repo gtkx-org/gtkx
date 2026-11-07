@@ -34,6 +34,8 @@ type StoreOptions = {
      * beside the store, so the bindings import the project's copies wherever the store is placed.
      */
     dependencies?: Record<string, string>;
+    /** Keeps the generated TypeScript sources beside the modules emitted from them, so they can be type-checked. */
+    shouldKeepSources?: boolean | undefined;
 } & Partial<Record<"owner", string>>;
 
 type StoreLink = Pick<StoreOptions, "storeDir" | "linkDir" | "dependencies">;
@@ -57,7 +59,7 @@ type ManifestInput = {
 
 type RawFile = { relativePath: string; content: string };
 
-type WriteStoreParams = Pick<StoreOptions, "storeDir" | "linkDir"> & {
+type WriteStoreParams = Pick<StoreOptions, "storeDir" | "linkDir" | "shouldKeepSources"> & {
     files: SourceModule[];
     manifest: Manifest;
     rawFiles?: RawFile[];
@@ -123,6 +125,7 @@ const buildTempStore = (tmp: string, params: WriteStoreParams): void => {
         storeDir: tmp,
         files: params.files,
         packageName: params.manifest.name,
+        shouldKeepSources: params.shouldKeepSources === true,
     });
     const rawFiles = params.rawFiles ?? [];
 

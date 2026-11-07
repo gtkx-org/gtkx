@@ -94,6 +94,7 @@ const writeGiStore = (
     return prepareStore({
         storeDir: options.storeDir,
         linkDir: options.linkDir,
+        shouldKeepSources: options.shouldKeepSources,
         files: collected,
         manifest: buildManifest({
             name: "@gtkx/gi",

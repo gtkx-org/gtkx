@@ -1,3 +1,4 @@
+export { BASE_COMPILER_OPTIONS } from "./compile.js";
 export { removeDocs, writeDocs } from "./docs/pipeline.js";
 export { readGiStoreGirFiles } from "./fingerprint.js";
 export { resolveBoundLibraries } from "./gir/libraries.js";
