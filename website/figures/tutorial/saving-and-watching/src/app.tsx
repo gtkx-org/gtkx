@@ -35,10 +35,6 @@ function App() {
                         <AdwToastOverlay ref={toastOverlayRef}>
                             <NavigationContainer>
                                 <Split.Navigator
-                                    collapseCondition="max-width: 500sp"
-                                    sidebarWidthFraction={0.3}
-                                    minSidebarWidth={220}
-                                    maxSidebarWidth={320}
                                     contentPlaceholder={
                                         <AdwStatusPage
                                             iconName="document-edit-symbolic"

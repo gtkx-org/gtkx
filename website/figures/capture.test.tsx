@@ -27,6 +27,7 @@ import { App as NotesFolder } from "./tutorial/the-notes-folder/src/app.js";
 import { App as SavingAndWatching } from "./tutorial/saving-and-watching/src/app.js";
 import { App as MarkdownPreview } from "./tutorial/the-markdown-preview/src/app.js";
 import { App as FastRefresh } from "./tutorial/fast-refresh/src/app.js";
+import { App as AdaptiveLayout } from "./tutorial/an-adaptive-layout/src/app.js";
 import { defaultFolder } from "./tutorial/the-notes-folder/src/notes/files.js";
 import { App as FirstWindow } from "./tutorial/your-first-window/src/app.js";
 import { Mail as TabMail } from "./guide/navigation-tabs.js";
@@ -150,6 +151,22 @@ const figures: [name: string, element: ReactNode, options?: FigureOptions][] = [
                 await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, { name: "Preview" }));
                 const preview = within(await screen.findByRole(Gtk.AccessibleRole.DOCUMENT, { name: "Preview" }));
                 await preview.findByText("Launch when the content is ready, not before.");
+            },
+        },
+    ],
+    [
+        "tutorial-an-adaptive-layout",
+        <AdaptiveLayout />,
+        {
+            before: () => seedNotes(defaultFolder()),
+            prepare: async () => {
+                const window = Gtk.Window.listToplevels().find((widget) => widget instanceof Adw.ApplicationWindow);
+                window?.setDefaultSize(360, 480);
+                await userEvent.click(
+                    await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Website relaunch" }),
+                );
+                await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Back" });
+                await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { name: "Note text" });
             },
         },
     ],

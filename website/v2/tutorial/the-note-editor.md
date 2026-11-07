@@ -20,7 +20,7 @@ This chapter belongs to the Notes tutorial for GTKX 2.0 and is not written yet. 
 
 <<< @/figures/tutorial/the-note-editor/src/navigation.ts [src/navigation.ts]
 
-The window holds the navigator inside the provider, sized wide enough that the split view does not collapse.
+The window holds the navigator inside the provider and opens at 720 by 480, wide enough for both panes. [Adapt the Layout](/v2/tutorial/an-adaptive-layout) stacks them on narrow windows.
 
 <<< @/figures/tutorial/the-note-editor/src/app.tsx [src/app.tsx]
 
