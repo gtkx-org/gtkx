@@ -5,7 +5,7 @@ description: "Translate GTKX applications and package metadata with gettext cata
 
 # Internationalization
 
-`@gtkx/i18n` connects React translation APIs to GNU gettext. Your application's production `applicationId` is its gettext domain, and `po/` holds its translation catalogs. GTKX uses those catalogs for both the application and its desktop metadata. GTKX manages `po/` only in projects that install `@gtkx/i18n`, so an existing gettext setup, such as a Meson project's, stays untouched until then.
+`@gtkx/i18n` connects i18next and react-i18next to GNU gettext. Your application's production `applicationId` is its gettext domain, and the catalogs in `po/` translate both the application and its desktop metadata. GTKX manages `po/` only in projects that install `@gtkx/i18n`, so an existing gettext setup, such as a Meson project's, stays untouched until then.
 
 Install `@gtkx/i18n@beta` and GNU gettext 0.25 or later. On Fedora 44:
 
@@ -16,7 +16,7 @@ xgettext --version
 msgfmt --version
 ```
 
-Other distributions may package the tools separately; both commands must be available when running codegen, development, and builds.
+Codegen, development and builds run the gettext tools (`xgettext`, `msginit`, `msgmerge`, `msgfmt` and others), so they must be on `PATH`. Some distributions package them separately, such as `gettext-tools` on openSUSE.
 
 ## Create a catalog
 
@@ -41,7 +41,11 @@ Run codegen:
 gtkx codegen
 ```
 
-GTKX creates `po/<applicationId>.pot`, initializes the listed PO files, and generates translation types. Translators edit each catalog's `msgstr` values. When `msginit` has no plural rule for a locale, such as `ar` or `zh_CN`, its catalog starts with a placeholder `Plural-Forms` header; replace it before translating plural messages. Run codegen again after changing messages to update the template and merge those changes into the catalogs. Review fuzzy entries before release; removed messages remain as obsolete entries.
+GTKX creates the template `po/<applicationId>.pot`, a PO file for each listed locale, and translation types. Translators edit each catalog's `msgstr` values.
+
+Run codegen again after changing messages. It updates the template and merges the changes into the catalogs. Review fuzzy entries before release; removed messages remain as obsolete entries.
+
+When `msginit` has no plural rule for a locale, such as `ar` or `zh_CN`, its catalog starts with a placeholder `Plural-Forms` header. Replace it before translating plural messages.
 
 Messages come from the `src` directory, or the project root without one, and from the workspace packages the application uses from source, as described in [Monorepos](/v2/guide/workspaces#monorepos). Their template locations are relative to the application, such as `../../packages/ui/src/rating.tsx:18`, and the application's catalogs translate them. Messages of packages installed from a registry are not extracted.
 
@@ -65,7 +69,10 @@ A `Trans` component takes the same options through `tOptions`, with the count in
 <Trans
     i18nKey="{{count}} selected"
     count={selected.length}
-    tOptions={{ defaultValue_one: "{{count}} selected", defaultValue_other: "{{count}} selected" }}
+    tOptions={{
+        defaultValue_one: "{{count}} selected",
+        defaultValue_other: "{{count}} selected",
+    }}
 />
 ```
 
@@ -91,7 +98,11 @@ const name = t("Recording {{index}}", { index });
 />;
 ```
 
-The comment belongs to the next `t` call or `Trans` element when only whitespace and other comments come between them, so it can sit on the lines above or earlier on the same line. Before an element in JSX children, write it as `{/* Translators: ... */}`. Code between the comment and the line of the call, such as `setTitle(` on a line of its own, detaches it, and a comment goes only to the first message after it. Comments without the tag stay out of the catalogs. A message used in several places collects the comment from each place.
+- The comment belongs to the next `t` call or `Trans` element when only whitespace and other comments come between them, so it can sit on the lines above or earlier on the same line.
+- Before an element in JSX children, write it as `{/* Translators: ... */}`.
+- Code between the comment and the line of the call, such as `setTitle(` on a line of its own, detaches it.
+- A comment goes only to the first message after it. A message used in several places collects the comment from each place.
+- Comments without the tag stay out of the catalogs.
 
 ## Use translations in components
 
@@ -112,9 +123,9 @@ See [react-i18next's documentation](https://react.i18next.com/latest/usetranslat
 
 ## Keep messages extractable
 
-Use ESM and the original names `t`, `useTranslation`, `Trans`, or `TransWithoutContext`. Direct calls and explicit `i18nKey` props need string-literal keys. Source defaults and contexts must also be statically known. A `Trans` component can derive its source from static children when `i18nKey` is omitted.
+Use ESM and the original names `t`, `useTranslation`, `Trans`, or `TransWithoutContext`. Keys, explicit `i18nKey` props, `context` and the `defaultValue` options must be string literals. Pass options as an inline object literal, without spreads or `as const`, and write `Trans` props out rather than spreading them: `t("Open", options)` fails extraction. A `Trans` component can derive its source from static children when `i18nKey` is omitted.
 
-GTKX rejects aliases, member calls such as `i18n.t(...)`, and dynamic keys during extraction. CommonJS, tagged templates, and ICU MessageFormat are not extraction forms. These restrictions keep the catalog aligned with the calls that reach gettext.
+Extraction rejects aliases and member calls such as `i18n.t(...)`. CommonJS, tagged templates, and ICU MessageFormat are not extraction forms. These restrictions keep the catalog aligned with the calls that reach gettext.
 
 Extraction follows `t` from its import or from a `useTranslation()` call in the same module. A `t` received in any other way, such as a function parameter, a prop, `withTranslation`, or the `Translation` render prop, is not extracted, and the generated declarations then reject its keys. Helpers outside components can import `t` from `@gtkx/i18n` instead, since gettext uses one language for the whole process.
 
@@ -139,7 +150,7 @@ export default defineConfig({
 
 The gettext domain stays the production ID: `gtkx dev` registers `com.example.Tasks.Devel` but keeps using `po/com.example.Tasks.pot` and the same catalogs as tests, builds, and packages. A separate configuration selected with `--config` is a different project setup, so an application ID it changes also names its own template and domain.
 
-`gtkx build` compiles the catalogs into `dist/locale` beside the bundle. When the entry's main thread loads GTKX code, GTKX initializes localization before the entry module runs and locates that directory automatically.
+`gtkx build` compiles the catalogs into `dist/locale` beside the bundle. When the entry module imports GTKX, directly or through other modules, the bundle initializes localization before the entry runs and finds that directory on its own.
 
 Select the process locale before launch:
 
