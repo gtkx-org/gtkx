@@ -71,34 +71,23 @@ const ParagraphBlock = ({ node }: { node: Paragraph }) => (
 );
 
 const CodeBlock = ({ node }: { node: Code }) => (
-    <GtkBox cssClasses={["card"]}>
-        <GtkLabel
-            label={node.value}
-            selectable
-            wrap
-            wrapMode={Pango.WrapMode.WORD_CHAR}
-            xalign={0}
-            hexpand
-            marginTop={12}
-            marginBottom={12}
-            marginStart={12}
-            marginEnd={12}
-            cssClasses={["monospace"]}
-        />
-    </GtkBox>
+    <GtkLabel
+        label={node.value}
+        selectable
+        wrap
+        wrapMode={Pango.WrapMode.WORD_CHAR}
+        xalign={0}
+        cssClasses={["monospace"]}
+    />
 );
 
 const QuoteBlock = ({ node }: { node: Blockquote }) => (
-    <GtkBox spacing={12}>
-        <GtkSeparator orientation={Gtk.Orientation.VERTICAL} />
-        <GtkBox
-            orientation={Gtk.Orientation.VERTICAL}
-            spacing={12}
-            hexpand
-            cssClasses={["dim-label"]}
-        >
-            <Blocks nodes={node.children} />
-        </GtkBox>
+    <GtkBox
+        orientation={Gtk.Orientation.VERTICAL}
+        spacing={12}
+        cssClasses={["dim-label"]}
+    >
+        <Blocks nodes={node.children} />
     </GtkBox>
 );
 

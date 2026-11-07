@@ -16,7 +16,9 @@ Saving a component, or a module it imports, updates the open window and keeps st
 
 ## Restyle the preview
 
-Change how the preview renders code blocks and quotes, and watch each save apply to the open note.
+Change how the preview renders code blocks and quotes, and watch each save apply to the open note. A code block moves into a card, and a quote gets a bar beside it.
+
+<<< @/figures/tutorial/fast-refresh/src/preview/markdown-preview.tsx{73-103} [src/preview/markdown-preview.tsx]
 
 ## When the app restarts
 
@@ -24,4 +26,10 @@ Edits Fast Refresh cannot apply relaunch the app instead. See [The app restarts 
 
 ## Run it
 
-What to check in the running app.
+With `npm run dev` running, open Meeting notes and press the eye button in its header bar. Save each change to `markdown-preview.tsx`: the quote and the code block restyle in place, and the note stays open in the preview.
+
+<figure class="result">
+    <img class="result-light" src="/figures/tutorial-fast-refresh-light.png" width="720" height="480" loading="lazy" alt="The Notes window with Meeting notes shown as a rendered preview: a dimmed quote with a bar beside it and a code block with two npm commands in a card." />
+    <img class="result-dark" src="/figures/tutorial-fast-refresh-dark.png" width="720" height="480" loading="lazy" alt="The Notes window with Meeting notes shown as a rendered preview: a dimmed quote with a bar beside it and a code block with two npm commands in a card." />
+    <figcaption>Captured from <a href="#restyle-the-preview"><code>src/preview/markdown-preview.tsx</code></a> above, after opening Meeting notes and turning on the preview.</figcaption>
+</figure>

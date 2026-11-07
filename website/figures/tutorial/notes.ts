@@ -16,7 +16,21 @@ const notes: NoteFile[] = [
     ],
     [
         "Meeting notes",
-        "# Meeting notes\n\nKickoff with design and docs, Tuesday 10:00.\n",
+        [
+            "# Meeting notes",
+            "",
+            "Kickoff with design and docs, Tuesday 10:00.",
+            "",
+            "> Launch when the content is ready, not before.",
+            "",
+            "Preview the new site locally:",
+            "",
+            "```sh",
+            "npm install",
+            "npm run docs:dev",
+            "```",
+            "",
+        ].join("\n"),
     ],
     [
         "Website relaunch",

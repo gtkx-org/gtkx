@@ -26,6 +26,7 @@ import { App as NoteEditor } from "./tutorial/the-note-editor/src/app.js";
 import { App as NotesFolder } from "./tutorial/the-notes-folder/src/app.js";
 import { App as SavingAndWatching } from "./tutorial/saving-and-watching/src/app.js";
 import { App as MarkdownPreview } from "./tutorial/the-markdown-preview/src/app.js";
+import { App as FastRefresh } from "./tutorial/fast-refresh/src/app.js";
 import { defaultFolder } from "./tutorial/the-notes-folder/src/notes/files.js";
 import { App as FirstWindow } from "./tutorial/your-first-window/src/app.js";
 import { Mail as TabMail } from "./guide/navigation-tabs.js";
@@ -136,6 +137,19 @@ const figures: [name: string, element: ReactNode, options?: FigureOptions][] = [
                 await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, { name: "Preview" }));
                 const preview = within(await screen.findByRole(Gtk.AccessibleRole.DOCUMENT, { name: "Preview" }));
                 await preview.findByRole(Gtk.AccessibleRole.HEADING, { name: "Milestones" });
+            },
+        },
+    ],
+    [
+        "tutorial-fast-refresh",
+        <FastRefresh />,
+        {
+            before: () => seedNotes(defaultFolder()),
+            prepare: async () => {
+                await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Meeting notes" }));
+                await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, { name: "Preview" }));
+                const preview = within(await screen.findByRole(Gtk.AccessibleRole.DOCUMENT, { name: "Preview" }));
+                await preview.findByText("Launch when the content is ready, not before.");
             },
         },
     ],
