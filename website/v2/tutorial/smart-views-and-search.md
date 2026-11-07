@@ -28,154 +28,11 @@ In `src/types.ts`, replace `Selection` and add `SmartView` and `Filter`:
 
 Create `src/format.ts` for the shared date helper:
 
-```ts [src/format.ts]
-const startOfDay = (date: Date): number =>
-    new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
-
-export const isToday = (iso: string | null): boolean => {
-    if (!iso) return false;
-    return startOfDay(new Date(iso)) === startOfDay(new Date());
-};
-```
+<<< @/figures/tutorial/smart-views-and-search/src/format.ts [src/format.ts]
 
 Create `src/store/selectors.ts`:
 
-```ts [src/store/selectors.ts]
-import { isToday } from "../format.js";
-import type { Filter, Selection, SmartView, Task, TaskList } from "../types.js";
-
-const SMART_TITLES: Record<SmartView, string> = {
-    all: "All Tasks",
-    today: "Today",
-    important: "Important",
-    trash: "Trash",
-};
-
-export const selectionKey = (selection: Selection): string =>
-    selection.kind === "smart"
-        ? `smart:${selection.view}`
-        : `list:${selection.listId}`;
-
-export const selectionTitle = (
-    selection: Selection,
-    lists: TaskList[],
-): string =>
-    selection.kind === "list"
-        ? (lists.find((list) => list.id === selection.listId)?.name ?? "Tasks")
-        : SMART_TITLES[selection.view];
-
-export const addListId = (selection: Selection, lists: TaskList[]): string =>
-    selection.kind === "list" ? selection.listId : (lists[0]?.id ?? "");
-
-const inSelection = (task: Task, selection: Selection): boolean => {
-    if (selection.kind === "list")
-        return !task.deleted && task.listId === selection.listId;
-    switch (selection.view) {
-        case "all":
-            return !task.deleted;
-        case "today":
-            return !task.deleted && isToday(task.due);
-        case "important":
-            return !task.deleted && task.important;
-        case "trash":
-            return task.deleted;
-    }
-};
-
-const matchesQuery = (task: Task, query: string): boolean => {
-    if (!query) return true;
-    const needle = query.toLowerCase();
-    return (
-        task.title.toLowerCase().includes(needle) ||
-        task.notes.toLowerCase().includes(needle)
-    );
-};
-
-const matchesFilter = (task: Task, filter: Filter): boolean => {
-    if (filter === "open") return !task.done;
-    if (filter === "done") return task.done;
-    return true;
-};
-
-export type VisibleOptions = { query: string; filter: Filter };
-
-export const visibleTasks = (
-    tasks: Task[],
-    selection: Selection,
-    options: VisibleOptions,
-): Task[] =>
-    tasks
-        .filter(
-            (task) =>
-                inSelection(task, selection) &&
-                matchesQuery(task, options.query) &&
-                matchesFilter(task, options.filter),
-        )
-        .sort((a, b) => a.position - b.position);
-
-export type SidebarCounts = {
-    all: number;
-    today: number;
-    important: number;
-    trash: number;
-    lists: Record<string, number>;
-};
-
-export const sidebarCounts = (
-    tasks: Task[],
-    lists: TaskList[],
-): SidebarCounts => {
-    const open = tasks.filter((task) => !task.deleted && !task.done);
-    return {
-        all: open.length,
-        today: open.filter((task) => isToday(task.due)).length,
-        important: open.filter((task) => task.important).length,
-        trash: tasks.filter((task) => task.deleted).length,
-        lists: Object.fromEntries(
-            lists.map((list) => [
-                list.id,
-                open.filter((task) => task.listId === list.id).length,
-            ]),
-        ),
-    };
-};
-
-export type EmptyState = { icon: string; title: string; description: string };
-
-const SMART_EMPTY: Record<SmartView, EmptyState> = {
-    all: {
-        icon: "view-list-symbolic",
-        title: "No Tasks Yet",
-        description: "Add a task above to get started",
-    },
-    today: {
-        icon: "x-office-calendar-symbolic",
-        title: "Nothing Due Today",
-        description: "Tasks due today appear here",
-    },
-    important: {
-        icon: "starred-symbolic",
-        title: "No Important Tasks",
-        description: "Star a task to find it here",
-    },
-    trash: {
-        icon: "user-trash-symbolic",
-        title: "Trash Is Empty",
-        description: "Deleted tasks appear here",
-    },
-};
-
-export const emptyState = (selection: Selection, query: string): EmptyState => {
-    if (query)
-        return {
-            icon: "system-search-symbolic",
-            title: "No Results",
-            description: `No tasks match “${query}”`,
-        };
-    if (selection.kind === "smart") return SMART_EMPTY[selection.view];
-    return SMART_EMPTY.all;
-};
-```
+<<< @/figures/tutorial/smart-views-and-search/src/store/selectors.ts [src/store/selectors.ts]
 
 Trash includes deleted tasks; the other views exclude them. Sidebar badges count open tasks, except Trash, which counts everything it contains. New tasks created from a smart view go into the first list.
 
@@ -185,33 +42,7 @@ Components will select the stored arrays and derive their visible rows during re
 
 Create `src/store/ui.ts`:
 
-```ts [src/store/ui.ts]
-import type { StateCreator } from "zustand";
-import type { Filter } from "../types.js";
-import type { Mutators, Store } from "./index.js";
-
-export type UiSlice = {
-    filter: Filter;
-    searchMode: boolean;
-    searchQuery: string;
-    setFilter: (filter: Filter) => void;
-    setSearchMode: (searchMode: boolean) => void;
-    setSearchQuery: (searchQuery: string) => void;
-    resetSearch: () => void;
-};
-
-export const createUiSlice: StateCreator<Store, Mutators, [], UiSlice> = (
-    set,
-) => ({
-    filter: "all",
-    searchMode: false,
-    searchQuery: "",
-    setFilter: (filter) => set({ filter }),
-    setSearchMode: (searchMode) => set({ searchMode }),
-    setSearchQuery: (searchQuery) => set({ searchQuery }),
-    resetSearch: () => set({ searchMode: false, searchQuery: "" }),
-});
-```
+<<< @/figures/tutorial/smart-views-and-search/src/store/ui.ts [src/store/ui.ts]
 
 Add the UI slice to `src/store/index.ts`:
 
@@ -231,131 +62,7 @@ Keep `PersistedState` and `partialize` unchanged, so the filter and search start
 
 Replace `src/components/sidebar.tsx` with:
 
-```tsx [src/components/sidebar.tsx]
-import * as Gtk from "@gtkx/gi/gtk";
-import { AdwActionRow } from "@gtkx/jsx/adw";
-import {
-    GtkBox,
-    GtkImage,
-    GtkLabel,
-    GtkListBox,
-    GtkScrolledWindow,
-} from "@gtkx/jsx/gtk";
-import type { SplitViewScreenProps } from "@gtkx/navigation";
-import { type RootParamList, useSelection } from "../navigation.js";
-import { useStore } from "../store/index.js";
-import {
-    type SidebarCounts,
-    selectionKey,
-    sidebarCounts,
-} from "../store/selectors.js";
-import { listDot } from "../styles.js";
-import type { Selection, TaskList } from "../types.js";
-
-type Entry = {
-    selection: Selection;
-    title: string;
-    icon?: string;
-    color?: string;
-    count: number;
-};
-
-const buildEntries = (lists: TaskList[], counts: SidebarCounts): Entry[] => [
-    {
-        selection: { kind: "smart", view: "all" },
-        title: "All Tasks",
-        icon: "view-list-symbolic",
-        count: counts.all,
-    },
-    {
-        selection: { kind: "smart", view: "today" },
-        title: "Today",
-        icon: "x-office-calendar-symbolic",
-        count: counts.today,
-    },
-    {
-        selection: { kind: "smart", view: "important" },
-        title: "Important",
-        icon: "starred-symbolic",
-        count: counts.important,
-    },
-    ...lists.map((list): Entry => ({
-        selection: { kind: "list", listId: list.id },
-        title: list.name,
-        color: list.color,
-        count: counts.lists[list.id] ?? 0,
-    })),
-    {
-        selection: { kind: "smart", view: "trash" },
-        title: "Trash",
-        icon: "user-trash-symbolic",
-        count: counts.trash,
-    },
-];
-
-export const Sidebar = ({
-    navigation,
-}: SplitViewScreenProps<RootParamList, "Lists">) => {
-    const tasks = useStore((state) => state.tasks);
-    const lists = useStore((state) => state.lists);
-    const resetSearch = useStore((state) => state.resetSearch);
-    const selection = useSelection();
-
-    const entries = buildEntries(lists, sidebarCounts(tasks, lists));
-    const activeKey = selection === null ? null : selectionKey(selection);
-    const activeIndex = entries.findIndex(
-        (entry) => selectionKey(entry.selection) === activeKey,
-    );
-
-    return (
-        <GtkScrolledWindow vexpand>
-            <GtkListBox
-                cssClasses={["navigation-sidebar"]}
-                selectedIndex={activeIndex}
-                onRowSelected={(row) => {
-                    if (!row) return;
-                    const entry = entries[row.getIndex()];
-                    if (entry) {
-                        resetSearch();
-                        navigation.navigate("Tasks", entry.selection);
-                    }
-                }}
-            >
-                {entries.map((entry) => (
-                    <AdwActionRow
-                        key={selectionKey(entry.selection)}
-                        title={entry.title}
-                        useMarkup={false}
-                        prefix={
-                            entry.color ? (
-                                <GtkBox
-                                    valign={Gtk.Align.CENTER}
-                                    cssClasses={[listDot(entry.color)]}
-                                    accessibleRole={
-                                        Gtk.AccessibleRole.PRESENTATION
-                                    }
-                                />
-                            ) : (
-                                <GtkImage iconName={entry.icon} />
-                            )
-                        }
-                        suffix={
-                            entry.count > 0 ? (
-                                <GtkLabel
-                                    valign={Gtk.Align.CENTER}
-                                    cssClasses={["dimmed", "numeric"]}
-                                >
-                                    {String(entry.count)}
-                                </GtkLabel>
-                            ) : undefined
-                        }
-                    />
-                ))}
-            </GtkListBox>
-        </GtkScrolledWindow>
-    );
-};
-```
+<<< @/figures/tutorial/smart-views-and-search/src/components/sidebar.tsx [src/components/sidebar.tsx]
 
 Each row carries the selection it opens. `selectedIndex` continues to follow the route, now comparing selection keys instead of list IDs. Empty badges are omitted.
 
@@ -382,52 +89,13 @@ Use `initialParams={ALL_TASKS}` on the `Tasks` screen. Its title now comes from 
 
 A control can be a component with its own store subscription. Create `src/components/task-filter.tsx`:
 
-```tsx [src/components/task-filter.tsx]
-import { AdwToggle, AdwToggleGroup } from "@gtkx/jsx/adw";
-import { useStore } from "../store/index.js";
-
-export const TaskFilter = () => {
-    const filter = useStore((state) => state.filter);
-    const setFilter = useStore((state) => state.setFilter);
-
-    return (
-        <AdwToggleGroup
-            activeName={filter}
-            cssClasses={["round"]}
-            onNotifyActiveName={(name) => {
-                if (name === "all" || name === "open" || name === "done")
-                    setFilter(name);
-            }}
-        >
-            <AdwToggle name="all" label="All" />
-            <AdwToggle name="open" label="Open" />
-            <AdwToggle name="done" label="Done" />
-        </AdwToggleGroup>
-    );
-};
-```
+<<< @/figures/tutorial/smart-views-and-search/src/components/task-filter.tsx [src/components/task-filter.tsx]
 
 GTKX's notify props receive the property value first. The native toggle name is a nullable string, so the handler accepts only the app's three filter names.
 
 Create `src/components/search-button.tsx`:
 
-```tsx [src/components/search-button.tsx]
-import { GtkButton } from "@gtkx/jsx/gtk";
-import { useStore } from "../store/index.js";
-
-export const SearchButton = () => {
-    const searchMode = useStore((state) => state.searchMode);
-    const setSearchMode = useStore((state) => state.setSearchMode);
-
-    return (
-        <GtkButton
-            iconName="system-search-symbolic"
-            tooltipText="Search (Ctrl+F)"
-            onClicked={() => setSearchMode(!searchMode)}
-        />
-    );
-};
-```
+<<< @/figures/tutorial/smart-views-and-search/src/components/search-button.tsx [src/components/search-button.tsx]
 
 The shortcut in the tooltip is added in [Add Menus and Shortcuts](/v2/tutorial/actions-menus-shortcuts).
 
@@ -459,97 +127,7 @@ The filter goes above the list rather than in the header. A collapsed header alr
 
 Replace `src/components/task-list.tsx` with:
 
-```tsx [src/components/task-list.tsx]
-import { markupEscapeText } from "@gtkx/gi/glib";
-import * as Gtk from "@gtkx/gi/gtk";
-import { AdwClamp, AdwEntryRow, AdwStatusPage } from "@gtkx/jsx/adw";
-import {
-    GtkBox,
-    GtkListBox,
-    GtkScrolledWindow,
-    GtkSearchBar,
-    GtkSearchEntry,
-} from "@gtkx/jsx/gtk";
-import type { Selection } from "../types.js";
-import { useStore } from "../store/index.js";
-import { addListId, emptyState, visibleTasks } from "../store/selectors.js";
-import { TaskFilter } from "./task-filter.js";
-import { TaskRow } from "./task-row.js";
-
-export const TaskList = ({ selection }: { selection: Selection }) => {
-    const tasks = useStore((state) => state.tasks);
-    const lists = useStore((state) => state.lists);
-    const filter = useStore((state) => state.filter);
-    const searchMode = useStore((state) => state.searchMode);
-    const searchQuery = useStore((state) => state.searchQuery);
-    const setSearchMode = useStore((state) => state.setSearchMode);
-    const setSearchQuery = useStore((state) => state.setSearchQuery);
-    const addTask = useStore((state) => state.addTask);
-
-    const visible = visibleTasks(tasks, selection, {
-        query: searchQuery,
-        filter,
-    });
-    const empty = emptyState(selection, searchQuery);
-    const listId = addListId(selection, lists);
-
-    return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} vexpand>
-            <GtkSearchBar
-                searchModeEnabled={searchMode}
-                onNotifySearchModeEnabled={(enabled) =>
-                    setSearchMode(enabled ?? false)
-                }
-            >
-                <GtkSearchEntry
-                    placeholderText="Search tasks…"
-                    text={searchQuery}
-                    onSearchChanged={(self) => setSearchQuery(self.text)}
-                />
-            </GtkSearchBar>
-            <GtkScrolledWindow vexpand>
-                <AdwClamp
-                    maximumSize={640}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
-                >
-                    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                        <TaskFilter />
-                        <GtkListBox
-                            selectionMode={Gtk.SelectionMode.NONE}
-                            cssClasses={["boxed-list"]}
-                        >
-                            <AdwEntryRow
-                                title="Add a task…"
-                                onEntryActivated={(self) => {
-                                    addTask(listId, self.text);
-                                    self.text = "";
-                                }}
-                            />
-                            {visible.map((task) => (
-                                <TaskRow key={task.id} task={task} />
-                            ))}
-                        </GtkListBox>
-                        {visible.length === 0 ? (
-                            <AdwStatusPage
-                                cssClasses={["compact"]}
-                                iconName={empty.icon}
-                                title={empty.title}
-                                description={markupEscapeText(
-                                    empty.description,
-                                    -1,
-                                )}
-                            />
-                        ) : null}
-                    </GtkBox>
-                </AdwClamp>
-            </GtkScrolledWindow>
-        </GtkBox>
-    );
-};
-```
+<<< @/figures/tutorial/smart-views-and-search/src/components/task-list.tsx [src/components/task-list.tsx]
 
 `GtkSearchBar` owns the search entry and handles dismissal with Escape. Its notify handler updates the store when search closes. `GtkSearchEntry.onSearchChanged` reports edits after the native search delay.
 
@@ -557,24 +135,19 @@ export const TaskList = ({ selection }: { selection: Selection }) => {
 
 Replace `src/components/tasks-screen.tsx` with:
 
-```tsx [src/components/tasks-screen.tsx]
-import type { SplitViewScreenProps } from "@gtkx/navigation";
-import type { RootParamList } from "../navigation.js";
-import { selectionKey } from "../store/selectors.js";
-import { TaskList } from "./task-list.js";
-
-export const TasksScreen = ({
-    route,
-}: SplitViewScreenProps<RootParamList, "Tasks">) => (
-    <TaskList key={selectionKey(route.params)} selection={route.params} />
-);
-```
+<<< @/figures/tutorial/smart-views-and-search/src/components/tasks-screen.tsx [src/components/tasks-screen.tsx]
 
 Changing the selection remounts the native list, clearing its scroll position and unfinished add-row text. React explains [state reset through keys](https://react.dev/learn/preserving-and-resetting-state).
 
 ## Run it
 
 Save the files and restart the app to see All Tasks as the launch view.
+
+<figure class="result">
+    <img class="result-light" src="/figures/tutorial-smart-views-and-search-light.png" width="720" height="480" loading="lazy" alt="The Tasks window with a sidebar of All Tasks 3, Today 1, Important 1, Personal 2, Work 1, Shopping, and Trash, with All Tasks selected. The content pane, titled All Tasks with a search button, shows the All, Open, and Done filter above the Add a task… entry and the rows Welcome to Tasks, Water the plants, and Prepare the weekly report." />
+    <img class="result-dark" src="/figures/tutorial-smart-views-and-search-dark.png" width="720" height="480" loading="lazy" alt="The Tasks window with a sidebar of All Tasks 3, Today 1, Important 1, Personal 2, Work 1, Shopping, and Trash, with All Tasks selected. The content pane, titled All Tasks with a search button, shows the All, Open, and Done filter above the Add a task… entry and the rows Welcome to Tasks, Water the plants, and Prepare the weekly report." />
+    <figcaption>Captured from <a href="#update-the-sidebar"><code>src/components/sidebar.tsx</code></a> and <a href="#render-search-and-empty-states"><code>src/components/task-list.tsx</code></a> above, with the window enlarged.</figcaption>
+</figure>
 
 - Complete an open task and check the sidebar counts.
 - Select Today, Important, and Trash. Each shows tasks matching that view.
