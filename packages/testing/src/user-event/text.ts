@@ -216,7 +216,7 @@ const typeStep = async (widget: Gtk.Widget, state: UserEventState, step: TypedSt
     insertEditableText(widget, step.text, "typing");
 };
 
-/** Types into an editable widget, pressing the keys named in braces such as `{Enter}`; a doubled opening brace types a literal `{`. */
+/** Types into an editable widget one character per edit, pressing the keys named in braces such as `{Enter}`; a doubled opening brace types a literal `{`. */
 const type = (state: UserEventState, widget: Gtk.Widget, text: string, options?: TypeOptions): Promise<void> => {
     const steps = parseTypedInput(text);
 
