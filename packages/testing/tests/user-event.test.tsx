@@ -837,6 +837,36 @@ describe("userEvent.type", () => {
         expect(editableText(replaced)).toBe("Goodbye World");
     });
 
+    it("inserts each typed character separately, each in its own text view user action", async () => {
+        const entry = await renderTextBox();
+        const entryTexts: string[] = [];
+
+        entry.connect("changed", () => {
+            entryTexts.push(entry.getText());
+        });
+
+        await userEvent.type(entry, "a😀b");
+        expect(entryTexts).toEqual(["a", "a😀", "a😀b"]);
+        const view = await renderTextView();
+        const buffer = view.getBuffer();
+        const edits: string[] = [];
+
+        buffer.connect("begin-user-action", () => {
+            edits.push("begin");
+        });
+
+        buffer.connect("insert-text", (_location: Gtk.TextIter, text: string) => {
+            edits.push(text);
+        });
+
+        buffer.connect("end-user-action", () => {
+            edits.push("end");
+        });
+
+        await userEvent.type(view, "ab");
+        expect(edits).toEqual(["begin", "a", "end", "begin", "b", "end"]);
+    });
+
     it("focuses the entry it types into unless shouldFocus is off", async () => {
         const focused = await renderUnfocusedEntry("unfocused", "Initial ");
         await userEvent.type(focused, "appended");

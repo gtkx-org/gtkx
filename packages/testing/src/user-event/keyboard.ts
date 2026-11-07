@@ -185,11 +185,10 @@ const parseKeyboardInput = (input: string): KeyAction[] => {
 const characterActions = (text: string): KeyAction[] =>
     Array.from(text, (character) => parseCharAt(character, 0).actions).flat();
 
-const parseTypedTextAt = (input: string, i: number): TypedParseStep => {
-    const brace = input.indexOf("{", i);
-    const next = brace === -1 ? input.length : brace;
+const parseTypedCharAt = (input: string, i: number): TypedParseStep => {
+    const text = String.fromCodePoint(input.codePointAt(i) ?? 0);
 
-    return { step: { text: input.slice(i, next) }, next };
+    return { step: { text }, next: i + text.length };
 };
 
 const parseTypedStepAt = (input: string, i: number): TypedParseStep => {
@@ -198,7 +197,7 @@ const parseTypedStepAt = (input: string, i: number): TypedParseStep => {
     }
 
     if (input[i] !== "{") {
-        return parseTypedTextAt(input, i);
+        return parseTypedCharAt(input, i);
     }
 
     const brace = parseBraceAt(input, i);
@@ -210,25 +209,13 @@ const parseTypedStepAt = (input: string, i: number): TypedParseStep => {
     return { step: { actions: brace.actions }, next: brace.next };
 };
 
-const appendTypedStep = (steps: TypedStep[], step: TypedStep): void => {
-    const last = steps.at(-1);
-
-    if (last !== undefined && "text" in last && "text" in step) {
-        steps[steps.length - 1] = { text: last.text + step.text };
-
-        return;
-    }
-
-    steps.push(step);
-};
-
 const parseTypedInput = (input: string): TypedStep[] => {
     const steps: TypedStep[] = [];
     let i = 0;
 
     while (i < input.length) {
         const { step, next } = parseTypedStepAt(input, i);
-        appendTypedStep(steps, step);
+        steps.push(step);
         i = next;
     }
 

@@ -192,7 +192,7 @@ await user.type(entry, "Replacement");
 await user.click(saveButton);
 ```
 
-`type` inserts text into an editable widget and presses the keys named in braces, as in Testing Library's [`keyboard`](https://testing-library.com/docs/user-event/keyboard) syntax, so `type(entry, "Ada{Enter}")` types "Ada" and then activates the entry. Type a literal `{` as <span v-pre>`{{`</span>.
+`type` inserts text into an editable widget one character at a time, each as its own edit, and presses the keys named in braces, as in Testing Library's [`keyboard`](https://testing-library.com/docs/user-event/keyboard) syntax, so `type(entry, "Ada{Enter}")` types "Ada" and then activates the entry. Handlers that react to single typed characters, such as GtkSourceView's interactive completion, see each one. Type a literal `{` as <span v-pre>`{{`</span>.
 
 `keyboard(widget, keys)` sends the keys to the focused widget inside `widget`, or to `widget` itself. A widget that can take focus, or passes it to a child as a `GtkMenuButton` does to its button, is focused first unless the focus is already inside it, as a user would before typing. `{Space}` on a switch therefore toggles that switch, whatever had focus before. Keys go through GTK's key bindings and key controllers, including the ones GTK's own widgets add, so `{Space}` or `{Enter}` selects a swatch in a `GtkColorChooserWidget`.
 
