@@ -47,17 +47,19 @@ type DrawerTypeBag<
 /** Declares a typed screen of a drawer navigator for the static configuration API. */
 const createDrawerScreen: StaticScreenFactory<DrawerTypeBag> = createScreenFactory<DrawerTypeBag>();
 
-const useDrawerRouter = (isCollapsed: boolean): DrawerRouterFactory => {
-    const [flag] = useState(() => {
-        let isCurrent = isCollapsed;
+const createFlag = (isInitial: boolean) => {
+    let isCurrent = isInitial;
 
-        return {
-            read: () => isCurrent,
-            update: (isNext: boolean) => {
-                isCurrent = isNext;
-            },
-        };
-    });
+    return {
+        read: () => isCurrent,
+        update: (isNext: boolean) => {
+            isCurrent = isNext;
+        },
+    };
+};
+
+const useDrawerRouter = (isCollapsed: boolean): DrawerRouterFactory => {
+    const [flag] = useState(() => createFlag(isCollapsed));
 
     const [createRouter] = useState(() => createDrawerRouter(flag.read));
 

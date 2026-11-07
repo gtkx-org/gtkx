@@ -72,7 +72,7 @@
         "vitest": "catalog:",
         "test-console": "^2.0.0",
         "@types/test-console": "^2.0.3",
-        "semver": "^7.8.5",
+        "semver": "^7.8.6",
         "@types/semver": "^7.8.0"
     }
 }
