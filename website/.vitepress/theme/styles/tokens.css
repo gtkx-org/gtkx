@@ -22,7 +22,13 @@
     --blue-400: #62a0ea;
     --blue-700: #1a5fb4;
 
+    --green-300: #57e389;
     --green-500: #2ec27e;
+    --green-700: #1a7047;
+
+    --yellow-300: #f8e45c;
+    --yellow-500: #e5a50a;
+    --yellow-800: #8a5a00;
 
     --bg: var(--gray-0);
     --bg-alt: var(--gray-50);

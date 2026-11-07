@@ -471,6 +471,18 @@ export default defineConfig({
     appearance: "dark",
     cleanUrls: true,
     lastUpdated: true,
+    markdown: {
+        container: {
+            infoLabel: "Info",
+            noteLabel: "Note",
+            tipLabel: "Tip",
+            importantLabel: "Important",
+            warningLabel: "Warning",
+            cautionLabel: "Caution",
+            dangerLabel: "Danger",
+            detailsLabel: "Details",
+        },
+    },
     sitemap: {
         hostname: url,
         transformItems: (items) =>
@@ -553,6 +565,7 @@ export default defineConfig({
         search: { provider: "local" },
         nav: navigation(rootVersion),
         sidebar,
+        outline: { level: [2, 3] },
         socialLinks: [{ icon: "github", link: "https://github.com/gtkx-org/gtkx" }],
         editLink: {
             pattern: "https://github.com/gtkx-org/gtkx/edit/main/website/:path",

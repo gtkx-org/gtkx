@@ -5,19 +5,94 @@
     --vp-c-brand-soft: rgba(224, 58, 62, 0.14);
     --vp-font-family-base: "Red Hat Text", system-ui, -apple-system, "Segoe UI", sans-serif;
     --vp-font-family-mono: "Red Hat Mono", "SFMono-Regular", ui-monospace, "Cascadia Code", Menlo, monospace;
+    --vp-code-color: var(--vp-c-text-1);
+
+    --callout-note: var(--blue-700);
+    --callout-note-bg: rgba(26, 95, 180, 0.08);
+    --callout-tip: var(--green-700);
+    --callout-tip-bg: rgba(46, 194, 126, 0.1);
+    --callout-warning: var(--yellow-800);
+    --callout-warning-line: var(--yellow-500);
+    --callout-warning-bg: rgba(229, 165, 10, 0.12);
 }
 
 html.dark {
     --vp-c-brand-1: var(--red-300);
     --vp-c-brand-2: var(--red-400);
     --vp-c-brand-3: var(--red-600);
+
+    --callout-note: var(--blue-300);
+    --callout-note-bg: rgba(98, 160, 234, 0.12);
+    --callout-tip: var(--green-300);
+    --callout-tip-bg: rgba(46, 194, 126, 0.12);
+    --callout-warning: var(--yellow-300);
+    --callout-warning-bg: rgba(229, 165, 10, 0.14);
 }
 
-:root:not(.dark) .custom-block.tip code,
-:root:not(.dark) .custom-block.info code,
-:root:not(.dark) .custom-block.note code,
-:root:not(.dark) .custom-block.details code {
-    color: var(--red-800);
+.vp-doc .custom-block:is(.info, .note) {
+    --callout-ink: var(--callout-note);
+    --callout-line: var(--callout-note);
+    --callout-fill: var(--callout-note-bg);
+    --callout-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M12 16v-4M12 8h.01'/%3E%3C/svg%3E");
+}
+
+.vp-doc .custom-block.tip {
+    --callout-ink: var(--callout-tip);
+    --callout-line: var(--callout-tip);
+    --callout-fill: var(--callout-tip-bg);
+    --callout-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z'/%3E%3C/svg%3E");
+}
+
+.vp-doc .custom-block.warning {
+    --callout-ink: var(--callout-warning);
+    --callout-line: var(--callout-warning-line);
+    --callout-fill: var(--callout-warning-bg);
+    --callout-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z'/%3E%3Cpath d='M12 9v4M12 17h.01'/%3E%3C/svg%3E");
+}
+
+.vp-doc .custom-block:is(.info, .note, .tip, .warning) {
+    border: 0;
+    border-left: 3px solid var(--callout-line);
+    border-radius: 0 8px 8px 0;
+    padding: 12px 16px;
+    background-color: var(--callout-fill);
+    color: var(--vp-c-text-1);
+}
+
+.vp-doc .custom-block:is(.info, .note, .tip, .warning) .custom-block-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font-weight: 700;
+    color: var(--callout-ink);
+}
+
+.vp-doc .custom-block:is(.info, .note, .tip, .warning) .custom-block-title::before {
+    content: "";
+    flex: none;
+    width: 16px;
+    height: 16px;
+    background-color: currentColor;
+    mask: var(--callout-icon) no-repeat center / contain;
+}
+
+.vp-doc .custom-block:is(.info, .note, .tip, .warning) a {
+    color: var(--vp-c-brand-1);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.vp-doc .custom-block:is(.info, .note, .tip, .warning, .important, .caution, .danger, .details) code {
+    color: var(--vp-c-text-1);
+}
+
+.vp-doc .custom-block:is(.info, .note, .tip, .warning) code {
+    background-color: var(--vp-code-bg);
+}
+
+.vp-doc .custom-block:is(.info, .note, .tip, .warning, .important, .caution, .danger, .details) a > code {
+    color: var(--vp-c-brand-1);
 }
 
 .vp-doc .post-date {
