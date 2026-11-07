@@ -6,19 +6,23 @@ description: "Extract the app's messages into a gettext template and add a Frenc
 
 Extract the messages marked since the first chapter into a gettext template, add a French translation, and check it in a test.
 
-::: info Being written
-This chapter belongs to the Notes tutorial for GTKX 2.0 and is not written yet. The headings below are its plan; the [finished app](https://github.com/gtkx-org/gtkx/tree/main/tutorial) already contains the code.
-:::
+GTK apps are translated with [GNU gettext](https://www.gnu.org/software/gettext/manual/gettext.html): a template lists the messages, and translators fill in one [PO file](https://www.gnu.org/software/gettext/manual/html_node/PO-Files.html) per language. `@gtkx/i18n` keeps i18next's `t()` in the components and lets gettext look up each translation, so the catalogs follow the format GNOME translators already work with. [Internationalization](/v2/guide/internationalization) covers it in full.
 
 ## Extract the messages
 
-Every visible string has gone through `t()` since [Create a Window](/v2/tutorial/your-first-window). GTKX starts managing translations once the project has a `po` folder whose `LINGUAS` file lists the locales:
+Every visible string has gone through `t()` since [Create a Window](/v2/tutorial/your-first-window), which also installed `@gtkx/i18n`. GTKX starts managing translations once such a project has a `po` folder whose `LINGUAS` file lists the locales, one per line:
 
 ```text [po/LINGUAS]
 fr
 ```
 
-Run `npm run codegen`. GTKX writes the template `po/dev.gtkx.Notes.pot` with every `t()` message and the summary and description of each settings key, and creates `po/fr.po` from it with `msginit`. Each entry records where the message comes from:
+Then run codegen. It calls the gettext tools that the [tutorial's requirements](/v2/tutorial/) list:
+
+```sh
+npm run codegen
+```
+
+GTKX writes the template `po/dev.gtkx.Notes.pot`, named after the application ID, with every `t()` message and the summary and description of each settings key. It creates `po/fr.po` from the template with `msginit`, and lists the files it read in `po/POTFILES.in`. Each entry gives the source text as `msgid`, an empty `msgstr` for the translation, and a `#:` comment with the lines it comes from:
 
 ```po [po/dev.gtkx.Notes.pot]
 #: src/components/main-menu.tsx:15 src/components/notes-screen.tsx:135
@@ -26,7 +30,7 @@ msgid "New Note"
 msgstr ""
 ```
 
-See [Create a catalog](/v2/guide/internationalization#create-a-catalog) and [Translate settings schemas](/v2/guide/internationalization#translate-settings-schemas).
+The same text in two places is one message, translated once. See [Create a catalog](/v2/guide/internationalization#create-a-catalog) and [Translate settings schemas](/v2/guide/internationalization#translate-settings-schemas).
 
 ## Add a translation
 
@@ -38,11 +42,11 @@ msgid "“{{name}}” moved to Trash"
 msgstr "« {{name}} » a été mise à la corbeille"
 ```
 
-The [finished app's catalog](https://github.com/gtkx-org/gtkx/blob/main/tutorial/po/fr.po) has every French message. When you change a message later, run codegen again: it updates the template and merges the change into `fr.po`.
+The [finished app's catalog](https://github.com/gtkx-org/gtkx/blob/main/tutorial/po/fr.po) has every French message. When you change a message later, run codegen again: it updates the template and merges the change into `fr.po`. `npm run dev` updates only the template as you save, and leaves the PO files to codegen and builds.
 
 ## Plurals
 
-The note count under the sidebar title gives `t()` the singular and plural source strings:
+The note count under the sidebar title is a plural message. `t()` takes the singular as its key, the number as `count`, and both English forms as `defaultValue_one` and `defaultValue_other`:
 
 ```tsx [src/components/notes-screen.tsx]
 t("{{count}} note", {
@@ -52,7 +56,7 @@ t("{{count}} note", {
 });
 ```
 
-The catalog holds one translation per plural form. Its `Plural-Forms` header, which `msginit` filled in for French, picks the form from the count: French uses the singular for 0 and 1.
+Its catalog entry has both source forms and one translation per plural form of the language. The `Plural-Forms` header, which `msginit` filled in for French, picks the form from the count. Its [rule](https://www.gnu.org/software/gettext/manual/html_node/Plural-forms.html) gives French the singular for 0 and 1, where English uses the plural for 0:
 
 ```po [po/fr.po]
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
@@ -68,20 +72,22 @@ See [Plurals and context](/v2/guide/internationalization#plurals-and-context).
 
 ## Test the translation
 
-gettext reads the locale when the process starts, so the French checks run in their own Vitest configuration with a French environment. `gtkx build` compiles the catalogs into `dist/locale`, and `localeDir` points the test plugin at them:
+The tests from [Test the App](/v2/tutorial/testing) still render the English source text: the Vitest plugin compiles no catalogs, and the main configuration sets an English locale. gettext reads the locale once, when the process starts, so the French checks run in their own Vitest configuration with a French environment for its workers. `localeDir` points the plugin at the catalogs that `gtkx build` compiles into `dist/locale`:
 
 <<< @/figures/tutorial/internationalization/vitest.i18n.config.ts [vitest.i18n.config.ts]
 
-The test files end in `.i18n.tsx`, so the main configuration's `*.test.tsx` pattern skips them. They reuse Test the App's setup and fixtures, and check a tooltip and a placeholder, the plural forms as notes are deleted, and a toast that interpolates the note's name:
+It runs the files ending in `.i18n.tsx`, which the main configuration's `tests/**/*.test.{ts,tsx}` pattern skips, and reuses the setup file, so each test starts from the same two fixture notes. The tests find the New Note button by its French tooltip and the search entry by its placeholder, delete notes until the count reads "0 note", and check the toast that names a trashed note:
 
 <<< @/figures/tutorial/internationalization/tests/localization.i18n.tsx [tests/localization.i18n.tsx]
 
 Add a script that builds and runs them, and make `npm test` run both suites:
 
-```json [package.json]
-"scripts": {
-    "test": "vitest run && npm run test:i18n",
-    "test:i18n": "gtkx build && vitest run --config vitest.i18n.config.ts"
+```json{3,4} [package.json]
+{
+    "scripts": {
+        "test": "vitest run && npm run test:i18n",
+        "test:i18n": "gtkx build && vitest run --config vitest.i18n.config.ts"
+    }
 }
 ```
 
@@ -91,11 +97,11 @@ See [Test translations](/v2/guide/internationalization#test-translations).
 
 The French locale must be installed: `locale -a` lists it, and on Fedora it comes with `glibc-langpack-fr`. Start the app in French:
 
-```bash
+```sh
 LANG=fr_FR.UTF-8 LANGUAGE=fr npm run dev
 ```
 
-The sidebar, menus, dialogs and toasts are in French, and the note count follows French plural rules. See [Develop and build](/v2/guide/internationalization#develop-and-build).
+The sidebar, menus, dialogs and toasts are in French, and the note count follows French plural rules. Saving `po/fr.po` restarts the app, since gettext keeps the catalogs it loaded for the life of the process. See [Develop and build](/v2/guide/internationalization#develop-and-build).
 
 <figure class="result">
     <img class="result-light" src="/figures/tutorial-internationalization-light.png" width="720" height="480" loading="lazy" alt="The Notes window in French: the sidebar subtitle reads 5 notes, the search entry says Rechercher dans les notes, the main menu lists Nouvelle note, Préférences, Raccourcis clavier and À propos de Notes, and the empty pane reads Aucune note sélectionnée." />
