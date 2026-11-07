@@ -33,7 +33,7 @@ type UserEvent = {
         ...args: Parameters<typeof tab> extends [Gtk.Widget, ...infer Args] ? Args : never
     ) => Promise<void>;
     /**
-     * Types into an editable widget. Keys named in braces, such as `{Enter}`, `{Backspace}` or `{Tab}`, are pressed
+     * Types into an editable widget, inserting each character as its own edit. Keys named in braces, such as `{Enter}`, `{Backspace}` or `{Tab}`, are pressed
      * as `keyboard` presses them, and a doubled opening brace types a literal `{`. Once a key moves focus out of the
      * widget, as `{Tab}` does, the rest of the text goes to the newly focused widget.
      */
