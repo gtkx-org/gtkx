@@ -259,4 +259,4 @@ Render `Notifications` inside an application window. Clicking the button shows a
 
 `show()` returns the native `Adw.Toast`. Pass `buttonLabel` and `onButtonClicked` to add an action, and `onDismissed` when cleanup depends on its dismissal. Call `dismiss()` on the returned toast to close it, or the controller's `dismissAll()` to clear the overlay.
 
-`useToast()` requires a provider. Show toasts from events or effects after the overlay mounts; calling `show()` while its ref is empty creates a toast without displaying it. The [Trash and Toasts tutorial](/v2/tutorial/trash-and-toasts) adds an Undo action to a delete operation.
+`useToast()` requires a provider. Show toasts from events or effects after the overlay mounts; calling `show()` while its ref is empty creates a toast without displaying it. [Rename, Trash, and Undo](/v2/tutorial/trash-and-toasts#undo-from-a-toast) adds an Undo button to a trash operation.
