@@ -33,6 +33,8 @@ const ogImage = `${url}/og.png`;
 const websiteRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const referencePath = `/${REFERENCE_ROOT.replace(/\/$/, "")}`;
 const sectionDirectories = ["guide", "tutorial"];
+const configTypes = "@gtkx/config/index/type-aliases/";
+const configPage = `${REFERENCE_ROOT}${configTypes}Config`;
 
 type LinkedDocumentationItem = {
     text: string;
@@ -144,10 +146,14 @@ const referenceSidebars = new Map(versions.map((version) => [version.id, referen
 const versionReferenceSidebar = (version: DocumentationVersion): DefaultTheme.SidebarItem[] =>
     referenceSidebars.get(version.id) ?? [];
 
+const configLinks = (version: DocumentationVersion, text: string): LinkedDocumentationItem[] =>
+    hasCanonicalPage(version, configPage) ? [{ text, link: documentationLink(version, configPage) }] : [];
+
 const guideSidebar = (version: DocumentationVersion): DefaultTheme.SidebarItem[] => [
     ...guideGroups
         .map((group) => ({ text: group.text, items: sidebarItems(version, group.items) }))
         .filter((group) => group.items.length > 0),
+    ...configLinks(version, "Config Reference"),
     { text: "API Reference", link: documentationLink(version, REFERENCE_ROOT) },
 ];
 
@@ -176,11 +182,15 @@ const blogSidebar: DefaultTheme.SidebarItem[] = [
 
 const navigation = (version: DocumentationVersion): DefaultTheme.NavItem[] => [
     { text: "Guide", link: documentationLink(version, GUIDE_ROOT), activeMatch: `${version.prefix}/guide/` },
+    ...configLinks(version, "Config").map((item) => ({
+        ...item,
+        activeMatch: `${version.prefix}/${REFERENCE_ROOT}${configTypes}`,
+    })),
     { text: "Tutorial", link: documentationLink(version, TUTORIAL_ROOT), activeMatch: `${version.prefix}/tutorial/` },
     {
         text: "API Reference",
         link: documentationLink(version, REFERENCE_ROOT),
-        activeMatch: `${version.prefix}/reference/`,
+        activeMatch: `${version.prefix}/${REFERENCE_ROOT}(?!${configTypes})`,
     },
     { text: "Examples", link: `https://github.com/gtkx-org/gtkx/tree/${version.examplesRef}/examples` },
     {
