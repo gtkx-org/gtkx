@@ -699,4 +699,4 @@ For tab navigation, query the view switcher's `Gtk.AccessibleRole.TAB` and its l
 
 ## Next
 
-Continue with [CSS](/v2/guide/css) to style these pages with the `style` prop and GTK4's own CSS engine.
+Continue with [Forms](/v2/guide/forms) to connect React Hook Form to native Adwaita rows.

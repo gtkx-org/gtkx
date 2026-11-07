@@ -203,4 +203,4 @@ Wrap each behavior with `defineBehavior` from `@gtkx/react/config`, supplying it
 
 Declare additional props by augmenting the namespace module that owns them, with a top-level import of that module. Keep application effects and higher-level behavior in React components.
 
-Continue with [Async Operations](/v2/guide/async-operations).
+Continue with [Workspaces](/v2/guide/workspaces) to share generated bindings and components between apps in a monorepo.

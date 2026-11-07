@@ -132,4 +132,4 @@ GTK exposes two settings with different effects:
 
 ## Next
 
-Continue with [Native Values](/v2/guide/native-values) to pass GTypes, GValues and integers to native methods.
+Continue with [Internationalization](/v2/guide/internationalization) to translate the app and its desktop metadata with gettext catalogs.

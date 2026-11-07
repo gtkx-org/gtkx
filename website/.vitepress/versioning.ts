@@ -43,6 +43,11 @@ const guideGroups: DocumentationGroup[] = [
             { text: "Why GTKX", path: "guide/why-gtkx" },
             { text: "Comparisons", path: "guide/comparisons" },
             { text: "Getting Started", path: GUIDE_ROOT },
+        ],
+    },
+    {
+        text: "Project Setup",
+        items: [
             { text: "Scaffold Options", path: "guide/scaffold-options" },
             { text: "Configuration and Codegen", path: "guide/configuration-and-codegen" },
             { text: "Workspaces", path: "guide/workspaces" },
@@ -58,6 +63,7 @@ const guideGroups: DocumentationGroup[] = [
             { text: "Modals and Portals", path: "guide/modals-and-portals" },
             { text: "CSS", path: "guide/css" },
             { text: "Animations", path: "guide/animations" },
+            { text: "Internationalization", path: "guide/internationalization" },
         ],
     },
     {
@@ -65,6 +71,7 @@ const guideGroups: DocumentationGroup[] = [
         items: [
             { text: "Native Values", path: "guide/native-values" },
             { text: "Async Operations", path: "guide/async-operations" },
+            { text: "Error Handling", path: "guide/error-handling" },
             { text: "D-Bus", path: "guide/dbus" },
             { text: "Application Lifecycle", path: "guide/application-lifecycle" },
             { text: "Workers and Helper Processes", path: "guide/workers" },
@@ -76,7 +83,6 @@ const guideGroups: DocumentationGroup[] = [
     {
         text: "Development Tools",
         items: [
-            { text: "Error Handling", path: "guide/error-handling" },
             { text: "Testing", path: "guide/testing" },
             { text: "Storybook", path: "guide/storybook" },
             { text: "App Inspection (MCP)", path: "guide/mcp" },
@@ -87,7 +93,6 @@ const guideGroups: DocumentationGroup[] = [
         text: "Shipping and Upgrading",
         items: [
             { text: "Assets and Build Output", path: "guide/assets" },
-            { text: "Internationalization", path: "guide/internationalization" },
             { text: "Deploying", path: "guide/deploying" },
             { text: "Updating GTKX", path: "guide/updating" },
             { text: "Upgrading to 2.0", path: "guide/upgrading-to-2" },

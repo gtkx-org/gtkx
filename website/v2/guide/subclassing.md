@@ -396,4 +396,4 @@ GTKX applications define their interface in JSX, where signal handlers are props
 
 ## Next
 
-Continue with [Components](/v2/guide/components) for composing the registered element.
+Continue with [Cairo](/v2/guide/cairo) to draw in a widget's drawing callback and render images offscreen.

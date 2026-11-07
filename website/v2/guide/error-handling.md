@@ -69,4 +69,4 @@ Boundaries do not catch ordinary event-handler failures or arbitrary rejected pr
 
 ## Next
 
-Continue with [Components](/v2/guide/components) for how GTKX widgets compose and the hooks that drive them.
+Continue with [D-Bus](/v2/guide/dbus) to call system services and export objects through the generated Gio bindings.

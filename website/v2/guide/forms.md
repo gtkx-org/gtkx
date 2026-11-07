@@ -164,3 +164,7 @@ export const TermsForm = () => {
 `field.ref` needs a handle with a no-argument `focus()` method. Passing the widget directly does not work, because GTK's `focus` method expects a direction. `GtkEventControllerFocus` reports when focus leaves the control, which marks the field touched.
 
 See the [forms reference](/v2/reference/@gtkx/forms/) for GTKX prop types and the [testing guide](/v2/guide/testing) for driving native controls.
+
+## Next
+
+Continue with [Modals and Portals](/v2/guide/modals-and-portals) to open windows and Adwaita dialogs from React state.
