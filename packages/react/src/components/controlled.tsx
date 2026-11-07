@@ -17,18 +17,20 @@ const createControlledComponent = <P extends GObject.Object, V>(
     Component: ElementType,
     prop: string,
     operations: ControlOptions<P, V>,
-): ((props: Props) => ReactNode) => {
-    const ControlledElement = (props: Props): ReactNode => {
+): ((props: object) => ReactNode) => {
+    const ControlledElement = (props: object): ReactNode => {
+        const nativeProps: Props = { ...props };
         const ref = useRef<P | null>(null);
-        const mergedRef = useMergedRef(props.ref as Ref<P> | undefined, ref);
-        const value = operations.parse === undefined ? (props[prop] as V | undefined) : operations.parse(props[prop]);
+        const mergedRef = useMergedRef(nativeProps.ref as Ref<P> | undefined, ref);
+        const value =
+            operations.parse === undefined ? (nativeProps[prop] as V | undefined) : operations.parse(nativeProps[prop]);
         const notify = useControlledValue(ref, value, prop, operations);
         const context = useMemo(
             () =>
                 operations.adoptedChildType === undefined ? null : { typeName: operations.adoptedChildType, notify },
             [notify],
         );
-        const nativeProps = { ...props, ref: mergedRef };
+        nativeProps.ref = mergedRef;
         Reflect.deleteProperty(nativeProps, prop);
         const element = <Component {...nativeProps} />;
 
@@ -56,7 +58,7 @@ const desiredIndex = (input: unknown): number | undefined => {
     return value;
 };
 
-const createListBoxComponent = (Component: ElementType): ((props: Props) => ReactNode) =>
+const createListBoxComponent = (Component: ElementType): ((props: object) => ReactNode) =>
     createControlledComponent<Gtk.ListBox, number>(Component, "selectedIndex", {
         signal: "selected-rows-changed",
         parse: desiredIndex,
@@ -75,7 +77,7 @@ const createListBoxComponent = (Component: ElementType): ((props: Props) => Reac
         observe: (box) => box.observeChildren(),
     });
 
-const createStackComponent = (Component: ElementType): ((props: Props) => ReactNode) =>
+const createStackComponent = (Component: ElementType): ((props: object) => ReactNode) =>
     createControlledComponent<Gtk.Stack, string>(Component, "visibleChildName", {
         signal: "notify::visible-child-name",
         read: (stack) => stack.getVisibleChildName(),
@@ -86,7 +88,7 @@ const createStackComponent = (Component: ElementType): ((props: Props) => ReactN
         observe: (stack) => stack.getPages(),
     });
 
-const createViewStackComponent = (Component: ElementType): ((props: Props) => ReactNode) =>
+const createViewStackComponent = (Component: ElementType): ((props: object) => ReactNode) =>
     createControlledComponent<Adw.ViewStack, string>(Component, "visibleChildName", {
         signal: "notify::visible-child-name",
         read: (stack) => stack.getVisibleChildName(),
@@ -97,7 +99,7 @@ const createViewStackComponent = (Component: ElementType): ((props: Props) => Re
         observe: (stack) => stack.getPages(),
     });
 
-const createMultiLayoutViewComponent = (Component: ElementType): ((props: Props) => ReactNode) =>
+const createMultiLayoutViewComponent = (Component: ElementType): ((props: object) => ReactNode) =>
     createControlledComponent<Adw.MultiLayoutView, string>(Component, "layoutName", {
         signal: "notify::layout-name",
         read: (view) => view.getLayoutName(),
@@ -108,7 +110,7 @@ const createMultiLayoutViewComponent = (Component: ElementType): ((props: Props)
         adoptedChildType: "AdwLayout",
     });
 
-const createToggleGroupComponent = (Component: ElementType): ((props: Props) => ReactNode) => {
+const createToggleGroupComponent = (Component: ElementType): ((props: object) => ReactNode) => {
     const NamedToggleGroup = createControlledComponent<Adw.ToggleGroup, Adw.ToggleGroup["activeName"]>(
         Component,
         "activeName",
@@ -140,7 +142,7 @@ const createOpenStateComponent = <P extends GObject.Object>(
     read: (object: P) => boolean,
     write: (object: P, value: boolean) => void,
     options: Pick<ControlledValue<P, boolean>, "canApply" | "observe"> = {},
-): ((props: Props) => ReactNode) =>
+): ((props: object) => ReactNode) =>
     createControlledComponent<P, boolean>(Component, prop, {
         signal: `notify::${property}`,
         read,
@@ -149,7 +151,7 @@ const createOpenStateComponent = <P extends GObject.Object>(
         dismissedThrough: `onNotify${prop.charAt(0).toUpperCase()}${prop.slice(1)}`,
     });
 
-const createOverlaySplitViewComponent = (Component: ElementType): ((props: Props) => ReactNode) =>
+const createOverlaySplitViewComponent = (Component: ElementType): ((props: object) => ReactNode) =>
     createOpenStateComponent<Adw.OverlaySplitView>(
         Component,
         "showSidebar",
@@ -160,7 +162,7 @@ const createOverlaySplitViewComponent = (Component: ElementType): ((props: Props
         },
     );
 
-const createNavigationSplitViewComponent = (Component: ElementType): ((props: Props) => ReactNode) =>
+const createNavigationSplitViewComponent = (Component: ElementType): ((props: object) => ReactNode) =>
     createOpenStateComponent<Adw.NavigationSplitView>(
         Component,
         "showContent",
@@ -171,7 +173,7 @@ const createNavigationSplitViewComponent = (Component: ElementType): ((props: Pr
         },
     );
 
-const createTabOverviewComponent = (Component: ElementType): ((props: Props) => ReactNode) =>
+const createTabOverviewComponent = (Component: ElementType): ((props: object) => ReactNode) =>
     createOpenStateComponent<Adw.TabOverview>(
         Component,
         "open",
@@ -186,7 +188,7 @@ const createTabOverviewComponent = (Component: ElementType): ((props: Props) => 
         },
     );
 
-const createSearchBarComponent = (Component: ElementType): ((props: Props) => ReactNode) =>
+const createSearchBarComponent = (Component: ElementType): ((props: object) => ReactNode) =>
     createOpenStateComponent<Gtk.SearchBar>(
         Component,
         "searchModeEnabled",
@@ -197,8 +199,8 @@ const createSearchBarComponent = (Component: ElementType): ((props: Props) => Re
         },
     );
 
-const createBottomSheetComponent = (Component: ElementType): ((props: Props) => ReactNode) => {
-    const ControlledSheet = createOpenStateComponent<Adw.BottomSheet>(
+const createBottomSheetComponent = (Component: ElementType): ((props: object) => ReactNode) => {
+    const ControlledSheet: ElementType = createOpenStateComponent<Adw.BottomSheet>(
         Component,
         "open",
         "open",
@@ -208,12 +210,13 @@ const createBottomSheetComponent = (Component: ElementType): ((props: Props) => 
         },
     );
 
-    return (props: Props): ReactNode => {
+    return (props: object): ReactNode => {
+        const sheetProps: Props = { ...props };
         const [sheet, setSheet] = useState<Adw.BottomSheet | null>(null);
-        const ref = useMergedRef(props.ref as Ref<Adw.BottomSheet> | undefined, setSheet);
-        const isClosing = props.open === undefined || typeof props.onNotifyOpen === "function";
-        const isAnswered = isClosing || typeof props.onCloseAttempt === "function";
-        const isAllowed = props.canClose !== false;
+        const ref = useMergedRef(sheetProps.ref as Ref<Adw.BottomSheet> | undefined, setSheet);
+        const isClosing = sheetProps.open === undefined || typeof sheetProps.onNotifyOpen === "function";
+        const isAnswered = isClosing || typeof sheetProps.onCloseAttempt === "function";
+        const isAllowed = sheetProps.canClose !== false;
 
         useRefusedCloseWarning(
             sheet,
@@ -225,7 +228,7 @@ const createBottomSheetComponent = (Component: ElementType): ((props: Props) => 
                 "the sheet manage it.",
         );
 
-        return <ControlledSheet {...props} ref={ref} canClose={isAllowed && isClosing} />;
+        return <ControlledSheet {...sheetProps} ref={ref} canClose={isAllowed && isClosing} />;
     };
 };
 

@@ -3,7 +3,7 @@ import { type ElementType, type ReactNode, type Ref, useLayoutEffect, useRef } f
 import type { GtkConstraintLayoutProps } from "../prop-types.js";
 import { useMergedRef } from "../hooks/use-merged-refs.js";
 
-type ConstraintLayoutProps = GtkConstraintLayoutProps & { ref?: Ref<Gtk.ConstraintLayout> };
+type ConstraintLayoutProps = GtkConstraintLayoutProps & { ref?: Ref<Gtk.ConstraintLayout> | undefined };
 
 const createConstraintLayoutComponent = (Component: ElementType): ((props: ConstraintLayoutProps) => ReactNode) => {
     const ConstraintLayout = ({ vfl, ref, ...props }: ConstraintLayoutProps): ReactNode => {
