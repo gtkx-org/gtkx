@@ -19,11 +19,13 @@ export default defineConfig({
 });
 ```
 
-List additional libraries by GIR name and version, for example `libraries: ["WebKit-6.0"]`. Codegen starts from `Adw-1` and follows its GIR dependencies, including `Gtk-4.0`. Omit these two entries from `libraries`; listing them explicitly is an error. The 1.x `"*"` wildcard is also removed.
+List additional libraries by GIR name and version, for example `libraries: ["WebKit-6.0"]`. Codegen starts from `Adw-1` and follows its GIR dependencies, including `Gtk-4.0`. Omit these two entries from `libraries`; listing them explicitly is an error.
 
 `defineConfig` provides editor completion. The CLI validates the configuration when it loads it. An application's ID uses a reverse-DNS name such as `com.example.Tasks`; `gtkx dev`, `gtkx build` and `gtkx deploy` stop when it is missing. Only a package that is not an application, such as a [component library](#component-libraries), leaves it out.
 
 Configuration modules and their local imports use ESM. Use `.ts`, `.mts`, `.js`, or `.mjs` files with `import` and `export`; TypeScript configuration runs through Node's native type stripping and must use erasable syntax. JSON, JSONC, JSON5, YAML, and TOML configuration files are also supported.
+
+`gtkx dev` watches the config and the local dependencies it loads, including shared config layers and imported data, and the GIR files the bindings were generated from, such as a library built alongside the app into a `girPath` directory. Changes regenerate bindings and restart the app. If a reload fails, the current app keeps running until the configuration is fixed; creating a missing imported file also triggers another attempt.
 
 Install the corresponding GIR files before generating bindings. Use `girPath` when they live outside the standard search directories; relative paths start at the project root. Supplying a newer GIR file changes the declarations, not the library that runs your app.
 
@@ -33,11 +35,20 @@ At run time the dynamic linker loads each library by the `shared-library` name i
 
 Use the [configuration reference](/v2/reference/@gtkx/config/index/type-aliases/Config) for available settings. The React Compiler is enabled by default; `reactCompiler: false` disables it. Application icons and package metadata are covered in [Deploying](/v2/guide/deploying), and agent tool settings in [MCP](/v2/guide/mcp).
 
-For shared configuration, `mergeConfig(base, override)` applies the override over the base; arrays concatenate with override entries first. `$development` and `$production` blocks provide mode-specific overrides.
+`$development` and `$production` blocks override settings in one mode. `gtkx dev` runs in development mode; `gtkx build` and `gtkx deploy` run in production mode:
+
+```ts
+export default defineConfig({
+    applicationId: "com.example.Tasks",
+    $development: { applicationId: "com.example.Tasks.Devel" },
+});
+```
+
+For shared configuration, `mergeConfig(base, override)` applies the override over the base; arrays concatenate with override entries first.
 
 ### Selecting another configuration
 
-`gtkx dev`, `gtkx codegen`, `gtkx build`, and `gtkx deploy` accept `--config`:
+`gtkx dev`, `gtkx codegen`, `gtkx build`, `gtkx deploy` and `gtkx storybook` accept `--config`:
 
 ```bash
 gtkx dev --config gtkx.enterprise.config.ts
@@ -45,8 +56,6 @@ gtkx build --config gtkx.enterprise.config.ts
 ```
 
 The path is relative to the project root selected by `--cwd` and must stay inside it. For tests, pass the same path as `gtkx({ configFile: "gtkx.enterprise.config.ts" })` in `vitest.config.ts`.
-
-Development watches the selected config and the local dependencies it loads, including shared config layers and imported data, and the GIR files the bindings were generated from, such as a library built alongside the app into a `girPath` directory. Changes regenerate bindings and restart the app. If a reload fails, the current app keeps running until the configuration is fixed; creating a missing imported file also triggers another attempt.
 
 Builds use the selected configuration throughout generation and bundling. `gtkx deploy --skip-build --config ...` rejects a bundle created with another config file or different production settings.
 
@@ -82,9 +91,9 @@ Run generation after installing dependencies or changing the configured librarie
 gtkx codegen
 ```
 
-GTKX generates modules under `node_modules/.gtkx` and links them as `@gtkx/gi` and `@gtkx/jsx`. They belong to the project and are not separate npm dependencies. Development and production builds also check whether generation is needed.
+GTKX generates modules under `node_modules/.gtkx` and links them as `@gtkx/gi` and `@gtkx/jsx`. They belong to the project and are not separate npm dependencies. `gtkx dev`, `gtkx build` and the Vitest plugin also generate them when they are missing or out of date.
 
-GI and JSX bindings are published together so they describe the same libraries. Projects without `@gtkx/react` generate only GI bindings and remove obsolete JSX bindings owned by that project. Installing React again regenerates JSX bindings. Projects that resolve the same dependency directory share their generated bindings, as described in [Monorepos](#monorepos).
+Both packages always describe the same libraries. A project without `@gtkx/react` gets only `@gtkx/gi`, and its `@gtkx/jsx` comes back once `@gtkx/react` is installed again. Projects that resolve the same dependency directory share their generated bindings, as described in [Monorepos](#monorepos).
 
 Import classes, enums, and functions from GI modules, and elements from JSX modules:
 
@@ -131,7 +140,7 @@ When a production build receives such an object through a closure and has droppe
 
 The object is still wrapped as its nearest retained ancestor, so the warning usually comes right before the error it explains. Objects returned from typed functions, methods and properties keep at least their declared class and never trigger it, nor do private library classes that have no generated class. Development and tests load every class and never print it.
 
-A type assertion is erased too, so it does not keep a more derived class than the declared one. `Gst.parseLaunch` declares a `Gst.Element`, so `(pipeline as Gst.Bin).getByName("sink")` throws `getByName is not a function` in a production build unless the app references `Gst.Bin` as a value; so does `(root as OSTree.RepoFile).getChecksum()` on the `Gio.File` that `OSTree.Repo.readCommit` returns. No warning precedes these errors. Narrow with `instanceof` instead of a cast:
+A type assertion is erased too, so it does not keep a more derived class than the declared one. `Gst.parseLaunch` declares a `Gst.Element`, so `(pipeline as Gst.Bin).getByName("sink")` throws `getByName is not a function` in a production build unless the app references `Gst.Bin` as a value. No warning precedes these errors. Narrow with `instanceof` instead of a cast:
 
 ```ts
 const pipeline = Gst.parseLaunch("videotestsrc ! videoconvert ! appsink name=sink");
@@ -141,7 +150,7 @@ const sink = pipeline.getByName("sink");
 
 ## Monorepos
 
-GTKX apps work in pnpm and npm workspaces with the package manager's default `node_modules` layout, and in Yarn workspaces whose root `.yarnrc.yml` sets `nodeLinker: node-modules`, alongside shared packages of components. In a workspace, `create gtkx apps/my-app` adds the app to the workspace, adds an MCP server to the root `.mcp.json` unless it already has one, and prints any `allowBuilds`, `allowScripts`, `nodeLinker` or `dependenciesMeta` entries, and the release-age exemptions for GTKX's packages, to add to its root configuration; see [Scaffold Options](/v2/guide/scaffold-options#workspaces).
+GTKX apps work in pnpm and npm workspaces with the package manager's default `node_modules` layout, and in Yarn workspaces whose root `.yarnrc.yml` sets `nodeLinker: node-modules`, alongside shared packages of components. `create gtkx apps/my-app` adds an app to an existing workspace and prints the settings the workspace root needs; see [Scaffold Options](/v2/guide/scaffold-options#workspaces).
 
 Codegen writes the bindings into the `node_modules` directory the GTKX packages are installed in. In a workspace this is usually the root: pnpm keeps every package under the root `node_modules/.pnpm`, and npm and Yarn hoist them there. The bindings link `@gtkx/runtime`, `@gtkx/cairo`, `@gtkx/react` and `react` from the app, so they load the same copies the app does.
 
@@ -158,7 +167,13 @@ Each app still imports only the libraries it declares and their dependencies, wh
 
 A shared package declares `@gtkx/react` as a peer dependency and imports `@gtkx/gi` and `@gtkx/jsx` subpaths like an app. List it in the dependencies of each app that uses it, so `gtkx dev` loads it through Vite. A shared package resolves the bindings from the workspace root, so it can import any library some app declares; each app that uses it has to declare the libraries the package imports.
 
-GTKX treats the sources of the workspace packages an app uses as part of the app: the packages its dependencies, and theirs in turn, link from outside `node_modules`, such as workspace packages and `link:` or `file:` directories, that depend on `@gtkx/react` or `@gtkx/i18n`. Codegen, `gtkx dev`, `gtkx build` and `gtkx deploy` read their `src` directories as they read the app's. Their [messages](/v2/guide/internationalization) go into the app's gettext template, `po/POTFILES.in` and translation types, at locations relative to the app such as `../../packages/ui/src/rating.tsx:18`, so the app's catalogs translate them. Their `?icon=<name>` and `?resource=<path>` [imports](/v2/guide/assets) and the GSettings schemas they import are declared in the app's `node_modules/.gtkx/env.d.ts`, so the app's `tsc` accepts them, and the app bundles and installs those schemas; `gtkx deploy` requires a schema's file name to start with the app's ID, as for the app's own. Saving one of their files in `gtkx dev` updates the app's template and declarations, as saving one of the app's does. Their stories stay out of the catalogs, under the package's own Storybook configuration. Packages installed from a registry stay outside: their messages are not extracted, so a published [component library](#component-libraries) takes translated text from the app, for example as props.
+GTKX treats the sources of the workspace packages an app uses as part of the app. These are the packages its dependencies, and theirs in turn, link from outside `node_modules`, such as workspace packages and `link:` or `file:` directories, that depend on `@gtkx/react` or `@gtkx/i18n`. Codegen, `gtkx dev`, `gtkx build` and `gtkx deploy` read their `src` directories as they read the app's:
+
+- Their [messages](/v2/guide/internationalization) go into the app's gettext template, `po/POTFILES.in` and translation types, at locations relative to the app such as `../../packages/ui/src/rating.tsx:18`, so the app's catalogs translate them. Their stories stay out of the catalogs.
+- Their `?icon=<name>` and `?resource=<path>` [imports](/v2/guide/assets) and the GSettings schemas they import are declared in the app's `node_modules/.gtkx/env.d.ts`, so the app's `tsc` accepts them. The app bundles and installs those schemas, and `gtkx deploy` requires a schema's file name to start with the app's ID, as for the app's own.
+- Saving one of their files in `gtkx dev` updates the app's template and declarations, as saving one of the app's does.
+
+Packages installed from a registry stay outside: their messages are not extracted, so a published [component library](#component-libraries) takes translated text from the app, for example as props.
 
 An app's [Storybook](/v2/guide/storybook#stories-from-a-shared-package) configuration can list a shared package's stories with a pattern such as `../../packages/ui/src/**/*.stories.tsx`. A shared package can also run its own tests and Storybook explorer without an `applicationId`, as a [component library](#component-libraries) does.
 
@@ -257,19 +272,7 @@ Pass a registered GI class wherever a method takes a GType. See [Native Values](
 
 ## Passing a GValue
 
-For most `GValue` inputs, pass a JavaScript value directly. See [Native Values](/v2/guide/native-values#passing-a-gvalue) for typed nulls, output values, and explicit wrappers.
-
-### Generated return values
-
-See [generated return values](/v2/guide/native-values#generated-return-values) for byte arrays, unpacked values, and async result shapes.
-
-## Import project data
-
-Use imports for resources, icons, fonts, files, and settings schemas. [Assets and Build Output](/v2/guide/assets#import-project-data) explains each import form and its native path or value.
-
-## Production build output
-
-`gtkx build` writes a runnable bundle and its assets to `dist/`. See [build output](/v2/guide/assets#production-build-output) for custom destinations and the files deployment needs.
+For most `GValue` inputs, pass a JavaScript value directly. See [Native Values](/v2/guide/native-values#passing-a-gvalue) for typed nulls, output values, and explicit wrappers, and [generated return values](/v2/guide/native-values#generated-return-values) for byte arrays, unpacked values, and async result shapes.
 
 ## Generating element reference docs
 
@@ -279,7 +282,7 @@ Use imports for resources, icons, fonts, files, and settings schemas. [Assets an
 gtkx docs
 ```
 
-Use `gtkx docs --help` to choose an output directory or link root. These pages describe the project's configured libraries and element props, including props imported through `elements.config`. Rerun the command after changing those inputs; the MCP reference refreshes them automatically.
+`--out` chooses another directory and `--base-path` the URL root of the links between pages. The pages describe the project's configured libraries and element props, including props imported through `elements.config`. Rerun the command after changing those inputs. The [MCP](/v2/guide/mcp) reference tools read the current configuration and need no rerun.
 
 ## What agents are given
 
