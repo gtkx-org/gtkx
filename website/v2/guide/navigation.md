@@ -260,7 +260,7 @@ const Compose = () => {
 };
 ```
 
-Dispatch the action supplied to the callback after confirmation. React Navigation documents the rest of the [removal guard lifecycle](https://reactnavigation.org/docs/preventing-going-back/).
+React Navigation documents the rest of the [removal guard lifecycle](https://reactnavigation.org/docs/preventing-going-back/).
 
 React Navigation 7 depends on `use-latest-callback` 0.2, which outside a browser updates the guard's callback in a passive effect. A passive effect that leaves the screen, such as `useEffect(() => { if (sent) navigation.goBack(); }, [sent])`, and runs before that update still sees the old `preventRemove` value, so the guard blocks a leave it should allow. Version 0.3 fixes this. Until React Navigation 7 accepts it, override the version: with npm, add it to `"overrides"` in `package.json`; with Yarn, to `"resolutions"`; with pnpm, to `overrides` in `pnpm-workspace.yaml`. For npm:
 
@@ -294,7 +294,7 @@ export const Mail = ({ unread }: { unread: number }) => (
         <Tabs.Screen
             name="Inbox"
             component={Inbox}
-            options={{ tabBarIcon: "mail-inbox-symbolic", tabBarBadge: unread, needsAttention: unread > 0 }}
+            options={{ tabBarIcon: "mail-unread-symbolic", tabBarBadge: unread, needsAttention: unread > 0 }}
         />
         <Tabs.Screen
             name="Archive"
@@ -307,9 +307,7 @@ export const Mail = ({ unread }: { unread: number }) => (
 
 The switcher uses each screen's label, icon, badge and attention options. Tabs mount when first focused unless `lazy: false` is set. Set `animation: "fade"` for a crossfade.
 
-Set `useUnderline: true` to interpret underscores in the switcher label as keyboard mnemonics. For example, combine `title: "World"`, `tabBarLabel: "_World"`, and `useUnderline: true` in a screen's options to let Alt+W select the tab in either switcher position. The default is `false`, so existing labels keep literal underscores. With mnemonics enabled, write `__` for a literal underscore.
-
-Header titles remain plain text. Use `tabBarLabel` for mnemonic text and keep `title` plain, or provide a separate `headerTitle` when the mnemonic is in `title`.
+Set `useUnderline: true` to read underscores in the switcher label as keyboard mnemonics: with `tabBarLabel: "_World"`, Alt+W selects the tab in either switcher position. Write `__` for a literal underscore. Header titles stay plain text, so put the mnemonic in `tabBarLabel` and keep `title` plain.
 
 With a top switcher, leave the header's title widget available for it. To supply `headerTitle`, move the switcher to the bottom or place it explicitly through a custom `header`. Hiding the header leaves a top switcher visible on its own.
 
@@ -328,7 +326,7 @@ const Drawer = createDrawerNavigator<AppParams>();
 
 export const App = ({ isNarrow }: { isNarrow: boolean }) => (
     <Drawer.Navigator collapsed={isNarrow} sidebarPosition="start">
-        <Drawer.Screen name="Inbox" component={Inbox} options={{ drawerIcon: "mail-inbox-symbolic" }} />
+        <Drawer.Screen name="Inbox" component={Inbox} options={{ drawerIcon: "mail-unread-symbolic" }} />
         <Drawer.Screen
             name="Settings"
             component={Settings}
@@ -340,7 +338,7 @@ export const App = ({ isNarrow }: { isNarrow: boolean }) => (
 
 Set `collapsed` when the layout needs an overlay sidebar; the sidebar then closes after a selection. In a wide layout it stays beside the content. `defaultStatus` controls its initial visibility, and `pinSidebar` preserves visibility across collapse changes.
 
-Set `useUnderline: true` to enable keyboard mnemonics in drawer labels. For example, combine `title: "Settings"`, `drawerLabel: "_Settings"`, and `useUnderline: true` in a screen's options to let Alt+S select the screen while the sidebar is visible. Header titles remain plain text. Mnemonics default to disabled; when enabled, `__` displays a literal underscore.
+`useUnderline: true` works the same way for drawer labels: with `drawerLabel: "_Settings"`, Alt+S selects the screen while the sidebar is visible.
 
 Native opening and dismissal update the drawer's navigation state, so gestures and React Navigation's drawer actions stay in sync. See the [drawer configuration reference](/v2/reference/@gtkx/navigation/type-aliases/DrawerNavigationConfig) for sizing and placement.
 
@@ -530,11 +528,17 @@ export const Documents = () => (
 );
 ```
 
-Tabs are addressed by route key. The navigation object adds `openTab`, `closeTab`, `closeOtherTabs`, `closeTabsBefore`, `closeTabsAfter`, `selectTab`, `reorderTab` and `pinTab`, also available as `TabViewActions`. Opening with `parent` places the tab after its parent and the parent's descendants, and closing it selects that parent again. Pinned tabs stay ahead of the others; the state's `pinnedKeys` lists them. Screen options map to the page: `title`, `icon`, `tooltip`, `keyword`, `loading`, `needsAttention`, the indicator options and the thumbnail alignment. The header shows the window title unless `headerTitle` is set. Screens mount when first selected unless `lazy: false`.
+Tabs are addressed by route key. The navigation object adds [tab actions](/v2/reference/@gtkx/navigation/type-aliases/TabViewActionHelpers) such as `openTab`, `closeTab`, `selectTab` and `pinTab`, also available as `TabViewActions`. Opening with `parent` places the tab after its parent and the parent's descendants, and closing it selects that parent again. Pinned tabs stay ahead of the others; the state's `pinnedKeys` lists them.
+
+[Screen options](/v2/reference/@gtkx/navigation/type-aliases/TabViewNavigationOptions) set the native tab page's properties, such as `title`, `icon`, `loading` and `needsAttention`. The header shows the window title unless `headerTitle` is set. Screens mount when first selected unless `lazy: false`.
 
 `navigate` selects the last open tab of a screen and updates its params, or opens one when none is open. Give the screen a `getId` to identify tabs by their params: `navigate` and `openTab` then select the tab with the same id and open a new tab for a new id.
 
-Native interaction flows back into the state: selecting a tab emits a cancellable `tabPress`, dragging reorders the route, and the close button dispatches `closeTab`, which `usePreventRemove` can refuse. Closing the last tab is left unhandled, so a parent navigator or the container's `onUnhandledAction` decides whether the window closes. A tab view inside a section of the app has no window to close; set `replaceLastTab` there, and closing the last tab replaces it with a new tab of the initial route. The overview's `open` follows the same rule as other [open-state props](/v2/guide/modals-and-portals#closing): when given, update it from `onOpenChange`, or leave it out to let the overview open and close on its own. The [tab view configuration reference](/v2/reference/@gtkx/navigation/) lists the tab bar, overview, menu and drop target settings.
+Native interaction flows back into the state: selecting a tab emits a cancellable `tabPress`, dragging reorders the route, and the close button dispatches `closeTab`, which `usePreventRemove` can refuse.
+
+Closing the last tab is left unhandled, so a parent navigator or the container's `onUnhandledAction` decides whether the window closes. A tab view inside a section of the app has no window to close; set `replaceLastTab` there, and closing the last tab replaces it with a new tab of the initial route.
+
+The overview's `open` follows the same rule as other [open-state props](/v2/guide/modals-and-portals#closing): when given, update it from `onOpenChange`, or leave it out to let the overview open and close on its own. The [tab view configuration reference](/v2/reference/@gtkx/navigation/type-aliases/TabViewNavigationConfig) lists the tab bar, overview, menu and drop target settings.
 
 ### Tab context menu
 
@@ -640,7 +644,7 @@ Route parameters and actions follow React Navigation's [nesting rules](https://r
 
 ## Hooks
 
-Use the hooks re-exported from `@gtkx/navigation`. React Navigation documents [screen focus effects](https://reactnavigation.org/docs/use-focus-effect/) and [navigation access](https://reactnavigation.org/docs/use-navigation/). GTKX's `useTheme` value follows the Adwaita state described above.
+Import React Navigation's hooks, such as [`useFocusEffect`](https://reactnavigation.org/docs/use-focus-effect/) and [`useNavigation`](https://reactnavigation.org/docs/use-navigation/), from `@gtkx/navigation`. `useTheme` returns the [container's theme](#navigationcontainer). GTKX adds [`useSplitViewCollapsed`](#split-view-navigator) for split view screens and [`useTabView`](#windows-and-transfers) for tab view screens and their header content.
 
 ## Static configuration
 
