@@ -34,7 +34,11 @@ type StoreOptions = {
      * beside the store, so the bindings import the project's copies wherever the store is placed.
      */
     dependencies?: Record<string, string>;
-    /** Keeps the generated TypeScript sources beside the modules emitted from them, so they can be type-checked. */
+    /**
+     * Keeps the generated TypeScript sources beside the modules emitted from them, so they can be type-checked.
+     *
+     * @internal
+     */
     shouldKeepSources?: boolean | undefined;
 } & Partial<Record<"owner", string>>;
 
