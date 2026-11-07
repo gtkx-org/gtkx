@@ -168,7 +168,7 @@ const card = css`
 `;
 ```
 
-See [Preferences and Theming](/v2/tutorial/preferences-and-theming) for an application preference that switches the scheme.
+See [Add Preferences](/v2/tutorial/preferences-and-theming#read-and-bind-settings) for an application preference that switches the scheme.
 
 ## Use a bundled font
 
