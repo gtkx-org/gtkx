@@ -30,7 +30,7 @@ See [Create a catalog](/v2/guide/internationalization#create-a-catalog) and [Tra
 
 ## Add a translation
 
-Fill in each `msgstr` in `po/fr.po`, and replace the generated header comments and `Last-Translator` with your own. Placeholders such as <code v-pre>{{name}}</code> stay as they are; i18next fills them in after gettext returns the translation:
+Fill in each `msgstr` in `po/fr.po`, and replace the generated header comments and `Last-Translator` with your own. Placeholders such as <span v-pre>`{{name}}`</span> stay as they are; i18next fills them in after gettext returns the translation:
 
 ```po [po/fr.po]
 #: src/components/window-actions.tsx:37
