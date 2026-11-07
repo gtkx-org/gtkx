@@ -29,7 +29,13 @@ import {
     resolveStore,
     runCodegen,
 } from "../src/index.js";
-import { ensureStoreLinks, generateBindings, readBuiltinElementsForDocs, writeDocs } from "../src/internal.js";
+import {
+    BASE_COMPILER_OPTIONS,
+    ensureStoreLinks,
+    generateBindings,
+    readBuiltinElementsForDocs,
+    writeDocs,
+} from "../src/internal.js";
 
 const workspace = fileURLToPath(new URL("../../..", import.meta.url));
 const createProject = () => {
@@ -1238,6 +1244,85 @@ describe("generated bindings", () => {
             { cwd: directory.path, encoding: "utf8", stdio: "pipe", timeout: 20_000 },
         );
         expect(JSON.parse(initialized)).toEqual([true, "function"]);
+    });
+
+    it("emits sources that typecheck under the options the store compiles them with", async () => {
+        using directory = createProject();
+        writeFileSync(
+            join(directory.path, "Probe-1.0.gir"),
+            `<?xml version="1.0"?>
+             <repository version="1.2" xmlns="http://www.gtk.org/introspection/core/1.0"
+               xmlns:c="http://www.gtk.org/introspection/c/1.0" xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+               <include name="GObject" version="2.0"/>
+               <namespace name="Probe" version="1.0" shared-library="libprobe.so" c:identifier-prefixes="Probe"
+                 c:symbol-prefixes="probe">
+                 <class name="Node" c:type="ProbeNode" abstract="1" glib:type-name="ProbeNode"
+                   glib:get-type="probe_node_get_type" glib:fundamental="1" glib:ref-func="probe_node_ref"
+                   glib:unref-func="probe_node_unref">
+                   <method name="load_leaf" c:identifier="probe_node_load_leaf">
+                     <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+                     <parameters>
+                       <instance-parameter name="node" transfer-ownership="none"><type name="Node"/></instance-parameter>
+                       <parameter name="leaf" direction="out" caller-allocates="1" transfer-ownership="none">
+                         <type name="Leaf" c:type="ProbeLeaf*"/>
+                       </parameter>
+                     </parameters>
+                   </method>
+                 </class>
+                 <class name="Leaf" c:type="ProbeLeaf" parent="Node" glib:type-name="ProbeLeaf"
+                   glib:get-type="probe_leaf_get_type" glib:fundamental="1">
+                   <constructor name="new" c:identifier="probe_leaf_new">
+                     <return-value transfer-ownership="full"><type name="Leaf" c:type="ProbeLeaf*"/></return-value>
+                   </constructor>
+                 </class>
+                 <interface name="Dialer" c:type="ProbeDialer" glib:type-name="ProbeDialer"
+                   glib:get-type="probe_dialer_get_type">
+                   <prerequisite name="GObject.Object"/>
+                   <method name="connect" c:identifier="probe_dialer_connect">
+                     <return-value transfer-ownership="none"><type name="gboolean" c:type="gboolean"/></return-value>
+                     <parameters>
+                       <instance-parameter name="dialer" transfer-ownership="none"><type name="Dialer"/></instance-parameter>
+                       <parameter name="address" transfer-ownership="none"><type name="utf8" c:type="const char*"/></parameter>
+                     </parameters>
+                   </method>
+                 </interface>
+                 <record name="Sizes" c:type="ProbeSizes">
+                   <field name="sizes" writable="1">
+                     <array zero-terminated="0" fixed-size="4"><type name="gsize" c:type="gsize"/></array>
+                   </field>
+                 </record>
+               </namespace>
+             </repository>`,
+        );
+        const { gi } = resolveStore(directory.path);
+        await runCodegen({
+            libraries: ["Probe-1.0"],
+            girPath: resolveGirPath([directory.path], directory.path),
+            gi: { ...gi, shouldKeepSources: true },
+        });
+        const storeDir = realpathSync(gi.storeDir);
+        const sources = ts.sys.readDirectory(storeDir, [".ts"]).filter((file) => !file.endsWith(".d.ts"));
+        const { options } = ts.convertCompilerOptionsFromJson(BASE_COMPILER_OPTIONS, storeDir);
+        const program = ts.createProgram(sources, { ...options, noEmit: true });
+        const sourceDiagnostics = ts
+            .getPreEmitDiagnostics(program)
+            .map(
+                (diagnostic) =>
+                    `${diagnostic.file?.fileName ?? ""}: ${ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n")}`,
+            );
+        expect(sourceDiagnostics).toEqual([]);
+        const consumer = `import type { Dialer, Node, Sizes } from "@gtkx/gi/probe";
+            declare const dialer: Dialer;
+            declare const node: Node;
+            declare const sizes: Sizes;
+            const isConnected: boolean = dialer.connect("address");
+            sizes.sizes = [1, 2, 3, 4];
+            // @ts-expect-error a gsize view holds bigints, which the field writes element by element as numbers
+            sizes.sizes = new BigUint64Array(4);
+            // @ts-expect-error new cannot allocate the fundamental Leaf the method fills in
+            node.loadLeaf();
+            export { isConnected };`;
+        expect(diagnostics(directory.path, consumer)).toEqual([]);
     });
 
     it("declares opaque pointer aliases that generated signatures reference", async () => {

@@ -4,7 +4,7 @@
     "targets": {
         "lint": {},
         "typecheck": {
-            "dependsOn": ["...", "_typecheck:overrides", "_typecheck:bindings"]
+            "dependsOn": ["...", "_typecheck:overrides", "_typecheck:bindings", "_typecheck:binding-sources"]
         },
         "_typecheck:overrides": {
             "command": "tsc -p overrides/tsconfig.json",
@@ -40,8 +40,30 @@
                 "cwd": "packages/codegen",
                 "parallel": false,
                 "commands": [
-                    "node --import ../../scripts/register-workspace-loader.ts scripts/typecheck-bindings.ts",
-                    "tsc -p ../../build/bindings-typecheck/tsconfig.declarations.json"
+                    "node --import ../../scripts/register-workspace-loader.ts scripts/typecheck-bindings.ts declarations",
+                    "tsc -p ../../build/bindings-typecheck/declarations/tsconfig.declarations.json"
+                ]
+            }
+        },
+        "_typecheck:binding-sources": {
+            "executor": "nx:run-commands",
+            "cache": true,
+            "dependsOn": ["^build"],
+            "inputs": [
+                "production",
+                "^production",
+                {
+                    "dependentTasksOutputFiles": "**/*.d.ts",
+                    "transitive": true
+                }
+            ],
+            "outputs": [],
+            "options": {
+                "cwd": "packages/codegen",
+                "parallel": false,
+                "commands": [
+                    "node --import ../../scripts/register-workspace-loader.ts scripts/typecheck-bindings.ts sources",
+                    "tsc -p ../../build/bindings-typecheck/sources/tsconfig.sources.json"
                 ]
             }
         },
