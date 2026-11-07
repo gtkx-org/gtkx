@@ -49,7 +49,7 @@ Regenerate the images after changing a pictured sample:
 pnpm nx run @gtkx/website:figures
 ```
 
-The target renders each sample with `@gtkx/testing` in Adwaita's light and dark styles and writes `website/public/figures/<name>-light.png` and `<name>-dark.png` at scale 2. Commit the images: the site build reads them and needs no display. The website `typecheck` target checks the sample files.
+The target renders each sample with `@gtkx/testing` in Adwaita's light and dark styles and writes `website/public/figures/<name>-light.png` and `<name>-dark.png` at scale 2. Commit the images: the site build reads them and needs no display. The capture points `XDG_DATA_HOME`, `XDG_CONFIG_HOME` and `XDG_CACHE_HOME` at a temporary directory (`website/figures/setup.ts`), so samples that save data never read or write your own. The website `typecheck` target checks the sample files.
 
 Place the figure where the text says what the reader should see. Its two images follow the site theme, and the caption links the code:
 

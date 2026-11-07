@@ -22,6 +22,7 @@ import { Mail as TabMail } from "./guide/navigation-tabs.js";
 import { App as ListOfTasks } from "./tutorial/a-list-of-tasks/src/app.js";
 import { App as TaskStore } from "./tutorial/the-task-store/src/app.js";
 import { App as CompletingAndDeleting } from "./tutorial/completing-and-deleting/src/app.js";
+import { App as ListsAndTheSidebar } from "./tutorial/lists-and-the-sidebar/src/app.js";
 import { App as FirstWindow } from "./tutorial/your-first-window.js";
 
 const outputDir = fileURLToPath(new URL("../public/figures/", import.meta.url));
@@ -78,6 +79,7 @@ const figures: [name: string, element: ReactNode][] = [
     ["tutorial-a-list-of-tasks", <ListOfTasks />],
     ["tutorial-the-task-store", <TaskStore />],
     ["tutorial-completing-and-deleting", <CompletingAndDeleting />],
+    ["tutorial-lists-and-the-sidebar", <ListsAndTheSidebar />],
     [
         "guide-components-list-view",
         <SampleWindow title="ListView">

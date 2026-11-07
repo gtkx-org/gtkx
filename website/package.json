@@ -17,6 +17,7 @@
     "devDependencies": {
         "@gtkx/cli": "workspace:*",
         "@gtkx/components": "workspace:*",
+        "@gtkx/css": "workspace:*",
         "@gtkx/navigation": "workspace:*",
         "@gtkx/testing": "workspace:*",
         "shiki": "^4.6.0",

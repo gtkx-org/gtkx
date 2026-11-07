@@ -9,6 +9,7 @@ export default mergeConfig(
         test: {
             name: "website-figures",
             include: ["capture.test.tsx"],
+            setupFiles: ["./setup.ts"],
             env: {
                 LANG: "C.UTF-8",
                 LANGUAGE: "en",

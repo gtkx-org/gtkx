@@ -21,6 +21,9 @@
             "path": "../packages/cli"
         },
         {
+            "path": "../packages/css"
+        },
+        {
             "path": "../packages/components"
         },
         {

@@ -45,126 +45,17 @@ Separate tasks and lists using Zustand's [slices pattern](https://zustand.docs.p
 
 Move the task state and actions into `src/store/tasks.ts`:
 
-```ts [src/store/tasks.ts]
-import type { StateCreator } from "zustand";
-import type { Task } from "../types.js";
-import type { Mutators, Store } from "./index.js";
-import { seedTasks } from "./seed.js";
-
-export type TasksSlice = {
-    tasks: Task[];
-    addTask: (listId: string, title: string) => string | null;
-    setDone: (id: string, done: boolean) => void;
-    setImportant: (id: string, important: boolean) => void;
-    moveToTrash: (id: string) => void;
-};
-
-const patch = (tasks: Task[], id: string, fields: Partial<Task>): Task[] =>
-    tasks.map((task) => (task.id === id ? { ...task, ...fields } : task));
-
-export const createTasksSlice: StateCreator<Store, Mutators, [], TasksSlice> = (set) => ({
-    tasks: seedTasks,
-    addTask: (listId, title) => {
-        const trimmed = title.trim();
-        if (trimmed === "") return null;
-        const id = crypto.randomUUID();
-        set((state) => ({
-            tasks: [
-                ...state.tasks,
-                {
-                    id,
-                    listId,
-                    title: trimmed,
-                    notes: "",
-                    done: false,
-                    important: false,
-                    deleted: false,
-                    due: null,
-                    position: state.tasks.length,
-                    createdAt: new Date().toISOString(),
-                    completedAt: null,
-                },
-            ],
-        }));
-        return id;
-    },
-    setDone: (id, done) =>
-        set((state) => ({
-            tasks: patch(state.tasks, id, { done, completedAt: done ? new Date().toISOString() : null }),
-        })),
-    setImportant: (id, important) => set((state) => ({ tasks: patch(state.tasks, id, { important }) })),
-    moveToTrash: (id) => set((state) => ({ tasks: patch(state.tasks, id, { deleted: true }) })),
-});
-```
+<<< @/figures/tutorial/lists-and-the-sidebar/src/store/tasks.ts [src/store/tasks.ts]
 
 Create `src/store/lists.ts`:
 
-```ts [src/store/lists.ts]
-import type { StateCreator } from "zustand";
-import type { TaskList } from "../types.js";
-import type { Mutators, Store } from "./index.js";
-import { seedLists } from "./seed.js";
-
-export type ListsSlice = {
-    lists: TaskList[];
-    addList: (name: string, color: string) => void;
-};
-
-export const createListsSlice: StateCreator<Store, Mutators, [], ListsSlice> = (set) => ({
-    lists: seedLists,
-    addList: (name, color) => {
-        const trimmed = name.trim();
-        if (trimmed === "") return;
-        set((state) => ({ lists: [...state.lists, { id: crypto.randomUUID(), name: trimmed, color }] }));
-    },
-});
-```
+<<< @/figures/tutorial/lists-and-the-sidebar/src/store/lists.ts [src/store/lists.ts]
 
 The New List dialog will use `addList` in [Add Undo and Delete Confirmation](/v2/tutorial/trash-and-toasts).
 
 Replace `src/store/index.ts` with:
 
-```ts [src/store/index.ts]
-import { create } from "zustand";
-import { createJSONStorage, persist } from "zustand/middleware";
-import type { Task, TaskList } from "../types.js";
-import { createListsSlice, type ListsSlice } from "./lists.js";
-import { fileStorage } from "./storage.js";
-import { createTasksSlice, type TasksSlice } from "./tasks.js";
-
-export type Store = TasksSlice & ListsSlice;
-
-export type PersistedState = { lists: TaskList[]; tasks: Task[] };
-
-export type Mutators = [["zustand/persist", unknown]];
-
-let hydrationError: unknown;
-
-export const useStore = create<Store>()(
-    persist(
-        (...a) => ({
-            ...createTasksSlice(...a),
-            ...createListsSlice(...a),
-        }),
-        {
-            name: "tasks",
-            version: 1,
-            storage: createJSONStorage(() => fileStorage),
-            partialize: (state): PersistedState => ({ lists: state.lists, tasks: state.tasks }),
-            migrate: () => {
-                throw new Error("Unsupported task data version");
-            },
-            onRehydrateStorage: () => (_state, error) => {
-                hydrationError = error;
-            },
-        },
-    ),
-);
-
-if (hydrationError !== undefined) {
-    throw new Error("Could not load saved tasks", { cause: hydrationError });
-}
-```
+<<< @/figures/tutorial/lists-and-the-sidebar/src/store/index.ts [src/store/index.ts]
 
 Subsequent saves include both `tasks` and `lists`. Existing saved tasks remain intact, and `seedLists` supplies lists when loading a file from the previous chapter.
 
@@ -190,26 +81,7 @@ Install `@react-navigation/core` directly because [Edit Tasks](/v2/tutorial/the-
 
 Create `src/navigation.ts`:
 
-```ts [src/navigation.ts]
-import { createSplitViewNavigator, useNavigationState } from "@gtkx/navigation";
-import type { Selection } from "./types.js";
-
-export type RootParamList = {
-    Lists: undefined;
-    Tasks: Selection;
-};
-
-export const Split = createSplitViewNavigator<RootParamList>();
-
-const isSelection = (params: object | undefined): params is Selection =>
-    params !== undefined && "kind" in params;
-
-export const useSelection = (): Selection | null =>
-    useNavigationState<RootParamList, Selection | null>((state) => {
-        const params = state.routes.find((route) => route.name === "Tasks")?.params;
-        return isSelection(params) ? params : null;
-    });
-```
+<<< @/figures/tutorial/lists-and-the-sidebar/src/navigation.ts [src/navigation.ts]
 
 `Tasks` carries the selected list in its params. `useSelection` lets the sidebar read that selection and returns `null` when no tasks page is open. The [navigation guide](/v2/guide/navigation) covers GTKX's navigators; React Navigation documents [route typing](https://reactnavigation.org/docs/typescript/).
 
@@ -217,71 +89,17 @@ export const useSelection = (): Selection | null =>
 
 Create `src/components/window.tsx`:
 
-```tsx [src/components/window.tsx]
-import { AdwApplicationWindow } from "@gtkx/jsx/adw";
-import { NavigationContainer } from "@gtkx/navigation";
-import { quit } from "@gtkx/react";
-import { Split } from "../navigation.js";
-import { useStore } from "../store/index.js";
-import { Sidebar } from "./sidebar.js";
-import { TasksScreen } from "./tasks-screen.js";
-
-export const Window = () => {
-    const lists = useStore((state) => state.lists);
-
-    return (
-        <AdwApplicationWindow title="Tasks" widthRequest={360} heightRequest={294} onCloseRequest={() => quit()}>
-            <NavigationContainer>
-                <Split.Navigator
-                    initialRouteName="Tasks"
-                    sidebarWidthFraction={0.25}
-                    minSidebarWidth={220}
-                    maxSidebarWidth={300}
-                >
-                    <Split.Screen name="Lists" component={Sidebar} options={{ title: "Tasks" }} />
-                    <Split.Screen
-                        name="Tasks"
-                        component={TasksScreen}
-                        initialParams={{ kind: "list", listId: "personal" }}
-                        options={({ route }) => ({
-                            title: lists.find((list) => list.id === route.params.listId)?.name ?? "Tasks",
-                        })}
-                    />
-                </Split.Navigator>
-            </NavigationContainer>
-        </AdwApplicationWindow>
-    );
-};
-```
+<<< @/figures/tutorial/lists-and-the-sidebar/src/components/window.tsx [src/components/window.tsx]
 
 `Lists` stays first so it owns the sidebar. `initialRouteName` and `initialParams` open Personal at startup. The tasks page's title follows its route params.
 
 The navigator now owns the toolbar and header. Each screen supplies its content widget. Create `src/components/tasks-screen.tsx`:
 
-```tsx [src/components/tasks-screen.tsx]
-import type { SplitViewScreenProps } from "@gtkx/navigation";
-import type { RootParamList } from "../navigation.js";
-import { TaskList } from "./task-list.js";
-
-export const TasksScreen = ({ route }: SplitViewScreenProps<RootParamList, "Tasks">) => (
-    <TaskList selection={route.params} />
-);
-```
+<<< @/figures/tutorial/lists-and-the-sidebar/src/components/tasks-screen.tsx [src/components/tasks-screen.tsx]
 
 Replace `src/app.tsx` with:
 
-```tsx [src/app.tsx]
-import { AdwApplication } from "@gtkx/jsx/adw";
-import { Window } from "./components/window.js";
-
-export function App() {
-    return (
-        <AdwApplication>
-            <Window />
-        </AdwApplication>
-    );
-}
-```
+<<< @/figures/tutorial/lists-and-the-sidebar/src/app.tsx [src/app.tsx]
 
 Keep the existing `src/index.tsx`; it still imports the named `App` export.
 
@@ -289,68 +107,13 @@ Keep the existing `src/index.tsx`; it still imports the named `App` export.
 
 Use a small CSS rule for each list's color. Create `src/styles.ts`:
 
-```ts [src/styles.ts]
-import { css } from "@gtkx/css";
-
-export const listDot = (color: string): string => css`
-    min-width: 12px;
-    min-height: 12px;
-    border-radius: 9999px;
-    background: ${color};
-`;
-```
+<<< @/figures/tutorial/lists-and-the-sidebar/src/styles.ts [src/styles.ts]
 
 Adwaita's built-in classes handle the rest of the styling. See [Styling with CSS](/v2/guide/css) for GTKX's CSS integration.
 
 Create `src/components/sidebar.tsx`:
 
-```tsx [src/components/sidebar.tsx]
-import * as Gtk from "@gtkx/gi/gtk";
-import { AdwActionRow } from "@gtkx/jsx/adw";
-import { GtkBox, GtkListBox, GtkScrolledWindow } from "@gtkx/jsx/gtk";
-import type { SplitViewScreenProps } from "@gtkx/navigation";
-import { type RootParamList, useSelection } from "../navigation.js";
-import { useStore } from "../store/index.js";
-import { listDot } from "../styles.js";
-
-export const Sidebar = ({ navigation }: SplitViewScreenProps<RootParamList, "Lists">) => {
-    const lists = useStore((state) => state.lists);
-    const selection = useSelection();
-
-    const activeIndex = lists.findIndex((list) => list.id === selection?.listId);
-
-    return (
-        <GtkScrolledWindow vexpand>
-            <GtkListBox
-                cssClasses={["navigation-sidebar"]}
-                selectedIndex={activeIndex}
-                onRowSelected={(row) => {
-                    if (!row) return;
-                    const list = lists[row.getIndex()];
-                    if (list) {
-                        navigation.navigate("Tasks", { kind: "list", listId: list.id });
-                    }
-                }}
-            >
-                {lists.map((list) => (
-                    <AdwActionRow
-                        key={list.id}
-                        title={list.name}
-                        useMarkup={false}
-                        prefix={
-                            <GtkBox
-                                valign={Gtk.Align.CENTER}
-                                cssClasses={[listDot(list.color)]}
-                                accessibleRole={Gtk.AccessibleRole.PRESENTATION}
-                            />
-                        }
-                    />
-                ))}
-            </GtkListBox>
-        </GtkScrolledWindow>
-    );
-};
-```
+<<< @/figures/tutorial/lists-and-the-sidebar/src/components/sidebar.tsx [src/components/sidebar.tsx]
 
 `useMarkup={false}` keeps list names literal. The colored dot is decorative, so it uses the presentation accessibility role.
 
@@ -364,45 +127,19 @@ For this navigator, `navigate("Tasks", params)` returns to the existing tasks pa
 
 Replace `src/components/task-list.tsx` with:
 
-```tsx [src/components/task-list.tsx]
-import * as Gtk from "@gtkx/gi/gtk";
-import { AdwClamp, AdwEntryRow } from "@gtkx/jsx/adw";
-import { GtkListBox, GtkScrolledWindow } from "@gtkx/jsx/gtk";
-import { useStore } from "../store/index.js";
-import type { Selection } from "../types.js";
-import { TaskRow } from "./task-row.js";
-
-export const TaskList = ({ selection }: { selection: Selection }) => {
-    const tasks = useStore((state) => state.tasks);
-    const addTask = useStore((state) => state.addTask);
-    const visible = tasks.filter((task) => !task.deleted && task.listId === selection.listId);
-
-    return (
-        <GtkScrolledWindow vexpand>
-            <AdwClamp maximumSize={640} marginTop={12} marginBottom={12} marginStart={12} marginEnd={12}>
-                <GtkListBox valign={Gtk.Align.START} selectionMode={Gtk.SelectionMode.NONE} cssClasses={["boxed-list"]}>
-                    <AdwEntryRow
-                        title="Add a task…"
-                        onEntryActivated={(self) => {
-                            addTask(selection.listId, self.text);
-                            self.text = "";
-                        }}
-                    />
-                    {visible.map((task) => (
-                        <TaskRow key={task.id} task={task} />
-                    ))}
-                </GtkListBox>
-            </AdwClamp>
-        </GtkScrolledWindow>
-    );
-};
-```
+<<< @/figures/tutorial/lists-and-the-sidebar/src/components/task-list.tsx [src/components/task-list.tsx]
 
 The screen passes its selection directly to the list. New tasks use that list's ID, while deleted tasks remain hidden.
 
 ## Run it
 
 Save the files. Personal is selected in the sidebar, and its tasks appear under a header named Personal.
+
+<figure class="result">
+    <img class="result-light" src="/figures/tutorial-lists-and-the-sidebar-light.png" width="542" height="294" loading="lazy" alt="The Tasks window split in two: a sidebar titled Tasks lists Personal, Work, and Shopping, each with a colored dot, and Personal is selected. The content pane, titled Personal, shows the Add a task… entry and the rows Welcome to Tasks and Water the plants." />
+    <img class="result-dark" src="/figures/tutorial-lists-and-the-sidebar-dark.png" width="542" height="294" loading="lazy" alt="The Tasks window split in two: a sidebar titled Tasks lists Personal, Work, and Shopping, each with a colored dot, and Personal is selected. The content pane, titled Personal, shows the Add a task… entry and the rows Welcome to Tasks and Water the plants." />
+    <figcaption>Captured from <a href="#move-the-window-into-a-component"><code>src/components/window.tsx</code></a> and <a href="#draw-the-sidebar"><code>src/components/sidebar.tsx</code></a> above.</figcaption>
+</figure>
 
 Click Work, then Shopping. Add a task in Shopping, switch to Personal, and return: the new task belongs only to Shopping.
 
