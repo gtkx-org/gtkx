@@ -19,12 +19,12 @@ const noteName = (fileName: string): string | null =>
 
 const readNote = async (folder: string, name: string): Promise<Note | null> => {
     const path = join(folder, `${name}${EXTENSION}`);
-    const [text, info] = await Promise.all([
-        readFile(path, "utf8"),
-        stat(path),
-    ]);
+    const info = await stat(path);
+    if (!info.isFile()) {
+        return null;
+    }
 
-    return info.isFile() ? toNote(name, text, info.mtimeMs) : null;
+    return toNote(name, await readFile(path, "utf8"), info.mtimeMs);
 };
 
 const readNotes = async (folder: string): Promise<Note[]> => {
