@@ -21,7 +21,6 @@ const getNameOwner = async (proxy: Gio.DBusProxy, name: string) => {
         new Variant("(s)", [name]),
         Gio.DBusCallFlags.NONE,
         -1,
-        null,
     );
     const [owner] = reply.deepUnpack<"(s)">();
     return owner;
@@ -30,7 +29,7 @@ const getNameOwner = async (proxy: Gio.DBusProxy, name: string) => {
 
 ## GVariant packing and unpacking
 
-Variants expose the [GJS unpacking methods](https://gjs.guide/guides/glib/gvariant.html):
+Variants expose the [GJS unpacking methods](https://gjs.guide/guides/glib/gvariant.html#unpacking-variants):
 
 | Method              | Behavior                                                                                                   |
 | ------------------- | ---------------------------------------------------------------------------------------------------------- |
@@ -101,7 +100,7 @@ export const watchCounter = (onValue: (value: number | null) => void) => {
     return {
         increment: async (step: number) => {
             if (!proxy) return;
-            const reply = await proxy.call("Increment", new Variant("(u)", [step]), Gio.DBusCallFlags.NONE, -1, null);
+            const reply = await proxy.call("Increment", new Variant("(u)", [step]), Gio.DBusCallFlags.NONE, -1);
             onValue(reply.deepUnpack<"(u)">()[0]);
         },
         stop: () => {
@@ -112,7 +111,7 @@ export const watchCounter = (onValue: (value: number | null) => void) => {
 };
 ```
 
-A proxy created after its name vanished, or after `stop`, is discarded, and each proxy's signal handler is disconnected when its name vanishes. GIR types the watcher's handlers only as `GObject.Closure`, so annotate their parameters with the types the C documentation gives them, as the example does. A production build may need a value reference to the classes they receive; see [Production bindings](/v2/guide/configuration-and-codegen#production-bindings).
+A proxy created after its name vanished, or after `stop`, is discarded, and each proxy's signal handler is disconnected when its name vanishes. GIR types the watcher's handlers only as `GObject.Closure`, so annotate their parameters with the types the C documentation gives them, as the example does.
 
 ## Exporting an object
 
@@ -171,7 +170,30 @@ export const exportCounter = (connection: Gio.DBusConnection, objectPath: string
 };
 ```
 
-Call it from an effect and return its cleanup. An application element registers the application on the session bus under its application ID, so `useApplication().getDbusConnection()` gives the connection to export on, and `getDbusObjectPath()` gives the application's object path, which can hold the object or a path below it. To export under another name, own it with `Gio.busOwnName` and export from its bus-acquired handler, which receives the connection.
+The method-call handler's parameters are annotated for the same reason as the watcher's. The `instanceof` check keeps `Gio.DBusMethodInvocation` in production builds, which would otherwise pass the invocation as a plain `GObject.Object`; see [Production bindings](/v2/guide/configuration-and-codegen#production-bindings).
+
+Export from an effect and return the cleanup. Render this component inside the application element:
+
+```tsx
+import { useApplication } from "@gtkx/react";
+import { useEffect } from "react";
+import { exportCounter } from "./counter-service.js";
+
+export const CounterService = () => {
+    const application = useApplication();
+
+    useEffect(() => {
+        const connection = application.getDbusConnection();
+        const objectPath = application.getDbusObjectPath();
+        if (!connection || !objectPath) return;
+        return exportCounter(connection, objectPath);
+    }, [application]);
+
+    return null;
+};
+```
+
+The application element registers the app on the session bus under its application ID before it renders its children, so the connection is ready when the effect runs; both getters return `null` for an app without an ID. `getDbusObjectPath()` is the application's object path, which can hold the object or a path below it. With the application ID `com.example.Counter`, the object lands at `/com/example/Counter`, where the client above looks for it. To export under another name, own it with `Gio.busOwnName` and export from its bus-acquired handler, which receives the connection.
 
 ## GJS D-Bus wrappers
 
