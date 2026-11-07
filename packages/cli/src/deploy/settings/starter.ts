@@ -1,7 +1,7 @@
 import type { PackageManifest } from "./package-manifest.js";
 
 const INDENT = " ".repeat(4);
-const DOCS_URL = "https://gtkx.dev/guide/deploying";
+const DOCS_URL = "https://gtkx.dev/v2/guide/deploying";
 
 const quoted = (value: string): string => JSON.stringify(value);
 
