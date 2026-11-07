@@ -86,5 +86,5 @@ export {
 } from "./native-lifetime.js";
 export { initializeWrapper } from "./wrapper-brand.js";
 export { keepAlive } from "./keep-alive.js";
-export { releaseHandle, reportExternalMemory, setWrapperBorrow } from "./native.js";
+export { deferFinalization, releaseHandle, reportExternalMemory, setWrapperBorrow } from "./native.js";
 export { resolveFunction } from "./native-bindings.js";

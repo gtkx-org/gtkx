@@ -6,6 +6,7 @@ pub mod alloc;
 pub mod bind;
 pub mod call;
 pub mod closure;
+pub mod defer_finalization;
 pub mod descriptor;
 pub mod external_memory;
 pub mod field;
