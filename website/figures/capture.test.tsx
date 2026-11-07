@@ -31,6 +31,7 @@ import { App as AdaptiveLayout } from "./tutorial/an-adaptive-layout/src/app.js"
 import { App as SearchInAWorker } from "./tutorial/search-in-a-worker/src/app.js";
 import { App as TagsAndFrontMatter } from "./tutorial/tags-and-front-matter/src/app.js";
 import { App as ActionsMenusShortcuts } from "./tutorial/actions-menus-shortcuts/src/app.js";
+import { App as TrashAndToasts } from "./tutorial/trash-and-toasts/src/app.js";
 import { defaultFolder } from "./tutorial/the-notes-folder/src/notes/files.js";
 import { App as FirstWindow } from "./tutorial/your-first-window/src/app.js";
 import { Mail as TabMail } from "./guide/navigation-tabs.js";
@@ -222,6 +223,22 @@ const figures: [name: string, element: ReactNode, options?: FigureOptions][] = [
                 await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Untitled" });
                 await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Main Menu" }));
                 await screen.findByRole(Gtk.AccessibleRole.MENU_ITEM, { name: "Keyboard Shortcuts" });
+            },
+        },
+    ],
+    [
+        "tutorial-trash-and-toasts",
+        <TrashAndToasts />,
+        {
+            before: () => seedNotes(defaultFolder(), taggedNotes),
+            prepare: async () => {
+                await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Recipes" }));
+                await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Note Menu" }));
+                await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.MENU_ITEM, { name: "Move to Trash" }));
+                await screen.findByText("“Recipes” moved to Trash");
+                await waitFor(() => {
+                    expect(screen.queryByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Recipes" })).toBeNull();
+                });
             },
         },
     ],
