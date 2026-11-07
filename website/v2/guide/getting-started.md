@@ -49,7 +49,13 @@ pnpm create gtkx@beta
 
 :::
 
-Choose a project directory, a display name, an application ID such as `com.example.MyApp`, and your package manager. Any directory name works: `Unit Converter` becomes the package `unit-converter` and the display name Unit Converter, and when the directory's name is not a valid package name the scaffold asks for the package name, suggesting one. A path such as `~/Projects/my-app` places the project elsewhere. Enable TypeScript and the Vitest setup for typed components and native widget tests. `yarn create` cannot run the prerelease scaffolder; to manage the project with Yarn, start it with npm or pnpm and choose Yarn as the package manager. Yarn projects get a `.yarnrc.yml` with `nodeLinker: node-modules`, because GTKX generates its bindings into `node_modules` and does not support Plug'n'Play. Then run:
+The scaffolder asks for a project directory, a display name, an application ID such as `com.example.MyApp`, and a package manager, then whether to use TypeScript and include the Vitest setup. Keep both for typed components and native widget tests.
+
+The directory can be a path, such as `~/Projects/my-app`, and any name works. `Unit Converter` gets the display name Unit Converter; because it is not a valid package name, the scaffolder also asks for one and suggests `unit-converter`.
+
+`yarn create` cannot run the prerelease scaffolder. To manage the project with Yarn, start it with npm or pnpm and choose Yarn as the package manager. Yarn projects get `nodeLinker: node-modules` in `.yarnrc.yml`, because GTKX generates its bindings into `node_modules` and does not support Plug'n'Play.
+
+Start the app:
 
 ```bash
 cd my-app
@@ -64,7 +70,21 @@ The [tutorial](/v2/tutorial/) follows development on `main` and may use APIs add
 
 ## The dev loop
 
-`npm run dev` runs `gtkx dev`. Fast Refresh updates the open window while preserving state. A module that exports only components refreshes in place. Editing any other module, such as a custom hook or shared styles, refreshes the component modules that import it, directly or through other modules. If an edit reaches the entry module before a component module, the app restarts and resets its state. A component whose hook calls change remounts and resets only its own state. Editing an imported stylesheet replaces its rules in the open window. Editing a module's `injectGlobal` rules adds the edited rules, while the earlier ones stay until the app restarts. Changing a module's runtime imports or re-exports, editing an imported resource or icon, editing a file a [worker](/v2/guide/workers) loaded, an edit that changes a construct-only prop such as the `strings` of a `GtkStringList`, a lockfile change from installing or updating dependencies, and other changes that Fast Refresh cannot patch also restart the app.
+`npm run dev` runs `gtkx dev`, which opens the app and watches your source files. Fast Refresh applies most edits to the open window and keeps its state:
+
+- Editing a module that exports only components refreshes it in place.
+- Editing any other module, such as a custom hook or shared styles, refreshes the component modules that import it, directly or through other modules.
+- A component whose hook calls change remounts and resets only its own state.
+- Editing an imported stylesheet replaces its rules. Editing a module's `injectGlobal` rules adds the edited rules, while the earlier ones stay until the app restarts.
+
+These changes restart the app and reset its state:
+
+- an edit that reaches the entry module before a component module
+- a change to a module's runtime imports or re-exports
+- an edit to an imported resource or icon, or to a file a [worker](/v2/guide/workers) loaded
+- an edit that changes a construct-only prop, such as the `strings` of a `GtkStringList`
+- a lockfile change from installing or updating dependencies
+- any other change that Fast Refresh cannot patch
 
 | Command          | Result                                                              |
 | ---------------- | ------------------------------------------------------------------- |
@@ -85,6 +105,8 @@ my-app/
 ├─ package.json
 ├─ tsconfig.json
 ├─ vitest.config.ts
+├─ data/
+│  └─ icons/
 ├─ src/
 │  ├─ index.tsx
 │  ├─ app.tsx
@@ -93,7 +115,7 @@ my-app/
    └─ app.test.tsx
 ```
 
-`gtkx.config.ts` holds the application ID and library configuration. The component lives in `src/app.tsx`; `src/index.tsx` renders it. The testing files are included when you enable Vitest during setup.
+`gtkx.config.ts` holds the application ID, the icon directory and packaging metadata; [Configuration and Codegen](/v2/guide/configuration-and-codegen) covers its other options. `data/icons/` holds the app icon. The component lives in `src/app.tsx`; `src/index.tsx` renders it. Without TypeScript, the source files end in `.jsx` and `.js` and there is no `tsconfig.json` or `src/gtkx-env.d.ts`; without Vitest, there is no `vitest.config.ts` or `tests/`.
 
 ## The entry point: `src/index.tsx`
 
@@ -110,19 +132,19 @@ The starter's `<AdwApplication>` gets its application ID from `gtkx.config.ts`. 
 
 ## Updating GTKX
 
-GTKX packages are released together under one version. To update them, run this from the project directory:
+GTKX packages are released together under one version. To move a project to the newest release on the dist-tag it follows, such as `beta`, run this from the project directory:
 
 ```bash
 npx gtkx upgrade
 ```
 
-It moves every `@gtkx/*` package in the project, or in each package of its workspace, to the newest release on the dist-tag the project follows, such as `beta`. Pass a version or dist-tag to choose one, as in `npx gtkx upgrade 2.0.1`. The command rewrites the versions in each `package.json` and in pnpm catalogs, keeping their range operators, then installs and deduplicates with the project's package manager. A `peerDependencies` range, such as a shared package's `@gtkx/react`, moves only when it does not accept the new version, so a range like `^1.6.0 || ^2.0.0` stays as written. The command fails, naming the packages, when the install leaves some on another version, for example through a Yarn catalog, `overrides` or `resolutions`, or when a peer range it cannot rewrite still excludes the new version; change those and install again.
+Pass a version or dist-tag to choose one, as in `npx gtkx upgrade 2.0.1`. The command rewrites every GTKX package version in the project, or in each package of its workspace, including pnpm catalog entries, and keeps their range operators. A `peerDependencies` range, such as a shared package's `@gtkx/react`, moves only when it does not accept the new version, so a range like `^1.6.0 || ^2.0.0` stays as written. It then installs and deduplicates with the project's package manager. When the install leaves some GTKX packages on another version, for example through a Yarn catalog, `overrides` or `resolutions`, or a peer range it cannot rewrite still excludes the new version, the command fails and names them; change those and install again.
 
-Before installing, the command exempts GTKX's own packages from the package manager's [release-age gate](/v2/guide/scaffold-options#release-age-gates) at the project or workspace root, adding the entries `create gtkx` writes for new projects to `pnpm-workspace.yaml`, `.yarnrc.yml` (Yarn 4.10 or newer) or `.npmrc` and keeping the rest of the file, so a release published that day installs. When the install still fails, it puts each `package.json`, the lockfile and those settings back as they were, so the project stays on its previous release.
+Before installing, the command exempts GTKX's own packages from the package manager's [release-age gate](/v2/guide/scaffold-options#release-age-gates) at the project or workspace root, so a release published that day installs. If the install still fails, it restores each `package.json`, the lockfile and those settings, so the project stays on its previous release.
 
 The CLI of 2.0.0-beta.12 and earlier releases has no `upgrade` command. Run the newer one once with `npx @gtkx/cli@beta upgrade`; on a release day, [Upgrading to 2.0](/v2/guide/upgrading-to-2) shows how to run it past a release-age gate.
 
-`gtkx dev`, `gtkx build` and the other project commands warn when the installed GTKX packages are not all on one version. Every `gtkx` command stops on an option it does not define, naming the option and the ones it takes, and suggests the closest for a typo; `npx gtkx <command> --help` describes a command's options.
+`gtkx dev`, `gtkx build` and the other project commands warn when the installed GTKX packages are not all on one version. `npx gtkx <command> --help` describes a command's options.
 
 ## Troubleshooting
 
@@ -130,20 +152,14 @@ The CLI of 2.0.0-beta.12 and earlier releases has no `upgrade` command. Run the 
 - **Native versions are too old:** use a distribution or development container that meets the minimums. Installing newer TypeScript packages does not upgrade GTK or libadwaita.
 - **No display connection:** run from a desktop terminal or configure your container's display and session access. Tests have a separate [headless setup](/v2/guide/testing#setup).
 - **Dependency installation failed:** the generated files remain in the project directory, but the scaffolder stops before initializing Git. Resolve the package manager's error, rerun its install command there, and run `git init` if you want the project under version control.
-- **Release-age gates:** Yarn 4.15 and newer quarantine packages published within their [`npmMinimalAgeGate`](https://yarnpkg.com/configuration/yarnrc#npmMinimalAgeGate), one day by default, and pnpm's [`minimumReleaseAge`](https://pnpm.io/settings/dependency-resolution#minimumreleaseage) and npm's `min-release-age` hold back new versions the same way. The scaffolder exempts GTKX's own packages, `@gtkx/*` and `create-gtkx`, in the project configuration it writes, so a project created on the day of a GTKX release installs it while other dependencies keep the gate; inside a workspace it prints the entries for the root configuration instead. See [Scaffold Options](/v2/guide/scaffold-options#release-age-gates). The gate still applies to the scaffolder itself: on a release day, `pnpm create gtkx@beta` with `minimumReleaseAge` set refuses the new version of `create-gtkx`, and `npm create gtkx@beta` with `min-release-age` set reports that no matching version of `create-gtkx` was found. Start the project with `npm create gtkx@beta` and choose your package manager, as a Yarn project does, or exempt GTKX for that one command. npm ignores `min-release-age-exclude` when it downloads the scaffolder, so lift its gate for the download with `--min-release-age=0`; the scaffolder's own install still applies the gate:
+- **Release-age gates:** the scaffolder exempts GTKX's own packages from the package manager's release-age gate in the project it creates (see [Scaffold Options](/v2/guide/scaffold-options#release-age-gates)), but the gate still applies to downloading the scaffolder. On the day of a GTKX release, `pnpm create gtkx@beta` with pnpm's `minimumReleaseAge` set refuses the new `create-gtkx`, and `npm create gtkx@beta` with npm's `min-release-age` set reports that no matching version was found. Start the project with `npm create gtkx@beta` and choose your package manager, as a Yarn project does, or exempt GTKX for that one command. npm ignores `min-release-age-exclude` when it downloads the scaffolder, so lift its gate for the download with `--min-release-age=0`; the scaffolder's own install still applies the gate:
 
   ```bash
   pnpm_config_minimum_release_age_exclude='["@gtkx/*","create-gtkx"]' pnpm create gtkx@beta
   npm create --min-release-age=0 gtkx@beta
   ```
 
-  A project created by an earlier scaffolder has no exemption. [`gtkx upgrade`](#updating-gtkx) adds it before installing; to install on a release day without upgrading, add it to `.yarnrc.yml` yourself, or install again a day later:
-
-  ```yaml [.yarnrc.yml]
-  npmPreapprovedPackages:
-      - "@gtkx/*"
-      - create-gtkx
-  ```
+  A project created by an earlier scaffolder has no exemption. [`gtkx upgrade`](#updating-gtkx) adds it before installing; to install on a release day without upgrading, add the [entries](/v2/guide/scaffold-options#release-age-gates) yourself, or install again a day later.
 
 ## Next
 
