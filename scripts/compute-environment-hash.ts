@@ -81,7 +81,13 @@ const addRuntime = (): void => {
     addLibrary("gtksourceview-5", "libgtksourceview-5.so.0");
     addLibrary("webkitgtk-6.0", "libwebkitgtk-6.0.so.4");
     const pkgConfigGirPath = query("pkg-config", ["--variable=girdir", "gobject-introspection-1.0"]);
-    const paths = [...(process.env.GTKX_GIR_PATH ?? "").split(":"), "/usr/share/gir-1.0", pkgConfigGirPath];
+    const pkgConfigLibPath = query("pkg-config", ["--variable=libdir", "gobject-introspection-1.0"]);
+    const paths = [
+        ...(process.env.GTKX_GIR_PATH ?? "").split(":"),
+        "/usr/share/gir-1.0",
+        pkgConfigGirPath,
+        pkgConfigLibPath === "" ? "" : join(pkgConfigLibPath, "gir-1.0"),
+    ];
 
     const directories = new Set(paths.filter(Boolean).map((entry) => resolve(entry)));
 
