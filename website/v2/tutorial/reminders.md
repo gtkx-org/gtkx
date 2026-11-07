@@ -241,7 +241,7 @@ Add the notification marker to the task type:
 Initialize the marker in the seed helper:
 
 ```diff [src/store/seed.ts]
-@@ -25,0 +26 @@
+@@ -27,0 +28 @@
 +    lastNotifiedDue: null,
 ```
 

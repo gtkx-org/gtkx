@@ -14,37 +14,7 @@ Zustand's [`persist` middleware](https://zustand.docs.pmnd.rs/reference/middlewa
 
 Create `src/store/storage.ts`:
 
-```ts [src/store/storage.ts]
-import { fileSetContents, getUserDataDir } from "@gtkx/gi/glib";
-import type { StateStorage } from "zustand/middleware";
-import { mkdirSync, readFileSync, rmSync } from "node:fs";
-import { join } from "node:path";
-import { applicationId } from "virtual:gtkx-config";
-
-const directory = join(getUserDataDir(), applicationId);
-const file = join(directory, "tasks.json");
-
-export const fileStorage: StateStorage = {
-    getItem: () => {
-        try {
-            return readFileSync(file, "utf8");
-        } catch (error) {
-            if (error instanceof Error && "code" in error && error.code === "ENOENT") {
-                return null;
-            }
-
-            throw error;
-        }
-    },
-    setItem: (_name, value) => {
-        mkdirSync(directory, { recursive: true });
-        fileSetContents(file, Buffer.from(value));
-    },
-    removeItem: () => {
-        rmSync(file, { force: true });
-    },
-};
-```
+<<< @/figures/tutorial/saving-to-disk/src/store/storage.ts [src/store/storage.ts]
 
 GLib supplies the desktop data directory and replaces the saved file atomically. Only a missing file starts a fresh store; other read errors and write errors propagate to the application.
 
@@ -63,7 +33,7 @@ Add these imports to `src/store/index.ts`:
 Then update the store definition, keeping its existing action bodies:
 
 ```diff [src/store/index.ts]
-@@ -18,33 +18,57 @@
+@@ -18,38 +18,66 @@
 -export const useStore = create<Store>()((set) => ({
 -    tasks: seedTasks,
 -    addTask: (listId, title) => {
@@ -92,10 +62,15 @@ Then update the store definition, keeping its existing action bodies:
 -    },
 -    setDone: (id, done) =>
 -        set((state) => ({
--            tasks: patch(state.tasks, id, { done, completedAt: done ? new Date().toISOString() : null }),
+-            tasks: patch(state.tasks, id, {
+-                done,
+-                completedAt: done ? new Date().toISOString() : null,
+-            }),
 -        })),
--    setImportant: (id, important) => set((state) => ({ tasks: patch(state.tasks, id, { important }) })),
--    moveToTrash: (id) => set((state) => ({ tasks: patch(state.tasks, id, { deleted: true }) })),
+-    setImportant: (id, important) =>
+-        set((state) => ({ tasks: patch(state.tasks, id, { important }) })),
+-    moveToTrash: (id) =>
+-        set((state) => ({ tasks: patch(state.tasks, id, { deleted: true }) })),
 -}));
 +export type PersistedState = { tasks: Task[] };
 +
@@ -131,10 +106,19 @@ Then update the store definition, keeping its existing action bodies:
 +            },
 +            setDone: (id, done) =>
 +                set((state) => ({
-+                    tasks: patch(state.tasks, id, { done, completedAt: done ? new Date().toISOString() : null }),
++                    tasks: patch(state.tasks, id, {
++                        done,
++                        completedAt: done ? new Date().toISOString() : null,
++                    }),
 +                })),
-+            setImportant: (id, important) => set((state) => ({ tasks: patch(state.tasks, id, { important }) })),
-+            moveToTrash: (id) => set((state) => ({ tasks: patch(state.tasks, id, { deleted: true }) })),
++            setImportant: (id, important) =>
++                set((state) => ({
++                    tasks: patch(state.tasks, id, { important }),
++                })),
++            moveToTrash: (id) =>
++                set((state) => ({
++                    tasks: patch(state.tasks, id, { deleted: true }),
++                })),
 +        }),
 +        {
 +            name: "tasks",
@@ -152,7 +136,7 @@ Then update the store definition, keeping its existing action bodies:
 +);
 +
 +if (hydrationError !== undefined) {
-+    throw hydrationError;
++    throw new Error("Could not load saved tasks", { cause: hydrationError });
 +}
 ```
 

@@ -439,7 +439,7 @@ Connect the shared delete handler in `src/components/task-row.tsx`:
 @@ -14 +15 @@
 -    const moveToTrash = useStore((state) => state.moveToTrash);
 +    const requestDeleteTask = useRequestDeleteTask();
-@@ -48 +49 @@
+@@ -52 +53 @@
 -                        onClicked={() => moveToTrash(task.id)}
 +                        onClicked={() => requestDeleteTask(task)}
 ```

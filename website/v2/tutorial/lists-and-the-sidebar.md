@@ -28,7 +28,7 @@ In `src/store/seed.ts`, add `TaskList` to the existing type import and append th
 @@ -1 +1 @@
 -import type { Task } from "../types.js";
 +import type { Task, TaskList } from "../types.js";
-@@ -46,0 +47,6 @@
+@@ -54,0 +55,6 @@
 +
 +export const seedLists: TaskList[] = [
 +    { id: "personal", name: "Personal", color: "#3584e4" },
@@ -162,7 +162,7 @@ export const useStore = create<Store>()(
 );
 
 if (hydrationError !== undefined) {
-    throw hydrationError;
+    throw new Error("Could not load saved tasks", { cause: hydrationError });
 }
 ```
 

@@ -21,13 +21,18 @@ In `src/store/index.ts`, add the helper and the actions:
 +
 +const patch = (tasks: Task[], id: string, fields: Partial<Task>): Task[] =>
 +    tasks.map((task) => (task.id === id ? { ...task, ...fields } : task));
-@@ -35,0 +42,6 @@
+@@ -35,0 +42,11 @@
 +    setDone: (id, done) =>
 +        set((state) => ({
-+            tasks: patch(state.tasks, id, { done, completedAt: done ? new Date().toISOString() : null }),
++            tasks: patch(state.tasks, id, {
++                done,
++                completedAt: done ? new Date().toISOString() : null,
++            }),
 +        })),
-+    setImportant: (id, important) => set((state) => ({ tasks: patch(state.tasks, id, { important }) })),
-+    moveToTrash: (id) => set((state) => ({ tasks: patch(state.tasks, id, { deleted: true }) })),
++    setImportant: (id, important) =>
++        set((state) => ({ tasks: patch(state.tasks, id, { important }) })),
++    moveToTrash: (id) =>
++        set((state) => ({ tasks: patch(state.tasks, id, { deleted: true }) })),
 ```
 
 `setDone` records the completion time in `completedAt` and clears it when you uncheck the box.
@@ -37,9 +42,23 @@ In `src/store/index.ts`, add the helper and the actions:
 In `src/components/task-list.tsx`, filter the deleted tasks out before rendering:
 
 ```diff [src/components/task-list.tsx]
-@@ -21 +21 @@
+@@ -31,7 +31,9 @@
 -                    {tasks.map((task) => (
-+                    {tasks.filter((task) => !task.deleted).map((task) => (
+-                        <AdwActionRow
+-                            key={task.id}
+-                            title={task.title}
+-                            useMarkup={false}
+-                        />
+-                    ))}
++                    {tasks
++                        .filter((task) => !task.deleted)
++                        .map((task) => (
++                            <AdwActionRow
++                                key={task.id}
++                                title={task.title}
++                                useMarkup={false}
++                            />
++                        ))}
 ```
 
 ## A component per row
@@ -48,56 +67,7 @@ Keep the row's controls together in a `TaskRow` component.
 
 Create `src/components/task-row.tsx`:
 
-```tsx [src/components/task-row.tsx]
-import { markupEscapeText } from "@gtkx/gi/glib";
-import * as Gtk from "@gtkx/gi/gtk";
-import { AdwActionRow } from "@gtkx/jsx/adw";
-import { GtkButton, GtkCheckButton, GtkToggleButton } from "@gtkx/jsx/gtk";
-import { useStore } from "../store/index.js";
-import type { Task } from "../types.js";
-
-export const TaskRow = ({ task }: { task: Task }) => {
-    const setDone = useStore((state) => state.setDone);
-    const setImportant = useStore((state) => state.setImportant);
-    const moveToTrash = useStore((state) => state.moveToTrash);
-    const escapedTitle = markupEscapeText(task.title, -1);
-    const title = task.done ? `<s>${escapedTitle}</s>` : escapedTitle;
-
-    return (
-        <AdwActionRow
-            title={title}
-            useMarkup
-            prefix={
-                <GtkCheckButton
-                    valign={Gtk.Align.CENTER}
-                    active={task.done}
-                    accessibleLabel="Mark complete"
-                    onToggled={(self) => setDone(task.id, self.active)}
-                />
-            }
-            suffix={
-                <>
-                    <GtkToggleButton
-                        valign={Gtk.Align.CENTER}
-                        iconName={task.important ? "starred-symbolic" : "non-starred-symbolic"}
-                        active={task.important}
-                        accessibleLabel="Toggle important"
-                        cssClasses={["flat"]}
-                        onToggled={(self) => setImportant(task.id, self.active)}
-                    />
-                    <GtkButton
-                        valign={Gtk.Align.CENTER}
-                        iconName="user-trash-symbolic"
-                        accessibleLabel="Delete task"
-                        cssClasses={["flat"]}
-                        onClicked={() => moveToTrash(task.id)}
-                    />
-                </>
-            }
-        />
-    );
-};
-```
+<<< @/figures/tutorial/completing-and-deleting/src/components/task-row.tsx [src/components/task-row.tsx]
 
 Then use it from the list. In `src/components/task-list.tsx`:
 
@@ -107,9 +77,13 @@ Then use it from the list. In `src/components/task-list.tsx`:
 +import { AdwClamp, AdwEntryRow } from "@gtkx/jsx/adw";
 @@ -4,0 +5 @@
 +import { TaskRow } from "./task-row.js";
-@@ -22 +23 @@
--                        <AdwActionRow key={task.id} title={task.title} useMarkup={false} />
-+                        <TaskRow key={task.id} task={task} />
+@@ -34,5 +35 @@
+-                            <AdwActionRow
+-                                key={task.id}
+-                                title={task.title}
+-                                useMarkup={false}
+-                            />
++                            <TaskRow key={task.id} task={task} />
 ```
 
 `TaskRow` receives the task as a prop and selects the store actions it needs.
@@ -126,7 +100,13 @@ With `useMarkup`, the row reads its title as markup. Escape the task title with 
 
 ## Run it
 
-Save the files. Each row now has a checkbox, a star, and a trash button.
+Save the files. Each row now has a checkbox, a star, and a trash button. **Water the plants** starts starred because the seed data marks it important.
+
+<figure class="result">
+    <img class="result-light" src="/figures/tutorial-completing-and-deleting-light.png" width="360" height="294" loading="lazy" alt="The Tasks window: under the Add a task… entry, three task rows, each with a checkbox before the title and a star and trash button after it. The star on Water the plants is filled." />
+    <img class="result-dark" src="/figures/tutorial-completing-and-deleting-dark.png" width="360" height="294" loading="lazy" alt="The Tasks window: under the Add a task… entry, three task rows, each with a checkbox before the title and a star and trash button after it. The star on Water the plants is filled." />
+    <figcaption>Captured from <a href="#a-component-per-row"><code>src/components/task-row.tsx</code></a> above.</figcaption>
+</figure>
 
 Tick the checkbox on **Welcome to Tasks**. Its title gets a strikethrough, and the box stays ticked.
 

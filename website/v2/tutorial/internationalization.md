@@ -82,7 +82,7 @@ Outside components, import `t` directly. Translate the starter task in `src/stor
 ```diff [src/store/seed.ts]
 @@ -0,0 +1 @@
 +import { t } from "@gtkx/i18n";
-@@ -41 +42 @@
+@@ -43 +44 @@
 -        title: "Water the plants",
 +        title: t("Water the plants"),
 ```

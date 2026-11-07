@@ -41,7 +41,7 @@ Before publishing documentation changes:
 
 ## Pictured samples
 
-A sample whose result is visual shows the window it renders. Keep the sample in a file under `website/figures/` (`guide/` or `tutorial/`), show it on the page with a [snippet import](https://vitepress.dev/guide/markdown#import-code-snippets) such as `<<< @/figures/guide/components-list-view.tsx`, and add it to the `figures` list in `website/figures/capture.test.tsx`. The page then shows the code that was captured. A tutorial chapter that spans several files keeps them under `website/figures/tutorial/<chapter>/src/`, so their relative imports match the reader's project. Give pictured samples the margins a real app would use, so content does not touch the window edge.
+A sample whose result is visual shows the window it renders. Keep the sample in a file under `website/figures/` (`guide/` or `tutorial/`), show it on the page with a [snippet import](https://vitepress.dev/guide/markdown#import-code-snippets) such as `<<< @/figures/guide/components-list-view.tsx`, and add it to the `figures` list in `website/figures/capture.test.tsx`. The page then shows the code that was captured. A tutorial chapter that spans several files keeps them under `website/figures/tutorial/<chapter>/src/`, so their relative imports match the reader's project. Later chapters show `diff` blocks against these files, so after changing one, check that each later diff still applies at its stated lines. Give pictured samples the margins a real app would use, so content does not touch the window edge.
 
 Regenerate the images after changing a pictured sample:
 

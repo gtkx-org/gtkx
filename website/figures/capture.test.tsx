@@ -20,6 +20,8 @@ import { Mail as SplitMail } from "./guide/navigation-split-view.js";
 import { Notes } from "./guide/navigation-stack.js";
 import { Mail as TabMail } from "./guide/navigation-tabs.js";
 import { App as ListOfTasks } from "./tutorial/a-list-of-tasks/src/app.js";
+import { App as TaskStore } from "./tutorial/the-task-store/src/app.js";
+import { App as CompletingAndDeleting } from "./tutorial/completing-and-deleting/src/app.js";
 import { App as FirstWindow } from "./tutorial/your-first-window.js";
 
 const outputDir = fileURLToPath(new URL("../public/figures/", import.meta.url));
@@ -74,6 +76,8 @@ function NavigationWindow({
 const figures: [name: string, element: ReactNode][] = [
     ["tutorial-your-first-window", <FirstWindow />],
     ["tutorial-a-list-of-tasks", <ListOfTasks />],
+    ["tutorial-the-task-store", <TaskStore />],
+    ["tutorial-completing-and-deleting", <CompletingAndDeleting />],
     [
         "guide-components-list-view",
         <SampleWindow title="ListView">
