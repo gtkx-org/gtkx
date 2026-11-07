@@ -29,12 +29,6 @@ const editorText = (view: Gtk.TextView): string => {
     return buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false);
 };
 
-const typeEachKey = async (view: Gtk.TextView, text: string): Promise<void> => {
-    for (const key of text) {
-        await userEvent.type(view, key);
-    }
-};
-
 describe("Notes", () => {
     it("lists the Markdown files in the folder, newest first", async () => {
         await render(<App />, { container: rootElement });
@@ -196,7 +190,7 @@ describe("Notes", () => {
         await render(<App />, { container: rootElement });
 
         const editor = await openNote("Groceries");
-        await typeEachKey(editor, "[[read");
+        await userEvent.type(editor, "[[read");
         await userEvent.click(await within(editor).findByText("Reading list"));
 
         expect(editorText(editor)).toMatch(/\[Reading list\]\(<Reading list\.md>\)$/);
