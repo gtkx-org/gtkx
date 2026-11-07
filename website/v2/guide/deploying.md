@@ -10,8 +10,8 @@ distribution, then add other targets or a [source Flatpak build](#publishing-on-
 
 ## Configure your application
 
-Keep the application's version, author, and license in `package.json`. GTKX uses those values unless you
-override them in `deploy`:
+GTKX reads the application's name, summary, version, developer, license, and homepage from the `name`,
+`description`, `version`, `author`, `license`, and `homepage` fields of `package.json`, unless `deploy` sets them:
 
 ```ts
 import { defineConfig } from "@gtkx/config";
@@ -59,8 +59,8 @@ Flatpak is the default. Set `deploy.targets` for the project's usual formats, or
 gtkx deploy --target deb,rpm
 ```
 
-Packages are written to `build/out`. Manifests and staged files are under `build/<arch>/`. `gtkx deploy --out packages`
-changes this deployment directory to `packages`, with finished artifacts in `packages/out`.
+Packages are written to `build/out`. Manifests and staged files are under `build/<arch>/`. `deploy.outDir: "packages"`
+or `gtkx deploy --out packages` changes this deployment directory to `packages`, with finished artifacts in `packages/out`.
 
 ### Build tools
 
@@ -84,12 +84,10 @@ npm run deploy -- --target rpm --print-manifests
 
 With pnpm, run `pnpm run deploy --target rpm --print-manifests`; `pnpm deploy` is pnpm's built-in command and does not run the script.
 
-Use `--target deb` on Debian or Ubuntu. The preview writes the generated metadata to `build/<arch>/metadata/` and the
-package manifests to `build/<arch>/targets/` for review.
-
-This still builds and stages the application, but stops before package creation. It skips Node.js and
-packaging-tool downloads; cross-architecture addon downloads and source Flatpak dependency preparation may
-still need network access.
+Use `--target deb` on Debian or Ubuntu. The preview builds and stages the application, writes the generated
+metadata to `build/<arch>/metadata/` and the package manifests to `build/<arch>/targets/`, and stops before
+creating packages. It skips Node.js and packaging-tool downloads; cross-architecture addon downloads and source
+Flatpak dependency preparation may still need network access.
 
 GTKX validates the desktop entry and AppStream metadata. AppStream errors and unsupported tags fail every
 target. Other AppStream warnings are fatal when source-mode Flatpak is selected, including previews.
@@ -142,27 +140,28 @@ bindings call those libraries directly; the installed app does not need GIR file
 compatible native libraries on the host.
 
 Debian and RPM dependencies include GTK, libadwaita, and runtime requirements detected from staged binaries.
-RPM packages also require the shared library of every library in `libraries`, such as
+RPM packages also require the shared library of every other library in `libraries`, such as
 `libgtksourceview-5.so.0()(64bit)` for `GtkSource-5`, which RPM resolves to the right package on any distribution.
-Debian has no such relation, so list the Debian packages that ship those shared libraries in `deploy.depends.deb`,
-for example `["libgtksourceview-5-0"]`; while `deploy.depends.deb` is empty, a deb deployment warns and names
-the shared libraries it must cover. Otherwise the package installs on a system without the library and the app fails
-to start. Declare other system packages through `deploy.depends` as well. The opening example explicitly sets the GTKX
-baseline in `deploy.minimumLibraryVersions`; raise it when your app uses newer APIs, for example
-`{ "Gtk-4.0": "4.22", "Adw-1": "1.8" }`. GTKX writes these minimums into Debian and RPM package dependencies;
-it does not infer the minimum API version from your code. Publish the same requirements alongside an
-AppImage, and check prebuilt Flatpaks against the selected GNOME runtime.
+Debian has no such relation: list the packages that ship those libraries in `deploy.depends.deb`, for example
+`["libgtksourceview-5-0"]`, or the package installs on a system without them and the app fails to start. While
+`deploy.depends.deb` is empty, a deb deployment warns and names the shared libraries it must cover. Declare other
+system packages through `deploy.depends` as well.
+
+The opening example sets the GTKX baseline in `deploy.minimumLibraryVersions`. GTKX writes these minimums into
+Debian and RPM package dependencies but does not infer them from your code, so raise them when your app uses newer
+APIs, for example `{ "Gtk-4.0": "4.22", "Adw-1": "1.8" }`. Publish the same requirements alongside an AppImage, and
+check prebuilt Flatpaks against the selected GNOME runtime.
 
 ### Settings schemas
 
-Debian, RPM and Flatpak packages install the application's GSettings schemas into `share/glib-2.0/schemas`
-under their prefix and leave compiling them to the system: the distribution's GLib package compiles that
-directory when a package is installed, and the Flatpak manifest runs `glib-compile-schemas` after installing
-the app. Vendor `.gschema.override` files that a distribution or administrator places there therefore change
-the application's defaults, as they do for other GNOME applications. The AppImage and `node dist/bundle.mjs`
-read the `gschemas.compiled` that `gtkx build` writes beside the bundle, so vendor overrides do not apply to
-them. Copies of the schema files sit beside it, where GLib reads key summaries and descriptions, as every
-package does.
+Debian, RPM, and Flatpak packages install the application's GSettings schemas into `share/glib-2.0/schemas`
+under their prefix, where the system compiles them: the distribution's GLib package on installation, or
+`glib-compile-schemas` in the Flatpak build. Vendor `.gschema.override` files placed there by a distribution or
+administrator change the application's defaults, as they do for other GNOME applications. Every schema shares that
+directory, so each schema file name must start with the application ID.
+
+The AppImage and `node dist/bundle.mjs` read the `gschemas.compiled` that `gtkx build` writes beside the bundle,
+so vendor overrides do not apply to them.
 
 ### Additional native addons
 
@@ -187,9 +186,11 @@ than one architecture, import a prebuild for each and load the one matching `pro
 the architecture of imported addons.
 
 ```ts
+import { createRequire } from "node:module";
 import arm64Addon from "@node-rs/xxhash-linux-arm64-gnu/xxhash.linux-arm64-gnu.node?url";
 import x64Addon from "@node-rs/xxhash-linux-x64-gnu/xxhash.linux-x64-gnu.node?url";
 
+const require = createRequire(import.meta.url);
 const addon = require(process.arch === "arm64" ? arm64Addon : x64Addon) as { xxh64(input: string): bigint };
 ```
 
@@ -249,19 +250,21 @@ so the windows render only after the handler calls `activate()`:
 import type * as Adw from "@gtkx/gi/adw";
 import { AdwApplication } from "@gtkx/jsx/adw";
 import { GSimpleAction } from "@gtkx/jsx/gio";
-import { useRef } from "react";
+import { useRef, useState } from "react";
+import { MainWindow } from "./main-window.js";
 
 export const App = () => {
     const application = useRef<Adw.Application | null>(null);
+    const [view, setView] = useState("inbox");
 
     const showToday = () => {
-        selectView("today");
+        setView("today");
         application.current?.activate();
     };
 
     return (
         <AdwApplication ref={application} actions={<GSimpleAction name="today" onActivate={showToday} />}>
-            <MainWindow />
+            <MainWindow view={view} />
         </AdwApplication>
     );
 };
@@ -361,4 +364,4 @@ confirm compliance with Flathub requirements. The [Flatpak tutorial](/v2/tutoria
 
 If Flatpak stops while spawning `rofiles-fuse`, set `deploy.flatpak.shouldUseRofilesFuse: false` in `gtkx.config.ts` and retry. This applies to both prebuilt and source builds when the container cannot provide FUSE.
 
-If a failed deployment leaves an output directory that GTKX refuses to replace, keep it for diagnosis and choose a fresh directory, for example `npm run deploy -- --target flatpak --out build-flatpak-retry`. The `--out` directory must be below the project root and outside `dist/`.
+If a failed deployment leaves an output directory that GTKX refuses to replace, keep it for diagnosis and choose a fresh directory, for example `npm run deploy -- --target flatpak --out build-flatpak-retry`.
