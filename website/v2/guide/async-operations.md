@@ -7,7 +7,7 @@ description: "Await native operations, handle failures, and cancel work with Gio
 
 GTKX turns compatible GIR async/finish pairs into promise-returning methods. Await the method and handle failures with `try`/`catch`.
 
-The promise resolves to the finish function's results: one value directly, or a tuple for several. A leading success boolean is omitted when the finish function also returns output values and failure already throws. Boolean-only results and explicit finish methods keep their native return shape. For example, `loadContentsAsync` resolves to the contents and optional etag, while `replaceContentsAsync` resolves to the etag alone.
+The promise resolves to what the finish function returns: one value directly, several as a tuple. When a finish function that can fail returns a success boolean along with output values, the promise drops the boolean, because failure rejects instead. For example, `loadContentsAsync` resolves to `[contents, etag]` and `replaceContentsAsync` to the new etag. A finish function that returns only a boolean still resolves to it, and calling a finish method such as `loadContentsFinish` yourself returns its full native tuple.
 
 Check the generated signature for the libraries your project binds. Not every method ending in `Async` returns a promise. Some GIO operations, including the closure-based `copyAsync` and `moveAsync`, retain their callback form. GIR types their progress and ready handlers only as `GObject.Closure`, so annotate the parameters with the types the C documentation gives them; 64-bit integers such as the `goffset` byte counts of a progress handler arrive as `bigint`.
 
@@ -79,7 +79,7 @@ const OpenButton = ({ onFile, onError }: OpenButtonProps) => {
 };
 ```
 
-Dismissing this dialog rejects with `Gtk.DialogError.DISMISSED`. Match the generated domain and code for expected outcomes, and pass other failures to the application's error handling. Outside production, an error from the finish call also carries the operation's starting stack in its `cause` when that field is available.
+Dismissing this dialog rejects with `Gtk.DialogError.DISMISSED`. Match the generated domain and code for expected outcomes, and pass other failures to the application's error handling. Outside production, the rejection's `cause` holds the stack of the call that started the operation, unless the error already has a cause.
 
 ## Cancellation with Gio.Cancellable
 
@@ -87,7 +87,7 @@ Promisified methods retain their `Gio.Cancellable` argument. The example renders
 
 Cancellation rejects the promise. GIO operations report `Gio.IOErrorEnum.CANCELLED`; GTK dialogs use `Gtk.DialogError.CANCELLED`.
 
-A cancelled instance stays cancelled. Before starting another operation, replace its JSX element, for example by changing its key, and wait for the callback ref to receive the fresh instance. The same rule applies after unmount cleanup or React effect replay cancels an operation.
+A cancelled instance stays cancelled. Before starting another operation, replace its JSX element, for example by changing its key, and wait for the callback ref to receive the fresh instance. This also applies to an instance that an effect cleanup cancelled.
 
 ## Callback-only methods and external finish owners
 
@@ -97,7 +97,7 @@ If no suitable method exists, the generated method stays callback-based and its 
 
 ## Calling D-Bus directly
 
-Construct the variants used by `Gio.DBusProxy` with `new GLib.Variant(signature, value)`, as in GJS. Literal GVariant type strings determine the TypeScript input and unpacked types. For native replies, supply the expected signature as a type parameter when unpacking:
+Construct the variants used by `Gio.DBusProxy` with `new Variant(signature, value)` from `@gtkx/gi/glib`, as in GJS. Literal GVariant type strings determine the TypeScript input and unpacked types. For native replies, supply the expected signature as a type parameter when unpacking:
 
 ```ts
 import * as Gio from "@gtkx/gi/gio";
@@ -129,8 +129,6 @@ Basic values unpack directly. Byte arrays (`ay`) return `Uint8Array` in every mo
 Passing a string to `new Variant("ay", text)` produces UTF-8 bytes with a trailing NUL, as in GJS; passing a byte array preserves its bytes. GTKX keeps signed and unsigned 64-bit values as `bigint` to preserve their full precision. Construction accepts `bigint` or safe integer numbers for those types.
 
 Unpacking always reads the variant's actual runtime type. An explicit type parameter describes the signature your code expects; it does not validate that signature at runtime. Without a known constructor signature or explicit type parameter, the result is `unknown`.
-
-The generated promise is named `call` here; use the generated signature rather than deriving a name from the C function.
 
 ### Consuming a service
 
@@ -263,7 +261,7 @@ Call it from an effect and return its cleanup. An application element registers 
 
 ### GJS D-Bus wrappers
 
-GTKX has no equivalent of GJS's `Gio.DBusProxy.makeProxyWrapper` or `Gio.DBusExportedObject.wrapJSObject`. When porting, replace a proxy wrapper's methods with `proxy.call`, its signals with `g-signal` and its properties with `getCachedProperty`, and export a wrapped object with `registerObjectWithClosures2`. Exporting objects through `Gio.DBusObjectManagerServer` is not supported: it takes `Gio.DBusInterfaceSkeleton` implementations, and JavaScript cannot supply the method table a skeleton returns, so the bindings omit `vfuncGetVtable`.
+GTKX has no equivalent of the `Gio.DBusProxy.makeProxyWrapper` and `Gio.DBusExportedObject.wrapJSObject` helpers from the [GJS D-Bus guide](https://gjs.guide/guides/gio/dbus.html). When porting, replace a proxy wrapper's methods with `proxy.call`, its signals with `g-signal` and its properties with `getCachedProperty`, and export a wrapped object with `registerObjectWithClosures2`. Exporting objects through `Gio.DBusObjectManagerServer` is not supported: it takes `Gio.DBusInterfaceSkeleton` implementations, and JavaScript cannot supply the method table a skeleton returns, so the bindings omit `vfuncGetVtable`.
 
 ## Ending work on unmount
 
@@ -303,7 +301,7 @@ export const useFeed = (url: string, intervalMs: number): string | null => {
 
 ## Handling termination signals
 
-Listen for `SIGINT` and `SIGTERM` with Node's `process.on`, not `GLibUnix.signalAdd`. GTKX quits the application on `SIGINT`, `SIGTERM` and `SIGHUP` while no other listener handles the signal. A listener you add takes over, so finish your cleanup and call `quit()`:
+Listen for `SIGINT` and `SIGTERM` with Node's [`process.on`](https://nodejs.org/api/process.html#signal-events), not `GLibUnix.signalAdd`. GTKX quits the application on `SIGINT`, `SIGTERM` and `SIGHUP` while no other listener handles the signal. A listener you add takes over, so finish your cleanup and call `quit()`:
 
 ```tsx
 import { quit } from "@gtkx/react";
