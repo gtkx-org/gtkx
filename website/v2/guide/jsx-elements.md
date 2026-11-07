@@ -74,7 +74,3 @@ Prefer JSX for object creation and child placement. The [generated element refer
 ### Member names
 
 Native methods keep their generated camelCase names, even when a name overlaps a GTKX signal or property helper. For example, `Gio.Socket.connect` connects the socket; use `GObject.signalConnect` to connect one of its signals. When a method has the same name as a property, read and write the property with `GObject.getProperty` and `GObject.setProperty` from `@gtkx/gi/gobject`. Both take the camelCase property name and type the value from the object's properties.
-
-## Next
-
-Continue with [Application Lifecycle](/v2/guide/application-lifecycle) to start the app from its entry point and know when it ends.

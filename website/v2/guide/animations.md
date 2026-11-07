@@ -129,7 +129,3 @@ GTK exposes two settings with different effects:
 `useReducedMotion()` returns `true` when either preference calls for less motion, `false` otherwise, and `null` before a display is open. It updates when the settings change.
 
 `@gtkx/testing` disables animations by default, so springs reach their targets on the first frame. Assert the result with `findBy*` or `waitFor`. Pass `areAnimationsEnabled: true` to `render` when the test needs to exercise motion.
-
-## Next
-
-Continue with [Internationalization](/v2/guide/internationalization) to translate the app and its desktop metadata with gettext catalogs.

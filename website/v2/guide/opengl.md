@@ -74,7 +74,3 @@ For continuous animation, use a GTK tick callback to advance the scene and call 
 ## Show an error
 
 Pass a `GLib.Error` to `area.setError()` to display an error inside the widget, and pass `null` to clear it after recovery. Context initialization failures are available through `area.getError()`. See [Error Handling](/v2/guide/error-handling) for errors raised by binding calls.
-
-## Next
-
-Continue with [Testing](/v2/guide/testing) for native widget queries and interaction tests.

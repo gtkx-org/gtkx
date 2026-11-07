@@ -164,7 +164,3 @@ export const TermsForm = () => {
 `field.ref` needs a handle with a no-argument `focus()` method. Passing the widget directly does not work, because GTK's `focus` method expects a direction. `GtkEventControllerFocus` reports when focus leaves the control, which marks the field touched.
 
 See the [forms reference](/v2/reference/@gtkx/forms/) for GTKX prop types and the [testing guide](/v2/guide/testing) for driving native controls.
-
-## Next
-
-Continue with [Actions and Shortcuts](/v2/guide/actions) to run commands from menus, buttons and keyboard accelerators.

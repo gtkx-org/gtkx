@@ -84,7 +84,3 @@ const describeAction = (action: Poppler.Action) =>
 ```
 
 A view reflects later changes to the parent and keeps the parent alive while it is reachable. A view of a value lent to a callback expires with that value when the callback returns. When the embedded record holds pointers, the field is read-only, because copying a whole record would alias pointers the parent already owns.
-
-## Next
-
-Continue with [D-Bus](/v2/guide/dbus) to call system services and export objects through the generated Gio bindings.

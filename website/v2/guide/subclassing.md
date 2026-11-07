@@ -336,7 +336,3 @@ Objects created by native code do not run the JavaScript constructor or its fiel
 ## GtkBuilder and `.ui` files
 
 GTKX applications define their interface in JSX, where signal handlers are props; port a `.ui` file or a `Gtk.Template` to JSX rather than loading it. `Gtk.Builder` can still create instances of registered classes from XML, initialized in `vfuncConstructed` as above, but `<signal>` handlers in a `.ui` file are not supported. GTKX has no built-in JavaScript `Gtk.BuilderScope` like GJS's, and a scope implemented with `registerClass` cannot return a closure from `vfuncCreateClosure`, so such a file fails to load.
-
-## Next
-
-Continue with [Cairo](/v2/guide/cairo) to draw in a widget's drawing callback and render images offscreen.

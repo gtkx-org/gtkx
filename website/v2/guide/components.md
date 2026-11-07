@@ -260,7 +260,3 @@ Render `Notifications` inside an application window. Clicking the button shows a
 `show()` returns the native `Adw.Toast`. Pass `buttonLabel` and `onButtonClicked` to add an action, and `onDismissed` when cleanup depends on its dismissal. Call `dismiss()` on the returned toast to close it, or the controller's `dismissAll()` to clear the overlay.
 
 `useToast()` requires a provider. Show toasts from events or effects after the overlay mounts; calling `show()` while its ref is empty creates a toast without displaying it. The [Trash and Toasts tutorial](/v2/tutorial/trash-and-toasts) adds an Undo action to a delete operation.
-
-## Next
-
-Continue with [CSS](/v2/guide/css) to style widgets and apply reusable classes. [Modals and Portals](/v2/guide/modals-and-portals) explains the mounting model behind these components: `createPortal`, the `rootElement` container, and extra windows. The tutorial demonstrates dialogs in its [Menus, Accelerators, and Shortcuts](/v2/tutorial/actions-menus-shortcuts#mounting-dialogs) chapter.

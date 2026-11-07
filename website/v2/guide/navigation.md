@@ -622,7 +622,3 @@ it("opens a note and comes back", async () => {
 ```
 
 For tab navigation, query the view switcher's `Gtk.AccessibleRole.TAB` and its label. `userEvent.keyboard(widget, "{Escape}")` exercises native back navigation. See [Testing](/v2/guide/testing) for setup and query behavior.
-
-## Next
-
-Continue with [Forms](/v2/guide/forms) to connect React Hook Form to native Adwaita rows.

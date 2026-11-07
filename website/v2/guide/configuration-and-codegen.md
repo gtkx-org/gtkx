@@ -202,5 +202,3 @@ export default defineConfig({
 Wrap each behavior with `defineBehavior` from `@gtkx/react/config`, supplying its GI class as the type argument. Behaviors apply to descendants and run before built-in behaviors. A behavior's `update` returns the names of the props it handles; any other prop must be a native property of the element. The [ElementBehavior reference](/v2/reference/@gtkx/react/config/type-aliases/ElementBehavior) describes the hooks.
 
 Declare additional props by augmenting the namespace module that owns them, with a top-level import of that module. Keep application effects and higher-level behavior in React components.
-
-Continue with [CLI](/v2/guide/cli) for the `gtkx` commands and their options.

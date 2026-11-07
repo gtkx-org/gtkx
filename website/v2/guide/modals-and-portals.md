@@ -140,7 +140,3 @@ React commits asynchronously, so JSX rendered in response to the signal is not r
 An independent `createRoot(container)` owns its rendered children separately from the component that created the container, until you call its `unmount()`. A tab rendered into an `Adw.TabView` this way keeps its native widget and React state after libadwaita transfers it to another window and the original view unmounts. The tab view navigator remounts a transferred screen instead; see [Windows and transfers](/v2/guide/navigation#windows-and-transfers).
 
 The exported API is in the [@gtkx/react reference](/v2/reference/@gtkx/react/).
-
-## Next
-
-Continue with [Components](/v2/guide/components) for lists, tables, dropdowns and toasts rendered from React state.

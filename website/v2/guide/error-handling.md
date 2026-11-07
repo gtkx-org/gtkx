@@ -66,7 +66,3 @@ A panic while native code calls back into JavaScript, or on another thread, cann
 An error boundary can replace a failed descendant's rendered UI with a fallback. Use it around a recoverable part of the interface, and render the fallback with GTKX elements. React's [error boundary documentation](https://react.dev/reference/react/Component#catching-rendering-errors-with-an-error-boundary) describes the component contract.
 
 Boundaries do not catch ordinary event-handler failures or arbitrary rejected promises. Catch those failures in the signal handler or around the awaited operation, then update application state to show an error. A boundary also cannot recover from an addon panic that leaves the process unsafe to continue.
-
-## Next
-
-Continue with [Native Values](/v2/guide/native-values) to pass GTypes, GValues and integers to native methods.

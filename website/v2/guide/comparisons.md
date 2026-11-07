@@ -30,7 +30,3 @@ GTKX targets one platform and exposes all of it: every GTK and Adwaita widget an
 [gtk4-rs](https://gtk-rs.org/gtk4-rs/) is the Rust binding for GTK 4. Code builds and updates widgets imperatively, or loads them from UI templates. [Relm4](https://relm4.org) builds on gtk4-rs with an Elm-inspired component model and a `view!` macro that declares the UI. Both suit apps written in Rust. Neither provides hot reloading, a dev server or UI test automation; gtk4-rs's `#[gtk::test]` attribute runs a test on the GTK main thread, and driving the interface is left to the test.
 
 GTKX includes those tools along with React: a dev server with Fast Refresh, [tests](/v2/guide/testing) that find widgets by role and name and click and type into the real interface on a headless display, and [packaging](/v2/guide/deploying) for Flatpak, Debian, RPM and AppImage.
-
-## Next
-
-[Getting Started](/v2/guide/getting-started) opens a first window.

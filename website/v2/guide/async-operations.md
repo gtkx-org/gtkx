@@ -106,7 +106,3 @@ If no suitable method exists, the generated method stays callback-based and its 
 ## Moving work to a worker
 
 Move CPU-bound computation to a Node worker and send results to the UI thread. [Workers and Helper Processes](/v2/guide/workers) covers bundling, direct source loading in development, and native thread ownership.
-
-## Next
-
-Continue with [Error Handling](/v2/guide/error-handling) for matching GLib error domains and codes.

@@ -182,7 +182,3 @@ import bodyFont from "../data/fonts/Inter-Regular.otf?font";
 ```
 
 To add a font for fallback coverage without selecting it, use a side-effect import such as `import "../data/fonts/NotoSansKR.otf?font";`. See [Fonts](/v2/guide/assets#fonts) for font imports.
-
-## Next
-
-Continue with [Navigation](/v2/guide/navigation) to connect pages, headers and native back controls with an Adwaita navigator.

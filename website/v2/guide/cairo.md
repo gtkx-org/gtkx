@@ -102,7 +102,3 @@ After `$dispose()`, every call on the context throws. Calling `$dispose()` again
 Creating an image with an invalid size or loading a missing PNG throws. Queries that cannot return a value also throw: for example, reading gradient stops from a solid pattern or requesting rectangles for a circular clip. Reading pixels from a finished surface throws too.
 
 Drawing operations retain Cairo's status model. Check `cr.status()` after drawing; operations that return a `Status`, such as `writeToPng`, need their return value checked directly. Use `statusToString` when presenting an error.
-
-## Next
-
-Continue with [OpenGL](/v2/guide/opengl) to draw with the GPU inside a widget.

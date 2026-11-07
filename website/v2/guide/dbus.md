@@ -198,7 +198,3 @@ The application element registers the app on the session bus under its applicati
 ## GJS D-Bus wrappers
 
 GTKX has no equivalent of the `Gio.DBusProxy.makeProxyWrapper` and `Gio.DBusExportedObject.wrapJSObject` helpers from the [GJS D-Bus guide](https://gjs.guide/guides/gio/dbus.html). When porting, replace a proxy wrapper's methods with `proxy.call`, its signals with `g-signal` and its properties with `getCachedProperty`, and export a wrapped object with `registerObjectWithClosures2`. Exporting objects through `Gio.DBusObjectManagerServer` is not supported: it takes `Gio.DBusInterfaceSkeleton` implementations, and JavaScript cannot supply the method table a skeleton returns, so the bindings omit `vfuncGetVtable`.
-
-## Next
-
-Continue with [Workers and Helper Processes](/v2/guide/workers) to run computation away from the UI thread.

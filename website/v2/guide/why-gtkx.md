@@ -32,7 +32,3 @@ Libraries cover common app structure: [navigation](/v2/guide/navigation) maps Re
 ## Credits
 
 GTKX builds on [React](https://react.dev), [Vite](https://vite.dev), [Vitest](https://vitest.dev), [napi-rs](https://napi.rs), and [React Navigation](https://reactnavigation.org). Its GObject APIs follow the names and conventions of [GJS](https://gjs.guide).
-
-## Next
-
-[Comparisons](/v2/guide/comparisons) sets GTKX beside GJS, node-gtk, React Native, and gtk4-rs and Relm4. [Getting Started](/v2/guide/getting-started) opens a first window. The [tutorial](/v2/tutorial/) builds Tasks, a task manager with persistence and navigation.
