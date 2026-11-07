@@ -21,6 +21,7 @@
         "@gtkx/i18n": "workspace:*",
         "@gtkx/navigation": "workspace:*",
         "@gtkx/testing": "workspace:*",
+        "@react-navigation/core": "^7.24.0",
         "shiki": "^4.6.0",
         "typedoc": "^0.28.20",
         "typedoc-plugin-markdown": "^4.14.1",

@@ -1234,6 +1234,9 @@ importers:
       '@gtkx/testing':
         specifier: workspace:*
         version: link:../packages/testing
+      '@react-navigation/core':
+        specifier: ^7.24.0
+        version: 7.24.0(react@19.3.1)
       shiki:
         specifier: ^4.6.0
         version: 4.6.0
