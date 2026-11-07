@@ -81,13 +81,13 @@ const renderSignalMembers = (context: ModuleContext, klass: GirClass): string[] 
 
     return [
         renderBlock(
-            `connect<TThis, K extends ${signalName}<TThis>>(` +
+            `connect<TThis extends object, K extends ${signalName}<TThis>>(` +
                 `this: TThis & ${receiver}<TThis, "connect">, ` +
                 `signal: K, handler: ${handler}<TThis, K>, isAfter?: boolean): ${handlerId}`,
             "return connectSignalByName(this, signal, handler, isAfter);",
         ),
         renderBlock(
-            `emit<K extends ${emissionName}<TThis>, TThis = this>(` +
+            `emit<K extends ${emissionName}<TThis>, TThis extends object = this>(` +
                 `this: TThis & ${receiver}<TThis, "emit">, ` +
                 `sigName: K, ...args: ${args}<TThis, K>): ` +
                 `${result}<TThis, K>`,

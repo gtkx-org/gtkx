@@ -6,6 +6,7 @@ type CompileStoreParams = {
     storeDir: string;
     files: SourceModule[];
     packageName: string;
+    shouldKeepSources: boolean;
 };
 
 const compileStore = (params: CompileStoreParams): void => {
@@ -14,6 +15,10 @@ const compileStore = (params: CompileStoreParams): void => {
         files: params.files,
         label: `the generated ${params.packageName} store`,
     });
+
+    if (params.shouldKeepSources) {
+        return;
+    }
 
     for (const file of params.files) {
         rmSync(join(params.storeDir, file.fileName), { force: true });

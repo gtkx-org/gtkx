@@ -43,6 +43,7 @@ type FailedProjectInput = {
     error: unknown;
 };
 
+/** The compiler options codegen compiles generated modules with. */
 const BASE_COMPILER_OPTIONS = {
     module: "esnext",
     moduleResolution: "bundler",
@@ -425,4 +426,12 @@ const checkModules = (params: { modules: SourceModule[]; resolveFrom: string; la
     rmSync(keepAt, { recursive: true, force: true });
 };
 
-export { checkModules, emitModules, keepFailedProject, transpileDeclaration, type DiagnosedFile, type SourceModule };
+export {
+    BASE_COMPILER_OPTIONS,
+    checkModules,
+    emitModules,
+    keepFailedProject,
+    transpileDeclaration,
+    type DiagnosedFile,
+    type SourceModule,
+};

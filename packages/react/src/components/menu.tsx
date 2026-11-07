@@ -1,7 +1,6 @@
 import { createElement, type ElementType, type ReactNode } from "react";
 import * as Gio from "@gtkx/gi/gio";
-import type { CustomChildrenProps, MenuItemProps, MenuProps } from "../prop-types.js";
-import type { Props } from "../reconciler/registry.js";
+import type { ChildrenProps, CustomChildrenProps, MenuItemProps, MenuProps } from "../prop-types.js";
 import { createElementComponent, Prop } from "./element.js";
 
 const CUSTOM_CHILD_SLOT_PREFIX = "customChildren.";
@@ -42,13 +41,13 @@ const createMenuComponent = (Component: ElementType): ((props: MenuProps) => Rea
 };
 
 const createCustomChildrenComponent =
-    (Component: ElementType): ((props: CustomChildrenProps & Props) => ReactNode) =>
+    (Component: ElementType): ((props: CustomChildrenProps & ChildrenProps) => ReactNode) =>
     ({ customChildren, children, ...props }): ReactNode => (
         <Component {...props}>
             {Object.entries(customChildren ?? {}).map(([id, child]) =>
                 createElement(Prop, { propName: customChildSlot(id), key: id }, child),
             )}
-            {children as ReactNode}
+            {children}
         </Component>
     );
 

@@ -38,10 +38,10 @@ import {
     staticMembers,
 } from "./callables.js";
 import {
+    isAbstractClass,
     isFundamentalClass,
     renderClassConstructor,
     renderConstructorPropsInterface,
-    requiresFactoryInitialization,
 } from "./constructor-props.js";
 import { getDoc } from "./doc-spec.js";
 import { appendElementMetadata } from "./element-metadata.js";
@@ -149,9 +149,7 @@ const generateClass = (context: ModuleContext, klass: GirClass): void => {
 };
 
 const classModifier = (context: ModuleContext, klass: GirClass): string =>
-    klass.isAbstract || isFundamentalClass(context, klass) || requiresFactoryInitialization(context, klass)
-        ? "abstract "
-        : "";
+    isAbstractClass(context, klass) ? "abstract " : "";
 
 const declareClass = (context: ModuleContext, options: ClassDeclarationOptions): void => {
     const { klass, className, heritage, body, implemented } = options;

@@ -235,7 +235,7 @@ const renderConstructedRecord = (
 
     const statements = [
         ...(spec.isErrorSubclass ? ["super();"] : []),
-        `const __handle = getHandle(${constructorCall});`,
+        `const __handle = getHandle(${constructorCall} as ${spec.className});`,
         ...renderFieldWrites(context, slots),
         "setHandle(this, __handle);",
     ];

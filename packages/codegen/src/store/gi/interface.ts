@@ -20,6 +20,7 @@ import {
     isEmittableCallable,
     renderClassInstanceMember,
     renderInstanceMethodSignature,
+    renderShadowingClassInstanceMember,
     renderStaticHead,
 } from "./callables.js";
 import { annotationSpec, getDoc } from "./doc-spec.js";
@@ -504,9 +505,16 @@ const renderInterfaceExtension = (context: ModuleContext, className: string, cla
     return `${local}(${classExpression})`;
 };
 
+const MIXIN_RECEIVER_MEMBERS: Set<string> = new Set(["connect", "emit"]);
+
+const renderMixinInstanceMember: InstanceMemberRenderer = (context, callable, scope) =>
+    MIXIN_RECEIVER_MEMBERS.has(methodExportName(callable))
+        ? renderShadowingClassInstanceMember(context, callable, scope)
+        : renderClassInstanceMember(context, callable, scope);
+
 const renderInterfaceInstanceMembers = (context: ModuleContext, iface: GirClass, callables: Callables): string[] => [
     ...renderInterfaceMembers(context, iface, callables, {
-        renderMethod: renderClassInstanceMember,
+        renderMethod: renderMixinInstanceMember,
         renderProperty: renderPropertyAccessor,
     }),
     ...interfaceVfuncMembers(context, iface, "implementation"),
