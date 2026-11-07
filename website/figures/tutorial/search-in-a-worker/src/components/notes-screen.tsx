@@ -38,7 +38,7 @@ const NoteRow = ({ note }: { note: Note }) => (
             xalign={0}
             ellipsize={Pango.EllipsizeMode.END}
             singleLineMode
-            cssClasses={["dim-label", "caption"]}
+            cssClasses={["dimmed", "caption"]}
         />
     </GtkBox>
 );

@@ -38,7 +38,7 @@ The fixtures are two notes in `tests/fixtures/`: `Groceries.md` with a heading a
 
 ## Run the tests
 
-Delete the scaffold's starter test, `tests/app.test.tsx`, which looks for the counter. Install the [headless test dependencies](/v2/guide/testing#setup), then run `npm test`.
+Install the [headless test dependencies](/v2/guide/testing#setup), then run `npm test`.
 
 ## Run it
 

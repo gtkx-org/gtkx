@@ -62,7 +62,7 @@ const CodeBlock = ({ node }: { node: Code }) => (
 const QuoteBlock = ({ node }: { node: Blockquote }) => (
     <GtkBox spacing={12}>
         <GtkSeparator orientation={Gtk.Orientation.VERTICAL} />
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} hexpand cssClasses={["dim-label"]}>
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12} hexpand cssClasses={["dimmed"]}>
             <Blocks nodes={node.children} />
         </GtkBox>
     </GtkBox>
@@ -101,7 +101,7 @@ const Block = ({ node }: { node: RootContent }) => {
         case "thematicBreak":
             return <GtkSeparator />;
         case "html":
-            return <TextBlock markup={toMarkup([node])} cssClasses={["monospace", "dim-label"]} />;
+            return <TextBlock markup={toMarkup([node])} cssClasses={["monospace", "dimmed"]} />;
         default:
             return null;
     }

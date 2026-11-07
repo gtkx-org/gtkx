@@ -95,7 +95,7 @@ const QuoteBlock = ({ node }: { node: Blockquote }) => (
             orientation={Gtk.Orientation.VERTICAL}
             spacing={12}
             hexpand
-            cssClasses={["dim-label"]}
+            cssClasses={["dimmed"]}
         >
             <Blocks nodes={node.children} />
         </GtkBox>
@@ -145,7 +145,7 @@ const Block = ({ node }: { node: RootContent }) => {
             return (
                 <TextBlock
                     markup={toMarkup([node])}
-                    cssClasses={["monospace", "dim-label"]}
+                    cssClasses={["monospace", "dimmed"]}
                 />
             );
         default:
