@@ -65,6 +65,8 @@ const guideGroups: DocumentationGroup[] = [
         items: [
             { text: "Native Values", path: "guide/native-values" },
             { text: "Async Operations", path: "guide/async-operations" },
+            { text: "D-Bus", path: "guide/dbus" },
+            { text: "Application Lifecycle", path: "guide/application-lifecycle" },
             { text: "Workers and Helper Processes", path: "guide/workers" },
             { text: "Subclassing GObject", path: "guide/subclassing" },
             { text: "Cairo", path: "guide/cairo" },

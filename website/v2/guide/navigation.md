@@ -146,7 +146,7 @@ export const App = () => {
 };
 ```
 
-`initialRouteName` keeps the list beneath a linked note, so Back returns to it. `getPathFromState(state, linking)` turns a state back into a path, for example to copy a link to the visible page. During development, pass a URI after `--`, as in `pnpm dev -- notes://note/42`; see [command-line apps](/v2/guide/async-operations#command-line-apps).
+`initialRouteName` keeps the list beneath a linked note, so Back returns to it. `getPathFromState(state, linking)` turns a state back into a path, for example to copy a link to the visible page. During development, pass a URI after `--`, as in `pnpm dev -- notes://note/42`; see [command-line apps](/v2/guide/application-lifecycle#command-line-apps).
 
 ## Stack navigator
 

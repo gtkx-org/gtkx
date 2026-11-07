@@ -101,7 +101,7 @@ npm run deploy -- --target rpm
 
 The finished package is under `build/out`. Install it on a compatible system and open the application from
 the desktop launcher to check the packaged build. Even `--help` needs a display, so run command-line smoke tests
-in a desktop session or a virtual display; see [Command-line apps](/v2/guide/async-operations#command-line-apps). To package an existing production build:
+in a desktop session or a virtual display; see [Command-line apps](/v2/guide/application-lifecycle#command-line-apps). To package an existing production build:
 
 ```bash
 gtkx build

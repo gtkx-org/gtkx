@@ -128,7 +128,7 @@ Import `Variant` from `@gtkx/gi/glib`; its `ByteArray` type is now `VariantByteA
 
 The `toVariant` and `fromVariant` helpers are removed. Replace `toVariant(signature, value)` with `new GLib.Variant(signature, value)`, `fromVariant(value)` with `value.deepUnpack()`, and recursive `fromVariant` calls with `value.recursiveUnpack()`. For native replies, `fromVariant("(s)", reply)` becomes `reply.deepUnpack<"(s)">()`. `FromVariantOptions` and `RecursiveFromVariantOptions` are removed too.
 
-Variant dictionaries now use objects for every key type; replace `Map` inputs and reads with object properties. GTKX continues to use exact `bigint` values for 64-bit integers. See [Calling D-Bus directly](/v2/guide/async-operations#calling-d-bus-directly) for the unpacking modes and GJS compatibility aliases.
+Variant dictionaries now use objects for every key type; replace `Map` inputs and reads with object properties. GTKX continues to use exact `bigint` values for 64-bit integers. See [GVariant packing and unpacking](/v2/guide/dbus#gvariant-packing-and-unpacking) for the unpacking modes and GJS compatibility aliases.
 
 ## Move GObject ownership into JSX
 
