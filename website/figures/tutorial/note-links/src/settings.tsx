@@ -4,7 +4,7 @@ import { t } from "@gtkx/i18n";
 import { GSettings } from "@gtkx/jsx/gio";
 import { createPortal, rootElement } from "@gtkx/react";
 import { createContext, type ReactNode, use, useState } from "react";
-import schema from "../../preferences-and-theming/data/dev.gtkx.Notes.gschema.xml";
+import schema from "../data/dev.gtkx.Notes.gschema.xml";
 
 type ColorScheme = (typeof schema.values)["color-scheme"][number];
 
