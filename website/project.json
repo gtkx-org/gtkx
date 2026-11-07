@@ -125,10 +125,20 @@
                 "cwd": "website"
             }
         },
+        "codegen-figures": {
+            "command": "gtkx codegen",
+            "cache": true,
+            "dependsOn": ["^build"],
+            "inputs": ["{projectRoot}/figures/**/*", "^production"],
+            "outputs": ["{projectRoot}/figures/node_modules/.gtkx"],
+            "options": {
+                "cwd": "{projectRoot}/figures"
+            }
+        },
         "typecheck-figures": {
             "command": "tsc --build figures/tsconfig.json",
             "cache": true,
-            "dependsOn": ["^build", "gtkx:bindings"],
+            "dependsOn": ["^build", "gtkx:bindings", "codegen-figures"],
             "inputs": ["{projectRoot}/figures/**/*", "sharedGlobals", "^production"],
             "outputs": ["{projectRoot}/figures/out-tsc", "{projectRoot}/figures/tsconfig.tsbuildinfo"],
             "options": {

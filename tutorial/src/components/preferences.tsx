@@ -6,7 +6,7 @@ import { AdwActionRow, AdwPreferencesDialog, AdwPreferencesGroup, AdwPreferences
 import { GtkButton, GtkFileDialog } from "@gtkx/jsx/gtk";
 import { createPortal, rootElement, useParentWindow, useSetting } from "@gtkx/react";
 import { useState } from "react";
-import { defaultFolder } from "../notes/files.js";
+import { defaultFolder, displayFolder } from "../notes/files.js";
 import { colorSchemeItems, schema, toColorScheme, useAppSettings } from "../settings.js";
 
 const isDismissal = (error: unknown): boolean =>
@@ -41,7 +41,7 @@ const FolderRow = ({ onError }: { onError: (error: unknown) => void }) => {
             {createPortal(<GtkFileDialog ref={setDialog} title={t("Choose a Notes Folder")} />, rootElement)}
             <AdwActionRow
                 title={t("Notes Folder")}
-                subtitle={folder === "" ? defaultFolder() : folder}
+                subtitle={displayFolder(folder === "" ? defaultFolder() : folder)}
                 suffix={
                     <>
                         {folder !== "" && (

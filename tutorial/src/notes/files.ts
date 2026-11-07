@@ -9,6 +9,12 @@ const EXTENSION = ".md";
 const defaultFolder = (): string =>
     join(GLib.getUserSpecialDir(GLib.UserDirectory.DIRECTORY_DOCUMENTS) ?? GLib.getHomeDir(), "Notes");
 
+const displayFolder = (path: string): string => {
+    const home = GLib.getHomeDir();
+
+    return path.startsWith(`${home}/`) ? `~${path.slice(home.length)}` : path;
+};
+
 const noteName = (fileName: string): string | null =>
     fileName.endsWith(EXTENSION) && !fileName.startsWith(".") ? fileName.slice(0, -EXTENSION.length) : null;
 
@@ -97,6 +103,7 @@ const createNote = async (folder: string, base: string, text: string): Promise<s
 export {
     createNote,
     defaultFolder,
+    displayFolder,
     isValidName,
     linkedNoteName,
     noteName,

@@ -5,6 +5,7 @@
         "tsBuildInfoFile": "${configDir}/tsconfig.tsbuildinfo",
         "emitDeclarationOnly": true
     },
+    "files": ["${configDir}/node_modules/.gtkx/env.d.ts"],
     "include": [
         "${configDir}/**/*.tsx",
         "${configDir}/setup.ts",
