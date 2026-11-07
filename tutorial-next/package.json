@@ -10,6 +10,7 @@
     },
     "scripts": {
         "dev": "gtkx dev",
+        "storybook": "gtkx storybook",
         "build": "gtkx build",
         "codegen": "gtkx codegen",
         "test": "vitest run && npm run test:i18n",
@@ -33,6 +34,7 @@
     "devDependencies": {
         "@gtkx/cli": "^2.0.0-beta.12",
         "@gtkx/config": "^2.0.0-beta.12",
+        "@gtkx/storybook": "^2.0.0-beta.12",
         "@gtkx/testing": "^2.0.0-beta.12",
         "@types/mdast": "^4.0.4",
         "@types/node": "^26.6.6",
