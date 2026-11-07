@@ -1,20 +1,21 @@
 import { defineConfig } from "@gtkx/config";
 
 export default defineConfig({
-    applicationId: "com.gtkx.tutorial",
+    libraries: ["GtkSource-5"],
+    applicationId: "dev.gtkx.Notes",
     applicationIcon: "data/icons",
     deploy: {
-        name: "Tasks",
-        genericName: "Task Manager",
-        binaryName: "gtkx-tutorial",
-        summary: "Manage your tasks and to-dos",
+        name: "Notes",
+        genericName: "Markdown Notes",
+        binaryName: "gtkx-notes",
+        summary: "Write Markdown notes kept as plain files",
         description: [
-            "A GNOME task manager built with GTKX, demonstrating how to build React-based Adwaita applications.",
-            "It shows an adaptive sidebar layout, boxed lists, a task editor, GSettings-backed preferences, " +
-                "undo toasts, drag-to-reorder, desktop notifications, and local JSON persistence.",
+            "Notes keeps each note as a Markdown file in a folder, so notes sync with any tool and outlive the app.",
+            "It previews Markdown, searches the full text, filters by tag, completes links to other notes, " +
+                "and shows changes made by other editors or sync tools as they happen.",
         ],
-        categories: ["Office", "ProjectManagement"],
-        keywords: ["Task", "Tasks", "Todo", "To-do", "Checklist"],
+        categories: ["Utility", "TextEditor"],
+        keywords: ["Notes", "Markdown", "Notebook", "Writing"],
         developer: { id: "dev.gtkx", name: "GTKX", email: "hello@gtkx.dev" },
         homepage: "https://gtkx.dev",
         urls: {
@@ -22,15 +23,17 @@ export default defineConfig({
             "vcs-browser": "https://github.com/gtkx-org/gtkx",
         },
         screenshots: [
-            { file: "assets/screenshot.png", caption: "Browsing task lists in the sidebar", isDefault: true },
-            { file: "assets/screenshot-editor.png", caption: "Editing a task" },
+            { file: "assets/screenshot.png", caption: "Reading a note as rendered Markdown", isDefault: true },
+            { file: "assets/screenshot-editor.png", caption: "Writing Markdown with syntax highlighting" },
         ],
-        releases: [{ version: "1.0.0", date: "2026-07-13", notes: ["Initial release."] }],
-        branding: { light: "#3584e4", dark: "#1a5fb4" },
+        releases: [{ version: "1.0.0", date: "2026-11-07", notes: ["Initial release."] }],
+        branding: { light: "#f8e45c", dark: "#865e3c" },
         contentRating: {},
         isDbusActivatable: true,
-        desktopEntry: { "X-GNOME-UsesNotifications": "true" },
         screenshotBaseUrl: "https://raw.githubusercontent.com/gtkx-org/gtkx/main/tutorial",
         targets: ["flatpak", "deb", "rpm", "appimage"],
+        flatpak: {
+            finishArgs: ["--filesystem=xdg-documents/Notes:create"],
+        },
     },
 });

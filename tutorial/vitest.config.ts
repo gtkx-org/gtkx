@@ -6,7 +6,6 @@ export default defineConfig({
     test: {
         include: ["tests/**/*.test.{ts,tsx}"],
         setupFiles: ["./tests/setup.ts"],
-        bail: 1,
         env: {
             LANG: "C.UTF-8",
             LANGUAGE: "en",

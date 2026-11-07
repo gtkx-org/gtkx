@@ -26,6 +26,9 @@
             "path": "../../packages/css/tsconfig.lib.json"
         },
         {
+            "path": "../../packages/i18n/tsconfig.lib.json"
+        },
+        {
             "path": "../../packages/navigation/tsconfig.lib.json"
         },
         {

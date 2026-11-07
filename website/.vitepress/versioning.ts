@@ -108,6 +108,29 @@ const guideItems: DocumentationItem[] = guideGroups.flatMap((group) => group.ite
 const tutorialItems: DocumentationItem[] = [
     { text: "Introduction", path: TUTORIAL_ROOT },
     { text: "Create a Window", path: "tutorial/your-first-window" },
+    { text: "List the Notes", path: "tutorial/the-notes-folder" },
+    { text: "Edit a Note", path: "tutorial/the-note-editor" },
+    { text: "Save and Watch Files", path: "tutorial/saving-and-watching" },
+    { text: "Render the Preview", path: "tutorial/the-markdown-preview" },
+    { text: "Develop with Fast Refresh", path: "tutorial/fast-refresh" },
+    { text: "Adapt the Layout", path: "tutorial/an-adaptive-layout" },
+    { text: "Search in a Worker", path: "tutorial/search-in-a-worker" },
+    { text: "Filter by Tag", path: "tutorial/tags-and-front-matter" },
+    { text: "Add Menus and Shortcuts", path: "tutorial/actions-menus-shortcuts" },
+    { text: "Rename, Trash, and Undo", path: "tutorial/trash-and-toasts" },
+    { text: "Add Preferences", path: "tutorial/preferences-and-theming" },
+    { text: "Complete Note Links", path: "tutorial/note-links" },
+    { text: "Develop the Preview in Storybook", path: "tutorial/storybook" },
+    { text: "Test the App", path: "tutorial/testing" },
+    { text: "Inspect with MCP", path: "tutorial/mcp" },
+    { text: "Translate the App", path: "tutorial/internationalization" },
+    { text: "Package the App", path: "tutorial/packaging" },
+    { text: "Prepare for Flathub", path: "tutorial/flatpak" },
+];
+
+const tasksTutorialItems: DocumentationItem[] = [
+    { text: "Introduction", path: TUTORIAL_ROOT },
+    { text: "Create a Window", path: "tutorial/your-first-window" },
     { text: "Display Tasks", path: "tutorial/a-list-of-tasks" },
     { text: "Add Tasks", path: "tutorial/the-task-store" },
     { text: "Complete, Star, and Delete Tasks", path: "tutorial/completing-and-deleting" },
@@ -127,7 +150,27 @@ const tutorialItems: DocumentationItem[] = [
     { text: "Prepare for Flathub", path: "tutorial/flatpak" },
 ];
 
-const documentationItems: DocumentationItem[] = [...guideItems, ...tutorialItems];
+const tutorialItemsByVersion = new Map<string, DocumentationItem[]>([["1.6", tasksTutorialItems]]);
+
+const tutorialPointerPaths: string[] = [
+    "tutorial/a-list-of-tasks",
+    "tutorial/the-task-store",
+    "tutorial/completing-and-deleting",
+    "tutorial/saving-to-disk",
+    "tutorial/lists-and-the-sidebar",
+    "tutorial/smart-views-and-search",
+    "tutorial/the-task-editor",
+    "tutorial/drag-to-reorder",
+    "tutorial/reminders",
+];
+
+const versionTutorialItems = (version: DocumentationVersion): DocumentationItem[] =>
+    tutorialItemsByVersion.get(version.id) ?? tutorialItems;
+
+const versionDocumentationItems = (version: DocumentationVersion): DocumentationItem[] => [
+    ...guideItems,
+    ...versionTutorialItems(version),
+];
 
 const STATUSES: ReadonlySet<string> = new Set<VersionStatus>(["current", "prerelease", "old"]);
 
@@ -353,7 +396,6 @@ const resolveVersionPath = (currentPath: string, target: DocumentationVersion, h
 export {
     currentVersion,
     type DocumentationItem,
-    documentationItems,
     documentationLink,
     type DocumentationVersion,
     featuredVersion,
@@ -367,9 +409,11 @@ export {
     retentionPolicy,
     rootVersion,
     TUTORIAL_ROOT,
-    tutorialItems,
+    tutorialPointerPaths,
     versionById,
+    versionDocumentationItems,
     versionForPath,
     type VersionLink,
     versions,
+    versionTutorialItems,
 };

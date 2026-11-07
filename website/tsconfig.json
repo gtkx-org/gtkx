@@ -18,10 +18,13 @@
     "exclude": ["node_modules", ".vitepress/cache", ".vitepress/dist", "figures"],
     "references": [
         {
+            "path": "../packages/css"
+        },
+        {
             "path": "../packages/cli"
         },
         {
-            "path": "../packages/css"
+            "path": "../packages/i18n"
         },
         {
             "path": "../packages/components"

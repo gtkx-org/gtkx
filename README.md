@@ -74,14 +74,14 @@ The CLI generates `@gtkx/jsx` elements and `@gtkx/gi` bindings from your configu
 ## Learn GTKX
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/gtkx-org/gtkx/main/tutorial/assets/screenshot.png" alt="The Tasks app: an Adwaita window with a sidebar of smart views and colored lists on the left, and a boxed task list on the right." />
+  <img src="https://raw.githubusercontent.com/gtkx-org/gtkx/main/tutorial/assets/screenshot.png" alt="The Notes app: an Adwaita window with a list of notes on the left and a note rendered as Markdown on the right." />
 </p>
 
 <p align="center">
-  <em>The Tasks app you build in the <a href="https://gtkx.dev/v2/tutorial/">tutorial</a>.</em>
+  <em>The Notes app you build in the <a href="https://gtkx.dev/v2/tutorial/">tutorial</a>.</em>
 </p>
 
-- [Tutorial](https://gtkx.dev/v2/tutorial/): build the Tasks app, test it, and package it for distribution.
+- [Tutorial](https://gtkx.dev/v2/tutorial/): build the Notes app, test it, and package it for distribution.
 - [Guides](https://gtkx.dev/v2/guide/why-gtkx): forms, navigation, animation, styling, testing, and deployment.
 - [API reference](https://gtkx.dev/v2/reference/): GTKX package exports. Widget props are documented in the generated `.gtkx/reference/` in your app.
 - [Examples](https://github.com/gtkx-org/gtkx/tree/main/examples): a counter, browser, widget showcase, animations, navigation, and component stories.

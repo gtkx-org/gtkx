@@ -8,7 +8,6 @@ import { highlightPlugin } from "./highlight.js";
 import {
     currentVersion,
     type DocumentationItem,
-    documentationItems,
     documentationLink,
     type DocumentationVersion,
     GUIDE_ROOT,
@@ -20,10 +19,12 @@ import {
     retentionPolicy,
     rootVersion,
     TUTORIAL_ROOT,
-    tutorialItems,
+    tutorialPointerPaths,
+    versionDocumentationItems,
     versionForPath,
     type VersionLink,
     versions,
+    versionTutorialItems,
 } from "./versioning.js";
 
 const title = "GTKX";
@@ -67,7 +68,7 @@ const sectionRoutes = (version: DocumentationVersion, section: string): string[]
 
 const versionRoutes = (version: DocumentationVersion): Set<string> => {
     const routes = sectionDirectories.flatMap((section) => sectionRoutes(version, section));
-    const known = new Set(documentationItems.map((item) => item.path));
+    const known = new Set([...versionDocumentationItems(version).map((item) => item.path), ...tutorialPointerPaths]);
     const unlisted = routes.filter((route) => !known.has(route));
 
     if (unlisted.length > 0) {
@@ -158,7 +159,7 @@ const guideSidebar = (version: DocumentationVersion): DefaultTheme.SidebarItem[]
 ];
 
 const tutorialSidebar = (version: DocumentationVersion): DefaultTheme.SidebarItem[] => [
-    { text: "Tutorial", items: sidebarItems(version, tutorialItems) },
+    { text: "Tutorial", items: sidebarItems(version, versionTutorialItems(version)) },
 ];
 
 const contributingLinks = contributingItems.map((item) => ({ text: item.text, link: `/${item.path}` }));
@@ -334,7 +335,7 @@ const loadDocumentationVersion = async (
     sources: await loadDocumentationSources(
         sourceDirectory,
         outputDirectory,
-        sidebarItems(version, documentationItems),
+        sidebarItems(version, versionDocumentationItems(version)),
     ),
 });
 

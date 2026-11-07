@@ -121,7 +121,7 @@ Leave `selectedIndex` out for native selection, or set it to keep selection unde
 
 GTKX suppresses `onRowSelected` while applying its own selection updates and while a commit adds or removes rows, so removing the selected row from your state doesn't call it with `null`. Other native selection changes still reach the handler, including changes made through native methods. Update the controlled value in that handler to keep the new selection; otherwise GTKX restores the requested row.
 
-The tutorial's [sidebar](/v2/tutorial/lists-and-the-sidebar#keeping-gtk4-and-the-route-in-agreement) controls selection from the current route.
+The tutorial's [note list](/v2/tutorial/the-note-editor#select-the-open-note) controls selection from the current route.
 
 ## Tabs
 

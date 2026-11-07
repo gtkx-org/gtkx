@@ -1,49 +1,101 @@
 import { ComboRow } from "@gtkx/components";
+import type * as Gio from "@gtkx/gi/gio";
+import * as Gtk from "@gtkx/gi/gtk";
 import { t } from "@gtkx/i18n";
-import { AdwPreferencesDialog, AdwPreferencesGroup, AdwPreferencesPage, AdwSpinRow } from "@gtkx/jsx/adw";
-import { GtkAdjustment } from "@gtkx/jsx/gtk";
-import { useSetting } from "@gtkx/react";
-import schema from "../../data/com.gtkx.tutorial.gschema.xml";
-import { useSortOrder } from "../hooks/use-sort-order.js";
-import { type ColorScheme, colorSchemeItems, type SortOrder, sortOrderItems } from "../settings.js";
-import { useAppSettings } from "./settings.js";
+import { AdwActionRow, AdwPreferencesDialog, AdwPreferencesGroup, AdwPreferencesPage } from "@gtkx/jsx/adw";
+import { GtkButton, GtkFileDialog } from "@gtkx/jsx/gtk";
+import { createPortal, rootElement, useParentWindow, useSetting } from "@gtkx/react";
+import { useState } from "react";
+import { defaultFolder } from "../notes/files.js";
+import { colorSchemeItems, schema, toColorScheme, useAppSettings } from "../settings.js";
 
-const Preferences = ({ onClose }: { onClose: () => void }) => {
+const isDismissal = (error: unknown): boolean =>
+    error instanceof Gtk.DialogError &&
+    (error.code === Gtk.DialogError.DISMISSED || error.code === Gtk.DialogError.CANCELLED);
+
+const FolderRow = ({ onError }: { onError: (error: unknown) => void }) => {
     const settings = useAppSettings();
-    const [scheme, setScheme] = useSetting(settings, schema, "color-scheme");
-    const [sortOrder, setSortOrder] = useSortOrder();
-    const [reminderMinutes, setReminderMinutes] = useSetting(settings, schema, "reminder-minutes");
+    const parentWindow = useParentWindow();
+    const [folder, setFolder] = useSetting(settings, schema, "folder");
+    const [dialog, setDialog] = useState<Gtk.FileDialog | null>(null);
+
+    const choose = async (fileDialog: Gtk.FileDialog): Promise<void> => {
+        let file: Gio.File;
+        try {
+            file = await fileDialog.selectFolder(parentWindow);
+        } catch (error) {
+            if (!isDismissal(error)) {
+                onError(error);
+            }
+
+            return;
+        }
+        const path = file.getPath();
+        if (path !== null) {
+            setFolder(path);
+        }
+    };
+
+    return (
+        <>
+            {createPortal(<GtkFileDialog ref={setDialog} title={t("Choose a Notes Folder")} />, rootElement)}
+            <AdwActionRow
+                title={t("Notes Folder")}
+                subtitle={folder === "" ? defaultFolder() : folder}
+                suffix={
+                    <>
+                        {folder !== "" && (
+                            <GtkButton
+                                iconName="edit-undo-symbolic"
+                                tooltipText={t("Use the Default Folder")}
+                                valign={Gtk.Align.CENTER}
+                                cssClasses={["flat"]}
+                                onClicked={() => setFolder("")}
+                            />
+                        )}
+                        <GtkButton
+                            iconName="folder-open-symbolic"
+                            tooltipText={t("Choose Folder")}
+                            valign={Gtk.Align.CENTER}
+                            cssClasses={["flat"]}
+                            sensitive={dialog !== null}
+                            onClicked={() => {
+                                if (dialog !== null) {
+                                    void choose(dialog);
+                                }
+                            }}
+                        />
+                    </>
+                }
+            />
+        </>
+    );
+};
+
+type PreferencesProps = { onClose: () => void; onError: (error: unknown) => void };
+
+const Preferences = ({ onClose, onError }: PreferencesProps) => {
+    const settings = useAppSettings();
+    const [colorScheme, setColorScheme] = useSetting(settings, schema, "color-scheme");
 
     return (
         <AdwPreferencesDialog onClosed={onClose} title={t("Preferences")}>
             <AdwPreferencesPage title={t("General")} iconName="preferences-system-symbolic">
                 <AdwPreferencesGroup title={t("Appearance")}>
                     <ComboRow
-                        title={t("Theme")}
+                        title={t("Style")}
                         items={colorSchemeItems()}
-                        selectedId={scheme}
+                        selectedId={colorScheme}
                         onSelectionChanged={(id) => {
-                            setScheme(id as ColorScheme);
+                            const scheme = toColorScheme(id);
+                            if (scheme !== undefined) {
+                                setColorScheme(scheme);
+                            }
                         }}
                     />
                 </AdwPreferencesGroup>
-                <AdwPreferencesGroup title={t("Tasks")}>
-                    <ComboRow
-                        title={t("Sort order")}
-                        items={sortOrderItems()}
-                        selectedId={sortOrder}
-                        onSelectionChanged={(id) => {
-                            setSortOrder(id as SortOrder);
-                        }}
-                    />
-                    <AdwSpinRow
-                        title={t("Reminder lead time")}
-                        subtitle={t("Minutes before a task is due")}
-                        adjustment={<GtkAdjustment value={reminderMinutes} lower={0} upper={1440} stepIncrement={5} />}
-                        onNotifyValue={(value) => {
-                            setReminderMinutes(value as number);
-                        }}
-                    />
+                <AdwPreferencesGroup title={t("Storage")}>
+                    <FolderRow onError={onError} />
                 </AdwPreferencesGroup>
             </AdwPreferencesPage>
         </AdwPreferencesDialog>

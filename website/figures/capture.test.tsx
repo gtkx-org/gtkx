@@ -1,10 +1,9 @@
 import * as Adw from "@gtkx/gi/adw";
-import * as Gtk from "@gtkx/gi/gtk";
 import { AdwApplication, AdwApplicationWindow, AdwHeaderBar, AdwToolbarView } from "@gtkx/jsx/adw";
 import { GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { NavigationContainer } from "@gtkx/navigation";
 import { rootElement } from "@gtkx/react";
-import { render, screen, waitFor } from "@gtkx/testing";
+import { render, screen } from "@gtkx/testing";
 import { fileURLToPath } from "node:url";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
@@ -19,14 +18,8 @@ import { RenameDialog } from "./guide/modals-rename-dialog.js";
 import { App as DrawerApp } from "./guide/navigation-drawer.js";
 import { Mail as SplitMail } from "./guide/navigation-split-view.js";
 import { Notes } from "./guide/navigation-stack.js";
+import { App as FirstWindow } from "./tutorial/your-first-window/src/app.js";
 import { Mail as TabMail } from "./guide/navigation-tabs.js";
-import { App as ListOfTasks } from "./tutorial/a-list-of-tasks/src/app.js";
-import { App as TaskStore } from "./tutorial/the-task-store/src/app.js";
-import { App as CompletingAndDeleting } from "./tutorial/completing-and-deleting/src/app.js";
-import { App as ListsAndTheSidebar } from "./tutorial/lists-and-the-sidebar/src/app.js";
-import { App as AnAdaptiveLayout } from "./tutorial/an-adaptive-layout/src/app.js";
-import { App as SmartViewsAndSearch } from "./tutorial/smart-views-and-search/src/app.js";
-import { App as FirstWindow } from "./tutorial/your-first-window.js";
 
 const outputDir = fileURLToPath(new URL("../public/figures/", import.meta.url));
 
@@ -77,28 +70,8 @@ function NavigationWindow({
     );
 }
 
-const resizeWindow = (width: number, height: number) => async (): Promise<void> => {
-    const window = screen.getByText("Welcome to Tasks").getRoot();
-
-    if (!(window instanceof Gtk.Window)) {
-        throw new Error("the task list has no window");
-    }
-
-    window.setDefaultSize(width, height);
-    await waitFor(() => {
-        expect(window.getWidth()).toBe(width);
-        expect(window.getHeight()).toBe(height);
-    });
-};
-
 const figures: [name: string, element: ReactNode, prepare?: () => Promise<void>][] = [
     ["tutorial-your-first-window", <FirstWindow />],
-    ["tutorial-a-list-of-tasks", <ListOfTasks />],
-    ["tutorial-the-task-store", <TaskStore />],
-    ["tutorial-completing-and-deleting", <CompletingAndDeleting />],
-    ["tutorial-lists-and-the-sidebar", <ListsAndTheSidebar />],
-    ["tutorial-an-adaptive-layout", <AnAdaptiveLayout />, resizeWindow(360, 294)],
-    ["tutorial-smart-views-and-search", <SmartViewsAndSearch />, resizeWindow(720, 480)],
     [
         "guide-components-list-view",
         <SampleWindow title="ListView">

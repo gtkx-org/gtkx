@@ -1,14 +1,14 @@
-# French translations for GTKX Tasks.
+# French translations for GTKX Notes.
 # Copyright (C) 2026 GTKX contributors
-# This file is distributed under the same license as the gtkx-tutorial package.
+# This file is distributed under the same license as the gtkx-notes package.
 # GTKX contributors, 2026.
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: gtkx-tutorial 1.0.0\n"
+"Project-Id-Version: dev.gtkx.Notes\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-23 15:17+0200\n"
-"PO-Revision-Date: 2026-08-26 23:34+0200\n"
+"POT-Creation-Date: 2026-11-07 18:17+0100\n"
+"PO-Revision-Date: 2026-11-07 17:58+0100\n"
 "Last-Translator: GTKX contributors\n"
 "Language-Team: French\n"
 "Language: fr\n"
@@ -17,58 +17,33 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 
-#: src/components/about.tsx:11 src/components/preferences.tsx:30
-#: src/components/shortcuts.tsx:12 src/components/window.tsx:90
-#: src/components/window.tsx:134 src/store/selectors.ts:18
-#: po/.gtkx-metadata/com.gtkx.tutorial.template.desktop:3
-#: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:4
-#: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:25
-msgid "Tasks"
-msgstr "Tâches"
+#: src/components/about.tsx:10 src/components/notes-screen.tsx:79
+#: src/components/shortcuts.tsx:12 src/components/window.tsx:36
+#: src/components/window.tsx:80
+#: po/.gtkx-metadata/dev.gtkx.Notes.template.desktop:3
+#: po/.gtkx-metadata/dev.gtkx.Notes.template.metainfo.xml:4
+#: po/.gtkx-metadata/dev.gtkx.Notes.template.metainfo.xml:25
+msgid "Notes"
+msgstr "Notes"
 
-#: src/components/about.tsx:19
+#: src/components/about.tsx:18
 msgid "GTKX Contributors"
 msgstr "Contributeurs GTKX"
 
-#: src/components/about.tsx:20
-msgid "A GNOME task manager built with GTKX to showcase React and Adwaita."
-msgstr "Un gestionnaire de tâches GNOME construit avec GTKX pour présenter React et Adwaita."
-
-#: src/components/delete-confirmation.tsx:14
-msgid "Delete Task?"
-msgstr "Supprimer la tâche ?"
-
-#: src/components/delete-confirmation.tsx:15
-msgid "“{{title}}” will be permanently deleted. This cannot be undone."
-msgstr "« {{title}} » sera définitivement supprimée. Cette action est irréversible."
-
-#: src/components/delete-confirmation.tsx:19
-#: src/components/new-list-dialog.tsx:53
-msgid "Cancel"
-msgstr "Annuler"
-
-#: src/components/delete-confirmation.tsx:20
-msgid "Delete"
-msgstr "Supprimer"
-
-#: src/components/dialogs.tsx:26
-msgid "“{{title}}” moved to Trash"
-msgstr "« {{title}} » a été déplacée dans la corbeille"
-
-#: src/components/dialogs.tsx:27
-msgid "Undo"
-msgstr "Annuler"
+#: src/components/about.tsx:19
+msgid "Markdown notes kept as plain files, built with GTKX."
+msgstr "Des notes Markdown gardées en fichiers ordinaires, construites avec GTKX."
 
 #: src/components/main-menu.tsx:9
 msgid "Main Menu"
 msgstr "Menu principal"
 
-#: src/components/main-menu.tsx:13 src/components/window-actions.tsx:13
-msgid "New Task"
-msgstr "Nouvelle tâche"
+#: src/components/main-menu.tsx:13 src/components/notes-screen.tsx:104
+msgid "New Note"
+msgstr "Nouvelle note"
 
-#: src/components/main-menu.tsx:16 src/components/preferences.tsx:18
-#: src/components/shortcuts.tsx:9
+#: src/components/main-menu.tsx:16 src/components/preferences.tsx:82
+#: src/components/shortcuts.tsx:8
 msgid "Preferences"
 msgstr "Préférences"
 
@@ -76,343 +51,254 @@ msgstr "Préférences"
 msgid "Keyboard Shortcuts"
 msgstr "Raccourcis clavier"
 
-#: src/components/main-menu.tsx:20
-msgid "About Tasks"
-msgstr "À propos de Tâches"
+#: src/components/main-menu.tsx:18
+msgid "About Notes"
+msgstr "À propos de Notes"
 
-#: src/components/new-list-dialog.tsx:24
-msgid "Color {{color}}"
-msgstr "Couleur {{color}}"
+#: src/components/note-menu.tsx:8
+msgid "Preview (Ctrl+Shift+P)"
+msgstr "Aperçu (Ctrl+Maj+P)"
 
-#: src/components/new-list-dialog.tsx:49 src/components/window.tsx:49
-msgid "New List"
-msgstr "Nouvelle liste"
+#: src/components/note-menu.tsx:16
+msgid "Note Menu"
+msgstr "Menu de la note"
 
-#: src/components/new-list-dialog.tsx:56
-msgid "Add"
-msgstr "Ajouter"
+#: src/components/note-menu.tsx:22
+msgid "Rename…"
+msgstr "Renommer…"
 
-#: src/components/new-list-dialog.tsx:70
-msgid "List name"
-msgstr "Nom de la liste"
+#: src/components/note-menu.tsx:23
+msgid "Move to Trash"
+msgstr "Mettre à la corbeille"
 
-#: src/components/preferences.tsx:19 src/components/shortcuts.tsx:6
+#: src/components/note-screen.tsx:34
+msgid "Note Not Found"
+msgstr "Note introuvable"
+
+#: src/components/notes-screen.tsx:34
+msgid "Filter by Tag"
+msgstr "Filtrer par étiquette"
+
+#: src/components/notes-screen.tsx:35
+msgid "All Notes"
+msgstr "Toutes les notes"
+
+#: src/components/notes-screen.tsx:73
+msgid "{{count}} note"
+msgid_plural "{{count}} notes"
+msgstr[0] "{{count}} note"
+msgstr[1] "{{count}} notes"
+
+#: src/components/notes-screen.tsx:99
+msgid "No Notes"
+msgstr "Aucune note"
+
+#: src/components/notes-screen.tsx:100
+msgid "Notes are Markdown files in your notes folder"
+msgstr "Les notes sont des fichiers Markdown dans votre dossier de notes"
+
+#: src/components/notes-screen.tsx:132
+msgid "Search Notes"
+msgstr "Rechercher dans les notes"
+
+#: src/components/notes-screen.tsx:133 src/components/shortcuts.tsx:13
+msgid "Search notes"
+msgstr "Rechercher dans les notes"
+
+#: src/components/notes-screen.tsx:143
+msgid "No Results Found"
+msgstr "Aucun résultat"
+
+#: src/components/preferences.tsx:41
+msgid "Choose a Notes Folder"
+msgstr "Choisir un dossier de notes"
+
+#: src/components/preferences.tsx:43
+msgid "Notes Folder"
+msgstr "Dossier de notes"
+
+#: src/components/preferences.tsx:50
+msgid "Use the Default Folder"
+msgstr "Utiliser le dossier par défaut"
+
+#: src/components/preferences.tsx:58
+msgid "Choose Folder"
+msgstr "Choisir le dossier"
+
+#: src/components/preferences.tsx:83 src/components/shortcuts.tsx:6
 msgid "General"
 msgstr "Général"
 
-#: src/components/preferences.tsx:20
+#: src/components/preferences.tsx:84
 msgid "Appearance"
 msgstr "Apparence"
 
-#: src/components/preferences.tsx:22
-msgid "Theme"
-msgstr "Thème"
+#: src/components/preferences.tsx:86
+msgid "Style"
+msgstr "Style"
 
-#: src/components/preferences.tsx:32
-msgid "Sort order"
-msgstr "Ordre de tri"
+#: src/components/preferences.tsx:97
+msgid "Storage"
+msgstr "Stockage"
 
-#: src/components/preferences.tsx:40
-msgid "Reminder lead time"
-msgstr "Délai du rappel"
+#: src/components/rename-dialog.tsx:22
+msgid "Rename Note"
+msgstr "Renommer la note"
 
-#: src/components/preferences.tsx:41
-msgid "Minutes before a task is due"
-msgstr "Minutes avant l’échéance d’une tâche"
+#: src/components/rename-dialog.tsx:26
+msgid "Cancel"
+msgstr "Annuler"
 
-#: src/components/search-button.tsx:12
-msgid "Search (Ctrl+F)"
-msgstr "Rechercher (Ctrl+F)"
+#: src/components/rename-dialog.tsx:29
+msgid "Rename"
+msgstr "Renommer"
+
+#: src/components/rename-dialog.tsx:43
+msgid "Note name"
+msgstr "Nom de la note"
 
 #: src/components/shortcuts.tsx:7
-msgid "New task"
-msgstr "Nouvelle tâche"
+msgid "New note"
+msgstr "Nouvelle note"
 
-#: src/components/shortcuts.tsx:8
-msgid "Search tasks"
-msgstr "Rechercher des tâches"
-
-#: src/components/shortcuts.tsx:10
+#: src/components/shortcuts.tsx:9
 msgid "Keyboard shortcuts"
 msgstr "Raccourcis clavier"
 
-#: src/components/shortcuts.tsx:13 src/components/task-row.tsx:81
-msgid "Delete task"
-msgstr "Supprimer la tâche"
+#: src/components/shortcuts.tsx:10
+msgid "Quit"
+msgstr "Quitter"
 
 #: src/components/shortcuts.tsx:14
-msgid "Go back"
-msgstr "Retour"
+msgid "Rename note"
+msgstr "Renommer la note"
 
-#: src/components/sidebar.tsx:23 src/store/selectors.ts:7
-msgid "All Tasks"
-msgstr "Toutes les tâches"
+#: src/components/shortcuts.tsx:15
+msgid "Show preview"
+msgstr "Afficher l’aperçu"
 
-#: src/components/sidebar.tsx:29 src/store/selectors.ts:8
-msgid "Today"
-msgstr "Aujourd’hui"
+#: src/components/window-actions.tsx:22
+msgid "Untitled"
+msgstr "Sans titre"
 
-#: src/components/sidebar.tsx:35 src/components/task-buttons.tsx:20
-#: src/components/task-detail.tsx:111 src/store/selectors.ts:9
-msgid "Important"
-msgstr "Prioritaire"
+#: src/components/window-actions.tsx:36
+msgid "“{{name}}” moved to Trash"
+msgstr "« {{name}} » a été mise à la corbeille"
 
-#: src/components/sidebar.tsx:49 src/store/selectors.ts:10
-msgid "Trash"
-msgstr "Corbeille"
+#: src/components/window-actions.tsx:37
+msgid "Undo"
+msgstr "Annuler"
 
-#: src/components/task-buttons.tsx:27
-msgid "Delete (Delete)"
-msgstr "Supprimer (Suppr)"
+#: src/components/window.tsx:30
+msgid "No Note Selected"
+msgstr "Aucune note sélectionnée"
 
-#: src/components/task-detail.tsx:42 src/components/task-detail.tsx:62
-msgid "Due"
-msgstr "Échéance"
+#: src/components/window.tsx:41
+msgid "New Note (Ctrl+N)"
+msgstr "Nouvelle note (Ctrl+N)"
 
-#: src/components/task-detail.tsx:50
-msgid "Clear due date"
-msgstr "Effacer l’échéance"
+#: src/editor/note-editor.tsx:47
+msgid "Note text"
+msgstr "Texte de la note"
 
-#: src/components/task-detail.tsx:58
-msgid "Set date"
-msgstr "Définir une date"
+#: src/notes/notes-provider.tsx:39
+msgid "Couldn’t save “{{name}}”"
+msgstr "Impossible d’enregistrer « {{name}} »"
 
-#: src/components/task-detail.tsx:103 src/settings.ts:18
-msgid "Title"
-msgstr "Titre"
+#: src/preview/markdown-preview.tsx:135
+msgid "Preview"
+msgstr "Aperçu"
 
-#: src/components/task-detail.tsx:128
-msgid "Notes"
-msgstr "Notes"
-
-#: src/components/task-detail.tsx:154
-msgid "Created"
-msgstr "Création"
-
-#: src/components/task-detail.tsx:161
-msgid "Completed"
-msgstr "Terminée"
-
-#: src/components/task-filter.tsx:20
-msgid "All"
-msgstr "Toutes"
-
-#: src/components/task-filter.tsx:21
-msgid "Open"
-msgstr "À faire"
-
-#: src/components/task-filter.tsx:22
-msgid "Done"
-msgstr "Terminées"
-
-#: src/components/task-list.tsx:27
-msgid "Search tasks…"
-msgstr "Rechercher des tâches…"
-
-#: src/components/task-list.tsx:50
-msgid "Add a task…"
-msgstr "Ajouter une tâche…"
-
-#: src/components/task-row.tsx:72
-msgid "Toggle important"
-msgstr "Basculer la priorité"
-
-#: src/components/task-row.tsx:98
-msgid "Mark complete"
-msgstr "Marquer comme terminée"
-
-#: src/components/task-title.tsx:8
-#: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:24
-msgid "Task"
-msgstr "Tâche"
-
-#: src/components/window.tsx:36
-msgid "Nothing Selected"
-msgstr "Aucune sélection"
-
-#: src/components/window.tsx:37
-msgid "Pick a list or a smart view in the sidebar"
-msgstr "Choisissez une liste ou une vue intelligente dans la barre latérale"
-
-#: src/components/window.tsx:64
-msgid "New Task (Ctrl+N)"
-msgstr "Nouvelle tâche (Ctrl+N)"
-
-#: src/format.ts:6
-msgid "{{count}} day ago"
-msgid_plural "{{count}} days ago"
-msgstr[0] "Il y a {{count}} jour"
-msgstr[1] "Il y a {{count}} jours"
-
-#: src/format.ts:15
-msgid "Yesterday at {{time}}"
-msgstr "Hier à {{time}}"
-
-#: src/format.ts:18
-msgid "Today at {{time}}"
-msgstr "Aujourd’hui à {{time}}"
-
-#: src/format.ts:21
-msgid "Tomorrow at {{time}}"
-msgstr "Demain à {{time}}"
-
-#: src/notifications.tsx:39
-msgid "Due {{date}}"
-msgstr "Échéance : {{date}}"
-
-#: src/notifications.tsx:41
-msgid "Mark Complete"
-msgstr "Marquer comme terminée"
-
-#: src/settings.ts:10
-msgid "Follow system"
+#: src/settings.tsx:12
+msgid "Follow System"
 msgstr "Suivre le système"
 
-#: src/settings.ts:11
+#: src/settings.tsx:13
 msgid "Light"
 msgstr "Clair"
 
-#: src/settings.ts:12
+#: src/settings.tsx:14
 msgid "Dark"
 msgstr "Sombre"
 
-#: src/settings.ts:16
-msgid "Manual"
-msgstr "Manuel"
+#: data/dev.gtkx.Notes.gschema.xml:6
+msgid "Notes folder"
+msgstr "Dossier de notes"
 
-#: src/settings.ts:17
-msgid "Due date"
-msgstr "Échéance"
+#: data/dev.gtkx.Notes.gschema.xml:7
+msgid "Folder that holds the notes, or empty for Notes in the Documents folder"
+msgstr "Dossier qui contient les notes, ou vide pour Notes dans le dossier Documents"
 
-#: src/settings.ts:19
-msgid "Date created"
-msgstr "Date de création"
+#: data/dev.gtkx.Notes.gschema.xml:16
+msgid "Color scheme"
+msgstr "Jeu de couleurs"
 
-#: src/store/seed.ts:21
-msgid "Personal"
-msgstr "Personnel"
+#: data/dev.gtkx.Notes.gschema.xml:17
+msgid "Whether the app follows the system style or forces light or dark"
+msgstr "Si l’application suit le style du système ou impose le mode clair ou sombre"
 
-#: src/store/seed.ts:22
-msgid "Work"
-msgstr "Travail"
+#: data/dev.gtkx.Notes.gschema.xml:21
+msgid "Show the preview"
+msgstr "Afficher l’aperçu"
 
-#: src/store/seed.ts:23
-msgid "Shopping"
-msgstr "Courses"
+#: data/dev.gtkx.Notes.gschema.xml:22
+msgid "Whether notes open as rendered Markdown instead of in the editor"
+msgstr "Si les notes s’ouvrent en Markdown rendu plutôt que dans l’éditeur"
 
-#: src/store/seed.ts:30
-msgid "Welcome to Tasks"
-msgstr "Bienvenue dans Tâches"
+#: data/dev.gtkx.Notes.gschema.xml:26
+msgid "Window width"
+msgstr "Largeur de la fenêtre"
 
-#: src/store/seed.ts:33
-msgid "This is your first task. Tick the checkbox to complete it, or open it to add notes and a due date."
-msgstr "Voici votre première tâche. Cochez la case pour la terminer, ou ouvrez-la pour ajouter des notes et une échéance."
+#: data/dev.gtkx.Notes.gschema.xml:30
+msgid "Window height"
+msgstr "Hauteur de la fenêtre"
 
-#: src/store/seed.ts:39
-msgid "Water the plants"
-msgstr "Arroser les plantes"
+#: po/.gtkx-metadata/dev.gtkx.Notes.template.desktop:4
+msgid "Markdown Notes"
+msgstr "Notes Markdown"
 
-#: src/store/seed.ts:44
-msgid "Prepare the weekly report"
-msgstr "Préparer le rapport hebdomadaire"
+#: po/.gtkx-metadata/dev.gtkx.Notes.template.desktop:5
+#: po/.gtkx-metadata/dev.gtkx.Notes.template.metainfo.xml:5
+msgid "Write Markdown notes kept as plain files"
+msgstr "Écrire des notes Markdown gardées en fichiers ordinaires"
 
-#: src/store/seed.ts:45
-msgid "Review pull requests"
-msgstr "Relire les demandes de fusion"
+#. Translators: Search terms to find this application. Do NOT translate or localize the semicolons! The list MUST also end with a semicolon!
+#: po/.gtkx-metadata/dev.gtkx.Notes.template.desktop:11
+msgid "Notes;Markdown;Notebook;Writing;"
+msgstr "Notes;Markdown;Carnet;Écriture;"
 
-#: src/store/seed.ts:46
-msgid "Buy oat milk"
-msgstr "Acheter du lait d’avoine"
-
-#: src/store/seed.ts:50
-msgid "Order birthday gift"
-msgstr "Commander un cadeau d’anniversaire"
-
-#: src/store/selectors.ts:139
-msgid "No Tasks Yet"
-msgstr "Aucune tâche"
-
-#: src/store/selectors.ts:140
-msgid "Add a task above to get started"
-msgstr "Ajoutez une tâche ci-dessus pour commencer"
-
-#: src/store/selectors.ts:144
-msgid "Nothing Due Today"
-msgstr "Aucune échéance aujourd’hui"
-
-#: src/store/selectors.ts:145
-msgid "Tasks due today appear here"
-msgstr "Les tâches dues aujourd’hui apparaissent ici"
-
-#: src/store/selectors.ts:149
-msgid "No Important Tasks"
-msgstr "Aucune tâche prioritaire"
-
-#: src/store/selectors.ts:150
-msgid "Star a task to find it here"
-msgstr "Ajoutez une étoile à une tâche pour la retrouver ici"
-
-#: src/store/selectors.ts:154
-msgid "Trash Is Empty"
-msgstr "La corbeille est vide"
-
-#: src/store/selectors.ts:155
-msgid "Deleted tasks appear here"
-msgstr "Les tâches supprimées apparaissent ici"
-
-#: src/store/selectors.ts:163
-msgid "No Results"
-msgstr "Aucun résultat"
-
-#: src/store/selectors.ts:164
-msgid "No tasks match “{{query}}”"
-msgstr "Aucune tâche ne correspond à « {{query}} »"
-
-#: po/.gtkx-metadata/com.gtkx.tutorial.template.desktop:4
-msgid "Task Manager"
-msgstr "Gestionnaire de tâches"
-
-#: po/.gtkx-metadata/com.gtkx.tutorial.template.desktop:5
-#: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:5
-msgid "Manage your tasks and to-dos"
-msgstr "Gérez vos tâches et listes de choses à faire"
-
-#: po/.gtkx-metadata/com.gtkx.tutorial.template.desktop:10
-msgid "Task;Tasks;Todo;To-do;Checklist;"
-msgstr "Tâche;Tâches;À faire;À-faire;Liste de contrôle;"
-
-#: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:9
+#: po/.gtkx-metadata/dev.gtkx.Notes.template.metainfo.xml:9
 msgid "GTKX"
 msgstr "GTKX"
 
-#: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:12
-msgid "A GNOME task manager built with GTKX, demonstrating how to build React-based Adwaita applications."
-msgstr "Un gestionnaire de tâches GNOME construit avec GTKX, qui montre comment créer des applications Adwaita avec React."
+#: po/.gtkx-metadata/dev.gtkx.Notes.template.metainfo.xml:12
+msgid "Notes keeps each note as a Markdown file in a folder, so notes sync with any tool and outlive the app."
+msgstr "Notes garde chaque note dans un fichier Markdown d’un dossier : les notes se synchronisent avec n’importe quel outil et survivent à l’application."
 
-#: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:13
-msgid "It shows an adaptive sidebar layout, boxed lists, a task editor, GSettings-backed preferences, undo toasts, drag-to-reorder, desktop notifications, and local JSON persistence."
-msgstr "Il présente une barre latérale adaptative, des listes encadrées, un éditeur de tâches, des préférences fondées sur GSettings, des notifications avec annulation, le classement par glisser-déposer, des notifications du bureau et la persistance locale en JSON."
+#: po/.gtkx-metadata/dev.gtkx.Notes.template.metainfo.xml:13
+msgid "It previews Markdown, searches the full text, filters by tag, completes links to other notes, and shows changes made by other editors or sync tools as they happen."
+msgstr "Notes affiche un aperçu du Markdown, cherche dans le texte intégral, filtre par étiquette, complète les liens vers d’autres notes et montre en direct les modifications faites par d’autres éditeurs ou outils de synchronisation."
 
-#: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:26
-msgid "Todo"
-msgstr "À faire"
+#: po/.gtkx-metadata/dev.gtkx.Notes.template.metainfo.xml:26
+msgid "Markdown"
+msgstr "Markdown"
 
-#: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:27
-msgid "To-do"
-msgstr "À-faire"
+#: po/.gtkx-metadata/dev.gtkx.Notes.template.metainfo.xml:27
+msgid "Notebook"
+msgstr "Carnet"
 
-#: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:28
-msgid "Checklist"
-msgstr "Liste de contrôle"
+#: po/.gtkx-metadata/dev.gtkx.Notes.template.metainfo.xml:28
+msgid "Writing"
+msgstr "Écriture"
 
-#: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:36
-msgid "Browsing task lists in the sidebar"
-msgstr "Parcours des listes de tâches dans la barre latérale"
+#: po/.gtkx-metadata/dev.gtkx.Notes.template.metainfo.xml:36
+msgid "Reading a note as rendered Markdown"
+msgstr "Lire une note en Markdown mis en forme"
 
-#: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:40
-msgid "Editing a task"
-msgstr "Modification d’une tâche"
+#: po/.gtkx-metadata/dev.gtkx.Notes.template.metainfo.xml:40
+msgid "Writing Markdown with syntax highlighting"
+msgstr "Écrire du Markdown avec la coloration syntaxique"
 
-#: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:46
+#: po/.gtkx-metadata/dev.gtkx.Notes.template.metainfo.xml:46
 msgid "Initial release."
-msgstr "Version initiale."
+msgstr "Première version."

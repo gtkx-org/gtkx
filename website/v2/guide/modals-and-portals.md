@@ -67,7 +67,7 @@ Without `onClosed`, the close button and Escape do nothing and the dialog stays 
     <figcaption>Captured from the sample above. <code>SUGGESTED</code> colors the Rename response.</figcaption>
 </figure>
 
-The tutorial builds dialogs in [Mount the dialogs](/v2/tutorial/actions-menus-shortcuts#mounting-dialogs), [Carry the task into confirmation](/v2/tutorial/trash-and-toasts#confirming-a-permanent-delete), and [Add the New List dialog](/v2/tutorial/trash-and-toasts#a-dialog-that-is-a-form).
+The tutorial builds dialogs in [Mount the dialogs](/v2/tutorial/actions-menus-shortcuts#mount-the-dialogs) and [Rename a note](/v2/tutorial/trash-and-toasts#rename-a-note).
 
 ### About dialog metadata
 
