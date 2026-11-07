@@ -17,7 +17,7 @@ const port = parentPort;
 const index = new MiniSearch<IndexedNote>({
     idField: "name",
     fields: ["name", "text"],
-    searchOptions: { prefix: true, fuzzy: 0.2, boost: { name: 2 } },
+    searchOptions: { prefix: true, fuzzy: 0.2 },
 });
 
 port.on("message", (request: SearchRequest) => {
