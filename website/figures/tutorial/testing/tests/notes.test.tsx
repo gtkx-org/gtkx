@@ -380,7 +380,8 @@ describe("Notes", () => {
 
         const editor = await openNote("Groceries");
         await userEvent.type(editor, "[[read");
-        await userEvent.click(await within(editor).findByText("Reading list"));
+        await within(editor).findByText("Reading list");
+        await userEvent.keyboard(editor, "{Enter}");
 
         expect(editorText(editor)).toMatch(
             /\[Reading list\]\(<Reading list\.md>\)$/,

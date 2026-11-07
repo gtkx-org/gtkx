@@ -107,7 +107,7 @@ await act(() => {
 
 ## Type into the editor
 
-"completes a link to another note after [[" tests the completion provider from [Complete Note Links](/v2/tutorial/note-links). `userEvent.type(editor, "[[read")` inserts one character per edit, as typing does, so GtkSourceView sees the second `[` and opens its popup. `read` narrows the popup to Reading list. The popup belongs to the editor, so `within(editor)` finds the proposal there and not the Reading list row in the sidebar. Clicking it inserts the link, which the test then finds in the editor and in the file.
+"completes a link to another note after [[" tests the completion provider from [Complete Note Links](/v2/tutorial/note-links). `userEvent.type(editor, "[[read")` inserts one character per edit, as typing does, so GtkSourceView sees the second `[` and opens its popup. `read` narrows the popup to Reading list. The popup belongs to the editor, so `within(editor)` waits for the proposal there and not for the Reading list row in the sidebar. `selectOnShow` has selected it, and while the popup shows, the keys that `keyboard` sends go to its list (see [Interacting and waiting](/v2/guide/testing#interacting-and-waiting)), so `{Enter}` inserts the link as it does for a user. The test then finds the link in the editor and in the file.
 
 ## Test the stories
 
@@ -144,5 +144,7 @@ npx vitest run -t trash
  Test Files  2 passed (2)
       Tests  25 passed (25)
 ```
+
+Two `Gtk-CRITICAL` lines about `gtk_text_buffer_delete_mark` also appear before the notes results. GtkSourceView logs them when a completion context is released after its text buffer, which happens as the test process exits; no test fails because of them.
 
 Change `openNote("Groceries")` in "opens a note in the editor" to `openNote("Shopping")` and run the tests again. The query fails after a second and lists each accessible role on screen with the names of its widgets, such as the list items Reading list and Groceries. Change it back afterwards.
