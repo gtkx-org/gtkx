@@ -8,7 +8,7 @@ import { isInstalled, packageForModule } from "./build-manifest.js";
 import { stripQuery } from "./strip-query.js";
 
 const ADDON_EXTENSION = ".node";
-const ADDON_GUIDE_URL = "https://gtkx.dev/guide/deploying#additional-native-addons";
+const ADDON_GUIDE_URL = "https://gtkx.dev/v2/guide/deploying#additional-native-addons";
 
 function resolvePlatformBinary(root: string): Buffer {
     const currentPlatform = platform();
