@@ -8,7 +8,7 @@ type FlatpakManifest = Record<string, unknown>;
 
 const DEFAULT_BRANCH = "stable";
 const DEFAULT_RUNTIME = "org.gnome.Platform";
-const DEFAULT_RUNTIME_VERSION = "50";
+const DEFAULT_RUNTIME_VERSION = "51";
 const DEFAULT_SDK = "org.gnome.Sdk";
 const DEFAULT_FINISH_ARGS = ["--share=ipc", "--socket=wayland", "--socket=fallback-x11", "--device=dri"];
 const DEFAULT_CLEANUP = ["/include", "/share/pkgconfig", "*.la", "*.a"];

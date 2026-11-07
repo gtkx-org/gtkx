@@ -370,7 +370,7 @@ type DeployFlatpakOptions = {
     mode?: "prebuilt" | "source" | undefined;
     /** Flatpak runtime ID. Defaults to `org.gnome.Platform`. */
     runtime?: string | undefined;
-    /** Flatpak runtime branch. Defaults to `50`. */
+    /** Flatpak runtime branch. Defaults to `51`. */
     runtimeVersion?: string | undefined;
     /** Build SDK ID. Defaults to `org.gnome.Sdk`. */
     sdk?: string | undefined;
@@ -411,7 +411,7 @@ type DeployFlatpakOptions = {
 const flatpakSchema = z.strictObject({
     mode: z.enum(FLATPAK_MODES, { error: 'must be "prebuilt" or "source"' }).optional(),
     runtime: text("must be a runtime id").optional(),
-    runtimeVersion: text('must be a runtime branch such as "50"').optional(),
+    runtimeVersion: text('must be a runtime branch such as "51"').optional(),
     sdk: text("must be an SDK id").optional(),
     nodeExtension: text("must be a Node SDK extension id").optional(),
     sdkExtensions: textList("SDK extension id", "must be an array of SDK extension ids").optional(),
