@@ -26,6 +26,8 @@
   <a href="https://opencollective.com/gtkx">Sponsor</a>
 </p>
 
+GTKX brings the workflow of modern web development to native GTK and Adwaita apps: declarative UI with React, a dev server with Fast Refresh, native UI tests in Vitest, and Flatpak, Debian, RPM, and AppImage packaging. [Why GTKX](https://gtkx.dev/v2/guide/why-gtkx) explains the approach.
+
 ## Start an app
 
 This branch develops **GTKX 2.0**, currently in beta. The stable release is scheduled for **1 December 2026**. For the current stable release, use the [1.x documentation](https://gtkx.dev/guide/getting-started).

@@ -15,7 +15,8 @@ import { CREATE_COMMAND, docsLink, REPO_URL } from "./content";
                 <p class="overline hero__eyebrow">// React · Node · TypeScript · libadwaita · GTK4</p>
                 <h1 class="hero__title">The React framework for <span class="gtkx-gradient-text">Linux</span></h1>
                 <p class="hero__lede">
-                    Build native apps with Adwaita and GTK widgets, TypeScript, and the Node.js ecosystem.
+                    Build native Adwaita and GTK apps with the workflow of modern web development: React components,
+                    Fast Refresh, native UI tests, and packaging, on Node.js.
                 </p>
                 <div class="hero__actions">
                     <div id="install" class="hero__install">
