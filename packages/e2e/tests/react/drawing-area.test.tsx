@@ -84,7 +84,7 @@ describe("a drawing area rendered from React", () => {
         expect(frame.target).toBeInstanceOf(CONCRETE_SURFACE_CLASSES[frame.targetType] ?? Surface);
     });
 
-    it("lets the draw callback dispose its Context, as GJS code does", async () => {
+    it("lets the draw callback dispose its Context", async () => {
         const frames: { cr: Context; usableAfterDispose: boolean }[] = [];
         const areaRef = createRef<Gtk.DrawingArea>();
 
@@ -96,7 +96,7 @@ describe("a drawing area rendered from React", () => {
                 drawFunc={(_area, cr) => {
                     cr.setSourceRgb(1, 0, 0);
                     cr.paint();
-                    cr.$dispose();
+                    cr[Symbol.dispose]();
                     let usableAfterDispose = true;
                     try {
                         cr.paint();
@@ -112,7 +112,7 @@ describe("a drawing area rendered from React", () => {
             expect(frames.length).toBeGreaterThan(0);
         });
         const drawnFrames = frames.length;
-        frames.at(-1)?.cr.$dispose();
+        frames.at(-1)?.cr[Symbol.dispose]();
         areaRef.current?.queueDraw();
 
         await waitFor(() => {
