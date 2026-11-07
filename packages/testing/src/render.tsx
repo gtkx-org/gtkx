@@ -16,7 +16,7 @@ import { logRoles } from "./role-helpers.js";
 import { clearScreen, setScreen } from "./screen.js";
 import { captureScreen } from "./screenshot.js";
 import { type Container, roots, TOPLEVELS } from "./traversal.js";
-import { resetClipboard } from "./user-event/index.js";
+import { resetClipboard, resetUserEventState } from "./user-event/index.js";
 import { requireWidget } from "./widget-target.js";
 import { findPresentedWindowFailure, findRenderedWindowFailure, mappedToplevels } from "./window-state.js";
 import { within } from "./within.js";
@@ -237,6 +237,7 @@ const render = async <Q extends QueryMap = Record<never, never>>(
     addToCleanupQueue(disposeAllActiveRenders);
     addToCleanupQueue(clearScreen);
     addToCleanupQueue(resetClipboard);
+    addToCleanupQueue(resetUserEventState);
 
     const wrap = (node: ReactNode): ReactNode => {
         const wrapped = Wrapper ? <Wrapper>{node}</Wrapper> : node;
@@ -295,7 +296,8 @@ const render = async <Q extends QueryMap = Record<never, never>>(
 
 /**
  * Unmounts every active render, quits the applications those renders started, and runs all
- * registered cleanup callbacks, resetting the screen and clipboard. Called automatically after each test.
+ * registered cleanup callbacks, resetting the screen, the clipboard and the input the default `userEvent` still holds.
+ * Called automatically after each test.
  */
 const cleanup = async (): Promise<void> => {
     await runCleanup();

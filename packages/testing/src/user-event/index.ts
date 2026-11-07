@@ -197,6 +197,12 @@ const userEventReports = {
     heldModifiers: (): string[] => heldModifiers(defaultState),
 };
 
+/** Releases the modifiers and buttons the default instance still holds, so they do not carry into the next test. */
+const resetUserEventState = (): void => {
+    defaultState.modifierState = 0;
+    defaultState.heldButtons.clear();
+};
+
 const settle = (ms: number | null | undefined): Promise<void> => {
     if (ms === null || ms === undefined) {
         return Promise.resolve();
@@ -254,4 +260,12 @@ export type { TabOptions } from "./keyboard.js";
 export type { PointerInput } from "./pointer.js";
 export type { TypeOptions } from "./text.js";
 export { resetClipboard } from "./text.js";
-export { userEvent, userEventReports, type ClickReport, type KeyboardReport, type UserEvent, type UserEventOptions };
+export {
+    resetUserEventState,
+    userEvent,
+    userEventReports,
+    type ClickReport,
+    type KeyboardReport,
+    type UserEvent,
+    type UserEventOptions,
+};
