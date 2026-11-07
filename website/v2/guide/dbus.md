@@ -201,4 +201,4 @@ GTKX has no equivalent of the `Gio.DBusProxy.makeProxyWrapper` and `Gio.DBusExpo
 
 ## Next
 
-Continue with [Application Lifecycle](/v2/guide/application-lifecycle) for ending work when the app quits, termination signals, and command-line handling.
+Continue with [Workers and Helper Processes](/v2/guide/workers) to run computation away from the UI thread.

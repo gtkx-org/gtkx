@@ -57,11 +57,14 @@ const guideGroups: DocumentationGroup[] = [
     {
         text: "Building Interfaces",
         items: [
+            { text: "Application Lifecycle", path: "guide/application-lifecycle" },
             { text: "JSX Elements", path: "guide/jsx-elements" },
             { text: "Components", path: "guide/components" },
             { text: "Navigation", path: "guide/navigation" },
             { text: "Forms", path: "guide/forms" },
             { text: "Modals and Portals", path: "guide/modals-and-portals" },
+            { text: "Actions and Shortcuts", path: "guide/actions" },
+            { text: "Native State", path: "guide/native-state" },
             { text: "CSS", path: "guide/css" },
             { text: "Animations", path: "guide/animations" },
             { text: "Internationalization", path: "guide/internationalization" },
@@ -74,7 +77,6 @@ const guideGroups: DocumentationGroup[] = [
             { text: "Async Operations", path: "guide/async-operations" },
             { text: "Error Handling", path: "guide/error-handling" },
             { text: "D-Bus", path: "guide/dbus" },
-            { text: "Application Lifecycle", path: "guide/application-lifecycle" },
             { text: "Workers and Helper Processes", path: "guide/workers" },
             { text: "Subclassing GObject", path: "guide/subclassing" },
             { text: "Cairo", path: "guide/cairo" },

@@ -87,14 +87,14 @@ Libadwaita cannot remove these entries. Each array becomes fixed when its first 
 
 The app decides what is open by what it renders. A close button, Escape, a gesture or the window manager only asks to close, and the app answers by rendering something else. Until it answers, GTKX keeps the native state matching React as far as the toolkit allows:
 
-| Element                                                | Answered by                                                                         | When nothing answers                                    |
-| ------------------------------------------------------ | ----------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| Adwaita dialogs                                        | `onClosed` or `onCloseAttempt`; `onResponse` on `AdwAlertDialog`                    | The dialog stays open.                                  |
-| `AdwTabPage` in a JSX `AdwTabView`                     | A `close-page` handler on the view: `onClosePage` or one connected with `useSignal` | The tab stays.                                          |
-| `AdwBottomSheet` given `open`                          | `onNotifyOpen` or `onCloseAttempt`                                                  | The sheet stays open.                                   |
-| Open-state props                                       | Rendering the new value, usually from the matching `onNotify…` handler              | GTKX restores the rendered value before the next frame. |
-| Windows                                                | `onCloseRequest`                                                                    | The window closes, so the user can always close it.     |
-| `visible` on `GtkPopover`, `active` on `GtkMenuButton` | `onClosed`, `onNotifyActive`                                                        | The popover closes.                                     |
+| Element                                                | Answered by                                                                                                                       | When nothing answers                                    |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| Adwaita dialogs                                        | `onClosed` or `onCloseAttempt`; `onResponse` on `AdwAlertDialog`                                                                  | The dialog stays open.                                  |
+| `AdwTabPage` in a JSX `AdwTabView`                     | A `close-page` handler on the view: `onClosePage` or one connected with [`useSignal`](/v2/guide/native-state#connecting-a-signal) | The tab stays.                                          |
+| `AdwBottomSheet` given `open`                          | `onNotifyOpen` or `onCloseAttempt`                                                                                                | The sheet stays open.                                   |
+| Open-state props                                       | Rendering the new value, usually from the matching `onNotify…` handler                                                            | GTKX restores the rendered value before the next frame. |
+| Windows                                                | `onCloseRequest`                                                                                                                  | The window closes, so the user can always close it.     |
+| `visible` on `GtkPopover`, `active` on `GtkMenuButton` | `onClosed`, `onNotifyActive`                                                                                                      | The popover closes.                                     |
 
 The open-state props are `showSidebar` on `AdwOverlaySplitView`, `showContent` on `AdwNavigationSplitView`, `open` on `AdwBottomSheet` and `AdwTabOverview`, and `searchModeEnabled` on `GtkSearchBar`. Like a selection prop, each one is controlled when given; omitting it leaves it to the widget.
 
@@ -143,4 +143,4 @@ The exported API is in the [@gtkx/react reference](/v2/reference/@gtkx/react/).
 
 ## Next
 
-Continue with [CSS](/v2/guide/css) to style windows, dialogs and their content with the `style` prop and GTK4's own CSS engine.
+Continue with [Actions and Shortcuts](/v2/guide/actions) to open those windows and dialogs from menus and keyboard shortcuts.

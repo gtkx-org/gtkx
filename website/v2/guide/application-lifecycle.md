@@ -1,11 +1,61 @@
 ---
 title: "Application Lifecycle"
-description: "End pending work when the app quits, handle termination signals, and handle the command line."
+description: "Start the application from the entry point, know when it ends, end pending work, handle termination signals and the command line."
 ---
 
 # Application Lifecycle
 
-An app should leave no work running when it quits, save its data when it receives `SIGTERM`, and answer when it is launched again from the command line. GTKX handles part of each; this page covers what your code does.
+A GTKX app is a GTK application that React renders: the application element starts it, its windows keep it running, and it ends when they are gone. An app should also leave no work running when it quits, save its data when it receives `SIGTERM`, and answer when it is launched again from the command line. GTKX handles part of each; this page covers what your code does.
+
+## The application element
+
+The entry point renders the app into a root:
+
+```tsx [src/index.tsx]
+import { createRoot } from "@gtkx/react";
+import { App } from "./app.js";
+
+createRoot().render(<App />);
+```
+
+`createRoot()` without a container renders at the top level, where the application element goes. The application element is `AdwApplication`, or the element of any other `Gtk.Application` class, such as `GtkApplication`:
+
+```tsx [src/app.tsx]
+import { AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
+import { quit } from "@gtkx/react";
+
+export const App = () => (
+    <AdwApplication>
+        <AdwApplicationWindow title="Notes" defaultWidth={600} defaultHeight={400} onCloseRequest={quit} />
+    </AdwApplication>
+);
+```
+
+When it mounts, the application element creates the application and runs it with the process's command-line arguments. Its `applicationId` defaults to the one in [`gtkx.config.ts`](/v2/guide/configuration-and-codegen#the-config-file), including a `$development` override under `gtkx dev`. Its children render once the application activates, so the windows among them become the application's windows, and they unmount when it shuts down. [`useApplication()`](/v2/guide/native-state#the-application) returns the application to any component inside. When the run ends with a nonzero status, GTKX sets it as the process's exit code.
+
+The application ID makes the app single-instance. A second launch hands its arguments to the running instance and exits without rendering, and the running instance receives `activate` again. Present its window there, or the second launch appears to do nothing:
+
+```tsx [src/app.tsx]
+import { AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
+import { quit } from "@gtkx/react";
+
+export const App = () => (
+    <AdwApplication onActivate={(application) => application.getActiveWindow()?.present()}>
+        <AdwApplicationWindow title="Notes" defaultWidth={600} defaultHeight={400} onCloseRequest={quit} />
+    </AdwApplication>
+);
+```
+
+### When the app ends
+
+A GTK application runs while it has a window or a [`hold()`](https://docs.gtk.org/gio/method.Application.hold.html). GTKX holds the application until its first activated render commits, then releases it, so:
+
+- Closing the last window ends the app. A window without an `onCloseRequest` handler closes when the user closes it.
+- `quit()` from `@gtkx/react` unmounts every root and quits each application it unmounts, even one that holds itself. It returns `Gdk.EVENT_STOP`, so it can be the main window's `onCloseRequest` handler.
+- A first render that shows no window ends the app at once, and `gtkx dev` reports `Application quit`. An app that waits for saved data before rendering anything quits before the data arrives. Render the window first and show a placeholder inside it; see [Restoring state](/v2/guide/navigation#restoring-state) for React Navigation's state persistence.
+- `root.unmount()` and `root.render(null)` remove the windows. The application then ends unless something holds it.
+
+To keep a windowless app running for background work, call `hold()` on the application and `release()` when the work finishes. Each `hold()` needs one `release()`; an extra `release()` throws a `RangeError`.
 
 ## Ending work on unmount
 

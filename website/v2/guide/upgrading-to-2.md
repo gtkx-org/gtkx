@@ -132,9 +132,9 @@ Variant dictionaries now use objects for every key type; replace `Map` inputs an
 
 ## Move GObject ownership into JSX
 
-The settings hooks no longer create a `Gio.Settings` instance. Render `GSettings` from `@gtkx/jsx/gio` in the root portal, capture the instance with a state callback ref, and mount its consumers once it is available. Pass that instance first to `useSetting`, and add it as the `settings` option to `useBindSetting`. The [settings tutorial](/v2/tutorial/preferences-and-theming#create-the-settings-instance) shows the complete ownership pattern.
+The settings hooks no longer create a `Gio.Settings` instance. Render `GSettings` from `@gtkx/jsx/gio` in the root portal, capture the instance with a state callback ref, and mount its consumers once it is available. Pass that instance first to `useSetting`, and add it as the `settings` option to `useBindSetting`. [The settings instance](/v2/guide/native-state#the-settings-instance) shows the complete ownership pattern.
 
-`useProperty`, `useSignal`, and `useBindSetting` now take a mounted instance rather than a mutable ref object. Store callback-ref values in state and pass the value to the hook so subscriptions follow replacement and unmounting. Remove imports of the deleted `RefProp` type. See [Properties and the hooks](/v2/guide/subclassing#properties-and-the-hooks) for the pattern.
+`useProperty`, `useSignal`, and `useBindSetting` now take a mounted instance rather than a mutable ref object. Store callback-ref values in state and pass the value to the hook so subscriptions follow replacement and unmounting. Remove imports of the deleted `RefProp` type. See [Objects that JSX creates](/v2/guide/native-state#objects-that-jsx-creates) for the pattern.
 
 ## Give form choices explicit values
 

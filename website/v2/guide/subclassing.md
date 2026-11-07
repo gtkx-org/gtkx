@@ -93,19 +93,7 @@ The transform's value types come from the named properties when the objects decl
 
 ### Properties and the hooks
 
-Pass the instance to `useProperty(object, "tag")` to subscribe to a registered property. Inherited properties remain available. For an instance created by JSX, use a state setter as its callback ref:
-
-```tsx
-import { useProperty } from "@gtkx/react";
-import { useState } from "react";
-
-const [scale, setScale] = useState<TaggedScale | null>(null);
-const tag = useProperty(scale, "tag");
-
-<TaggedScaleElement ref={setScale} tag="volume" />;
-```
-
-The hook returns `undefined` while its target is absent, and its type includes `undefined` only when the target's type allows `null` or `undefined`; `useProperty(Adw.StyleManager.getDefault(), "dark")` is a `boolean`. React state keeps the subscription aligned when the element mounts, is replaced, or unmounts. `useSignal` and `useBindSetting` take instances the same way; mutable ref objects are not subscription targets.
+`useProperty`, `useSignal` and `useBindSetting` accept registered classes like any other object, typed from their declared properties and signals. See [Native State](/v2/guide/native-state#objects-that-jsx-creates) for passing an instance that JSX created.
 
 ## Declaring signals
 
@@ -333,52 +321,7 @@ Throw from a vfunc that reports errors through `GError`. GTKX preserves a thrown
 
 ## Adding actions
 
-A window or application that React renders declares its actions with the `actions` prop, as the [tutorial](/v2/tutorial/actions-menus-shortcuts#define-the-window-actions) shows. A class that builds its own action group, such as a widget with a context menu, adds a table of actions with `addActionEntries`, GJS's `add_action_entries` and C's `g_action_map_add_action_entries`. Every `Gio.ActionMap` has it, including `Gio.SimpleActionGroup`, `Gtk.Application`, `Adw.Application`, `Gtk.ApplicationWindow` and the classes registered from them:
-
-```ts
-import * as Gio from "@gtkx/gi/gio";
-import * as Gtk from "@gtkx/gi/gtk";
-
-class ChartBase extends Gtk.Widget {
-    declare private chartActions: Gio.SimpleActionGroup;
-    declare depth: number;
-
-    override vfuncConstructed(): void {
-        super.vfuncConstructed();
-        this.depth = 5;
-        this.chartActions = new Gio.SimpleActionGroup();
-        this.chartActions.addActionEntries([
-            { name: "zoom-in", activate: () => this.setDepth(this.depth - 1) },
-            { name: "zoom-out", activate: () => this.setDepth(this.depth + 1) },
-            { name: "set-depth", parameterType: "i", activate: (_action, depth) => this.setDepth(depth?.getInt32() ?? 5) },
-            {
-                name: "show-hidden",
-                state: "false",
-                changeState: (action, value) => {
-                    if (value !== null) action.setState(value);
-                    this.queueDraw();
-                },
-            },
-        ]);
-        this.insertActionGroup("chart", this.chartActions);
-    }
-
-    setDepth(depth: number): void {
-        this.depth = Math.max(1, depth);
-        this.queueDraw();
-    }
-}
-```
-
-A menu item with the action `chart.zoom-in` then activates the first entry. Each entry, typed as `Gio.ActionEntryObj`, takes GJS's fields in camelCase:
-
-- `name`, the action's name.
-- `activate(action, parameter)`, connected to the action's `activate` signal.
-- `parameterType`, a GVariant type string such as `"s"` or a `GLib.VariantType`. Without it, the action takes no parameter.
-- `state`, the initial state in GVariant text such as `"'large'"` or `"true"`, a boolean or a `GLib.Variant`. Without it, the action is stateless.
-- `changeState(action, value)`, connected to `change-state`. Without it, a change request sets the state directly.
-
-As in GJS and C, both callbacks receive the action first and run with `this` set to it; a handler passed to `connect` receives only the signal's arguments. An entry without a string name, an invalid `parameterType` or a `state` that does not parse throws, and the entries before it stay added. `removeActionEntries` takes the same entries and removes the actions they name.
+A registered class that builds its own action group adds a table of actions with `addActionEntries`; see [Actions in a registered class](/v2/guide/actions#actions-in-a-registered-class). A window or application that React renders declares its actions with the `actions` prop, as [Actions and Shortcuts](/v2/guide/actions) shows.
 
 ## Elements that cannot be children
 

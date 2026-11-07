@@ -133,7 +133,7 @@ export const WindowActions = () => {
 };
 ```
 
-Mounting these elements in the window's `actions` prop exposes `win.new`, `win.shortcuts`, and `win.about`. The same prop on the application exposes `app.*` actions. A class that builds its own action group adds a table of actions with `addActionEntries` instead; see [Adding actions](/v2/guide/subclassing#adding-actions). For the native action model, see [Gio actions](https://docs.gtk.org/gio/class.SimpleAction.html).
+Mounting these elements in the window's `actions` prop exposes `win.new`, `win.shortcuts`, and `win.about`. The same prop on the application exposes `app.*` actions. A class that builds its own action group adds a table of actions with `addActionEntries` instead; see [Actions in a registered class](/v2/guide/actions#actions-in-a-registered-class). For the native action model, see [Gio actions](https://docs.gtk.org/gio/class.SimpleAction.html).
 
 ## Add the menu and accelerator
 

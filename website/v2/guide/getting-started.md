@@ -114,7 +114,7 @@ import { App } from "./app.js";
 createRoot().render(<App />);
 ```
 
-The starter's `<AdwApplication>` gets its application ID from `gtkx.config.ts`. [Create a Window](/v2/tutorial/your-first-window) explains the application, window, and close handler.
+The starter's `<AdwApplication>` gets its application ID from `gtkx.config.ts`. [The application element](/v2/guide/application-lifecycle#the-application-element) explains the application, its windows and when the app ends.
 
 ## Updating GTKX
 
