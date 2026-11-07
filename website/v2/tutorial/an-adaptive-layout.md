@@ -4,25 +4,27 @@ description: "Collapse the split view on narrow windows and keep the window usab
 
 # Adapt the Layout
 
-Collapse the split view into one pane on narrow windows, size the sidebar, and keep the window usable at phone size.
-
-::: info Being written
-This chapter belongs to the Notes tutorial for GTKX 2.0 and is not written yet. The headings below are its plan; the [finished app](https://github.com/gtkx-org/gtkx/tree/main/tutorial) already contains the code.
-:::
+Show the note list and the open note one at a time in narrow windows, size the sidebar, and keep the window usable at phone size.
 
 ## Collapse on narrow windows
 
-`collapseCondition` folds the split view into one pane below 500sp, and the back button returns to the list. It takes a libadwaita breakpoint condition; see [Split view navigator](/v2/guide/navigation#split-view-navigator).
+[Edit a Note](/v2/tutorial/the-note-editor) opens the window at 720 by 480, wide enough for the note list and the note side by side. On a phone, or in a window tiled to a third of a screen, there is no room for both. Add these props to `Split.Navigator` in `src/app.tsx`:
 
 <<< @/figures/tutorial/an-adaptive-layout/src/app.tsx{40-43} [src/app.tsx]
 
+`collapseCondition` takes a libadwaita [breakpoint condition](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/type_func.BreakpointCondition.parse.html). While the navigator is 500sp wide or narrower, the split view collapses: the note list fills the window, and selecting a note opens it in its place, with a back button in its header bar that returns to the list. Widen the window past 500sp and the panes sit side by side again, with the open note still selected.
+
+An sp is a pixel at the default text size and grows with the Large Text setting ([`AdwLengthUnit`](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/enum.LengthUnit.html)), so readers with larger text get the one-pane layout in wider windows. The condition is measured against the navigator rather than the window; [Split view navigator](/v2/guide/navigation#split-view-navigator) explains why it beats setting `collapsed` from a window breakpoint.
+
 ## Size the sidebar
 
-`sidebarWidthFraction`, `minSidebarWidth` and `maxSidebarWidth` bound the sidebar on wide windows.
+The other props bound the sidebar while the panes sit side by side. `sidebarWidthFraction` asks for 30% of the width, and `minSidebarWidth` and `maxSidebarWidth` keep it between 220 and 320, in sp like the condition. At the default size the sidebar gets 220; in a maximized window it stops at 320 and the note takes the rest. libadwaita's defaults (25%, between 180 and 280) leave less room for note names, which the rows cut off with an ellipsis.
+
+The minimum and the condition go together: in the narrowest side-by-side layout, the note pane still gets about 280 beside the sidebar's 220.
 
 ## Fit a phone screen
 
-`widthRequest` and `heightRequest` from [Create a Window](/v2/tutorial/your-first-window) keep the window at least 360 by 294, the size of a phone screen. Collapsed, the split view fits that width.
+[Create a Window](/v2/tutorial/your-first-window) set `widthRequest` and `heightRequest` to 360 by 294, the smallest size the GNOME HIG asks phone-friendly apps to support. That size now matters: a breakpoint takes away the navigator's own minimum size, so the window's size request is the only floor (see [`AdwBreakpointBin`](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/class.BreakpointBin.html#minimum-size)). At 360 the split view is collapsed, and each pane fits the width on its own.
 
 ## Run it
 
