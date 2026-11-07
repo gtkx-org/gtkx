@@ -5,7 +5,7 @@
         "tsBuildInfoFile": "${configDir}/tsconfig.tsbuildinfo",
         "emitDeclarationOnly": true
     },
-    "include": ["${configDir}/**/*.tsx"],
+    "include": ["${configDir}/**/*.tsx", "${configDir}/guide/**/*.ts", "${configDir}/tutorial/**/*.ts"],
     "exclude": ["${configDir}/node_modules", "${configDir}/out-tsc"],
     "references": [
         {

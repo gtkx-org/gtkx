@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 import { TaskList } from "./guide/components-list-view.js";
+import { App as ListOfTasks } from "./tutorial/a-list-of-tasks/src/app.js";
 import { App as FirstWindow } from "./tutorial/your-first-window.js";
 
 const outputDir = fileURLToPath(new URL("../public/figures/", import.meta.url));
@@ -30,6 +31,7 @@ function SampleWindow({ title, children }: { title: string; children: ReactNode 
 
 const figures: [name: string, element: ReactNode][] = [
     ["tutorial-your-first-window", <FirstWindow />],
+    ["tutorial-a-list-of-tasks", <ListOfTasks />],
     [
         "guide-components-list-view",
         <SampleWindow title="ListView">

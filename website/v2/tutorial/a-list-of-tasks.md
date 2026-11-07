@@ -10,21 +10,7 @@ Replace the empty state from [Create a Window](/v2/tutorial/your-first-window) w
 
 Create `src/types.ts`:
 
-```ts [src/types.ts]
-export type Task = {
-    id: string;
-    listId: string;
-    title: string;
-    notes: string;
-    done: boolean;
-    important: boolean;
-    deleted: boolean;
-    due: string | null;
-    position: number;
-    createdAt: string;
-    completedAt: string | null;
-};
-```
+<<< @/figures/tutorial/a-list-of-tasks/src/types.ts [src/types.ts]
 
 `title` appears in the list, `notes` holds the body shown in the editor, and `position` records the manual order. Dates use ISO strings so tasks can be saved as JSON in [Save Tasks](/v2/tutorial/saving-to-disk).
 
@@ -32,68 +18,7 @@ export type Task = {
 
 Create `src/components/task-list.tsx`:
 
-```tsx [src/components/task-list.tsx]
-import * as Gtk from "@gtkx/gi/gtk";
-import { AdwActionRow, AdwClamp } from "@gtkx/jsx/adw";
-import { GtkListBox, GtkScrolledWindow } from "@gtkx/jsx/gtk";
-import type { Task } from "../types.js";
-
-const createdAt = new Date().toISOString();
-
-const TASKS: Task[] = [
-    {
-        id: "t1",
-        listId: "personal",
-        title: "Welcome to Tasks",
-        notes: "This is your first task. Tick the checkbox to complete it, or open it to add notes and a due date.",
-        done: false,
-        important: false,
-        deleted: false,
-        due: null,
-        position: 0,
-        createdAt,
-        completedAt: null,
-    },
-    {
-        id: "t2",
-        listId: "personal",
-        title: "Water the plants",
-        notes: "",
-        done: false,
-        important: true,
-        deleted: false,
-        due: null,
-        position: 1,
-        createdAt,
-        completedAt: null,
-    },
-    {
-        id: "t3",
-        listId: "work",
-        title: "Prepare the weekly report",
-        notes: "",
-        done: false,
-        important: false,
-        deleted: false,
-        due: null,
-        position: 2,
-        createdAt,
-        completedAt: null,
-    },
-];
-
-export const TaskList = () => (
-    <GtkScrolledWindow vexpand>
-        <AdwClamp maximumSize={640} marginTop={12} marginBottom={12} marginStart={12} marginEnd={12}>
-            <GtkListBox valign={Gtk.Align.START} selectionMode={Gtk.SelectionMode.NONE} cssClasses={["boxed-list"]}>
-                {TASKS.map((task) => (
-                    <AdwActionRow key={task.id} title={task.title} subtitle={task.notes} useMarkup={false} />
-                ))}
-            </GtkListBox>
-        </AdwClamp>
-    </GtkScrolledWindow>
-);
-```
+<<< @/figures/tutorial/a-list-of-tasks/src/components/task-list.tsx [src/components/task-list.tsx]
 
 `GtkScrolledWindow` scrolls long lists. `AdwClamp` keeps the rows readable in a wide window, and the `boxed-list` class gives the list its rounded card appearance. `valign={Gtk.Align.START}` keeps the card as tall as its rows; without it, the list fills the scrolled area. [CSS](/v2/guide/css) covers native classes and stylesheets.
 
@@ -105,37 +30,17 @@ export const TaskList = () => (
 
 Replace `src/app.tsx` with the following. It keeps the window and header bar, removes the unused status-page import, and puts `TaskList` in the content slot.
 
-```tsx [src/app.tsx]
-import {
-    AdwApplication,
-    AdwApplicationWindow,
-    AdwHeaderBar,
-    AdwToolbarView,
-} from "@gtkx/jsx/adw";
-import { quit } from "@gtkx/react";
-import { TaskList } from "./components/task-list.js";
-
-export function App() {
-    return (
-        <AdwApplication>
-            <AdwApplicationWindow
-                title="Tasks"
-                widthRequest={360}
-                heightRequest={294}
-                onCloseRequest={() => quit()}
-            >
-                <AdwToolbarView top={<AdwHeaderBar />}>
-                    <TaskList />
-                </AdwToolbarView>
-            </AdwApplicationWindow>
-        </AdwApplication>
-    );
-}
-```
+<<< @/figures/tutorial/a-list-of-tasks/src/app.tsx [src/app.tsx]
 
 ## Run it
 
 The window shows three task titles in a card under the header bar. **Welcome to Tasks** has a second line of notes; the other rows have titles only.
+
+<figure class="result">
+    <img class="result-light" src="/figures/tutorial-a-list-of-tasks-light.png" width="360" height="294" loading="lazy" alt="The Tasks window: a boxed list under the header bar with three tasks, Welcome to Tasks with a line of notes below it, Water the plants, and Prepare the weekly report." />
+    <img class="result-dark" src="/figures/tutorial-a-list-of-tasks-dark.png" width="360" height="294" loading="lazy" alt="The Tasks window: a boxed list under the header bar with three tasks, Welcome to Tasks with a line of notes below it, Water the plants, and Prepare the weekly report." />
+    <figcaption>Captured from <a href="#render-the-list"><code>src/components/task-list.tsx</code></a> and <a href="#show-the-list-in-the-window"><code>src/app.tsx</code></a> above.</figcaption>
+</figure>
 
 Widen the window until the card stops growing and stays centered. Shorten it until the list scrolls. Add a fourth entry to `TASKS` with a unique `id` and title, check that it appears, then remove it before continuing.
 
