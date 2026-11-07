@@ -11,7 +11,7 @@ The [sidebar and task list](/v2/tutorial/lists-and-the-sidebar) fit beside each 
 In `src/components/window.tsx`, pass `collapseCondition` to `Split.Navigator`:
 
 ```diff [src/components/window.tsx]
-@@ -16,0 +17 @@
+@@ -21,0 +22 @@
 +                    collapseCondition="max-width: 500sp"
 ```
 
@@ -49,7 +49,7 @@ Above `Window`, add `NothingSelected`:
 Pass it to the navigator:
 
 ```diff [src/components/window.tsx]
-@@ -28,0 +29 @@
+@@ -33,0 +34 @@
 +                    contentPlaceholder={<NothingSelected />}
 ```
 

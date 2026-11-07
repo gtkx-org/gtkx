@@ -15,15 +15,18 @@ Add `lastNotifiedDue: string | null` to `Task` in `src/types.ts`. Set it to `nul
 Add this member to `TasksSlice` in `src/store/tasks.ts`:
 
 ```diff [src/store/tasks.ts]
-@@ -15,0 +16 @@
+@@ -18,0 +19 @@
 +    markNotified: (id: string, due: string) => void;
 ```
 
 Add its implementation alongside the other slice actions:
 
 ```diff [src/store/tasks.ts]
-@@ -64,0 +65 @@
-+    markNotified: (id, due) => set((state) => ({ tasks: patch(state.tasks, id, { lastNotifiedDue: due }) })),
+@@ -84,0 +85,4 @@
++    markNotified: (id, due) =>
++        set((state) => ({
++            tasks: patch(state.tasks, id, { lastNotifiedDue: due }),
++        })),
 ```
 
 Tasks already persist, so this marker survives a restart. Comparing the exact due value lets a changed due date produce another reminder.
@@ -40,16 +43,28 @@ const SWEEP_INTERVAL = 60_000;
 
 export type Reminder = { id: string; due: string };
 
-export const isPendingReminder = (task: Task | undefined, due: string): task is Task =>
-    task?.due === due && !task.done && !task.deleted && task.lastNotifiedDue !== due;
+export const isPendingReminder = (
+    task: Task | undefined,
+    due: string,
+): task is Task =>
+    task?.due === due &&
+    !task.done &&
+    !task.deleted &&
+    task.lastNotifiedDue !== due;
 
-export const useReminders = (tasks: Task[], reminderMinutes: number): Reminder[] => {
+export const useReminders = (
+    tasks: Task[],
+    reminderMinutes: number,
+): Reminder[] => {
     const [reminders, setReminders] = useState<Reminder[]>([]);
     const previousSweep = useRef<number | null>(null);
     useEffect(() => {
         const sweep = (): void => {
             const nowMs = Date.now();
-            const previousMs = Math.min(previousSweep.current ?? nowMs, nowMs - SWEEP_INTERVAL);
+            const previousMs = Math.min(
+                previousSweep.current ?? nowMs,
+                nowMs - SWEEP_INTERVAL,
+            );
             const leadMs = reminderMinutes * SWEEP_INTERVAL;
             previousSweep.current = nowMs;
             setReminders((queued) => {
@@ -60,9 +75,17 @@ export const useReminders = (tasks: Task[], reminderMinutes: number): Reminder[]
                     const dueMs = new Date(due).getTime();
                     const remaining = dueMs - nowMs;
                     const reminderAt = dueMs - leadMs;
-                    const isReminderReached = reminderAt > previousMs && reminderAt <= nowMs;
-                    const isQueued = queued.some((reminder) => reminder.id === task.id && reminder.due === due);
-                    if (isQueued || (remaining > 0 && remaining <= leadMs) || isReminderReached) {
+                    const isReminderReached =
+                        reminderAt > previousMs && reminderAt <= nowMs;
+                    const isQueued = queued.some(
+                        (reminder) =>
+                            reminder.id === task.id && reminder.due === due,
+                    );
+                    if (
+                        isQueued ||
+                        (remaining > 0 && remaining <= leadMs) ||
+                        isReminderReached
+                    ) {
                         pending.push({ id: task.id, due });
                     }
                 }
@@ -96,7 +119,9 @@ import { useStore } from "./store/index.js";
 
 export const ReminderNotification = ({ id, due }: Reminder) => {
     const application = useApplication();
-    const [notification, setNotification] = useState<Gio.Notification | null>(null);
+    const [notification, setNotification] = useState<Gio.Notification | null>(
+        null,
+    );
 
     useEffect(() => {
         const store = useStore.getState();
@@ -106,8 +131,15 @@ export const ReminderNotification = ({ id, due }: Reminder) => {
         notification.setTitle(task.title);
         notification.setBody(`Due ${formatDateTime(due)}`);
         notification.setPriority(Gio.NotificationPriority.HIGH);
-        notification.addButtonWithTarget("Mark Complete", "app.complete-task", GLib.Variant.newString(task.id));
-        notification.setDefaultActionAndTarget("app.open-task", GLib.Variant.newString(task.id));
+        notification.addButtonWithTarget(
+            "Mark Complete",
+            "app.complete-task",
+            GLib.Variant.newString(task.id),
+        );
+        notification.setDefaultActionAndTarget(
+            "app.open-task",
+            GLib.Variant.newString(task.id),
+        );
         application.sendNotification(task.id, notification);
         store.markNotified(task.id, due);
     }, [application, due, id, notification]);
@@ -131,7 +163,7 @@ In `src/components/window.tsx`, add these imports:
 Inside `Window`, subscribe to tasks and read the reminder interval using the existing settings instance and schema:
 
 ```diff [src/components/window.tsx]
-@@ -44,0 +45,3 @@
+@@ -60,0 +61,3 @@
 +    const tasks = useStore((state) => state.tasks);
 +    const [reminderMinutes] = useSetting(settings, schema, "reminder-minutes");
 +    const reminders = useReminders(tasks, reminderMinutes);
@@ -140,9 +172,12 @@ Inside `Window`, subscribe to tasks and read the reminder interval using the exi
 Render the reminders inside the existing `ToastProvider`, before `AdwApplicationWindow`:
 
 ```diff [src/components/window.tsx]
-@@ -55,0 +56,3 @@
+@@ -71,0 +72,6 @@
 +            {reminders.map((reminder) => (
-+                <ReminderNotification key={`${reminder.id}:${reminder.due}`} {...reminder} />
++                <ReminderNotification
++                    key={`${reminder.id}:${reminder.due}`}
++                    {...reminder}
++                />
 +            ))}
 ```
 
@@ -164,7 +199,9 @@ import { ALL_TASKS, openTask } from "./navigation.js";
 import { useStore } from "./store/index.js";
 
 export function App() {
-    const [application, setApplication] = useState<Adw.Application | null>(null);
+    const [application, setApplication] = useState<Adw.Application | null>(
+        null,
+    );
 
     return (
         <AdwApplication
@@ -172,8 +209,14 @@ export function App() {
             onActivate={() => application?.getActiveWindow()?.present()}
             actionAccels={[
                 { detailedActionName: "win.new", accels: ["<Control>n"] },
-                { detailedActionName: "win.preferences", accels: ["<Control>comma"] },
-                { detailedActionName: "win.shortcuts", accels: ["<Control>question"] },
+                {
+                    detailedActionName: "win.preferences",
+                    accels: ["<Control>comma"],
+                },
+                {
+                    detailedActionName: "win.shortcuts",
+                    accels: ["<Control>question"],
+                },
             ]}
             actions={
                 <>
@@ -181,14 +224,22 @@ export function App() {
                         name="complete-task"
                         parameterType={GLib.VariantType.new("s")}
                         onActivate={(parameter) => {
-                            useStore.getState().setDone((parameter as GLib.Variant).getString()[0], true);
+                            useStore
+                                .getState()
+                                .setDone(
+                                    (parameter as GLib.Variant).getString()[0],
+                                    true,
+                                );
                         }}
                     />
                     <GSimpleAction
                         name="open-task"
                         parameterType={GLib.VariantType.new("s")}
                         onActivate={(parameter) => {
-                            openTask(ALL_TASKS, (parameter as GLib.Variant).getString()[0]);
+                            openTask(
+                                ALL_TASKS,
+                                (parameter as GLib.Variant).getString()[0],
+                            );
                             application?.activate();
                         }}
                     />
@@ -210,16 +261,16 @@ Activating an action is separate from activating the application. `open-task` qu
 An action may arrive before the navigation container mounts. In `src/navigation.ts`, add `pendingTask`, replace `openTask`, and add `openPendingTask`:
 
 ```diff [src/navigation.ts]
-@@ -41,0 +42,2 @@
+@@ -51,0 +52,2 @@
 +let pendingTask: { selection: Selection; id: string } | null = null;
 +
-@@ -43 +45,4 @@
+@@ -53 +55,4 @@
 -    if (!navigationRef.isReady()) return;
 +    if (!navigationRef.isReady()) {
 +        pendingTask = { selection, id };
 +        return;
 +    }
-@@ -45,0 +51,7 @@
+@@ -55,0 +61,7 @@
 +};
 +
 +export const openPendingTask = (): void => {
@@ -248,18 +299,26 @@ Initialize the marker in the seed helper:
 Open any queued task when navigation is ready:
 
 ```diff [src/components/window.tsx]
-@@ -21 +21 @@
+@@ -25 +25,6 @@
 -import { ALL_TASKS, navigationRef, Split } from "../navigation.js";
-+import { ALL_TASKS, navigationRef, openPendingTask, Split } from "../navigation.js";
-@@ -69 +69 @@
++import {
++    ALL_TASKS,
++    navigationRef,
++    openPendingTask,
++    Split,
++} from "../navigation.js";
+@@ -88 +93,4 @@
 -                    <NavigationContainer ref={navigationRef}>
-+                    <NavigationContainer ref={navigationRef} onReady={openPendingTask}>
++                    <NavigationContainer
++                        ref={navigationRef}
++                        onReady={openPendingTask}
++                    >
 ```
 
 Initialize the marker for new tasks:
 
 ```diff [src/store/tasks.ts]
-@@ -42,0 +43 @@
+@@ -47,0 +48 @@
 +                    lastNotifiedDue: null,
 ```
 

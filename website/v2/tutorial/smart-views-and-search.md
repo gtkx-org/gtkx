@@ -11,11 +11,13 @@ The split view now adapts to a narrow window. Add All Tasks, Today, Important, a
 In `src/types.ts`, replace `Selection` and add `SmartView` and `Filter`:
 
 ```diff [src/types.ts]
-@@ -21 +21,5 @@
+@@ -21 +21,7 @@
 -export type Selection = { kind: "list"; listId: string };
 +export type SmartView = "all" | "today" | "important" | "trash";
 +
-+export type Selection = { kind: "smart"; view: SmartView } | { kind: "list"; listId: string };
++export type Selection =
++    | { kind: "smart"; view: SmartView }
++    | { kind: "list"; listId: string };
 +
 +export type Filter = "all" | "open" | "done";
 ```
@@ -27,7 +29,8 @@ In `src/types.ts`, replace `Selection` and add `SmartView` and `Filter`:
 Create `src/format.ts` for the shared date helper:
 
 ```ts [src/format.ts]
-const startOfDay = (date: Date): number => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+const startOfDay = (date: Date): number =>
+    new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
 
 export const isToday = (iso: string | null): boolean => {
     if (!iso) return false;
@@ -49,9 +52,14 @@ const SMART_TITLES: Record<SmartView, string> = {
 };
 
 export const selectionKey = (selection: Selection): string =>
-    selection.kind === "smart" ? `smart:${selection.view}` : `list:${selection.listId}`;
+    selection.kind === "smart"
+        ? `smart:${selection.view}`
+        : `list:${selection.listId}`;
 
-export const selectionTitle = (selection: Selection, lists: TaskList[]): string =>
+export const selectionTitle = (
+    selection: Selection,
+    lists: TaskList[],
+): string =>
     selection.kind === "list"
         ? (lists.find((list) => list.id === selection.listId)?.name ?? "Tasks")
         : SMART_TITLES[selection.view];
@@ -60,7 +68,8 @@ export const addListId = (selection: Selection, lists: TaskList[]): string =>
     selection.kind === "list" ? selection.listId : (lists[0]?.id ?? "");
 
 const inSelection = (task: Task, selection: Selection): boolean => {
-    if (selection.kind === "list") return !task.deleted && task.listId === selection.listId;
+    if (selection.kind === "list")
+        return !task.deleted && task.listId === selection.listId;
     switch (selection.view) {
         case "all":
             return !task.deleted;
@@ -76,7 +85,10 @@ const inSelection = (task: Task, selection: Selection): boolean => {
 const matchesQuery = (task: Task, query: string): boolean => {
     if (!query) return true;
     const needle = query.toLowerCase();
-    return task.title.toLowerCase().includes(needle) || task.notes.toLowerCase().includes(needle);
+    return (
+        task.title.toLowerCase().includes(needle) ||
+        task.notes.toLowerCase().includes(needle)
+    );
 };
 
 const matchesFilter = (task: Task, filter: Filter): boolean => {
@@ -87,7 +99,11 @@ const matchesFilter = (task: Task, filter: Filter): boolean => {
 
 export type VisibleOptions = { query: string; filter: Filter };
 
-export const visibleTasks = (tasks: Task[], selection: Selection, options: VisibleOptions): Task[] =>
+export const visibleTasks = (
+    tasks: Task[],
+    selection: Selection,
+    options: VisibleOptions,
+): Task[] =>
     tasks
         .filter(
             (task) =>
@@ -105,7 +121,10 @@ export type SidebarCounts = {
     lists: Record<string, number>;
 };
 
-export const sidebarCounts = (tasks: Task[], lists: TaskList[]): SidebarCounts => {
+export const sidebarCounts = (
+    tasks: Task[],
+    lists: TaskList[],
+): SidebarCounts => {
     const open = tasks.filter((task) => !task.deleted && !task.done);
     return {
         all: open.length,
@@ -113,7 +132,10 @@ export const sidebarCounts = (tasks: Task[], lists: TaskList[]): SidebarCounts =
         important: open.filter((task) => task.important).length,
         trash: tasks.filter((task) => task.deleted).length,
         lists: Object.fromEntries(
-            lists.map((list) => [list.id, open.filter((task) => task.listId === list.id).length]),
+            lists.map((list) => [
+                list.id,
+                open.filter((task) => task.listId === list.id).length,
+            ]),
         ),
     };
 };
@@ -121,18 +143,35 @@ export const sidebarCounts = (tasks: Task[], lists: TaskList[]): SidebarCounts =
 export type EmptyState = { icon: string; title: string; description: string };
 
 const SMART_EMPTY: Record<SmartView, EmptyState> = {
-    all: { icon: "view-list-symbolic", title: "No Tasks Yet", description: "Add a task above to get started" },
+    all: {
+        icon: "view-list-symbolic",
+        title: "No Tasks Yet",
+        description: "Add a task above to get started",
+    },
     today: {
         icon: "x-office-calendar-symbolic",
         title: "Nothing Due Today",
         description: "Tasks due today appear here",
     },
-    important: { icon: "starred-symbolic", title: "No Important Tasks", description: "Star a task to find it here" },
-    trash: { icon: "user-trash-symbolic", title: "Trash Is Empty", description: "Deleted tasks appear here" },
+    important: {
+        icon: "starred-symbolic",
+        title: "No Important Tasks",
+        description: "Star a task to find it here",
+    },
+    trash: {
+        icon: "user-trash-symbolic",
+        title: "Trash Is Empty",
+        description: "Deleted tasks appear here",
+    },
 };
 
 export const emptyState = (selection: Selection, query: string): EmptyState => {
-    if (query) return { icon: "system-search-symbolic", title: "No Results", description: `No tasks match “${query}”` };
+    if (query)
+        return {
+            icon: "system-search-symbolic",
+            title: "No Results",
+            description: `No tasks match “${query}”`,
+        };
     if (selection.kind === "smart") return SMART_EMPTY[selection.view];
     return SMART_EMPTY.all;
 };
@@ -161,7 +200,9 @@ export type UiSlice = {
     resetSearch: () => void;
 };
 
-export const createUiSlice: StateCreator<Store, Mutators, [], UiSlice> = (set) => ({
+export const createUiSlice: StateCreator<Store, Mutators, [], UiSlice> = (
+    set,
+) => ({
     filter: "all",
     searchMode: false,
     searchQuery: "",
@@ -193,11 +234,21 @@ Replace `src/components/sidebar.tsx` with:
 ```tsx [src/components/sidebar.tsx]
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwActionRow } from "@gtkx/jsx/adw";
-import { GtkBox, GtkImage, GtkLabel, GtkListBox, GtkScrolledWindow } from "@gtkx/jsx/gtk";
+import {
+    GtkBox,
+    GtkImage,
+    GtkLabel,
+    GtkListBox,
+    GtkScrolledWindow,
+} from "@gtkx/jsx/gtk";
 import type { SplitViewScreenProps } from "@gtkx/navigation";
 import { type RootParamList, useSelection } from "../navigation.js";
 import { useStore } from "../store/index.js";
-import { type SidebarCounts, selectionKey, sidebarCounts } from "../store/selectors.js";
+import {
+    type SidebarCounts,
+    selectionKey,
+    sidebarCounts,
+} from "../store/selectors.js";
 import { listDot } from "../styles.js";
 import type { Selection, TaskList } from "../types.js";
 
@@ -228,14 +279,12 @@ const buildEntries = (lists: TaskList[], counts: SidebarCounts): Entry[] => [
         icon: "starred-symbolic",
         count: counts.important,
     },
-    ...lists.map(
-        (list): Entry => ({
-            selection: { kind: "list", listId: list.id },
-            title: list.name,
-            color: list.color,
-            count: counts.lists[list.id] ?? 0,
-        }),
-    ),
+    ...lists.map((list): Entry => ({
+        selection: { kind: "list", listId: list.id },
+        title: list.name,
+        color: list.color,
+        count: counts.lists[list.id] ?? 0,
+    })),
     {
         selection: { kind: "smart", view: "trash" },
         title: "Trash",
@@ -244,7 +293,9 @@ const buildEntries = (lists: TaskList[], counts: SidebarCounts): Entry[] => [
     },
 ];
 
-export const Sidebar = ({ navigation }: SplitViewScreenProps<RootParamList, "Lists">) => {
+export const Sidebar = ({
+    navigation,
+}: SplitViewScreenProps<RootParamList, "Lists">) => {
     const tasks = useStore((state) => state.tasks);
     const lists = useStore((state) => state.lists);
     const resetSearch = useStore((state) => state.resetSearch);
@@ -252,7 +303,9 @@ export const Sidebar = ({ navigation }: SplitViewScreenProps<RootParamList, "Lis
 
     const entries = buildEntries(lists, sidebarCounts(tasks, lists));
     const activeKey = selection === null ? null : selectionKey(selection);
-    const activeIndex = entries.findIndex((entry) => selectionKey(entry.selection) === activeKey);
+    const activeIndex = entries.findIndex(
+        (entry) => selectionKey(entry.selection) === activeKey,
+    );
 
     return (
         <GtkScrolledWindow vexpand>
@@ -278,7 +331,9 @@ export const Sidebar = ({ navigation }: SplitViewScreenProps<RootParamList, "Lis
                                 <GtkBox
                                     valign={Gtk.Align.CENTER}
                                     cssClasses={[listDot(entry.color)]}
-                                    accessibleRole={Gtk.AccessibleRole.PRESENTATION}
+                                    accessibleRole={
+                                        Gtk.AccessibleRole.PRESENTATION
+                                    }
                                 />
                             ) : (
                                 <GtkImage iconName={entry.icon} />
@@ -286,7 +341,10 @@ export const Sidebar = ({ navigation }: SplitViewScreenProps<RootParamList, "Lis
                         }
                         suffix={
                             entry.count > 0 ? (
-                                <GtkLabel valign={Gtk.Align.CENTER} cssClasses={["dimmed", "numeric"]}>
+                                <GtkLabel
+                                    valign={Gtk.Align.CENTER}
+                                    cssClasses={["dimmed", "numeric"]}
+                                >
                                     {String(entry.count)}
                                 </GtkLabel>
                             ) : undefined
@@ -304,7 +362,7 @@ Each row carries the selection it opens. `selectedIndex` continues to follow the
 In `src/navigation.ts`, add the launch selection:
 
 ```diff [src/navigation.ts]
-@@ -18,0 +19,2 @@
+@@ -20,0 +21,2 @@
 +
 +export const ALL_TASKS: Selection = { kind: "smart", view: "all" };
 ```
@@ -337,7 +395,8 @@ export const TaskFilter = () => {
             activeName={filter}
             cssClasses={["round"]}
             onNotifyActiveName={(name) => {
-                if (name === "all" || name === "open" || name === "done") setFilter(name);
+                if (name === "all" || name === "open" || name === "done")
+                    setFilter(name);
             }}
         >
             <AdwToggle name="all" label="All" />
@@ -382,11 +441,14 @@ In `src/components/window.tsx`, import the search button:
 Replace the `Tasks` screen declaration with:
 
 ```diff [src/components/window.tsx]
-@@ -37 +37 @@
+@@ -46 +46 @@
 -                        initialParams={{ kind: "list", listId: "personal" }}
 +                        initialParams={ALL_TASKS}
-@@ -39 +39,2 @@
--                            title: lists.find((list) => list.id === route.params.listId)?.name ?? "Tasks",
+@@ -48,4 +48,2 @@
+-                            title:
+-                                lists.find(
+-                                    (list) => list.id === route.params.listId,
+-                                )?.name ?? "Tasks",
 +                            title: selectionTitle(route.params, lists),
 +                            headerStart: <SearchButton />,
 ```
@@ -401,7 +463,13 @@ Replace `src/components/task-list.tsx` with:
 import { markupEscapeText } from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwClamp, AdwEntryRow, AdwStatusPage } from "@gtkx/jsx/adw";
-import { GtkBox, GtkListBox, GtkScrolledWindow, GtkSearchBar, GtkSearchEntry } from "@gtkx/jsx/gtk";
+import {
+    GtkBox,
+    GtkListBox,
+    GtkScrolledWindow,
+    GtkSearchBar,
+    GtkSearchEntry,
+} from "@gtkx/jsx/gtk";
 import type { Selection } from "../types.js";
 import { useStore } from "../store/index.js";
 import { addListId, emptyState, visibleTasks } from "../store/selectors.js";
@@ -418,7 +486,10 @@ export const TaskList = ({ selection }: { selection: Selection }) => {
     const setSearchQuery = useStore((state) => state.setSearchQuery);
     const addTask = useStore((state) => state.addTask);
 
-    const visible = visibleTasks(tasks, selection, { query: searchQuery, filter });
+    const visible = visibleTasks(tasks, selection, {
+        query: searchQuery,
+        filter,
+    });
     const empty = emptyState(selection, searchQuery);
     const listId = addListId(selection, lists);
 
@@ -426,7 +497,9 @@ export const TaskList = ({ selection }: { selection: Selection }) => {
         <GtkBox orientation={Gtk.Orientation.VERTICAL} vexpand>
             <GtkSearchBar
                 searchModeEnabled={searchMode}
-                onNotifySearchModeEnabled={(enabled) => setSearchMode(enabled ?? false)}
+                onNotifySearchModeEnabled={(enabled) =>
+                    setSearchMode(enabled ?? false)
+                }
             >
                 <GtkSearchEntry
                     placeholderText="Search tasks…"
@@ -435,10 +508,19 @@ export const TaskList = ({ selection }: { selection: Selection }) => {
                 />
             </GtkSearchBar>
             <GtkScrolledWindow vexpand>
-                <AdwClamp maximumSize={640} marginTop={12} marginBottom={12} marginStart={12} marginEnd={12}>
+                <AdwClamp
+                    maximumSize={640}
+                    marginTop={12}
+                    marginBottom={12}
+                    marginStart={12}
+                    marginEnd={12}
+                >
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                         <TaskFilter />
-                        <GtkListBox selectionMode={Gtk.SelectionMode.NONE} cssClasses={["boxed-list"]}>
+                        <GtkListBox
+                            selectionMode={Gtk.SelectionMode.NONE}
+                            cssClasses={["boxed-list"]}
+                        >
                             <AdwEntryRow
                                 title="Add a task…"
                                 onEntryActivated={(self) => {
@@ -455,7 +537,10 @@ export const TaskList = ({ selection }: { selection: Selection }) => {
                                 cssClasses={["compact"]}
                                 iconName={empty.icon}
                                 title={empty.title}
-                                description={markupEscapeText(empty.description, -1)}
+                                description={markupEscapeText(
+                                    empty.description,
+                                    -1,
+                                )}
                             />
                         ) : null}
                     </GtkBox>
@@ -478,7 +563,9 @@ import type { RootParamList } from "../navigation.js";
 import { selectionKey } from "../store/selectors.js";
 import { TaskList } from "./task-list.js";
 
-export const TasksScreen = ({ route }: SplitViewScreenProps<RootParamList, "Tasks">) => (
+export const TasksScreen = ({
+    route,
+}: SplitViewScreenProps<RootParamList, "Tasks">) => (
     <TaskList key={selectionKey(route.params)} selection={route.params} />
 );
 ```

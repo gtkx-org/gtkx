@@ -11,19 +11,24 @@ description: "Change the persisted manual order with drag and drop or keyboard s
 Each task already has a `position`. Add an action to `src/store/tasks.ts` that moves a task to another task's index and updates the positions:
 
 ```diff [src/store/tasks.ts]
-@@ -14,0 +15 @@
+@@ -17,0 +18 @@
 +    reorder: (draggedId: string, targetId: string) => void;
 ```
 
 ```diff [src/store/tasks.ts]
-@@ -55,0 +56,8 @@
+@@ -70,0 +71,13 @@
 +    reorder: (draggedId, targetId) =>
 +        set((state) => {
 +            const tasks = [...state.tasks];
 +            const from = tasks.findIndex((task) => task.id === draggedId);
 +            const to = tasks.findIndex((task) => task.id === targetId);
 +            tasks.splice(to, 0, ...tasks.splice(from, 1));
-+            return { tasks: tasks.map((task, index) => ({ ...task, position: index })) };
++            return {
++                tasks: tasks.map((task, index) => ({
++                    ...task,
++                    position: index,
++                })),
++            };
 +        }),
 ```
 
@@ -36,7 +41,7 @@ Reordering changes the global manual order, including when you move tasks within
 Add the shared decision to `src/store/selectors.ts`:
 
 ```diff [src/store/selectors.ts]
-@@ -118,0 +119,11 @@
+@@ -158,0 +159,11 @@
 +
 +export const isReorderable = (
 +    selection: Selection,
@@ -53,12 +58,17 @@ Add the shared decision to `src/store/selectors.ts`:
 Add `isReorderable` to the selector import in `src/components/task-list.tsx`. Compute it once, then give each row its visible neighbors:
 
 ```diff [src/components/task-list.tsx]
-@@ -8 +8 @@
+@@ -14 +14,6 @@
 -import { addListId, emptyState, visibleTasks } from "../store/selectors.js";
-+import { addListId, emptyState, isReorderable, visibleTasks } from "../store/selectors.js";
-@@ -22,0 +23 @@
++import {
++    addListId,
++    emptyState,
++    isReorderable,
++    visibleTasks,
++} from "../store/selectors.js";
+@@ -28,0 +34 @@
 +    const canReorder = isReorderable(selection, searchQuery, filter, sortOrder);
-@@ -51,2 +52,8 @@
+@@ -72,2 +78,8 @@
 -                            {visible.map((task) => (
 -                                <TaskRow key={task.id} task={task} />
 +                            {visible.map((task, index) => (
@@ -110,7 +120,12 @@ type TaskRowProps = {
     nextId?: string;
 };
 
-export const TaskRow = ({ task, canReorder, previousId, nextId }: TaskRowProps) => {
+export const TaskRow = ({
+    task,
+    canReorder,
+    previousId,
+    nextId,
+}: TaskRowProps) => {
     const [row, setRow] = useState<Adw.ActionRow | null>(null);
     const paintableRef = useRef<Gtk.WidgetPaintable | null>(null);
     const requestDeleteTask = useRequestDeleteTask();
@@ -121,9 +136,14 @@ export const TaskRow = ({ task, canReorder, previousId, nextId }: TaskRowProps) 
     const escapedTitle = markupEscapeText(task.title, -1);
     const title = task.done ? `<s>${escapedTitle}</s>` : escapedTitle;
 
-    const handleReorderKey = (keyval: number, state: Gdk.ModifierType): boolean => {
-        if ((state & Gdk.ModifierType.ALT_MASK) === 0) return Gdk.EVENT_PROPAGATE;
-        if (keyval !== Gdk.KEY_Up && keyval !== Gdk.KEY_Down) return Gdk.EVENT_PROPAGATE;
+    const handleReorderKey = (
+        keyval: number,
+        state: Gdk.ModifierType,
+    ): boolean => {
+        if ((state & Gdk.ModifierType.ALT_MASK) === 0)
+            return Gdk.EVENT_PROPAGATE;
+        if (keyval !== Gdk.KEY_Up && keyval !== Gdk.KEY_Down)
+            return Gdk.EVENT_PROPAGATE;
         const targetId = keyval === Gdk.KEY_Up ? previousId : nextId;
         if (targetId === undefined) return Gdk.EVENT_PROPAGATE;
         reorder(task.id, targetId);
@@ -134,7 +154,10 @@ export const TaskRow = ({ task, canReorder, previousId, nextId }: TaskRowProps) 
         <>
             {canReorder &&
                 createPortal(
-                    <GtkWidgetPaintable ref={paintableRef} widget={row as Gtk.Widget | null} />,
+                    <GtkWidgetPaintable
+                        ref={paintableRef}
+                        widget={row as Gtk.Widget | null}
+                    />,
                     rootElement,
                 )}
             <AdwActionRow
@@ -157,11 +180,17 @@ export const TaskRow = ({ task, canReorder, previousId, nextId }: TaskRowProps) 
                     <>
                         <GtkToggleButton
                             valign={Gtk.Align.CENTER}
-                            iconName={task.important ? "starred-symbolic" : "non-starred-symbolic"}
+                            iconName={
+                                task.important
+                                    ? "starred-symbolic"
+                                    : "non-starred-symbolic"
+                            }
                             active={task.important}
                             accessibleLabel="Toggle important"
                             cssClasses={["flat"]}
-                            onToggled={(self) => setImportant(task.id, self.active)}
+                            onToggled={(self) =>
+                                setImportant(task.id, self.active)
+                            }
                         />
                         <GtkButton
                             valign={Gtk.Align.CENTER}
@@ -178,8 +207,14 @@ export const TaskRow = ({ task, canReorder, previousId, nextId }: TaskRowProps) 
                             <GtkDragSource
                                 actions={Gdk.DragAction.MOVE}
                                 onPrepare={(x, y, self) => {
-                                    self.setIcon(paintableRef.current, Math.round(x), Math.round(y));
-                                    return Gdk.ContentProvider.newForValue(task.id);
+                                    self.setIcon(
+                                        paintableRef.current,
+                                        Math.round(x),
+                                        Math.round(y),
+                                    );
+                                    return Gdk.ContentProvider.newForValue(
+                                        task.id,
+                                    );
                                 }}
                             />
                             <GtkDropTarget
@@ -189,7 +224,12 @@ export const TaskRow = ({ task, canReorder, previousId, nextId }: TaskRowProps) 
                                     const draggedId = value.getString();
                                     if (
                                         draggedId === null ||
-                                        !useStore.getState().tasks.some((candidate) => candidate.id === draggedId)
+                                        !useStore
+                                            .getState()
+                                            .tasks.some(
+                                                (candidate) =>
+                                                    candidate.id === draggedId,
+                                            )
                                     )
                                         return false;
                                     reorder(draggedId, task.id);
@@ -197,7 +237,9 @@ export const TaskRow = ({ task, canReorder, previousId, nextId }: TaskRowProps) 
                                 }}
                             />
                             <GtkEventControllerKey
-                                onKeyPressed={(keyval, _keycode, state) => handleReorderKey(keyval, state)}
+                                onKeyPressed={(keyval, _keycode, state) =>
+                                    handleReorderKey(keyval, state)
+                                }
                             />
                         </>
                     ) : undefined

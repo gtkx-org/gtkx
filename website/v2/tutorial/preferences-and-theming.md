@@ -83,8 +83,13 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
 
     return (
         <>
-            {createPortal(<GSettings ref={setSettings} schemaId={schema.id} />, rootElement)}
-            {settings !== null && <SettingsContext value={settings}>{children}</SettingsContext>}
+            {createPortal(
+                <GSettings ref={setSettings} schemaId={schema.id} />,
+                rootElement,
+            )}
+            {settings !== null && (
+                <SettingsContext value={settings}>{children}</SettingsContext>
+            )}
         </>
     );
 };
@@ -106,7 +111,7 @@ In `src/app.tsx`, wrap `Window` inside the existing `AdwApplication`:
 ```diff [src/app.tsx]
 @@ -0,0 +1 @@
 +import { SettingsProvider } from "./components/settings.js";
-@@ -12 +13,3 @@
+@@ -15 +16,3 @@
 -            <Window />
 +            <SettingsProvider>
 +                <Window />
@@ -128,17 +133,29 @@ In `src/components/window.tsx`, extend the React and GTKX imports, then hold the
 -import { useRef } from "react";
 @@ -12 +15,0 @@
 -import * as Adw from "@gtkx/gi/adw";
-@@ -15 +17,0 @@
+@@ -19 +21,0 @@
 -import { quit } from "@gtkx/react";
-@@ -30,0 +33,7 @@
+@@ -34,0 +37,19 @@
 +    const settings = useAppSettings();
 +    const [colorScheme] = useSetting(settings, schema, "color-scheme");
 +    const [window, setWindow] = useState<Adw.ApplicationWindow | null>(null);
 +
-+    useBindSetting({ settings, schema, key: "window-width", object: window, property: "defaultWidth" });
-+    useBindSetting({ settings, schema, key: "window-height", object: window, property: "defaultHeight" });
++    useBindSetting({
++        settings,
++        schema,
++        key: "window-width",
++        object: window,
++        property: "defaultWidth",
++    });
++    useBindSetting({
++        settings,
++        schema,
++        key: "window-height",
++        object: window,
++        property: "defaultHeight",
++    });
 +
-@@ -37,0 +47 @@
+@@ -41,0 +63 @@
 +                ref={setWindow}
 ```
 
@@ -152,15 +169,18 @@ The generated schema supplies the allowed choices and enum values. A small appli
 import * as Adw from "@gtkx/gi/adw";
 import schema from "../data/com.gtkx.tutorial.gschema.xml";
 
-export type ColorScheme = typeof schema.values["color-scheme"][number];
-export type SortOrder = keyof typeof schema.values["sort-order"];
-type SortOrderValue = typeof schema.values["sort-order"][SortOrder];
+export type ColorScheme = (typeof schema.values)["color-scheme"][number];
+export type SortOrder = keyof (typeof schema.values)["sort-order"];
+type SortOrderValue = (typeof schema.values)["sort-order"][SortOrder];
 
 const COLOR_SCHEMES = {
     default: { label: "Follow system", value: Adw.ColorScheme.DEFAULT },
     light: { label: "Light", value: Adw.ColorScheme.FORCE_LIGHT },
     dark: { label: "Dark", value: Adw.ColorScheme.FORCE_DARK },
-} as const satisfies Record<ColorScheme, { label: string; value: Adw.ColorScheme }>;
+} as const satisfies Record<
+    ColorScheme,
+    { label: string; value: Adw.ColorScheme }
+>;
 
 const SORT_ORDERS = {
     manual: "Manual",
@@ -172,17 +192,24 @@ const SORT_ORDERS = {
 const sortOrderIds = Object.keys(SORT_ORDERS) as SortOrder[];
 
 export const colorSchemeItems = (): { id: string; value: string }[] =>
-    Object.entries(COLOR_SCHEMES).map(([id, choice]) => ({ id, value: choice.label }));
+    Object.entries(COLOR_SCHEMES).map(([id, choice]) => ({
+        id,
+        value: choice.label,
+    }));
 
 export const sortOrderItems = (): { id: string; value: string }[] =>
     sortOrderIds.map((id) => ({ id, value: SORT_ORDERS[id] }));
 
-export const colorSchemeValue = (id: string): Adw.ColorScheme => COLOR_SCHEMES[id as ColorScheme].value;
+export const colorSchemeValue = (id: string): Adw.ColorScheme =>
+    COLOR_SCHEMES[id as ColorScheme].value;
 
 export const sortOrderFromSetting = (value: SortOrderValue): SortOrder =>
-    sortOrderIds.find((id) => schema.values["sort-order"][id] === value) as SortOrder;
+    sortOrderIds.find(
+        (id) => schema.values["sort-order"][id] === value,
+    ) as SortOrder;
 
-export const sortOrderToSetting = (order: SortOrder): SortOrderValue => schema.values["sort-order"][order];
+export const sortOrderToSetting = (order: SortOrder): SortOrderValue =>
+    schema.values["sort-order"][order];
 ```
 
 The sort setting returns the schema's integer enum value. The conversion uses those declared values, so it also works when they are nonconsecutive. The label maps require an entry for each schema choice.
@@ -193,12 +220,19 @@ Create `src/hooks/use-sort-order.ts`:
 import { useSetting } from "@gtkx/react";
 import schema from "../../data/com.gtkx.tutorial.gschema.xml";
 import { useAppSettings } from "../components/settings.js";
-import { sortOrderFromSetting, sortOrderToSetting, type SortOrder } from "../settings.js";
+import {
+    sortOrderFromSetting,
+    sortOrderToSetting,
+    type SortOrder,
+} from "../settings.js";
 
 export const useSortOrder = (): [SortOrder, (order: SortOrder) => void] => {
     const settings = useAppSettings();
     const [value, setValue] = useSetting(settings, schema, "sort-order");
-    return [sortOrderFromSetting(value), (order) => setValue(sortOrderToSetting(order))];
+    return [
+        sortOrderFromSetting(value),
+        (order) => setValue(sortOrderToSetting(order)),
+    ];
 };
 ```
 
@@ -209,29 +243,33 @@ Import `SortOrder` from `settings.ts` in `src/store/selectors.ts`, then add the 
 ```diff [src/store/selectors.ts]
 @@ -0,0 +1 @@
 +import type { SortOrder } from "../settings.js";
-@@ -48 +49,20 @@
+@@ -57 +58,24 @@
 -export type VisibleOptions = { query: string; filter: Filter };
 +const byOrder =
 +    (order: SortOrder) =>
-+        (a: Task, b: Task): number => {
-+            switch (order) {
-+                case "due-date": {
-+                    if (a.due === b.due) return a.position - b.position;
-+                    if (!a.due) return 1;
-+                    if (!b.due) return -1;
-+                    return a.due < b.due ? -1 : 1;
-+                }
-+                case "title":
-+                    return a.title.localeCompare(b.title);
-+                case "created":
-+                    return a.createdAt.localeCompare(b.createdAt);
-+                default:
-+                    return a.position - b.position;
++    (a: Task, b: Task): number => {
++        switch (order) {
++            case "due-date": {
++                if (a.due === b.due) return a.position - b.position;
++                if (!a.due) return 1;
++                if (!b.due) return -1;
++                return a.due < b.due ? -1 : 1;
 +            }
-+        };
++            case "title":
++                return a.title.localeCompare(b.title);
++            case "created":
++                return a.createdAt.localeCompare(b.createdAt);
++            default:
++                return a.position - b.position;
++        }
++    };
 +
-+export type VisibleOptions = { query: string; filter: Filter; sortOrder: SortOrder };
-@@ -58 +78 @@
++export type VisibleOptions = {
++    query: string;
++    filter: Filter;
++    sortOrder: SortOrder;
++};
+@@ -71 +95 @@
 -        .sort((a, b) => a.position - b.position);
 +        .sort(byOrder(options.sortOrder));
 ```
@@ -241,11 +279,10 @@ In `src/components/task-list.tsx`, read the setting and pass it to the selector:
 ```diff [src/components/task-list.tsx]
 @@ -0,0 +1 @@
 +import { useSortOrder } from "../hooks/use-sort-order.js";
-@@ -11,0 +13 @@
+@@ -17,0 +19 @@
 +    const [sortOrder] = useSortOrder();
-@@ -21 +23 @@
--    const visible = visibleTasks(tasks, selection, { query: searchQuery, filter });
-+    const visible = visibleTasks(tasks, selection, { query: searchQuery, filter, sortOrder });
+@@ -29,0 +32 @@
++        sortOrder,
 ```
 
 ## Open Preferences
@@ -253,51 +290,79 @@ In `src/components/task-list.tsx`, read the setting and pass it to the selector:
 Add `"preferences"` to `DialogKind` in `src/types.ts`. Then connect the existing dialog state to a window action in `src/components/window-actions.tsx`:
 
 ```diff [src/components/window-actions.tsx]
-@@ -18,0 +19 @@
-+            <GSimpleAction name="preferences" onActivate={() => showDialog("preferences")} />
+@@ -18,0 +19,4 @@
++            <GSimpleAction
++                name="preferences"
++                onActivate={() => showDialog("preferences")}
++            />
 ```
 
 Register the accelerator in `src/app.tsx`:
 
 ```diff [src/app.tsx]
-@@ -9,0 +10 @@
-+                { detailedActionName: "win.preferences", accels: ["<Control>comma"] },
+@@ -9,0 +10,4 @@
++                {
++                    detailedActionName: "win.preferences",
++                    accels: ["<Control>comma"],
++                },
 ```
 
 Add `{ label: "Preferences", action: "win.preferences" }` beside Keyboard Shortcuts in `src/components/main-menu.tsx`, and document the same accelerator in `src/components/shortcuts.tsx`:
 
 ```diff [src/components/shortcuts.tsx]
-@@ -5,0 +6 @@
-+            <AdwShortcutsItem title="Preferences" accelerator="<Control>comma" />
+@@ -9,0 +10,4 @@
++            <AdwShortcutsItem
++                title="Preferences"
++                accelerator="<Control>comma"
++            />
 ```
 
 Create `src/components/preferences.tsx`:
 
 ```tsx [src/components/preferences.tsx]
 import { ComboRow } from "@gtkx/components";
-import { AdwPreferencesDialog, AdwPreferencesGroup, AdwPreferencesPage, AdwSpinRow } from "@gtkx/jsx/adw";
+import {
+    AdwPreferencesDialog,
+    AdwPreferencesGroup,
+    AdwPreferencesPage,
+    AdwSpinRow,
+} from "@gtkx/jsx/adw";
 import { GtkAdjustment } from "@gtkx/jsx/gtk";
 import { useSetting } from "@gtkx/react";
 import schema from "../../data/com.gtkx.tutorial.gschema.xml";
 import { useSortOrder } from "../hooks/use-sort-order.js";
-import { colorSchemeItems, sortOrderItems, type ColorScheme, type SortOrder } from "../settings.js";
+import {
+    colorSchemeItems,
+    sortOrderItems,
+    type ColorScheme,
+    type SortOrder,
+} from "../settings.js";
 import { useAppSettings } from "./settings.js";
 
 export const Preferences = ({ onClose }: { onClose: () => void }) => {
     const settings = useAppSettings();
     const [scheme, setScheme] = useSetting(settings, schema, "color-scheme");
     const [sortOrder, setSortOrder] = useSortOrder();
-    const [reminderMinutes, setReminderMinutes] = useSetting(settings, schema, "reminder-minutes");
+    const [reminderMinutes, setReminderMinutes] = useSetting(
+        settings,
+        schema,
+        "reminder-minutes",
+    );
 
     return (
         <AdwPreferencesDialog onClosed={onClose} title="Preferences">
-            <AdwPreferencesPage title="General" iconName="preferences-system-symbolic">
+            <AdwPreferencesPage
+                title="General"
+                iconName="preferences-system-symbolic"
+            >
                 <AdwPreferencesGroup title="Appearance">
                     <ComboRow
                         title="Theme"
                         items={colorSchemeItems()}
                         selectedId={scheme}
-                        onSelectionChanged={(id) => setScheme(id as ColorScheme)}
+                        onSelectionChanged={(id) =>
+                            setScheme(id as ColorScheme)
+                        }
                     />
                 </AdwPreferencesGroup>
                 <AdwPreferencesGroup title="Tasks">
@@ -305,13 +370,24 @@ export const Preferences = ({ onClose }: { onClose: () => void }) => {
                         title="Sort order"
                         items={sortOrderItems()}
                         selectedId={sortOrder}
-                        onSelectionChanged={(id) => setSortOrder(id as SortOrder)}
+                        onSelectionChanged={(id) =>
+                            setSortOrder(id as SortOrder)
+                        }
                     />
                     <AdwSpinRow
                         title="Reminder lead time"
                         subtitle="Minutes before a task is due"
-                        adjustment={<GtkAdjustment value={reminderMinutes} lower={0} upper={1440} stepIncrement={5} />}
-                        onNotifyValue={(value) => setReminderMinutes(value as number)}
+                        adjustment={
+                            <GtkAdjustment
+                                value={reminderMinutes}
+                                lower={0}
+                                upper={1440}
+                                stepIncrement={5}
+                            />
+                        }
+                        onNotifyValue={(value) =>
+                            setReminderMinutes(value as number)
+                        }
                     />
                 </AdwPreferencesGroup>
             </AdwPreferencesPage>
@@ -351,7 +427,7 @@ Apply it when the setting changes in `src/components/window.tsx`:
 ```diff [src/components/window.tsx]
 @@ -0,0 +1 @@
 +import { applyColorScheme } from "../theme.js";
-@@ -42,0 +44,4 @@
+@@ -58,0 +60,4 @@
 +
 +    useEffect(() => {
 +        applyColorScheme(colorScheme);
@@ -363,16 +439,25 @@ The `default` choice follows the desktop theme; `light` and `dark` override it f
 Include Preferences in the dialog type:
 
 ```diff [src/types.ts]
-@@ -27 +27 @@
+@@ -29 +29,6 @@
 -export type DialogKind = "none" | "about" | "shortcuts" | "new-list";
-+export type DialogKind = "none" | "about" | "shortcuts" | "new-list" | "preferences";
++export type DialogKind =
++    | "none"
++    | "about"
++    | "shortcuts"
++    | "new-list"
++    | "preferences";
 ```
 
 Add the menu entry:
 
 ```diff [src/components/main-menu.tsx]
-@@ -12,0 +13 @@
-+                    { section: [{ label: "Preferences", action: "win.preferences" }] },
+@@ -12,0 +13,5 @@
++                    {
++                        section: [
++                            { label: "Preferences", action: "win.preferences" },
++                        ],
++                    },
 ```
 
 ## Run it

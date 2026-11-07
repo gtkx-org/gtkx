@@ -11,13 +11,17 @@ description: "Connect window actions, menus, shortcuts, and dialogs to the task 
 The window's actions sit outside `NavigationContainer`, so they need a container ref. Add it in `src/navigation.ts`:
 
 ```diff [src/navigation.ts]
-@@ -1 +1 @@
+@@ -1 +1,5 @@
 -import { createSplitViewNavigator, useNavigationState } from "@gtkx/navigation";
-+import { createNavigationContainerRef, createSplitViewNavigator, useNavigationState } from "@gtkx/navigation";
++import {
++    createNavigationContainerRef,
++    createSplitViewNavigator,
++    useNavigationState,
++} from "@gtkx/navigation";
 ```
 
 ```diff [src/navigation.ts]
-@@ -10,0 +11,2 @@
+@@ -14,0 +15,2 @@
 +
 +export const navigationRef = createNavigationContainerRef<RootParamList>();
 ```
@@ -25,16 +29,20 @@ The window's actions sit outside `NavigationContainer`, so they need a container
 Add these helpers at the end of the same file. They reuse the existing `isSelection` helper and route parameters:
 
 ```diff [src/navigation.ts]
-@@ -29,0 +30,17 @@
+@@ -35,0 +36,21 @@
 +
 +export const currentSelection = (): Selection => {
-+    const routes = navigationRef.isReady() ? navigationRef.getRootState()?.routes : undefined;
++    const routes = navigationRef.isReady()
++        ? navigationRef.getRootState()?.routes
++        : undefined;
 +    const params = routes?.find((route) => route.name === "Tasks")?.params;
 +    return isSelection(params) ? params : ALL_TASKS;
 +};
 +
 +export const openTaskId = (): string | null => {
-+    const route = navigationRef.isReady() ? navigationRef.getCurrentRoute() : undefined;
++    const route = navigationRef.isReady()
++        ? navigationRef.getCurrentRoute()
++        : undefined;
 +    return route?.name === "Task" ? route.params.id : null;
 +};
 +
@@ -56,7 +64,7 @@ In `src/components/window.tsx`, add `navigationRef` to the navigation import and
 ```
 
 ```diff [src/components/window.tsx]
-@@ -27 +27 @@
+@@ -32 +32 @@
 -            <NavigationContainer>
 +            <NavigationContainer ref={navigationRef}>
 ```
@@ -68,7 +76,7 @@ Screens keep using `useNavigation`. The container ref is for this application's 
 Add this type to `src/types.ts`:
 
 ```diff [src/types.ts]
-@@ -25,0 +26,2 @@
+@@ -27,0 +28,2 @@
 +
 +export type DialogKind = "none" | "about" | "shortcuts";
 ```
@@ -82,7 +90,7 @@ In `src/store/ui.ts`, add `DialogKind` to the existing type import, then extend 
 @@ -5,0 +6,2 @@
 +    dialog: DialogKind;
 +    showDialog: (dialog: DialogKind) => void;
-@@ -15,0 +18,2 @@
+@@ -17,0 +20,2 @@
 +    dialog: "none",
 +    showDialog: (dialog) => set({ dialog }),
 ```
@@ -112,8 +120,14 @@ export const WindowActions = () => {
     return (
         <>
             <GSimpleAction name="new" onActivate={newTask} />
-            <GSimpleAction name="shortcuts" onActivate={() => showDialog("shortcuts")} />
-            <GSimpleAction name="about" onActivate={() => showDialog("about")} />
+            <GSimpleAction
+                name="shortcuts"
+                onActivate={() => showDialog("shortcuts")}
+            />
+            <GSimpleAction
+                name="about"
+                onActivate={() => showDialog("about")}
+            />
         </>
     );
 };
@@ -138,8 +152,19 @@ export const MainMenu = () => (
             <GMenu
                 items={[
                     { section: [{ label: "New Task", action: "win.new" }] },
-                    { section: [{ label: "Keyboard Shortcuts", action: "win.shortcuts" }] },
-                    { section: [{ label: "About Tasks", action: "win.about" }] },
+                    {
+                        section: [
+                            {
+                                label: "Keyboard Shortcuts",
+                                action: "win.shortcuts",
+                            },
+                        ],
+                    },
+                    {
+                        section: [
+                            { label: "About Tasks", action: "win.about" },
+                        ],
+                    },
                 ]}
             />
         }
@@ -152,12 +177,15 @@ export const MainMenu = () => (
 In `src/app.tsx`, add `actionAccels` to the existing application:
 
 ```diff [src/app.tsx]
-@@ -6 +6,6 @@
+@@ -6 +6,9 @@
 -        <AdwApplication>
 +        <AdwApplication
 +            actionAccels={[
 +                { detailedActionName: "win.new", accels: ["<Control>n"] },
-+                { detailedActionName: "win.shortcuts", accels: ["<Control>question"] },
++                {
++                    detailedActionName: "win.shortcuts",
++                    accels: ["<Control>question"],
++                },
 +            ]}
 +        >
 ```
@@ -171,21 +199,14 @@ Update `src/components/window.tsx`. Import the button and the two new components
 +import { GtkButton } from "@gtkx/jsx/gtk";
 +import { MainMenu } from "./main-menu.js";
 +import { WindowActions } from "./window-actions.js";
-@@ -26 +29,7 @@
--        <AdwApplicationWindow title="Tasks" widthRequest={360} heightRequest={294} onCloseRequest={() => quit()}>
-+        <AdwApplicationWindow
+@@ -26,0 +30 @@
 +            actions={<WindowActions />}
-+            title="Tasks"
-+            widthRequest={360}
-+            heightRequest={294}
-+            onCloseRequest={() => quit()}
-+        >
 ```
 
 Add `actions={<WindowActions />}` to `AdwApplicationWindow`. In the Tasks screen's existing options, replace `headerStart` and add `headerEnd`:
 
 ```diff [src/components/window.tsx]
-@@ -52 +52,11 @@
+@@ -56 +56,11 @@
 -                            headerStart: <SearchButton />,
 +                            headerStart: (
 +                                <>
@@ -235,14 +256,21 @@ export const About = ({ onClose }: { onClose: () => void }) => {
 Create `src/components/shortcuts.tsx`:
 
 ```tsx [src/components/shortcuts.tsx]
-import { AdwShortcutsDialog, AdwShortcutsItem, AdwShortcutsSection } from "@gtkx/jsx/adw";
+import {
+    AdwShortcutsDialog,
+    AdwShortcutsItem,
+    AdwShortcutsSection,
+} from "@gtkx/jsx/adw";
 
 export const Shortcuts = ({ onClose }: { onClose: () => void }) => (
     <AdwShortcutsDialog onClosed={onClose}>
         <AdwShortcutsSection title="General">
             <AdwShortcutsItem title="New task" accelerator="<Control>n" />
             <AdwShortcutsItem title="Search tasks" accelerator="<Control>f" />
-            <AdwShortcutsItem title="Keyboard shortcuts" accelerator="<Control>question" />
+            <AdwShortcutsItem
+                title="Keyboard shortcuts"
+                accelerator="<Control>question"
+            />
         </AdwShortcutsSection>
         <AdwShortcutsSection title="Tasks">
             <AdwShortcutsItem title="Delete task" accelerator="Delete" />
@@ -338,9 +366,9 @@ In `src/components/window.tsx`, import `AppShortcuts` and add `controllers={<App
 Update the editor button's tooltip in `src/components/task-buttons.tsx`:
 
 ```diff [src/components/task-buttons.tsx]
-@@ -19 +19 @@
--            <GtkButton iconName="user-trash-symbolic" tooltipText="Delete" onClicked={() => moveToTrash(task.id)} />
-+            <GtkButton iconName="user-trash-symbolic" tooltipText="Delete (Delete)" onClicked={() => moveToTrash(task.id)} />
+@@ -25 +25 @@
+-                tooltipText="Delete"
++                tooltipText="Delete (Delete)"
 ```
 
 Finish the window wiring:
@@ -351,7 +379,7 @@ Finish the window wiring:
 +import { Dialogs } from "./dialogs.js";
 @@ -29,0 +32 @@
 +            controllers={<AppShortcuts />}
-@@ -74,0 +78 @@
+@@ -78,0 +82 @@
 +            <Dialogs />
 ```
 

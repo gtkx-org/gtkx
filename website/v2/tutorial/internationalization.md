@@ -33,14 +33,16 @@ Translate the window title and new-task tooltip in `src/components/window.tsx`:
 ```diff [src/components/window.tsx]
 @@ -0,0 +1 @@
 +import { useTranslation } from "@gtkx/i18n";
-@@ -35,0 +37 @@
+@@ -44,0 +46 @@
 +    const { t } = useTranslation();
-@@ -63 +65 @@
+@@ -87 +89 @@
 -                title="Tasks"
 +                title={t("Tasks")}
-@@ -102 +104 @@
+@@ -131 +133,3 @@
 -                                                tooltipText="New Task (Ctrl+N)"
-+                                                tooltipText={t("New Task (Ctrl+N)")}
++                                                tooltipText={t(
++                                                    "New Task (Ctrl+N)",
++                                                )}
 ```
 
 Update `src/components/search-button.tsx`:
@@ -70,9 +72,9 @@ Translate the search entry in `src/components/task-list.tsx`:
 ```diff [src/components/task-list.tsx]
 @@ -0,0 +1 @@
 +import { useTranslation } from "@gtkx/i18n";
-@@ -12,0 +14 @@
+@@ -23,0 +25 @@
 +    const { t } = useTranslation();
-@@ -35 +37 @@
+@@ -52 +54 @@
 -                    placeholderText="Search tasks…"
 +                    placeholderText={t("Search tasks…")}
 ```
@@ -92,9 +94,9 @@ Translate the search result in `src/store/selectors.ts`:
 ```diff [src/store/selectors.ts]
 @@ -0,0 +1 @@
 +import { t } from "@gtkx/i18n";
-@@ -115 +116 @@
--    if (query) return { icon: "system-search-symbolic", title: "No Results", description: `No tasks match “${query}”` };
-+    if (query) return { icon: "system-search-symbolic", title: "No Results", description: t("No tasks match “{{query}}”", { query }) };
+@@ -154 +155 @@
+-            description: `No tasks match “${query}”`,
++            description: t("No tasks match “{{query}}”", { query }),
 ```
 
 Translate the formatters in `src/format.ts`, keeping the existing date helpers:
@@ -102,7 +104,7 @@ Translate the formatters in `src/format.ts`, keeping the existing date helpers:
 ```diff [src/format.ts]
 @@ -0,0 +1 @@
 +import { t } from "@gtkx/i18n";
-@@ -13,4 +14,10 @@
+@@ -19,4 +20,10 @@
 -    if (days === 0) return `Today at ${time}`;
 -    if (days === 1) return `Tomorrow at ${time}`;
 -    if (days === -1) return `Yesterday at ${time}`;
@@ -117,7 +119,7 @@ Translate the formatters in `src/format.ts`, keeping the existing date helpers:
 +            defaultValue_other: "{{count}} days ago",
 +        });
 +    }
-@@ -22 +29 @@
+@@ -28 +35 @@
 -    if (!iso) return "Never";
 +    if (!iso) return t("Never");
 ```

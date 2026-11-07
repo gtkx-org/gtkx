@@ -18,12 +18,12 @@ In `src/navigation.ts`, extend `RootParamList`:
 Below `Split`, declare the root navigator type so components can use `useNavigation` without passing navigation through their props:
 
 ```diff [src/navigation.ts]
-@@ -21,0 +22,6 @@
+@@ -23,0 +24,6 @@
 +
 +type RootNavigatorType = typeof Split;
 +
 +declare module "@react-navigation/core" {
-+    interface RootNavigator extends RootNavigatorType { }
++    interface RootNavigator extends RootNavigatorType {}
 +}
 ```
 
@@ -59,8 +59,12 @@ import type { RootParamList } from "../navigation.js";
 import { useStore } from "../store/index.js";
 import { TaskDetail } from "./task-detail.js";
 
-export const TaskScreen = ({ route }: SplitViewScreenProps<RootParamList, "Task">) => {
-    const task = useStore((state) => state.tasks.find((candidate) => candidate.id === route.params.id));
+export const TaskScreen = ({
+    route,
+}: SplitViewScreenProps<RootParamList, "Task">) => {
+    const task = useStore((state) =>
+        state.tasks.find((candidate) => candidate.id === route.params.id),
+    );
 
     return task ? <TaskDetail key={task.id} task={task} /> : null;
 };
@@ -73,13 +77,17 @@ The route stores an ID; the screen reads the current task from the store. When t
 In `src/store/tasks.ts`, add `updateTask` to the slice type and implementation:
 
 ```diff [src/store/tasks.ts]
-@@ -10,0 +11 @@
-+    updateTask: (id: string, fields: Partial<Pick<Task, "title" | "notes" | "due" | "listId">>) => void;
+@@ -10,0 +11,4 @@
++    updateTask: (
++        id: string,
++        fields: Partial<Pick<Task, "title" | "notes" | "due" | "listId">>,
++    ) => void;
 ```
 
 ```diff [src/store/tasks.ts]
-@@ -48,0 +49 @@
-+    updateTask: (id, fields) => set((state) => ({ tasks: patch(state.tasks, id, fields) })),
+@@ -57,0 +58,2 @@
++    updateTask: (id, fields) =>
++        set((state) => ({ tasks: patch(state.tasks, id, fields) })),
 ```
 
 Keep `setDone` for completion timestamps and `setImportant` for the shared star/switch behavior.
@@ -89,13 +97,18 @@ Keep `setDone` for completion timestamps and `setImportant` for the shared star/
 Append these functions to `src/format.ts`, after the existing `startOfDay` and `isToday` helpers:
 
 ```diff [src/format.ts]
-@@ -6,0 +7,18 @@
+@@ -7,0 +8,26 @@
 +
 +export const formatDue = (iso: string | null): string | null => {
 +    if (!iso) return null;
 +    const due = new Date(iso);
-+    const days = Math.round((startOfDay(due) - startOfDay(new Date())) / 86_400_000);
-+    const time = due.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
++    const days = Math.round(
++        (startOfDay(due) - startOfDay(new Date())) / 86_400_000,
++    );
++    const time = due.toLocaleTimeString([], {
++        hour: "numeric",
++        minute: "2-digit",
++    });
 +    if (days === 0) return `Today at ${time}`;
 +    if (days === 1) return `Tomorrow at ${time}`;
 +    if (days === -1) return `Yesterday at ${time}`;
@@ -106,7 +119,10 @@ Append these functions to `src/format.ts`, after the existing `startOfDay` and `
 +
 +export const formatDateTime = (iso: string | null): string => {
 +    if (!iso) return "Never";
-+    return new Date(iso).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
++    return new Date(iso).toLocaleString([], {
++        dateStyle: "medium",
++        timeStyle: "short",
++    });
 +};
 ```
 
@@ -182,7 +198,9 @@ type TaskFields = Pick<Task, "important" | "title">;
 export const TaskDetail = ({ task }: { task: Task }) => {
     const updateTask = useStore((state) => state.updateTask);
     const setImportant = useStore((state) => state.setImportant);
-    const dueDate = task.due ? GLib.DateTime.newFromIso8601(task.due, null)?.toLocal() : undefined;
+    const dueDate = task.due
+        ? GLib.DateTime.newFromIso8601(task.due, null)?.toLocal()
+        : undefined;
     const form = useForm<TaskFields>({
         defaultValues: { important: task.important, title: task.title },
     });
@@ -203,7 +221,13 @@ export const TaskDetail = ({ task }: { task: Task }) => {
 
     return (
         <GtkScrolledWindow vexpand>
-            <AdwClamp maximumSize={600} marginTop={24} marginBottom={24} marginStart={12} marginEnd={12}>
+            <AdwClamp
+                maximumSize={600}
+                marginTop={24}
+                marginBottom={24}
+                marginStart={12}
+                marginEnd={12}
+            >
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={18}>
                     <FormProvider {...form}>
                         <AdwPreferencesGroup>
@@ -211,44 +235,72 @@ export const TaskDetail = ({ task }: { task: Task }) => {
                                 name="title"
                                 title="Title"
                                 showApplyButton
-                                rules={{ validate: (title) => title.trim().length > 0 }}
+                                rules={{
+                                    validate: (title) =>
+                                        title.trim().length > 0,
+                                }}
                                 onApply={submitTitle}
                                 onEntryActivated={submitTitle}
                             />
                             <SwitchRow<TaskFields>
                                 name="important"
                                 title="Important"
-                                onNotifyActive={(active) => setImportant(task.id, active ?? false)}
+                                onNotifyActive={(active) =>
+                                    setImportant(task.id, active ?? false)
+                                }
                             />
                             <AdwActionRow
                                 title="Due"
                                 suffix={
-                                    <GtkBox spacing={6} valign={Gtk.Align.CENTER}>
+                                    <GtkBox
+                                        spacing={6}
+                                        valign={Gtk.Align.CENTER}
+                                    >
                                         {task.due ? (
                                             <GtkButton
                                                 iconName="edit-clear-symbolic"
-                                                cssClasses={["flat", "circular"]}
+                                                cssClasses={[
+                                                    "flat",
+                                                    "circular",
+                                                ]}
                                                 accessibleLabel="Clear due date"
-                                                onClicked={() => updateTask(task.id, { due: null })}
+                                                onClicked={() =>
+                                                    updateTask(task.id, {
+                                                        due: null,
+                                                    })
+                                                }
                                             />
                                         ) : null}
                                         <GtkMenuButton
-                                            label={formatDue(task.due) ?? "Set date"}
+                                            label={
+                                                formatDue(task.due) ??
+                                                "Set date"
+                                            }
                                             popover={
                                                 <GtkPopover>
                                                     <GtkCalendar
                                                         date={dueDate}
-                                                        onDaySelected={(self) => {
-                                                            const date = self.getDate();
-                                                            const picked = new Date(
-                                                                date.getYear(),
-                                                                date.getMonth() - 1,
-                                                                date.getDayOfMonth(),
-                                                                18,
-                                                                0,
-                                                                0,
+                                                        onDaySelected={(
+                                                            self,
+                                                        ) => {
+                                                            const date =
+                                                                self.getDate();
+                                                            const picked =
+                                                                new Date(
+                                                                    date.getYear(),
+                                                                    date.getMonth() -
+                                                                        1,
+                                                                    date.getDayOfMonth(),
+                                                                    18,
+                                                                    0,
+                                                                    0,
+                                                                );
+                                                            updateTask(
+                                                                task.id,
+                                                                {
+                                                                    due: picked.toISOString(),
+                                                                },
                                                             );
-                                                            updateTask(task.id, { due: picked.toISOString() });
                                                         }}
                                                     />
                                                 </GtkPopover>
@@ -261,10 +313,16 @@ export const TaskDetail = ({ task }: { task: Task }) => {
                     </FormProvider>
 
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
-                        <GtkLabel halign={Gtk.Align.START} cssClasses={["heading"]}>
+                        <GtkLabel
+                            halign={Gtk.Align.START}
+                            cssClasses={["heading"]}
+                        >
                             Notes
                         </GtkLabel>
-                        <GtkScrolledWindow cssClasses={["card"]} heightRequest={160}>
+                        <GtkScrolledWindow
+                            cssClasses={["card"]}
+                            heightRequest={160}
+                        >
                             <GtkTextView
                                 wrapMode={Gtk.WrapMode.WORD_CHAR}
                                 cssClasses={[detailNotes]}
@@ -323,7 +381,9 @@ import { AdwWindowTitle } from "@gtkx/jsx/adw";
 import { useStore } from "../store/index.js";
 
 export const TaskTitle = ({ id }: { id: string }) => {
-    const title = useStore((state) => state.tasks.find((task) => task.id === id)?.title);
+    const title = useStore(
+        (state) => state.tasks.find((task) => task.id === id)?.title,
+    );
 
     return <AdwWindowTitle title={title ?? "Task"} />;
 };
@@ -340,19 +400,27 @@ import { useStore } from "../store/index.js";
 export const TaskButtons = ({ id }: { id: string }) => {
     const setImportant = useStore((state) => state.setImportant);
     const moveToTrash = useStore((state) => state.moveToTrash);
-    const task = useStore((state) => state.tasks.find((candidate) => candidate.id === id));
+    const task = useStore((state) =>
+        state.tasks.find((candidate) => candidate.id === id),
+    );
 
     if (!task) return null;
 
     return (
         <>
             <GtkToggleButton
-                iconName={task.important ? "starred-symbolic" : "non-starred-symbolic"}
+                iconName={
+                    task.important ? "starred-symbolic" : "non-starred-symbolic"
+                }
                 active={task.important}
                 tooltipText="Important"
                 onToggled={(self) => setImportant(task.id, self.active)}
             />
-            <GtkButton iconName="user-trash-symbolic" tooltipText="Delete" onClicked={() => moveToTrash(task.id)} />
+            <GtkButton
+                iconName="user-trash-symbolic"
+                tooltipText="Delete"
+                onClicked={() => moveToTrash(task.id)}
+            />
         </>
     );
 };
@@ -372,7 +440,7 @@ In `src/components/window.tsx`, add these imports:
 Add the editor after the `Tasks` screen in `Split.Navigator`:
 
 ```diff [src/components/window.tsx]
-@@ -45,0 +46,8 @@
+@@ -54,0 +55,8 @@
 +                    <Split.Screen
 +                        name="Task"
 +                        component={TaskScreen}

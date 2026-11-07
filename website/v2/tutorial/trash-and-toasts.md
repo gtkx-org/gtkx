@@ -28,18 +28,22 @@ In `src/components/window.tsx`, add `AdwToastOverlay` to the Adwaita element imp
 @@ -0,0 +1,2 @@
 +import { ToastProvider } from "@gtkx/components";
 +import { useRef } from "react";
-@@ -10 +12,2 @@
+@@ -10 +12,6 @@
 -import { AdwApplicationWindow, AdwStatusPage } from "@gtkx/jsx/adw";
 +import * as Adw from "@gtkx/gi/adw";
-+import { AdwApplicationWindow, AdwToastOverlay, AdwStatusPage } from "@gtkx/jsx/adw";
++import {
++    AdwApplicationWindow,
++    AdwToastOverlay,
++    AdwStatusPage,
++} from "@gtkx/jsx/adw";
 ```
 
 Inside `Window`, create the overlay ref:
 
 ```diff [src/components/window.tsx]
-@@ -30,0 +31 @@
+@@ -34,0 +35 @@
 +    const toastOverlayRef = useRef<Adw.ToastOverlay | null>(null);
-@@ -34,49 +35,53 @@
+@@ -38,53 +39,61 @@
 -        <AdwApplicationWindow
 -            controllers={<AppShortcuts />}
 -            actions={<WindowActions />}
@@ -57,7 +61,11 @@ Inside `Window`, create the overlay ref:
 -                    maxSidebarWidth={300}
 -                    contentPlaceholder={<NothingSelected />}
 -                >
--                    <Split.Screen name="Lists" component={Sidebar} options={{ title: "Tasks" }} />
+-                    <Split.Screen
+-                        name="Lists"
+-                        component={Sidebar}
+-                        options={{ title: "Tasks" }}
+-                    />
 -                    <Split.Screen
 -                        name="Tasks"
 -                        component={TasksScreen}
@@ -108,7 +116,11 @@ Inside `Window`, create the overlay ref:
 +                            maxSidebarWidth={300}
 +                            contentPlaceholder={<NothingSelected />}
 +                        >
-+                            <Split.Screen name="Lists" component={Sidebar} options={{ title: "Tasks" }} />
++                            <Split.Screen
++                                name="Lists"
++                                component={Sidebar}
++                                options={{ title: "Tasks" }}
++                            />
 +                            <Split.Screen
 +                                name="Tasks"
 +                                component={TasksScreen}
@@ -132,8 +144,12 @@ Inside `Window`, create the overlay ref:
 +                                name="Task"
 +                                component={TaskScreen}
 +                                options={({ route }) => ({
-+                                    headerTitle: <TaskTitle id={route.params.id} />,
-+                                    headerEnd: <TaskButtons id={route.params.id} />,
++                                    headerTitle: (
++                                        <TaskTitle id={route.params.id} />
++                                    ),
++                                    headerEnd: (
++                                        <TaskButtons id={route.params.id} />
++                                    ),
 +                                })}
 +                            />
 +                        </Split.Navigator>
@@ -153,21 +169,25 @@ The provider shares this overlay with `useToast`, including calls from window ac
 Add the two transitions to `TasksSlice` in `src/store/tasks.ts`:
 
 ```diff [src/store/tasks.ts]
-@@ -12,0 +13,2 @@
+@@ -15,0 +16,2 @@
 +    restore: (id: string) => void;
 +    deleteForever: (id: string) => void;
 ```
 
 ```diff [src/store/tasks.ts]
-@@ -52,0 +53,2 @@
-+    restore: (id) => set((state) => ({ tasks: patch(state.tasks, id, { deleted: false }) })),
-+    deleteForever: (id) => set((state) => ({ tasks: state.tasks.filter((task) => task.id !== id) })),
+@@ -63,0 +64,6 @@
++    restore: (id) =>
++        set((state) => ({ tasks: patch(state.tasks, id, { deleted: false }) })),
++    deleteForever: (id) =>
++        set((state) => ({
++            tasks: state.tasks.filter((task) => task.id !== id),
++        })),
 ```
 
 Permanent deletion leaves gaps in the surviving positions. Keep additions at the end of the stored manual order by changing `addTask` in the same file:
 
 ```diff [src/store/tasks.ts]
-@@ -38 +38 @@
+@@ -43 +43 @@
 -                    position: state.tasks.length,
 +                    position: (state.tasks.at(-1)?.position ?? -1) + 1,
 ```
@@ -179,11 +199,13 @@ The array retains manual order: deletion removes entries, and new tasks append a
 Replace the dialog types in `src/types.ts`:
 
 ```diff [src/types.ts]
-@@ -27 +27,3 @@
+@@ -29 +29,5 @@
 -export type DialogKind = "none" | "about" | "shortcuts";
 +export type DialogKind = "none" | "about" | "shortcuts" | "new-list";
 +
-+export type DialogState = { kind: DialogKind } | { kind: "delete-task"; task: Task };
++export type DialogState =
++    | { kind: DialogKind }
++    | { kind: "delete-task"; task: Task };
 ```
 
 Update the type import and dialog fields in `src/store/ui.ts`:
@@ -197,7 +219,7 @@ Update the type import and dialog fields in `src/store/ui.ts`:
 +    dialog: DialogState;
 @@ -7,0 +8 @@
 +    askDeleteTask: (task: Task) => void;
-@@ -18,2 +19,3 @@
+@@ -20,2 +21,3 @@
 -    dialog: "none",
 -    showDialog: (dialog) => set({ dialog }),
 +    dialog: { kind: "none" },
@@ -208,7 +230,7 @@ Update the type import and dialog fields in `src/store/ui.ts`:
 Add this helper to `src/navigation.ts` so deleting the current task also leaves its editor:
 
 ```diff [src/navigation.ts]
-@@ -46,0 +47,4 @@
+@@ -56,0 +57,4 @@
 +
 +export const closeTaskIfOpen = (id: string): void => {
 +    if (openTaskId() === id) navigationRef.goBack();
@@ -236,7 +258,11 @@ export const DeleteConfirmation = ({ task }: { task: Task }) => {
             closeResponse="cancel"
             responses={[
                 { id: "cancel", label: "Cancel" },
-                { id: "delete", label: "Delete", appearance: Adw.ResponseAppearance.DESTRUCTIVE },
+                {
+                    id: "delete",
+                    label: "Delete",
+                    appearance: Adw.ResponseAppearance.DESTRUCTIVE,
+                },
             ]}
             onResponse={(id) => {
                 if (id === "delete") {
@@ -265,14 +291,23 @@ import { useState } from "react";
 import { useStore } from "../store/index.js";
 import { listDot } from "../styles.js";
 
-const PALETTE = ["#3584e4", "#2ec27e", "#e66100", "#9141ac", "#e01b24", "#f5c211"];
+const PALETTE = [
+    "#3584e4",
+    "#2ec27e",
+    "#e66100",
+    "#9141ac",
+    "#e01b24",
+    "#f5c211",
+];
 
 export const NewListDialog = () => {
     const addList = useStore((state) => state.addList);
     const showDialog = useStore((state) => state.showDialog);
     const [name, setName] = useState("");
     const [color, setColor] = useState("#3584e4");
-    const [firstSwatch, setFirstSwatch] = useState<Gtk.ToggleButton | null>(null);
+    const [firstSwatch, setFirstSwatch] = useState<Gtk.ToggleButton | null>(
+        null,
+    );
 
     return (
         <AdwAlertDialog
@@ -293,8 +328,16 @@ export const NewListDialog = () => {
                 showDialog("none");
             }}
         >
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={16} marginTop={8}>
-                <GtkEntry placeholderText="List name" activatesDefault onChanged={(self) => setName(self.text)} />
+            <GtkBox
+                orientation={Gtk.Orientation.VERTICAL}
+                spacing={16}
+                marginTop={8}
+            >
+                <GtkEntry
+                    placeholderText="List name"
+                    activatesDefault
+                    onChanged={(self) => setName(self.text)}
+                />
                 <GtkBox spacing={6} halign={Gtk.Align.CENTER}>
                     {PALETTE.map((swatch, index) => (
                         <GtkToggleButton
@@ -324,14 +367,20 @@ export const NewListDialog = () => {
 The Add response is disabled until the name contains non-whitespace text. Its handler trims the accepted name, so `addList` in `src/store/lists.ts` can use it directly:
 
 ```diff [src/store/lists.ts]
-@@ -13,5 +13,2 @@
+@@ -15,3 +15 @@
 -    addList: (name, color) => {
 -        const trimmed = name.trim();
 -        if (trimmed === "") return;
--        set((state) => ({ lists: [...state.lists, { id: crypto.randomUUID(), name: trimmed, color }] }));
--    },
 +    addList: (name, color) =>
-+        set((state) => ({ lists: [...state.lists, { id: crypto.randomUUID(), name, color }] })),
+@@ -19,6 +17,2 @@
+-            lists: [
+-                ...state.lists,
+-                { id: crypto.randomUUID(), name: trimmed, color },
+-            ],
+-        }));
+-    },
++            lists: [...state.lists, { id: crypto.randomUUID(), name, color }],
++        })),
 ```
 
 ## Share the delete command
@@ -399,11 +448,13 @@ In `src/components/app-shortcuts.tsx`, import the same hook and call it inside `
 +import { useRequestDeleteTask } from "./dialogs.js";
 @@ -18,0 +20 @@
 +    const requestDeleteTask = useRequestDeleteTask();
-@@ -26,3 +28,3 @@
+@@ -26,3 +28,5 @@
 -        const id = openTaskId();
 -        if (id === null) return false;
 -        useStore.getState().moveToTrash(id);
-+        const task = useStore.getState().tasks.find((candidate) => candidate.id === openTaskId());
++        const task = useStore
++            .getState()
++            .tasks.find((candidate) => candidate.id === openTaskId());
 +        if (!task) return false;
 +        requestDeleteTask(task);
 ```
@@ -411,24 +462,22 @@ In `src/components/app-shortcuts.tsx`, import the same hook and call it inside `
 In `Window`, read `const showDialog = useStore((state) => state.showDialog)` and update the Lists screen header:
 
 ```diff [src/components/window.tsx]
-@@ -30,0 +31 @@
+@@ -34,0 +35 @@
 +    const showDialog = useStore((state) => state.showDialog);
-@@ -54 +55,14 @@
--                            <Split.Screen name="Lists" component={Sidebar} options={{ title: "Tasks" }} />
-+                            <Split.Screen
-+                                name="Lists"
-+                                component={Sidebar}
+@@ -61 +62,12 @@
+-                                options={{ title: "Tasks" }}
 +                                options={{
 +                                    title: "Tasks",
 +                                    headerStart: (
 +                                        <GtkButton
 +                                            iconName="list-add-symbolic"
 +                                            tooltipText="New List"
-+                                            onClicked={() => showDialog("new-list")}
++                                            onClicked={() =>
++                                                showDialog("new-list")
++                                            }
 +                                        />
 +                                    ),
 +                                }}
-+                            />
 ```
 
 Connect the shared delete handler in `src/components/task-row.tsx`:
@@ -452,9 +501,9 @@ Connect the shared delete handler in `src/components/task-buttons.tsx`:
 @@ -6 +7 @@
 -    const moveToTrash = useStore((state) => state.moveToTrash);
 +    const requestDeleteTask = useRequestDeleteTask();
-@@ -19 +20 @@
--            <GtkButton iconName="user-trash-symbolic" tooltipText="Delete (Delete)" onClicked={() => moveToTrash(task.id)} />
-+            <GtkButton iconName="user-trash-symbolic" tooltipText="Delete (Delete)" onClicked={() => requestDeleteTask(task)} />
+@@ -26 +27 @@
+-                onClicked={() => moveToTrash(task.id)}
++                onClicked={() => requestDeleteTask(task)}
 ```
 
 ## Run it
