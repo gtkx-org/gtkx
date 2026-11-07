@@ -1,5 +1,7 @@
 import * as Gdk from "@gtkx/gi/gdk";
+import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
+import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as GtkSource from "@gtkx/gi/gtksource";
 import { AdwDialog } from "@gtkx/jsx/adw";
@@ -28,6 +30,7 @@ import {
 } from "@gtkx/jsx/gtk";
 import { GtkSourceView } from "@gtkx/jsx/gtksource";
 import { WebKitWebView } from "@gtkx/jsx/webkit";
+import { registerClass } from "@gtkx/runtime";
 import { render, screen, userEvent } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -52,6 +55,74 @@ const collectCriticals = async (run: () => Promise<void>): Promise<string[]> => 
 
     return criticals;
 };
+
+class WordProposalBase extends GObject.Object implements GtkSource.CompletionProposalImpl {
+    word = "";
+
+    vfuncGetTypedText(): string {
+        return this.word;
+    }
+}
+
+const WordProposal = registerClass(WordProposalBase, {
+    typeName: "TestingWordProposal",
+    implements: [GtkSource.CompletionProposal],
+});
+
+class WordProviderBase extends GObject.Object implements GtkSource.CompletionProviderImpl {
+    vfuncPopulateAsync(
+        _context: GtkSource.CompletionContext,
+        cancellable: Gio.Cancellable | null,
+        callback: Gio.AsyncReadyCallback | null,
+    ): void {
+        const model = Gio.ListStore.new(WordProposal);
+        model.splice(
+            0,
+            0,
+            ["first", "second"].map((word) => {
+                const proposal = new WordProposal();
+                proposal.word = word;
+
+                return proposal;
+            }),
+        );
+        const value = new GObject.Value();
+        value.init(Gio.ListStore);
+        value.setObject(model);
+        Gio.Task.new(this, cancellable, callback).returnValue(value);
+    }
+
+    vfuncPopulateFinish(result: Gio.AsyncResult): Gio.ListModel {
+        const [, model] = result instanceof Gio.Task ? result.propagateValue() : [false, null];
+
+        if (!(model instanceof Gio.ListStore)) {
+            throw new Error("Completion task returned no model");
+        }
+
+        return model;
+    }
+
+    vfuncDisplay(
+        _context: GtkSource.CompletionContext,
+        proposal: GtkSource.CompletionProposal,
+        cell: GtkSource.CompletionCell,
+    ): void {
+        if (proposal instanceof WordProposal && cell.getColumn() === GtkSource.CompletionColumn.TYPED_TEXT) {
+            cell.setText(proposal.word);
+        }
+    }
+
+    vfuncActivate(context: GtkSource.CompletionContext, proposal: GtkSource.CompletionProposal): void {
+        if (proposal instanceof WordProposal) {
+            context.getBuffer()?.insertAtCursor(proposal.word, -1);
+        }
+    }
+}
+
+const WordProvider = registerClass(WordProviderBase, {
+    typeName: "TestingWordProvider",
+    implements: [GtkSource.CompletionProvider],
+});
 
 describe("Unicode keyboard input", () => {
     it.each(["a", "é", "λ", "🚀", "Aλ🚀Z"])("delivers each character of %s once", async (input) => {
@@ -585,5 +656,25 @@ describe("keyboard in popovers", () => {
         expect(blue).not.toBeVisible();
         expect(screen.getByRole(Gtk.AccessibleRole.DIALOG, { name: "Edit" })).toBeVisible();
         expect(closedDialogs).toBe(0);
+    });
+
+    it("hides a source view's completion with Escape and chooses a proposal with the arrow keys and Enter", async () => {
+        await render(<GtkSourceView name="code" />);
+        const code = screen.getByName("code", { as: GtkSource.View });
+        const completion = code.getCompletion();
+        completion.selectOnShow = true;
+        completion.addProvider(new WordProvider());
+        await userEvent.click(code);
+
+        completion.show();
+        const second = await screen.findByText("second");
+        await userEvent.keyboard(code, "{Escape}");
+        expect(second).not.toBeVisible();
+        await userEvent.keyboard(code, "{Enter}");
+        completion.show();
+        expect(await screen.findByText("second")).toBeVisible();
+        await userEvent.keyboard(code, "{ArrowDown}{Enter}");
+        const buffer = code.getBuffer();
+        expect(buffer.getText(buffer.getStartIter(), buffer.getEndIter(), true)).toBe("\nsecond");
     });
 });

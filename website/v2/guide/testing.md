@@ -200,7 +200,7 @@ await user.click(saveButton);
 
 Some key handlers read the real key event, which `keyboard` cannot create, so they do not receive the keys:
 
-- GtkSourceView's own key handling, such as auto-indent and bracket completion. Keys in a `GtkSourceView` behave as in a plain `GtkTextView`.
+- GtkSourceView's own key handling, such as auto-indent and bracket completion. Keys in a `GtkSourceView` behave as in a plain `GtkTextView`, except that its completion list takes them while it shows: arrow keys move the selection, `{Enter}` chooses the selected proposal and `{Escape}` hides the list.
 - The key capture of a `GtkSearchEntry` or `GtkSearchBar` that has a key capture widget.
 - A file chooser's key forwarding.
 - The interactive search of the deprecated `GtkTreeView`.
