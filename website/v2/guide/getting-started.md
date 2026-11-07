@@ -127,4 +127,4 @@ Run `npx gtkx upgrade` to move every GTKX package in the project to the newest r
 ## Next
 
 - [Tutorial](/v2/tutorial/): build Tasks, a task manager with persistence, navigation, and packaging.
-- [Configuration and Codegen](/v2/guide/configuration-and-codegen): select native libraries and understand generated imports.
+- [JSX Elements](/v2/guide/jsx-elements): how elements map props, signals and child slots to the native API.

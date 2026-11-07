@@ -263,4 +263,4 @@ Render `Notifications` inside an application window. Clicking the button shows a
 
 ## Next
 
-Continue with [Navigation](/v2/guide/navigation) to connect pages, headers and native back controls with an Adwaita navigator. [Modals and Portals](/v2/guide/modals-and-portals) explains the mounting model behind these components: `createPortal`, the `rootElement` container, and extra windows. The tutorial demonstrates dialogs in its [Menus, Accelerators, and Shortcuts](/v2/tutorial/actions-menus-shortcuts#mounting-dialogs) chapter.
+Continue with [CSS](/v2/guide/css) to style widgets and apply reusable classes. [Modals and Portals](/v2/guide/modals-and-portals) explains the mounting model behind these components: `createPortal`, the `rootElement` container, and extra windows. The tutorial demonstrates dialogs in its [Menus, Accelerators, and Shortcuts](/v2/tutorial/actions-menus-shortcuts#mounting-dialogs) chapter.

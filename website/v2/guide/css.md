@@ -185,4 +185,4 @@ To add a font for fallback coverage without selecting it, use a side-effect impo
 
 ## Next
 
-Continue with [Animations](/v2/guide/animations) to animate widget properties and `style` declarations with React Spring.
+Continue with [Navigation](/v2/guide/navigation) to connect pages, headers and native back controls with an Adwaita navigator.

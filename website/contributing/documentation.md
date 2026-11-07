@@ -22,7 +22,7 @@ Guides and tutorials explain tasks; API reference pages describe callable contra
 
 ## Structure and style
 
-Keep the main navigation focused on the Guide, Tutorial, API Reference, and Examples. Project resources belong in the Project menu. Group guides by the reader's task: getting started, building interfaces, native integration, development tools, and shipping or upgrading. Keep the tutorial in chapter order.
+Keep the main navigation focused on the Guide, Tutorial, API Reference, and Examples. Project resources belong in the Project menu. Group guides by the reader's task: getting started, building interfaces, project setup, native integration, development tools, and shipping or upgrading. Keep the tutorial in chapter order.
 
 Use the [React documentation](https://react.dev/learn) as a reference for separating learning from API lookup, the [Vue guide](https://vuejs.org/guide/introduction.html) for topic grouping and learning paths, and [Electron's documentation](https://www.electronjs.org/docs/latest/) for the desktop workflow from setup to distribution. GTKX examples must still use this project's generated APIs; upstream GTK or Adwaita examples describe native concepts, not GTKX syntax.
 

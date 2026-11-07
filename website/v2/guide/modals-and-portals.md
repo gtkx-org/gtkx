@@ -143,4 +143,4 @@ The exported API is in the [@gtkx/react reference](/v2/reference/@gtkx/react/).
 
 ## Next
 
-Continue with [Actions and Shortcuts](/v2/guide/actions) to open those windows and dialogs from menus and keyboard shortcuts.
+Continue with [Components](/v2/guide/components) for lists, tables, dropdowns and toasts rendered from React state.

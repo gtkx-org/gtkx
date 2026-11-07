@@ -167,4 +167,4 @@ See the [forms reference](/v2/reference/@gtkx/forms/) for GTKX prop types and th
 
 ## Next
 
-Continue with [Modals and Portals](/v2/guide/modals-and-portals) to open windows and Adwaita dialogs from React state.
+Continue with [Actions and Shortcuts](/v2/guide/actions) to run commands from menus, buttons and keyboard accelerators.

@@ -46,36 +46,35 @@ const guideGroups: DocumentationGroup[] = [
         ],
     },
     {
-        text: "Project Setup",
-        items: [
-            { text: "Scaffold Options", path: "guide/scaffold-options" },
-            { text: "Configuration and Codegen", path: "guide/configuration-and-codegen" },
-            { text: "Workspaces", path: "guide/workspaces" },
-            { text: "CLI", path: "guide/cli" },
-        ],
-    },
-    {
         text: "Building Interfaces",
         items: [
-            { text: "Application Lifecycle", path: "guide/application-lifecycle" },
             { text: "JSX Elements", path: "guide/jsx-elements" },
+            { text: "Application Lifecycle", path: "guide/application-lifecycle" },
+            { text: "Modals and Portals", path: "guide/modals-and-portals" },
             { text: "Components", path: "guide/components" },
+            { text: "CSS", path: "guide/css" },
             { text: "Navigation", path: "guide/navigation" },
             { text: "Forms", path: "guide/forms" },
-            { text: "Modals and Portals", path: "guide/modals-and-portals" },
             { text: "Actions and Shortcuts", path: "guide/actions" },
             { text: "Native State", path: "guide/native-state" },
-            { text: "CSS", path: "guide/css" },
             { text: "Animations", path: "guide/animations" },
             { text: "Internationalization", path: "guide/internationalization" },
         ],
     },
     {
+        text: "Project Setup",
+        items: [
+            { text: "Scaffold Options", path: "guide/scaffold-options" },
+            { text: "Configuration and Codegen", path: "guide/configuration-and-codegen" },
+            { text: "CLI", path: "guide/cli" },
+        ],
+    },
+    {
         text: "Native Integration",
         items: [
-            { text: "Native Values", path: "guide/native-values" },
             { text: "Async Operations", path: "guide/async-operations" },
             { text: "Error Handling", path: "guide/error-handling" },
+            { text: "Native Values", path: "guide/native-values" },
             { text: "D-Bus", path: "guide/dbus" },
             { text: "Workers and Helper Processes", path: "guide/workers" },
             { text: "Subclassing GObject", path: "guide/subclassing" },
@@ -88,6 +87,7 @@ const guideGroups: DocumentationGroup[] = [
         items: [
             { text: "Testing", path: "guide/testing" },
             { text: "Storybook", path: "guide/storybook" },
+            { text: "Workspaces", path: "guide/workspaces" },
             { text: "App Inspection (MCP)", path: "guide/mcp" },
             { text: "Troubleshooting", path: "guide/troubleshooting" },
         ],

@@ -87,4 +87,4 @@ A view reflects later changes to the parent and keeps the parent alive while it 
 
 ## Next
 
-[Async Operations](/v2/guide/async-operations) covers promises, cancellation, and errors from native calls.
+Continue with [D-Bus](/v2/guide/dbus) to call system services and export objects through the generated Gio bindings.

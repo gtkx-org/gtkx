@@ -77,4 +77,4 @@ Native methods keep their generated camelCase names, even when a name overlaps a
 
 ## Next
 
-Continue with [Components](/v2/guide/components) for lists, tables, dropdowns and toasts rendered from React state.
+Continue with [Application Lifecycle](/v2/guide/application-lifecycle) to start the app from its entry point and know when it ends.

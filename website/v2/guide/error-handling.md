@@ -69,4 +69,4 @@ Boundaries do not catch ordinary event-handler failures or arbitrary rejected pr
 
 ## Next
 
-Continue with [D-Bus](/v2/guide/dbus) to call system services and export objects through the generated Gio bindings.
+Continue with [Native Values](/v2/guide/native-values) to pass GTypes, GValues and integers to native methods.
