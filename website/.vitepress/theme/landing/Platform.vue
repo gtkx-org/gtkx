@@ -30,7 +30,7 @@ const STEPS: Record<string, { label: string; cmd: string; description: string }>
     codegen: {
         label: "codegen",
         cmd: "npm run codegen",
-        description: "Regenerate bindings and the widget reference for your native libraries.",
+        description: "Regenerate the bindings and TypeScript declarations for your native libraries.",
     },
 };
 

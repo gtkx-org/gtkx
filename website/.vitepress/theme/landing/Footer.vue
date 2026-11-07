@@ -8,10 +8,11 @@ const cols: { h: string; items: Link[] }[] = [
     {
         h: "Docs",
         items: [
+            { t: "Why GTKX", href: docsLink("guide/why-gtkx") },
             { t: "Get started", href: docsLink("guide/getting-started") },
             { t: "Tutorial", href: docsLink("tutorial/") },
             { t: "Testing", href: docsLink("guide/testing") },
-            { t: "Packaging", href: docsLink("tutorial/packaging") },
+            { t: "Packaging", href: docsLink("guide/deploying") },
         ],
     },
     {

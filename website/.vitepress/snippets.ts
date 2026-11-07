@@ -15,7 +15,7 @@ const App = () => (
       title="My App"
       onCloseRequest={() => quit()}
     >
-      <AdwToolbarView topBar={<AdwHeaderBar />}>
+      <AdwToolbarView top={<AdwHeaderBar />}>
         <GtkLabel>Hello from GTKX</GtkLabel>
       </AdwToolbarView>
     </AdwApplicationWindow>
@@ -33,10 +33,13 @@ export default defineConfig({
 });
 `;
 
-const APP = `<AdwToolbarView topBar={<AdwHeaderBar />}>
+const APP = `<AdwToolbarView top={<AdwHeaderBar />}>
   <GtkScale
     adjustment={<GtkAdjustment upper={100} />}
     drawValue
+    onValueChanged={(scale) =>
+      setVolume(scale.getValue())
+    }
   />
 </AdwToolbarView>
 `;
