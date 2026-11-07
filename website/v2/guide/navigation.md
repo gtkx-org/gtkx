@@ -152,35 +152,13 @@ export const App = () => {
 
 `createStackNavigator` renders an `AdwNavigationView`. Define the route parameters to typecheck screens, `navigate` calls, and `route.params`:
 
-```tsx
-import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
-import { createStackNavigator, type StackScreenProps } from "@gtkx/navigation";
+<<< @/figures/guide/navigation-stack.tsx
 
-type NotesParams = { List: undefined; Note: { id: string } };
-
-const Stack = createStackNavigator<NotesParams>();
-
-const List = ({ navigation }: StackScreenProps<NotesParams, "List">) => (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-        <GtkButton label="Open note 42" onClicked={() => navigation.navigate("Note", { id: "42" })} />
-    </GtkBox>
-);
-
-const Note = ({ route, navigation }: StackScreenProps<NotesParams, "Note">) => (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-        <GtkLabel>{`Showing note ${route.params.id}`}</GtkLabel>
-        <GtkButton label="Done" onClicked={() => navigation.goBack()} />
-    </GtkBox>
-);
-
-export const Notes = () => (
-    <Stack.Navigator initialRouteName="List">
-        <Stack.Screen name="List" component={List} options={{ title: "Notes" }} />
-        <Stack.Screen name="Note" component={Note} options={({ route }) => ({ title: `Note ${route.params.id}` })} />
-    </Stack.Navigator>
-);
-```
+<figure class="result">
+    <img class="result-light" src="/figures/guide-navigation-stack-light.png" width="360" height="260" loading="lazy" alt="A window whose header bar shows the title Notes above a centered Open note 42 button." />
+    <img class="result-dark" src="/figures/guide-navigation-stack-dark.png" width="360" height="260" loading="lazy" alt="A window whose header bar shows the title Notes above a centered Open note 42 button." />
+    <figcaption>Captured from the sample above. The navigator draws the header bar and its title from the screen options.</figcaption>
+</figure>
 
 Each screen renders one root widget; wrap several widgets in a container such as `GtkBox`.
 
@@ -282,28 +260,13 @@ Stack screens emit `transitionStart` and `transitionEnd` from their native page 
 
 `createTabNavigator` renders an `AdwViewStack`. The switcher occupies the header title by default; `tabBarPosition="bottom"` puts an `AdwViewSwitcherBar` below the content:
 
-```tsx
-import { createTabNavigator } from "@gtkx/navigation";
+<<< @/figures/guide/navigation-tabs.tsx
 
-type MailParams = { Inbox: undefined; Archive: undefined };
-
-const Tabs = createTabNavigator<MailParams>();
-
-export const Mail = ({ unread }: { unread: number }) => (
-    <Tabs.Navigator tabBarPosition="bottom" screenOptions={{ animation: "fade" }}>
-        <Tabs.Screen
-            name="Inbox"
-            component={Inbox}
-            options={{ tabBarIcon: "mail-unread-symbolic", tabBarBadge: unread, needsAttention: unread > 0 }}
-        />
-        <Tabs.Screen
-            name="Archive"
-            component={Archive}
-            options={{ tabBarLabel: "Archived", tabBarIcon: "folder-symbolic", lazy: false }}
-        />
-    </Tabs.Navigator>
-);
-```
+<figure class="result">
+    <img class="result-light" src="/figures/guide-navigation-tabs-light.png" width="360" height="440" loading="lazy" alt="A window titled Inbox showing an Inbox status page, with a switcher bar at the bottom holding an Inbox button with a badge of 3 and an Archived button." />
+    <img class="result-dark" src="/figures/guide-navigation-tabs-dark.png" width="360" height="440" loading="lazy" alt="A window titled Inbox showing an Inbox status page, with a switcher bar at the bottom holding an Inbox button with a badge of 3 and an Archived button." />
+    <figcaption>Captured from the sample above with <code>unread={3}</code>. The bottom switcher shows each screen's icon, label and badge.</figcaption>
+</figure>
 
 The switcher uses each screen's label, icon, badge and attention options. Tabs mount when first focused unless `lazy: false` is set. Set `animation: "fade"` for a crossfade.
 
@@ -317,24 +280,13 @@ User selection emits `tabPress`, which a screen listener can prevent. Programmat
 
 `createDrawerNavigator` uses an `AdwOverlaySplitView`. Its sidebar lists the screens and marks the focused one; a button in the content header toggles the sidebar:
 
-```tsx
-import { createDrawerNavigator } from "@gtkx/navigation";
+<<< @/figures/guide/navigation-drawer.tsx
 
-type AppParams = { Inbox: undefined; Settings: undefined };
-
-const Drawer = createDrawerNavigator<AppParams>();
-
-export const App = ({ isNarrow }: { isNarrow: boolean }) => (
-    <Drawer.Navigator collapsed={isNarrow} sidebarPosition="start">
-        <Drawer.Screen name="Inbox" component={Inbox} options={{ drawerIcon: "mail-unread-symbolic" }} />
-        <Drawer.Screen
-            name="Settings"
-            component={Settings}
-            options={{ drawerLabel: "Preferences", drawerIcon: "emblem-system-symbolic" }}
-        />
-    </Drawer.Navigator>
-);
-```
+<figure class="result">
+    <img class="result-light" src="/figures/guide-navigation-drawer-light.png" width="640" height="400" loading="lazy" alt="A window with a sidebar titled Mail listing Inbox, selected, and Preferences with their icons, beside a content pane whose header has a sidebar toggle and the title Inbox above a No New Mail status page." />
+    <img class="result-dark" src="/figures/guide-navigation-drawer-dark.png" width="640" height="400" loading="lazy" alt="A window with a sidebar titled Mail listing Inbox, selected, and Preferences with their icons, beside a content pane whose header has a sidebar toggle and the title Inbox above a No New Mail status page." />
+    <figcaption>Captured from the sample above with <code>isNarrow={false}</code>. The sidebar stays beside the content and marks the focused screen.</figcaption>
+</figure>
 
 Set `collapsed` when the layout needs an overlay sidebar; the sidebar then closes after a selection. In a wide layout it stays beside the content. `defaultStatus` controls its initial visibility, and `pinSidebar` preserves visibility across collapse changes.
 
@@ -370,39 +322,13 @@ Activating a row emits `drawerItemPress`, which `preventDefault` cancels, before
 
 `createSplitViewNavigator` keeps its first screen in the sidebar and places the other screens in a content stack. Use it when the sidebar selects data, such as a folder whose messages appear beside it:
 
-```tsx
-import { AdwStatusPage } from "@gtkx/jsx/adw";
-import { GtkButton } from "@gtkx/jsx/gtk";
-import { createSplitViewNavigator, type SplitViewScreenProps } from "@gtkx/navigation";
+<<< @/figures/guide/navigation-split-view.tsx
 
-type MailParams = { Folders: undefined; Messages: { folder: string }; Message: { id: string } };
-
-const Split = createSplitViewNavigator<MailParams>();
-
-const Folders = ({ navigation }: SplitViewScreenProps<MailParams, "Folders">) => (
-    <GtkButton label="Inbox" onClicked={() => navigation.navigate("Messages", { folder: "inbox" })} />
-);
-
-export const Mail = () => (
-    <Split.Navigator
-        collapseCondition="max-width: 500sp"
-        minSidebarWidth={220}
-        maxSidebarWidth={300}
-        sidebarWidthFraction={0.25}
-        contentPlaceholder={(
-            <AdwStatusPage
-                iconName="mail-unread-symbolic"
-                title="No Folder Selected"
-                description="Pick a folder to read what is in it."
-            />
-        )}
-    >
-        <Split.Screen name="Folders" component={Folders} options={{ title: "Mail" }} />
-        <Split.Screen name="Messages" component={Messages} options={({ route }) => ({ title: route.params.folder })} />
-        <Split.Screen name="Message" component={Message} options={{ headerEnd: <GtkButton label="Reply" /> }} />
-    </Split.Navigator>
-);
-```
+<figure class="result">
+    <img class="result-light" src="/figures/guide-navigation-split-view-light.png" width="720" height="420" loading="lazy" alt="A window with a sidebar titled Mail holding an Inbox row, beside a content pane with an untitled header bar above a No Folder Selected status page reading Pick a folder to read what is in it." />
+    <img class="result-dark" src="/figures/guide-navigation-split-view-dark.png" width="720" height="420" loading="lazy" alt="A window with a sidebar titled Mail holding an Inbox row, beside a content pane with an untitled header bar above a No Folder Selected status page reading Pick a folder to read what is in it." />
+    <figcaption>Captured from the sample above. <code>contentPlaceholder</code> fills the content pane until a folder is selected.</figcaption>
+</figure>
 
 In a split view, `navigate` selects a content route: it updates that route and removes pages above it. Choosing another folder therefore replaces the selection instead of adding another folder page. Use `push` to keep multiple copies of a content page.
 

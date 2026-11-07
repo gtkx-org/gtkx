@@ -1,6 +1,7 @@
 import * as Adw from "@gtkx/gi/adw";
 import { AdwApplication, AdwApplicationWindow, AdwHeaderBar, AdwToolbarView } from "@gtkx/jsx/adw";
 import { GtkScrolledWindow } from "@gtkx/jsx/gtk";
+import { NavigationContainer } from "@gtkx/navigation";
 import { rootElement } from "@gtkx/react";
 import { render, screen } from "@gtkx/testing";
 import { fileURLToPath } from "node:url";
@@ -14,6 +15,10 @@ import { Sidebar } from "./guide/components-list-box.js";
 import { TaskList } from "./guide/components-list-view.js";
 import { About } from "./guide/modals-about-dialog.js";
 import { RenameDialog } from "./guide/modals-rename-dialog.js";
+import { App as DrawerApp } from "./guide/navigation-drawer.js";
+import { Mail as SplitMail } from "./guide/navigation-split-view.js";
+import { Notes } from "./guide/navigation-stack.js";
+import { Mail as TabMail } from "./guide/navigation-tabs.js";
 import { App as ListOfTasks } from "./tutorial/a-list-of-tasks/src/app.js";
 import { App as FirstWindow } from "./tutorial/your-first-window.js";
 
@@ -41,6 +46,26 @@ function SampleWindow({
                 <AdwToolbarView top={<AdwHeaderBar />}>
                     <GtkScrolledWindow>{children}</GtkScrolledWindow>
                 </AdwToolbarView>
+            </AdwApplicationWindow>
+        </AdwApplication>
+    );
+}
+
+function NavigationWindow({
+    title,
+    width,
+    height,
+    children,
+}: {
+    title: string;
+    width: number;
+    height: number;
+    children: ReactNode;
+}) {
+    return (
+        <AdwApplication>
+            <AdwApplicationWindow title={title} defaultWidth={width} defaultHeight={height}>
+                <NavigationContainer>{children}</NavigationContainer>
             </AdwApplicationWindow>
         </AdwApplication>
     );
@@ -96,6 +121,30 @@ const figures: [name: string, element: ReactNode][] = [
         <SampleWindow title="Notes" width={480} height={600}>
             <About onClose={() => {}} />
         </SampleWindow>,
+    ],
+    [
+        "guide-navigation-stack",
+        <NavigationWindow title="Notes" width={360} height={260}>
+            <Notes />
+        </NavigationWindow>,
+    ],
+    [
+        "guide-navigation-tabs",
+        <NavigationWindow title="Mail" width={360} height={440}>
+            <TabMail unread={3} />
+        </NavigationWindow>,
+    ],
+    [
+        "guide-navigation-drawer",
+        <NavigationWindow title="Mail" width={640} height={400}>
+            <DrawerApp isNarrow={false} />
+        </NavigationWindow>,
+    ],
+    [
+        "guide-navigation-split-view",
+        <NavigationWindow title="Mail" width={720} height={420}>
+            <SplitMail />
+        </NavigationWindow>,
     ],
 ];
 

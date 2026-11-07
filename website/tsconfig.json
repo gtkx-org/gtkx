@@ -33,6 +33,9 @@
             "path": "../packages/react"
         },
         {
+            "path": "../packages/navigation"
+        },
+        {
             "path": "../packages/create-gtkx"
         }
     ]
