@@ -5,7 +5,7 @@ description: "Render lists, tables, dropdowns, grid cells, tabs, menu widgets, a
 
 # Components
 
-`@gtkx/components` renders native collections from data and render functions, managing their GTK models and factories. It also provides managed tabs and toast helpers.
+`@gtkx/components` renders native collections from data and render functions, managing their GTK models and factories, and shares toasts through a provider. This page also covers the JSX elements these components sit beside: `GtkListBox`, tabs, grid cells and widgets in menus.
 
 `@gtkx/components` is a separate install:
 
@@ -56,7 +56,7 @@ A row's content is not the row a screen reader announces: GTK names a list row o
 
 ### GridView
 
-`GridView<T>` renders a grid with the same `items`, `renderItem`, controlled selection, and size estimates as `ListView`. Use `minColumns` and `maxColumns` to size the grid, and `singleClickActivate` and `onActivate` for activation.
+`GridView<T>` renders a grid with the same `items`, `renderItem`, controlled selection, and size estimates as `ListView`. A grid is always flat: it takes no `sections` and ignores `children`. Use `minColumns` and `maxColumns` to size the grid, and `singleClickActivate` and `onActivate` for activation.
 
 ### ColumnView
 
@@ -99,7 +99,7 @@ import { DropDown } from "@gtkx/components";
 
 The callback receives `null` when the model becomes empty.
 
-`ComboRow<T, S>` from `@gtkx/components` takes the same collection props and renders an `Adw.ComboRow` inside a preferences group. See the tutorial's [preferences chapter](/v2/tutorial/preferences-and-theming) for an example.
+`ComboRow<T, S>` from `@gtkx/components` takes the same collection props and renders an `Adw.ComboRow`, the drop-down as a row for a preferences group. See the tutorial's [preferences chapter](/v2/tutorial/preferences-and-theming) for an example.
 
 ### Native models
 
@@ -150,11 +150,11 @@ GTKX suppresses `onRowSelected` while applying its own selection updates and whi
 
 The tutorial's [sidebar](/v2/tutorial/lists-and-the-sidebar#keeping-gtk4-and-the-route-in-agreement) controls selection from the current route.
 
-## Tabs across windows
+## Tabs
 
 Ordinary `AdwTabView` children work for tabs that share their parent's React lifetime. For tabs the user opens, closes, reorders and drags between windows, use the [tab view navigator](/v2/guide/navigation#tab-view-navigator) from `@gtkx/navigation`, which keeps the open tabs in navigation state and follows native transfers.
 
-A JSX tab stays open while React renders it. To let the user close tabs with their close buttons, Ctrl+W or the overview, handle `onClosePage`: remove the page from the state that renders it and confirm the close. Without a handler, the close does nothing and GTKX warns in development; see [Closing](/v2/guide/modals-and-portals#closing).
+A JSX tab stays open while React renders it. To let the user close tabs with their close buttons or the tab overview, handle `onClosePage`: remove the page from the state that renders it and confirm the close. Without a handler, the close does nothing and GTKX warns in development; see [Closing](/v2/guide/modals-and-portals#closing).
 
 ```tsx
 import { AdwTabPage, AdwTabView } from "@gtkx/jsx/adw";
@@ -292,7 +292,7 @@ export const Notifications = () => {
 
 Render `Notifications` inside an application window. Clicking the button shows a toast over the content. Use `useMarkup: false` for titles that should display literally, including user text.
 
-`show()` returns the native toast. Pass `buttonLabel` and `onButtonClicked` to add an action, and `onDismissed` when cleanup depends on its dismissal. Call `toast.dismiss()` on the returned toast to close it, or `useToast().dismissAll()` to clear the overlay.
+`show()` returns the native `Adw.Toast`. Pass `buttonLabel` and `onButtonClicked` to add an action, and `onDismissed` when cleanup depends on its dismissal. Call `dismiss()` on the returned toast to close it, or the controller's `dismissAll()` to clear the overlay.
 
 `useToast()` requires a provider. Show toasts from events or effects after the overlay mounts; calling `show()` while its ref is empty creates a toast without displaying it. The [Trash and Toasts tutorial](/v2/tutorial/trash-and-toasts) adds an Undo action to a delete operation.
 
