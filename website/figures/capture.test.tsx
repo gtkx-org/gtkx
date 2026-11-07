@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 import { EmployeeTable } from "./guide/components-column-view.js";
+import { Circle } from "./guide/cairo-circle.js";
 import { NameGrid } from "./guide/components-grid.js";
 import { AccentOverride } from "./guide/css-accent.js";
 import { Sidebar } from "./guide/components-list-box.js";
@@ -64,6 +65,12 @@ const figures: [name: string, element: ReactNode][] = [
         "guide-css-accent",
         <SampleWindow title="CSS">
             <AccentOverride />
+        </SampleWindow>,
+    ],
+    [
+        "guide-cairo-circle",
+        <SampleWindow title="Cairo">
+            <Circle />
         </SampleWindow>,
     ],
 ];

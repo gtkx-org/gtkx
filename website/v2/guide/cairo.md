@@ -17,21 +17,13 @@ This guide covers the GTKX integration. For drawing techniques, use the [Cairo m
 
 Add a `GtkDrawingArea` inside your application's JSX tree. Its `drawFunc` receives a managed Cairo context and the widget's current dimensions:
 
-```tsx
-import { GtkDrawingArea } from "@gtkx/jsx/gtk";
+<<< @/figures/guide/cairo-circle.tsx
 
-const Circle = () => (
-    <GtkDrawingArea
-        contentWidth={200}
-        contentHeight={120}
-        drawFunc={(_area, cr, width, height) => {
-            cr.setSourceRgb(0.2, 0.4, 0.9);
-            cr.arc(width / 2, height / 2, Math.min(width, height) / 3, 0, 2 * Math.PI);
-            cr.fill();
-        }}
-    />
-);
-```
+<figure class="result">
+    <img class="result-light" src="/figures/guide-cairo-circle-light.png" width="360" height="260" loading="lazy" alt="A window titled Cairo filled by a drawing area with a blue circle at its center." />
+    <img class="result-dark" src="/figures/guide-cairo-circle-dark.png" width="360" height="260" loading="lazy" alt="A window titled Cairo filled by a drawing area with a blue circle at its center." />
+    <figcaption>Captured from the sample above. The area fills the window, so the circle follows the callback's <code>width</code> and <code>height</code> rather than the requested 200 × 120.</figcaption>
+</figure>
 
 Draw only inside this callback: do not update widget properties or React state from it. Keep the context local to the callback. GTKX releases it when the callback returns, so the callback does not need to call `cr.$dispose()`. Code ported from GJS that does call it keeps working; any drawing through the context after that call throws.
 
