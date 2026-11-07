@@ -1240,6 +1240,24 @@ describe("generated bindings", () => {
         expect(JSON.parse(initialized)).toEqual([true, "function"]);
     });
 
+    it("declares opaque pointer aliases that generated signatures reference", async () => {
+        using directory = createProject();
+        const libraries = ["Gst-1.0"];
+        const girPath = resolveGirPath(undefined, directory.path);
+        const { gi } = resolveStore(directory.path);
+        await runCodegen({ libraries, girPath, gi });
+        const consumer = `import { Clock, type ClockID, type ClockTime } from "@gtkx/gi/gst";
+            declare const id: ClockID;
+            const handle: bigint = id;
+            const time: ClockTime = Clock.idGetTime(handle);
+            // @ts-expect-error a clock ID is an opaque handle
+            Clock.idGetTime("id");
+            export { time };`;
+        expect(diagnostics(directory.path, consumer)).toEqual([]);
+        const reference = loadApiReference({ libraries, girPath, resolveFrom: directory.path });
+        expect(reference.lookup("Gst.ClockID")).toMatchObject({ outcome: "page" });
+    });
+
     it("finds GIR files in the gir-1.0 directory under the introspection libdir", async () => {
         using directory = createProject();
         const bin = join(directory.path, "bin");
