@@ -5,6 +5,8 @@ import { GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { NavigationContainer } from "@gtkx/navigation";
 import { rootElement } from "@gtkx/react";
 import { render, screen, userEvent } from "@gtkx/testing";
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
@@ -22,6 +24,7 @@ import { Notes } from "./guide/navigation-stack.js";
 import { seedNotes } from "./tutorial/notes.js";
 import { App as NoteEditor } from "./tutorial/the-note-editor/src/app.js";
 import { App as NotesFolder } from "./tutorial/the-notes-folder/src/app.js";
+import { App as SavingAndWatching } from "./tutorial/saving-and-watching/src/app.js";
 import { defaultFolder } from "./tutorial/the-notes-folder/src/notes/files.js";
 import { App as FirstWindow } from "./tutorial/your-first-window/src/app.js";
 import { Mail as TabMail } from "./guide/navigation-tabs.js";
@@ -102,6 +105,21 @@ const figures: [name: string, element: ReactNode, options?: FigureOptions][] = [
                     await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Website relaunch" }),
                 );
                 await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { name: "Note text" });
+            },
+        },
+    ],
+    [
+        "tutorial-saving-and-watching",
+        <SavingAndWatching />,
+        {
+            before: () => seedNotes(defaultFolder()),
+            prepare: async () => {
+                await userEvent.click(
+                    await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Website relaunch" }),
+                );
+                await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { name: "Note text" });
+                writeFileSync(join(defaultFolder(), "Groceries.md"), "# Groceries\n\nOat milk, lemons, basil.\n");
+                await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Groceries" });
             },
         },
     ],
