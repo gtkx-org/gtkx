@@ -698,7 +698,7 @@ describe("CLI commands", () => {
 
         project.write("src/index.ts", 'import { xxh64 } from "@studio/hash";\nprocess.stdout.write(String(xxh64));');
         await expect(invoke(["build", "--cwd", project.root])).rejects.toThrow(
-            /@studio\/hash loads the native addon .*hash\.linux-x64-gnu\.node.*Additional native addons/s,
+            /@studio\/hash loads the native addon .*hash\.linux-x64-gnu\.node.*Additional native addons.*https:\/\/gtkx\.dev\/v2\/guide\/deploying#additional-native-addons/s,
         );
     });
 
@@ -1760,6 +1760,13 @@ describe("CLI commands", () => {
         project.write("gtkx.config.ts", `export default ${JSON.stringify({ codegen: false })};`);
         await expect(invoke([name, "--cwd", project.root])).rejects.toThrow(
             "is required to run, build or deploy an application",
+        );
+    });
+
+    it("suggests a deploy section derived from package.json, linking the Deploying guide", async () => {
+        using project = createProject();
+        await expect(invoke(["deploy", "--cwd", project.root])).rejects.toThrow(
+            /no `deploy` section.*name: "cli-example".*license: "MIT".*see https:\/\/gtkx\.dev\/v2\/guide\/deploying\.$/s,
         );
     });
 

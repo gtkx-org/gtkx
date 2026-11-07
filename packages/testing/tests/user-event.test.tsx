@@ -63,6 +63,7 @@ import {
 import { rootElement } from "@gtkx/react";
 import {
     type BoundQueries,
+    cleanup,
     type PointerInput,
     queryAllControllers,
     render,
@@ -1687,6 +1688,23 @@ describe("userEvent.keyboard: shortcuts", () => {
         await userEvent.keyboard(host, "{/Shift}");
         await userEvent.keyboard(host, "{F5}");
         expect(activations.count).toBe(1);
+    });
+
+    it("releases the default instance's held modifier and button at cleanup", async () => {
+        const previous = await renderShortcutHost({ trigger: <GtkShortcutTrigger accelerator="F5" /> });
+        await userEvent.keyboard(previous.host, "{Shift>}");
+        const pressed = await renderClickButton("Pressed");
+        await userEvent.pointer(pressed.button, "[MouseLeft>]");
+        await cleanup();
+
+        const { host, activations } = await renderShortcutHost({ trigger: <GtkShortcutTrigger accelerator="F5" /> });
+        await userEvent.keyboard(host, "{F5}");
+        const { button, clicks } = await renderClickButton("Next");
+        await userEvent.pointer(button, "[MouseLeft>]");
+        await userEvent.pointer(button, "[/MouseLeft]");
+
+        expect(activations.count).toBe(1);
+        expect(clicks.count).toBe(1);
     });
 
     it("honors the shortcut's scope and the sensitivity of its host", async () => {
