@@ -9,6 +9,7 @@
 *.log
 *.tsbuildinfo
 AGENTS.md
+CLAUDE.md
 build/
 dist/
 gschemas.compiled

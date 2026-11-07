@@ -7,10 +7,7 @@
             "dependsOn": ["...", "_typecheck:overrides", "_typecheck:bindings", "_typecheck:binding-sources"]
         },
         "_typecheck:overrides": {
-            "command": "tsc -p overrides/tsconfig.json",
-            "options": {
-                "cwd": "packages/codegen"
-            },
+            "executor": "nx:run-commands",
             "cache": true,
             "dependsOn": ["gtkx:bindings"],
             "inputs": [
@@ -21,7 +18,15 @@
                     "transitive": true
                 }
             ],
-            "outputs": []
+            "outputs": [],
+            "options": {
+                "cwd": "packages/codegen",
+                "parallel": false,
+                "commands": [
+                    "node scripts/typecheck-overrides.ts",
+                    "tsc -p ../../build/overrides-typecheck/tsconfig.json"
+                ]
+            }
         },
         "_typecheck:bindings": {
             "executor": "nx:run-commands",
