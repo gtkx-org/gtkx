@@ -34,6 +34,7 @@
         "vite": "catalog:",
         "vitepress": "^2.0.0-alpha.21",
         "vue": "^3.5.44",
-        "vue-tsc": "^3.3.14"
+        "vue-tsc": "^3.3.14",
+        "yaml": "catalog:"
     }
 }

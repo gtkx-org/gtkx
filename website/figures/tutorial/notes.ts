@@ -49,6 +49,19 @@ const notes: NoteFile[] = [
     ],
 ];
 
+const tags = new Map([
+    ["Recipes", "home"],
+    ["Book club", "home, reading"],
+    ["Trip to Lisbon", "travel"],
+    ["Meeting notes", "work"],
+    ["Website relaunch", "work"],
+]);
+
+const taggedNotes: NoteFile[] = notes.map(([name, text]) => [
+    name,
+    `---\ntags: [${tags.get(name) ?? ""}]\n---\n${text}`,
+]);
+
 const seedNotes = (folder: string, files: NoteFile[] = notes): void => {
     if (!folder.startsWith(tmpdir())) {
         throw new Error(
@@ -65,4 +78,4 @@ const seedNotes = (folder: string, files: NoteFile[] = notes): void => {
     });
 };
 
-export { type NoteFile, seedNotes };
+export { type NoteFile, seedNotes, taggedNotes };

@@ -21,7 +21,7 @@ import { RenameDialog } from "./guide/modals-rename-dialog.js";
 import { App as DrawerApp } from "./guide/navigation-drawer.js";
 import { Mail as SplitMail } from "./guide/navigation-split-view.js";
 import { Notes } from "./guide/navigation-stack.js";
-import { seedNotes } from "./tutorial/notes.js";
+import { seedNotes, taggedNotes } from "./tutorial/notes.js";
 import { App as NoteEditor } from "./tutorial/the-note-editor/src/app.js";
 import { App as NotesFolder } from "./tutorial/the-notes-folder/src/app.js";
 import { App as SavingAndWatching } from "./tutorial/saving-and-watching/src/app.js";
@@ -29,6 +29,7 @@ import { App as MarkdownPreview } from "./tutorial/the-markdown-preview/src/app.
 import { App as FastRefresh } from "./tutorial/fast-refresh/src/app.js";
 import { App as AdaptiveLayout } from "./tutorial/an-adaptive-layout/src/app.js";
 import { App as SearchInAWorker } from "./tutorial/search-in-a-worker/src/app.js";
+import { App as TagsAndFrontMatter } from "./tutorial/tags-and-front-matter/src/app.js";
 import { defaultFolder } from "./tutorial/the-notes-folder/src/notes/files.js";
 import { App as FirstWindow } from "./tutorial/your-first-window/src/app.js";
 import { Mail as TabMail } from "./guide/navigation-tabs.js";
@@ -185,6 +186,27 @@ const figures: [name: string, element: ReactNode, options?: FigureOptions][] = [
                     expect(screen.queryByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Recipes" })).toBeNull();
                 });
                 expect(screen.getAllByRole(Gtk.AccessibleRole.LIST_ITEM)).toHaveLength(2);
+            },
+        },
+    ],
+    [
+        "tutorial-tags-and-front-matter",
+        <TagsAndFrontMatter />,
+        {
+            before: () => seedNotes(defaultFolder(), taggedNotes),
+            prepare: async () => {
+                await userEvent.selectOptions(
+                    await screen.findByRole(Gtk.AccessibleRole.COMBO_BOX, { name: "All Notes" }),
+                    1,
+                );
+                await waitFor(() => {
+                    expect(screen.queryByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Trip to Lisbon" })).toBeNull();
+                });
+                expect(screen.getAllByRole(Gtk.AccessibleRole.LIST_ITEM)).toHaveLength(2);
+                await userEvent.click(screen.getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Book club" }));
+                await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, { name: "Preview" }));
+                const preview = within(await screen.findByRole(Gtk.AccessibleRole.DOCUMENT, { name: "Preview" }));
+                await preview.findByText("#reading");
             },
         },
     ],
