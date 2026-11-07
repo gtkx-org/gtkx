@@ -18,6 +18,7 @@ import { CREATE_COMMAND, docsLink, REPO_URL } from "./content";
                     Build native Adwaita and GTK apps with the workflow of modern web development: React components,
                     Fast Refresh, native UI tests, and packaging, on Node.js.
                 </p>
+                <a class="hero__why" :href="docsLink('guide/why-gtkx')"> Why GTKX <Icon name="arrow" :size="15" /> </a>
                 <div class="hero__actions">
                     <div id="install" class="hero__install">
                         <CodeBlock variant="terminal" :frame="false" :code="CREATE_COMMAND" />
@@ -40,9 +41,32 @@ import { CREATE_COMMAND, docsLink, REPO_URL } from "./content";
                     </p>
                 </div>
             </div>
-            <div class="hero__col hero__visual">
-                <CodeBlock title="src/index.tsx" :snippet="snippets.hero" />
-            </div>
+            <figure class="hero__col hero__visual">
+                <div class="shot">
+                    <div class="shot__frame">
+                        <picture>
+                            <source srcset="/tasks-screenshot.webp" type="image/webp" />
+                            <img
+                                src="/tasks-screenshot.png"
+                                width="900"
+                                height="600"
+                                alt="The Tasks app from the GTKX tutorial: an Adwaita window with a sidebar of smart views and lists next to a boxed task list."
+                            />
+                        </picture>
+                        <span class="shot__ring" aria-hidden="true"><span class="shot__tag">AdwToggleGroup</span></span>
+                    </div>
+                    <CodeBlock
+                        class="shot__code"
+                        title="src/components/task-filter.tsx"
+                        :snippet="snippets.taskFilter"
+                    />
+                </div>
+                <figcaption class="shot__caption">
+                    <a :href="docsLink('tutorial/')"
+                        >The Tasks app you build in the tutorial <Icon name="arrow" :size="15"
+                    /></a>
+                </figcaption>
+            </figure>
         </div>
     </section>
 </template>
@@ -82,8 +106,22 @@ import { CREATE_COMMAND, docsLink, REPO_URL } from "./content";
   font-size: clamp(1.05rem, 1.6vw, 1.28rem);
   line-height: 1.5;
   color: var(--text-2);
-  margin: 1.4rem 0 1.8rem;
+  margin: 1.4rem 0 0.8rem;
   max-width: 32rem;
+}
+.hero__why {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 1.8rem;
+  font-family: var(--font-body);
+  font-weight: var(--fw-semibold);
+  color: var(--text-brand);
+  text-decoration: none;
+  transition: var(--transition-colors);
+}
+.hero__why:hover {
+  color: var(--brand-hover);
 }
 .hero__actions {
   width: max-content;
@@ -109,14 +147,103 @@ import { CREATE_COMMAND, docsLink, REPO_URL } from "./content";
   min-width: 0;
 }
 .hero__visual {
+  margin: 0;
+}
+.shot {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+  padding-bottom: 6.5rem;
+}
+.shot__frame {
+  position: relative;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+}
+.shot__frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+}
+.shot__ring {
+  position: absolute;
+  left: 52.4%;
+  top: 0.6%;
+  width: 20.4%;
+  height: 6.4%;
+  border: 2px solid var(--brand);
+  border-radius: var(--radius-pill);
+  box-shadow: 0 0 0 4px var(--brand-soft);
+}
+.shot__tag {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 8px);
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-medium);
+  color: var(--brand-contrast);
+  background: var(--brand-strong);
+  padding: 0.1rem 0.5rem;
+  border-radius: var(--radius-sm);
+}
+.shot__code {
+  position: absolute;
+  left: -2.5rem;
+  bottom: 0;
+  width: min(27rem, 100%);
+  box-shadow: var(--shadow-lg);
+}
+.shot__code :deep(.shiki) {
+  padding: 0.8rem 0.9rem;
+  font-size: var(--text-xs);
+}
+.shot__code :deep(.mark) {
+  background: var(--brand-soft);
+  outline: 1.5px solid var(--brand);
+  border-radius: var(--radius-sm);
+}
+.shot__caption {
+  margin-top: 1rem;
+  text-align: right;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+}
+.shot__caption a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: var(--fw-semibold);
+  color: var(--text-brand);
+  text-decoration: none;
+  transition: var(--transition-colors);
+}
+.shot__caption a:hover {
+  color: var(--brand-hover);
+}
+@media (max-width: 860px) {
+  .shot {
+    padding-bottom: 0;
+  }
+  .shot__code {
+    position: relative;
+    left: auto;
+    bottom: auto;
+    width: auto;
+    margin: -1.5rem 0.75rem 0;
+  }
+  .shot__caption {
+    text-align: left;
+  }
 }
 @media (max-width: 480px) {
-  .hero__visual :deep(.shiki) {
-    font-size: var(--text-xs);
+  .shot__code :deep(.shiki) {
+    font-size: 0.62rem;
+  }
+  .shot__tag {
+    font-size: 0.6rem;
   }
 }
 </style>

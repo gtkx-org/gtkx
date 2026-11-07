@@ -1,28 +1,12 @@
 import type { BundledLanguage } from "shiki";
 
-type Snippet = { lang: BundledLanguage; code: string };
+type Snippet = { lang: BundledLanguage; code: string; mark?: string };
 
-const HERO = `import {
-  AdwApplication, AdwApplicationWindow,
-  AdwHeaderBar, AdwToolbarView,
-} from "@gtkx/jsx/adw";
-import { GtkLabel } from "@gtkx/jsx/gtk";
-import { createRoot, quit } from "@gtkx/react";
-
-const App = () => (
-  <AdwApplication>
-    <AdwApplicationWindow
-      title="My App"
-      onCloseRequest={() => quit()}
-    >
-      <AdwToolbarView top={<AdwHeaderBar />}>
-        <GtkLabel>Hello from GTKX</GtkLabel>
-      </AdwToolbarView>
-    </AdwApplicationWindow>
-  </AdwApplication>
-);
-
-createRoot().render(<App />);
+const TASK_FILTER = `<AdwToggleGroup activeName={filter}>
+  <AdwToggle name="all" label={t("All")} />
+  <AdwToggle name="open" label={t("Open")} />
+  <AdwToggle name="done" label={t("Done")} />
+</AdwToggleGroup>
 `;
 
 const CONFIG = `import { defineConfig } from "@gtkx/config";
@@ -47,7 +31,7 @@ const APP = `<AdwToolbarView top={<AdwHeaderBar />}>
 const ECOSYSTEM = "npm install zod zustand";
 
 const SNIPPETS = {
-    hero: { lang: "tsx", code: HERO },
+    taskFilter: { lang: "tsx", code: TASK_FILTER, mark: "AdwToggleGroup" },
     config: { lang: "ts", code: CONFIG },
     app: { lang: "tsx", code: APP },
     ecosystem: { lang: "bash", code: ECOSYSTEM },
