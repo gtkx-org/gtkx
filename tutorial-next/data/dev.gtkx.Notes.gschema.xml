@@ -16,6 +16,11 @@
       <summary>Color scheme</summary>
       <description>Whether the app follows the system style or forces light or dark</description>
     </key>
+    <key name="preview" type="b">
+      <default>false</default>
+      <summary>Show the preview</summary>
+      <description>Whether notes open as rendered Markdown instead of in the editor</description>
+    </key>
     <key name="window-width" type="i">
       <default>960</default>
       <summary>Window width</summary>

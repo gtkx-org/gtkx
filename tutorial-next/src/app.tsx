@@ -16,6 +16,7 @@ function App() {
             actionAccels={[
                 { detailedActionName: "win.new-note", accels: ["<Control>n"] },
                 { detailedActionName: "win.rename-note", accels: ["F2"] },
+                { detailedActionName: "win.preview", accels: ["<Control><Shift>p"] },
                 { detailedActionName: "win.preferences", accels: ["<Control>comma"] },
                 { detailedActionName: "win.shortcuts", accels: ["<Control>question"] },
                 { detailedActionName: "app.quit", accels: ["<Control>q"] },

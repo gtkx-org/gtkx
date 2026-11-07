@@ -13,6 +13,12 @@ const defaultFolder = (): string =>
 const noteName = (fileName: string): string | null =>
     fileName.endsWith(EXTENSION) && !fileName.startsWith(".") ? fileName.slice(0, -EXTENSION.length) : null;
 
+const linkedNoteName = (uri: string): string | null => {
+    const fileName = GLib.Uri.peekScheme(uri) === null ? GLib.Uri.unescapeString(uri, "/") : null;
+
+    return fileName === null || fileName.includes("/") ? null : noteName(fileName);
+};
+
 const notePath = (folder: string, name: string): string => join(folder, `${name}${EXTENSION}`);
 
 const isMissing = (error: unknown): boolean => error instanceof Error && "code" in error && error.code === "ENOENT";
@@ -93,6 +99,7 @@ export {
     createNote,
     defaultFolder,
     isValidName,
+    linkedNoteName,
     type Note,
     noteName,
     readNote,

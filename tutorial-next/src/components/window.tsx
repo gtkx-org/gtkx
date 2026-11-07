@@ -12,7 +12,7 @@ import { NotesProvider } from "../notes/notes-provider.js";
 import { COLOR_SCHEMES, schema, useAppSettings } from "../settings.js";
 import { type Dialog, Dialogs } from "./dialogs.js";
 import { MainMenu } from "./main-menu.js";
-import { NoteMenu } from "./note-menu.js";
+import { NoteMenu, PreviewToggle } from "./note-menu.js";
 import { NoteScreen } from "./note-screen.js";
 import { NotesScreen } from "./notes-screen.js";
 import { useNoteCommands, WindowActions } from "./window-actions.js";
@@ -47,7 +47,15 @@ const NoteNavigation = ({ onOpenNameChange }: { onOpenNameChange: (name: string 
                 <Split.Screen
                     name="Note"
                     component={NoteScreen}
-                    options={({ route }) => ({ title: route.params.name, headerEnd: <NoteMenu /> })}
+                    options={({ route }) => ({
+                        title: route.params.name,
+                        headerEnd: (
+                            <>
+                                <NoteMenu />
+                                <PreviewToggle />
+                            </>
+                        ),
+                    })}
                 />
             </Split.Navigator>
         </NavigationContainer>

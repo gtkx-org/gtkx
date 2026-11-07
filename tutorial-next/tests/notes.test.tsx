@@ -159,6 +159,28 @@ describe("Notes", () => {
         });
     });
 
+    it("shows the open note as rendered Markdown", async () => {
+        await render(<App />, { container: rootElement });
+
+        await openNote("Groceries");
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, { name: "Preview (Ctrl+Shift+P)" }));
+
+        expect(await screen.findByRole(Gtk.AccessibleRole.HEADING, { name: "Groceries" })).toBeVisible();
+        expect(screen.getByText("Oat milk")).toBeVisible();
+        expect(screen.queryByRole(Gtk.AccessibleRole.TEXT_BOX, { name: "Note text" })).toBeNull();
+    });
+
+    it("opens the note a preview link points to", async () => {
+        writeFileSync(join(notesFolder(), "Index.md"), "[Shopping list](Groceries.md)\n");
+        Gio.Settings.new(schema.id).setBoolean("preview", true);
+        await render(<App />, { container: rootElement });
+
+        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Index" }));
+        await userEvent.keyboard(await screen.findByText("Shopping list"), "{Enter}");
+
+        expect(await screen.findByRole(Gtk.AccessibleRole.HEADING, { name: "Groceries" })).toBeVisible();
+    });
+
     it("offers to create the first note in an empty folder", async () => {
         rmSync(notesFolder(), { recursive: true });
         await render(<App />, { container: rootElement });

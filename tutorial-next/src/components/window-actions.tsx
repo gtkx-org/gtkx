@@ -1,8 +1,11 @@
 import { useToast } from "@gtkx/components";
+import * as GLib from "@gtkx/gi/glib";
 import { t } from "@gtkx/i18n";
 import { GSimpleAction } from "@gtkx/jsx/gio";
+import { useSetting } from "@gtkx/react";
 import { closeNoteIfOpen, openNote } from "../navigation.js";
 import { useNotes } from "../notes/notes-provider.js";
+import { schema, useAppSettings } from "../settings.js";
 import type { Dialog } from "./dialogs.js";
 
 const message = (error: unknown): string => (error instanceof Error ? error.message : String(error));
@@ -54,6 +57,7 @@ type WindowActionsProps = {
 const WindowActions = ({ openName, onShowDialog }: WindowActionsProps) => {
     const { notes } = useNotes();
     const { newNote, trashNote } = useNoteCommands();
+    const [preview, setPreview] = useSetting(useAppSettings(), schema, "preview");
 
     return (
         <>
@@ -73,6 +77,15 @@ const WindowActions = ({ openName, onShowDialog }: WindowActionsProps) => {
                 onActivate={() => {
                     if (openName !== null) {
                         void trashNote(openName);
+                    }
+                }}
+            />
+            <GSimpleAction
+                name="preview"
+                state={GLib.Variant.newBoolean(preview)}
+                onChangeState={(value) => {
+                    if (value !== null) {
+                        setPreview(value.getBoolean());
                     }
                 }}
             />

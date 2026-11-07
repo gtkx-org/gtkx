@@ -1,6 +1,14 @@
 import { t } from "@gtkx/i18n";
 import { GMenu } from "@gtkx/jsx/gio";
-import { GtkMenuButton } from "@gtkx/jsx/gtk";
+import { GtkMenuButton, GtkToggleButton } from "@gtkx/jsx/gtk";
+
+const PreviewToggle = () => (
+    <GtkToggleButton
+        iconName="view-reveal-symbolic"
+        tooltipText={t("Preview (Ctrl+Shift+P)")}
+        actionName="win.preview"
+    />
+);
 
 const NoteMenu = () => (
     <GtkMenuButton
@@ -21,4 +29,4 @@ const NoteMenu = () => (
     />
 );
 
-export { NoteMenu };
+export { NoteMenu, PreviewToggle };

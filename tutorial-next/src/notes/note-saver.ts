@@ -1,0 +1,63 @@
+import { writeNote } from "./files.js";
+
+const SAVE_DELAY_MS = 400;
+
+type PendingSave = { text: string; timer: NodeJS.Timeout };
+
+class NoteSaver {
+    readonly #folder: string;
+    readonly #pending = new Map<string, PendingSave>();
+    readonly #written = new Map<string, string>();
+    readonly #writes = new Map<string, Promise<void>>();
+
+    constructor(folder: string) {
+        this.#folder = folder;
+    }
+
+    schedule(name: string, text: string): void {
+        clearTimeout(this.#pending.get(name)?.timer);
+        this.#pending.set(name, { text, timer: setTimeout(() => this.#flush(name), SAVE_DELAY_MS) });
+    }
+
+    async settle(name: string): Promise<void> {
+        this.#flush(name);
+        await this.#writes.get(name);
+    }
+
+    flushAll(): void {
+        for (const name of [...this.#pending.keys()]) {
+            this.#flush(name);
+        }
+    }
+
+    isPending(name: string): boolean {
+        return this.#pending.has(name);
+    }
+
+    isOwnWrite(name: string, text: string): boolean {
+        return this.#written.get(name) === text;
+    }
+
+    remember(name: string, text: string): void {
+        this.#written.set(name, text);
+    }
+
+    forget(name: string): void {
+        this.#written.delete(name);
+    }
+
+    #flush(name: string): void {
+        const entry = this.#pending.get(name);
+        if (entry === undefined) {
+            return;
+        }
+        clearTimeout(entry.timer);
+        this.#pending.delete(name);
+        this.#written.set(name, entry.text);
+        const previous = this.#writes.get(name) ?? Promise.resolve();
+        const write = previous.catch(() => undefined).then(() => writeNote(this.#folder, name, entry.text));
+        this.#writes.set(name, write);
+    }
+}
+
+export { NoteSaver };

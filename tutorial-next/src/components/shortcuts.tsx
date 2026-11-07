@@ -11,6 +11,7 @@ const Shortcuts = ({ onClose }: { onClose: () => void }) => (
         </AdwShortcutsSection>
         <AdwShortcutsSection title={t("Notes")}>
             <AdwShortcutsItem title={t("Rename note")} accelerator="F2" />
+            <AdwShortcutsItem title={t("Show preview")} accelerator="<Control><Shift>p" />
         </AdwShortcutsSection>
     </AdwShortcutsDialog>
 );

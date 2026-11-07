@@ -1,6 +1,7 @@
 import { watch } from "node:fs";
-import { createContext, type ReactNode, use, useEffect, useRef, useState } from "react";
-import { createNote, type Note, noteName, readNote, readNotes, renameNote, trashNote, writeNote } from "./files.js";
+import { createContext, type ReactNode, use, useEffect, useState } from "react";
+import { createNote, type Note, noteName, readNote, readNotes, renameNote, trashNote } from "./files.js";
+import { NoteSaver } from "./note-saver.js";
 
 type NoteMap = ReadonlyMap<string, Note>;
 
@@ -12,10 +13,6 @@ type NotesValue = {
     rename: (from: string, to: string) => Promise<void>;
     trash: (name: string) => Promise<void>;
 };
-
-type PendingSave = { text: string; timer: NodeJS.Timeout };
-
-const SAVE_DELAY_MS = 400;
 
 const NotesContext = createContext<NotesValue | null>(null);
 
@@ -32,32 +29,7 @@ const withNote = (notes: NoteMap | null, name: string, note: Note | null): NoteM
 
 const NotesProvider = ({ folder, children }: { folder: string; children: ReactNode }) => {
     const [notes, setNotes] = useState<NoteMap | null>(null);
-    const pending = useRef(new Map<string, PendingSave>());
-    const written = useRef(new Map<string, string>());
-    const writes = useRef(new Map<string, Promise<void>>());
-
-    const save = (name: string, text: string): Promise<void> => {
-        written.current.set(name, text);
-        const write = (writes.current.get(name) ?? Promise.resolve()).then(() => writeNote(folder, name, text));
-        writes.current.set(name, write);
-
-        return write;
-    };
-
-    const flush = (name: string): void => {
-        const entry = pending.current.get(name);
-        if (entry === undefined) {
-            return;
-        }
-        clearTimeout(entry.timer);
-        pending.current.delete(name);
-        void save(name, entry.text);
-    };
-
-    const settle = async (name: string): Promise<void> => {
-        flush(name);
-        await writes.current.get(name);
-    };
+    const [saver] = useState(() => new NoteSaver(folder));
 
     useEffect(() => {
         const controller = new AbortController();
@@ -65,8 +37,8 @@ const NotesProvider = ({ folder, children }: { folder: string; children: ReactNo
 
         const refresh = async (name: string): Promise<void> => {
             const note = await readNote(folder, name);
-            const isOwnWrite = note !== null && note.text === written.current.get(name);
-            if (signal.aborted || pending.current.has(name) || isOwnWrite) {
+            const isOwnWrite = note !== null && saver.isOwnWrite(name, note.text);
+            if (signal.aborted || saver.isPending(name) || isOwnWrite) {
                 return;
             }
             setNotes((current) => withNote(current, name, note));
@@ -89,30 +61,27 @@ const NotesProvider = ({ folder, children }: { folder: string; children: ReactNo
 
         return () => {
             controller.abort();
-            for (const name of [...pending.current.keys()]) {
-                flush(name);
-            }
+            saver.flushAll();
         };
-    }, [folder]);
+    }, [folder, saver]);
 
     const create = async (base: string, text: string): Promise<string> => {
         const name = await createNote(folder, base, text);
-        written.current.set(name, text);
+        saver.remember(name, text);
         setNotes((current) => withNote(current, name, { name, text, modified: Date.now() }));
 
         return name;
     };
 
     const edit = (name: string, text: string): void => {
-        clearTimeout(pending.current.get(name)?.timer);
-        pending.current.set(name, { text, timer: setTimeout(() => flush(name), SAVE_DELAY_MS) });
+        saver.schedule(name, text);
         setNotes((current) => withNote(current, name, { name, text, modified: Date.now() }));
     };
 
     const rename = async (from: string, to: string): Promise<void> => {
-        await settle(from);
+        await saver.settle(from);
         await renameNote(folder, from, to);
-        written.current.delete(from);
+        saver.forget(from);
         setNotes((current) => {
             const note = current?.get(from);
             const next = withNote(current, from, null);
@@ -122,9 +91,9 @@ const NotesProvider = ({ folder, children }: { folder: string; children: ReactNo
     };
 
     const trash = async (name: string): Promise<void> => {
-        await settle(name);
+        await saver.settle(name);
         await trashNote(folder, name);
-        written.current.delete(name);
+        saver.forget(name);
         setNotes((current) => withNote(current, name, null));
     };
 
