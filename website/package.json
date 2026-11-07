@@ -15,6 +15,9 @@
         "preview": "vitepress preview"
     },
     "devDependencies": {
+        "@gtkx/cli": "workspace:*",
+        "@gtkx/components": "workspace:*",
+        "@gtkx/testing": "workspace:*",
         "shiki": "^4.6.0",
         "typedoc": "^0.28.20",
         "typedoc-plugin-markdown": "^4.14.1",

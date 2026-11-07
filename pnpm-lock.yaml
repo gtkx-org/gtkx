@@ -1216,6 +1216,15 @@ importers:
 
   website:
     devDependencies:
+      '@gtkx/cli':
+        specifier: workspace:*
+        version: link:../packages/cli
+      '@gtkx/components':
+        specifier: workspace:*
+        version: link:../packages/components
+      '@gtkx/testing':
+        specifier: workspace:*
+        version: link:../packages/testing
       shiki:
         specifier: ^4.6.0
         version: 4.6.0

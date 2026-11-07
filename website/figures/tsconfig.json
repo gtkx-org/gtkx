@@ -1,0 +1,27 @@
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "outDir": "${configDir}/out-tsc",
+        "tsBuildInfoFile": "${configDir}/tsconfig.tsbuildinfo",
+        "emitDeclarationOnly": true
+    },
+    "include": ["${configDir}/**/*.tsx"],
+    "exclude": ["${configDir}/node_modules", "${configDir}/out-tsc"],
+    "references": [
+        {
+            "path": "../../packages/cli/tsconfig.lib.json"
+        },
+        {
+            "path": "../../packages/components/tsconfig.lib.json"
+        },
+        {
+            "path": "../../packages/config/tsconfig.lib.json"
+        },
+        {
+            "path": "../../packages/react/tsconfig.lib.json"
+        },
+        {
+            "path": "../../packages/testing/tsconfig.lib.json"
+        }
+    ]
+}

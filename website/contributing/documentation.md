@@ -39,6 +39,30 @@ Before publishing documentation changes:
 - Run changed examples with the documented dependencies. For tutorial edits, apply the chapter's changes to the preceding chapter, not only to the finished application.
 - Keep old URLs and heading anchors usable when reorganizing content. Update package READMEs and metadata when a package's role changes.
 
+## Pictured samples
+
+A sample whose result is visual shows the window it renders. Keep the sample in a file under `website/figures/` (`guide/` or `tutorial/`), show it on the page with a [snippet import](https://vitepress.dev/guide/markdown#import-code-snippets) such as `<<< @/figures/guide/components-list-view.tsx`, and add it to the `figures` list in `website/figures/capture.test.tsx`. The page then shows the code that was captured. Give pictured samples the margins a real app would use, so content does not touch the window edge.
+
+Regenerate the images after changing a pictured sample:
+
+```bash
+pnpm nx run @gtkx/website:figures
+```
+
+The target renders each sample with `@gtkx/testing` in Adwaita's light and dark styles and writes `website/public/figures/<name>-light.png` and `<name>-dark.png` at scale 2. Commit the images: the site build reads them and needs no display. The website `typecheck` target checks the sample files.
+
+Place the figure where the text says what the reader should see. Its two images follow the site theme, and the caption links the code:
+
+```html
+<figure class="result">
+    <img class="result-light" src="/figures/<name>-light.png" width="360" height="260" alt="…" />
+    <img class="result-dark" src="/figures/<name>-dark.png" width="360" height="260" alt="…" />
+    <figcaption>Captured from <a href="#section">the sample</a> above.</figcaption>
+</figure>
+```
+
+Set `width` and `height` to half the PNG's pixel size, and describe the window in `alt`.
+
 ## Documentation versions
 
 [`website/versions.json`](https://github.com/gtkx-org/gtkx/blob/main/website/versions.json) defines each documented version:

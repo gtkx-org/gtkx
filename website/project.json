@@ -87,6 +87,14 @@
                 "cwd": "{projectRoot}"
             }
         },
+        "figures": {
+            "cache": false,
+            "dependsOn": ["^build", "gtkx:bindings"],
+            "command": "vitest run",
+            "options": {
+                "cwd": "{projectRoot}/figures"
+            }
+        },
         "dev": {
             "cache": false,
             "continuous": true,
@@ -103,7 +111,7 @@
         "typecheck": {
             "command": "vue-tsc --noEmit -p tsconfig.json",
             "cache": true,
-            "dependsOn": [],
+            "dependsOn": ["typecheck-figures"],
             "inputs": [
                 "{projectRoot}/**/*.{ts,vue,json}",
                 "{projectRoot}/.vitepress/**/*.{ts,vue,json}",
@@ -115,6 +123,16 @@
             ],
             "options": {
                 "cwd": "website"
+            }
+        },
+        "typecheck-figures": {
+            "command": "tsc --build figures/tsconfig.json",
+            "cache": true,
+            "dependsOn": ["^build", "gtkx:bindings"],
+            "inputs": ["{projectRoot}/figures/**/*", "sharedGlobals", "^production"],
+            "outputs": ["{projectRoot}/figures/out-tsc", "{projectRoot}/figures/tsconfig.tsbuildinfo"],
+            "options": {
+                "cwd": "{projectRoot}"
             }
         }
     }

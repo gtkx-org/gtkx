@@ -88,37 +88,7 @@ The minimum width leaves room to test the narrow layout in [Adapt the Layout](/v
 
 `src/app.tsx`:
 
-```tsx [src/app.tsx]
-import {
-    AdwApplication,
-    AdwApplicationWindow,
-    AdwHeaderBar,
-    AdwStatusPage,
-    AdwToolbarView,
-} from "@gtkx/jsx/adw";
-import { quit } from "@gtkx/react";
-
-export function App() {
-    return (
-        <AdwApplication>
-            <AdwApplicationWindow
-                title="Tasks"
-                widthRequest={360}
-                heightRequest={294}
-                onCloseRequest={() => quit()}
-            >
-                <AdwToolbarView top={<AdwHeaderBar />}>
-                    <AdwStatusPage
-                        iconName="checkbox-checked-symbolic"
-                        title="No Tasks Yet"
-                        description="Your tasks will show up here."
-                    />
-                </AdwToolbarView>
-            </AdwApplicationWindow>
-        </AdwApplication>
-    );
-}
-```
+<<< @/figures/tutorial/your-first-window.tsx [src/app.tsx]
 
 `top` is a JSX slot for the header bar. The status page goes in `children`, the toolbar view's content slot. GTKX uses named slots where a native container has several places for children; see [the JSX prop model](/v2/guide/jsx-elements#the-jsx-prop-model).
 
@@ -126,7 +96,15 @@ The header bar picks up the window title. `AdwStatusPage` supplies the empty sta
 
 ## Run it
 
-Save `src/app.tsx`. The window now shows a **Tasks** header and a checkbox icon above **No Tasks Yet**. Resize it to check the minimum width of 360 logical pixels.
+Save `src/app.tsx`. The window now shows the title in the header bar and the empty state below it:
+
+<figure class="result">
+    <img class="result-light" src="/figures/tutorial-your-first-window-light.png" width="360" height="346" loading="lazy" alt="The Tasks window: a header bar titled Tasks with window controls, and a checkbox icon above No Tasks Yet and Your tasks will show up here." />
+    <img class="result-dark" src="/figures/tutorial-your-first-window-dark.png" width="360" height="346" loading="lazy" alt="The Tasks window: a header bar titled Tasks with window controls, and a checkbox icon above No Tasks Yet and Your tasks will show up here." />
+    <figcaption>Captured from <a href="#giving-the-window-a-header-bar"><code>src/app.tsx</code></a> above.</figcaption>
+</figure>
+
+Resize the window to check the minimum width of 360 logical pixels.
 
 Change the status page title to `Nothing Here Yet` and save. Fast Refresh updates the text in the open window.
 

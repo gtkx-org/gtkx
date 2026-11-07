@@ -21,20 +21,13 @@ See the [component reference](/v2/reference/@gtkx/components/) for props. Hooks 
 
 `ListView<T, S>` wraps `Gtk.ListView`. Pass `items` as `{ id, value }` pairs plus a `renderItem`. Selection is controlled: update `selectedIds` from `onSelectionChanged` to retain the selection. Like a React input's `onChange`, `onSelectionChanged` reports what the user or the widget changes, not the `selectedIds` you pass in. It also reports the remaining selection when an item named by `selectedIds` is not in the list.
 
-```tsx
-import { ListView } from "@gtkx/components";
-import * as Gtk from "@gtkx/gi/gtk";
-import { GtkLabel } from "@gtkx/jsx/gtk";
+<<< @/figures/guide/components-list-view.tsx
 
-<ListView<Task>
-    items={tasks.map((task) => ({ id: task.id, value: task }))}
-    selectionMode={Gtk.SelectionMode.MULTIPLE}
-    selectedIds={selectedIds}
-    onSelectionChanged={setSelectedIds}
-    estimatedItemHeight={56}
-    renderItem={({ item }) => <GtkLabel halign={Gtk.Align.START}>{item.title}</GtkLabel>}
-/>
-```
+<figure class="result">
+    <img class="result-light" src="/figures/guide-components-list-view-light.png" width="360" height="260" loading="lazy" alt="A window titled ListView with four task rows; Buy oat milk and Book the dentist are selected." />
+    <img class="result-dark" src="/figures/guide-components-list-view-dark.png" width="360" height="260" loading="lazy" alt="A window titled ListView with four task rows; Buy oat milk and Book the dentist are selected." />
+    <figcaption>Captured from the <a href="#listview"><code>ListView</code> sample</a> above, with two tasks selected.</figcaption>
+</figure>
 
 Nesting `ListItem.children` turns the same component into an acyclic tree, with `expandedIds` and `onExpandedChange` driving expansion the same way. Keep item IDs stable and unique across the collection, including nested items, since selection and expansion name rows by ID. Section IDs must be unique among sections.
 
