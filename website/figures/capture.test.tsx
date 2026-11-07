@@ -36,6 +36,8 @@ import { App as ActionsMenusShortcuts } from "./tutorial/actions-menus-shortcuts
 import { App as TrashAndToasts } from "./tutorial/trash-and-toasts/src/app.js";
 import { App as PreferencesAndTheming } from "./tutorial/preferences-and-theming/src/app.js";
 import { App as NoteLinks } from "./tutorial/note-links/src/app.js";
+import { App as Internationalization } from "./tutorial/internationalization/src/app.js";
+import { restoreMessages, translateMessages } from "./tutorial/locale.js";
 import * as previewStories from "./tutorial/storybook/src/preview/markdown-preview.stories.js";
 import { defaultFolder } from "./tutorial/the-notes-folder/src/notes/files.js";
 import { App as FirstWindow } from "./tutorial/your-first-window/src/app.js";
@@ -95,6 +97,7 @@ function NavigationWindow({
 type FigureOptions = {
     before?: () => void;
     prepare?: () => Promise<void>;
+    after?: () => void;
 };
 
 function seedNotesWithSettings() {
@@ -309,6 +312,26 @@ const figures: [name: string, element: ReactNode, options?: FigureOptions][] = [
         },
     ],
     [
+        "tutorial-internationalization",
+        <Internationalization />,
+        {
+            before: () => {
+                translateMessages(
+                    fileURLToPath(new URL("tutorial/internationalization/po/fr.po", import.meta.url)),
+                    "fr",
+                    "fr_FR.UTF-8",
+                );
+                seedNotesWithSettings();
+            },
+            prepare: async () => {
+                await screen.findAllByRole(Gtk.AccessibleRole.LIST_ITEM);
+                await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Menu principal" }));
+                await screen.findByRole(Gtk.AccessibleRole.MENU_ITEM, { name: "Préférences" });
+            },
+            after: restoreMessages,
+        },
+    ],
+    [
         "guide-components-list-view",
         <SampleWindow title="ListView">
             <TaskList />
@@ -389,10 +412,14 @@ const captures = figures.flatMap(([name, element, options]) =>
 describe("documentation figures", () => {
     it.each(captures)("captures $file", async ({ file, element, options, colorScheme }) => {
         Adw.StyleManager.getDefault().setColorScheme(colorScheme);
-        options?.before?.();
-        await render(element, { container: rootElement });
-        await options?.prepare?.();
-        expect(Adw.StyleManager.getDefault().getDark()).toBe(colorScheme === Adw.ColorScheme.FORCE_DARK);
-        await screen.screenshot({ scale: 2, path: `${outputDir}${file}` });
+        try {
+            options?.before?.();
+            await render(element, { container: rootElement });
+            await options?.prepare?.();
+            expect(Adw.StyleManager.getDefault().getDark()).toBe(colorScheme === Adw.ColorScheme.FORCE_DARK);
+            await screen.screenshot({ scale: 2, path: `${outputDir}${file}` });
+        } finally {
+            options?.after?.();
+        }
     });
 });
