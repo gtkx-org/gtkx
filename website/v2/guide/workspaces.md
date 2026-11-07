@@ -9,24 +9,30 @@ A workspace holds several GTKX apps and the packages of components they share. T
 
 ## Monorepos
 
-GTKX apps work in pnpm and npm workspaces with the package manager's default `node_modules` layout, and in Yarn workspaces whose root `.yarnrc.yml` sets `nodeLinker: node-modules`, alongside shared packages of components. `create gtkx apps/my-app` adds an app to an existing workspace and prints the settings the workspace root needs; see [Scaffold Options](/v2/guide/scaffold-options#workspaces).
+GTKX apps and shared packages of components work in pnpm and npm workspaces with the package manager's default `node_modules` layout, and in Yarn workspaces whose root `.yarnrc.yml` sets `nodeLinker: node-modules`. Scaffolding into a directory the workspace lists, as in `pnpm create gtkx@beta apps/my-app`, adds the app to the workspace and prints the settings the root needs; see [Scaffold Options](/v2/guide/scaffold-options#workspaces).
 
-Codegen writes the bindings into the `node_modules` directory the GTKX packages are installed in. In a workspace this is usually the root: pnpm keeps every package under the root `node_modules/.pnpm`, and npm and Yarn hoist them there. The bindings link `@gtkx/runtime`, `@gtkx/cairo`, `@gtkx/react` and `react` from the app, so they load the same copies the app does.
+Codegen writes the bindings into the `node_modules` directory the GTKX packages are installed in. In a workspace this is usually the root: pnpm keeps every package under the root `node_modules/.pnpm`, and npm and Yarn hoist them there. The bindings link `@gtkx/runtime`, `@gtkx/cairo`, `@gtkx/react`, `react` and `@types/react` from the app, so they use the same copies the app does.
 
 Apps that resolve the same directory share one set of bindings, generated for the union of their `libraries`. Codegen stops with an error naming the other app when apps sharing bindings differ in anything else:
 
 - `girPath` or `elements`
 - whether they use `@gtkx/react`
 - a version of a GIR namespace, such as `Soup-2.4` and `Soup-3.0`
-- the installed copies of the GTKX packages, `react` or `@types/react`
+- the copies of `@gtkx/runtime`, `@gtkx/cairo`, `@gtkx/react`, `react` or `@types/react` they resolve
 
-Keep these aligned across the workspace, for example with a pnpm catalog. After changing `girPath` or `elements` in every app, run `gtkx codegen --force` in one of them; the others share its bindings again the next time they generate theirs.
+Keep these aligned across the workspace, for example with a [pnpm catalog](https://pnpm.io/catalogs). After changing `girPath` or `elements` in every app, run `gtkx codegen --force` in one of them; the others share its bindings again the next time they generate theirs.
 
-Each app still imports only the libraries it declares and their dependencies, which are also what `gtkx deploy` requires of the installed system. Codegen gives an app that shares bindings its own `@gtkx/gi` and `@gtkx/jsx` packages, which expose those namespaces and link them to the shared bindings. They live in the app's `node_modules/.gtkx`, as a single project's bindings do, so the scaffold's `tsconfig.json` paths and editors keep finding them after any package install. Importing a namespace that only another app declared fails in `gtkx dev`, `gtkx build` and Vitest with an error naming the library to add to `libraries`, Node reports the subpath as not exported, and `tsc` reports the namespace as having no exports. An app at the workspace root, where the bindings are written, sees all of them.
+Each app still imports only the libraries it declares and their dependencies, which are also what `gtkx deploy` requires of the installed system. Codegen gives an app that shares bindings its own `@gtkx/gi` and `@gtkx/jsx` packages, which expose those namespaces and link them to the shared bindings. They live in the app's `node_modules/.gtkx`, as a single project's bindings do, so the scaffold's `tsconfig.json` paths and editors keep finding them after any package install. An app at the workspace root, where the bindings are written, sees every namespace.
+
+Importing a namespace that only another app declared fails:
+
+- in `gtkx dev`, `gtkx build` and Vitest, with an error naming the library to add to `libraries`
+- in Node, which reports the subpath as not exported
+- in `tsc`, which reports the namespace as having no exports
 
 A shared package declares `@gtkx/react` as a peer dependency and imports `@gtkx/gi` and `@gtkx/jsx` subpaths like an app. List it in the dependencies of each app that uses it, so `gtkx dev` loads it through Vite. A shared package resolves the bindings from the workspace root, so it can import any library some app declares; each app that uses it has to declare the libraries the package imports.
 
-GTKX treats the sources of the workspace packages an app uses as part of the app. These are the packages its dependencies, and theirs in turn, link from outside `node_modules`, such as workspace packages and `link:` or `file:` directories, that depend on `@gtkx/react` or `@gtkx/i18n`. Codegen, `gtkx dev`, `gtkx build` and `gtkx deploy` read their `src` directories as they read the app's:
+GTKX treats the sources of the workspace packages an app uses as part of the app. These are the packages that depend on `@gtkx/react` or `@gtkx/i18n` and that the app's dependencies, directly or through other such packages, link from outside `node_modules`: workspace packages and `link:` or `file:` directories. Codegen, `gtkx dev`, `gtkx build` and `gtkx deploy` read their `src` directories as they read the app's:
 
 - Their [messages](/v2/guide/internationalization) go into the app's gettext template, `po/POTFILES.in` and translation types, at locations relative to the app such as `../../packages/ui/src/rating.tsx:18`, so the app's catalogs translate them. Their stories stay out of the catalogs.
 - Their `?icon=<name>` and `?resource=<path>` [imports](/v2/guide/assets) and the GSettings schemas they import are declared in the app's `node_modules/.gtkx/env.d.ts`, so the app's `tsc` accepts them. The app bundles and installs those schemas, and `gtkx deploy` requires a schema's file name to start with the app's ID, as for the app's own.
@@ -50,7 +56,9 @@ export default defineConfig({
 
 `gtkx codegen`, `gtkx storybook` and the Vitest plugin work in such a package, with or without the file, while `gtkx dev`, `gtkx build` and `gtkx deploy` stop because they need an `applicationId`. Codegen writes no `AGENTS.md`, `CLAUDE.md` or `.gtkx/reference` there unless `agents.rules` or `agents.reference` is `true`.
 
-Its `package.json` lists `@gtkx/react` and `react` as peer dependencies, with any other GTKX package its components import at runtime, such as `@gtkx/css` or `@gtkx/cairo`, so that it uses the app's copies. It does not depend on `@gtkx/gi` or `@gtkx/jsx`: each app generates those for the libraries it declares, so an app that uses the package lists in `libraries` every GIR library the package imports beyond Adwaita and GTK. For building and testing, add the peer packages, `@gtkx/cairo`, `@gtkx/cli`, `@gtkx/config`, `@gtkx/runtime`, `@gtkx/testing`, `@types/node`, `@types/react`, `typescript` and `vitest` as development dependencies. Codegen links the generated bindings to the package's own `@gtkx/runtime` and `@gtkx/cairo`, which the GTK and GDK bindings import, so wherever the package manager does not hoist them, as pnpm does not, `gtkx codegen` stops with "Cannot resolve @gtkx/runtime" without the first and the tests fail with "Cannot find package '@gtkx/cairo'" without the second.
+Its `package.json` lists `@gtkx/react` and `react` as peer dependencies, with any other GTKX package its components import at runtime, such as `@gtkx/css` or `@gtkx/cairo`, so that it uses the app's copies. It does not depend on `@gtkx/gi` or `@gtkx/jsx`: each app generates those for the libraries it declares, so an app that uses the package lists in `libraries` every GIR library the package imports beyond Adwaita and GTK.
+
+For building and testing, add the peer packages, `@gtkx/cairo`, `@gtkx/cli`, `@gtkx/config`, `@gtkx/runtime`, `@gtkx/testing`, `@types/node`, `@types/react`, `typescript` and `vitest` as development dependencies. The generated bindings import the package's own `@gtkx/runtime` and `@gtkx/cairo`, so where the package manager does not hoist them, as pnpm does not, `gtkx codegen` stops with "Cannot resolve @gtkx/runtime" without the first and the tests fail with "Cannot find package '@gtkx/cairo'" without the second.
 
 ```json [package.json]
 {
