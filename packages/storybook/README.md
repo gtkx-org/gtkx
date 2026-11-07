@@ -1,6 +1,6 @@
 # @gtkx/storybook
 
-Native component stories for GTKX.
+Storybook stories for native GTK components built with GTKX.
 
 Write Component Story Format stories, open them with `gtkx storybook`, and change props through Controls. Actions record interactions. Use `composeStories` to render the same stories in native integration tests.
 

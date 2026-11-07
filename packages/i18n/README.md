@@ -1,6 +1,6 @@
 # @gtkx/i18n
 
-Gettext localization for GTKX through react-i18next.
+Gettext localization for GTK apps through react-i18next.
 
 Translate React content with `useTranslation` and `Trans`. The CLI extracts messages and compiles gettext catalogs; application bootstrap loads the catalog for the current locale.
 

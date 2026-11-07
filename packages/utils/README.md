@@ -1,6 +1,6 @@
 # @gtkx/utils
 
-Shared utilities for the GTKX toolchain.
+Shared Node.js utilities for GTKX, the React toolchain for GTK.
 
 GTKX packages use these utilities for executable discovery, logging, and process management. The toolchain installs this dependency; start an application with `create-gtkx`.
 

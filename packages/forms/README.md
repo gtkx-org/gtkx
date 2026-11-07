@@ -1,6 +1,6 @@
 # @gtkx/forms
 
-React Hook Form controls for GTKX.
+React Hook Form controls for GTK and Adwaita apps.
 
 Connect Adwaita entry, password, spin, switch, and combo rows to React Hook Form. The controls integrate validation and field state; the package also re-exports React Hook Form hooks and types.
 

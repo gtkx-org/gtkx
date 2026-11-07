@@ -1,6 +1,6 @@
 # @gtkx/mcp
 
-MCP tools for GTKX documentation and running applications.
+MCP tools for GTKX docs and running GTK apps.
 
 Connect a coding agent to generated widget references and the live application tree. Tools inspect widgets, perform interactions, and capture screenshots. Follow the guide to configure the server and attach a development session.
 

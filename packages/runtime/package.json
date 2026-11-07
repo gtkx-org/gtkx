@@ -1,7 +1,7 @@
 {
     "name": "@gtkx/runtime",
     "version": "2.0.0-beta.12",
-    "description": "Runtime for generated GObject Introspection bindings in GTKX.",
+    "description": "Runtime for generated GTK and GObject Introspection bindings in GTKX.",
     "keywords": [
         "gtkx",
         "gtk",

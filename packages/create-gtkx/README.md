@@ -1,6 +1,6 @@
 # create-gtkx
 
-Create native Linux applications with React and GTKX.
+Create native GTK and Adwaita apps with React and GTKX.
 
 Scaffold an app with TypeScript or JavaScript, an Adwaita window, and optional Vitest support.
 

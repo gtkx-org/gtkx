@@ -1,6 +1,6 @@
 # @gtkx/gl
 
-OpenGL 4.6 core bindings for GTKX applications.
+OpenGL 4.6 core bindings for GTK GL areas in GTKX.
 
 Render with `GtkGLArea` using bindings generated from the Khronos registry. Calls require a current GL context, and available features depend on the device and driver.
 

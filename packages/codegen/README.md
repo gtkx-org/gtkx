@@ -1,6 +1,6 @@
 # @gtkx/codegen
 
-Generate TypeScript and JSX bindings from GObject Introspection data.
+Generate TypeScript and JSX bindings for GTK and GObject libraries.
 
 GTKX reads GObject Introspection Repository (GIR) files to generate `@gtkx/gi`, `@gtkx/jsx`, and the project widget reference. In applications, declare additional native libraries in `gtkx.config.ts` and run `npm run codegen`; direct use of the generator is intended for tooling.
 

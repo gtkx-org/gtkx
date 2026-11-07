@@ -1,6 +1,6 @@
 # @gtkx/runtime
 
-Runtime for generated GObject Introspection bindings in GTKX.
+Runtime for generated GTK and GObject Introspection bindings in GTKX.
 
 Provides native object wrappers, value conversion, signals, and GObject class registration without importing generated bindings. Library-specific APIs such as `GLib.Variant` live in the generated `@gtkx/gi` modules.
 

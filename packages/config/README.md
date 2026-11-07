@@ -1,6 +1,6 @@
 # @gtkx/config
 
-Typed application configuration for GTKX.
+Typed configuration for GTK apps built with GTKX.
 
 Use `defineConfig` in `gtkx.config.ts` to declare the application ID, additional native libraries, application icon, and deployment settings. The CLI loads this configuration for development, code generation, and builds.
 

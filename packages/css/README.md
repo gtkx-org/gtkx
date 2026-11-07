@@ -1,6 +1,6 @@
 # @gtkx/css
 
-CSS-in-JS for GTKX widgets.
+CSS-in-JS styling for GTK widgets in GTKX.
 
 Use `css` to create a class name, `cx` to combine classes, and `injectGlobal` for global rules. Apply classes through the `cssClasses` prop. Styles use GTK CSS properties and selectors; browser layout rules do not apply.
 

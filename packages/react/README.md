@@ -1,6 +1,6 @@
 # @gtkx/react
 
-React renderer for native Adwaita and GTK4 applications.
+React renderer for native GTK and Adwaita apps.
 
 Create a root with `createRoot`, render an `AdwApplication`, and compose widgets from `@gtkx/jsx`. This package provides application and widget hooks, portals, and the renderer lifecycle. The CLI generates the JSX elements for your configured native libraries.
 

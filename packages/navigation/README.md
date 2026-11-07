@@ -1,6 +1,6 @@
 # @gtkx/navigation
 
-React Navigation navigators for GTKX.
+React Navigation navigators for GTK and Adwaita apps.
 
 Build stack, tab, tab view, drawer, and split-view navigation with native Adwaita containers. Define typed routes, nest navigators, and adapt sidebar and content layouts to the available space.
 

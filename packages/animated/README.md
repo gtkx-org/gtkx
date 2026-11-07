@@ -1,6 +1,6 @@
 # @gtkx/animated
 
-Spring animations for GTKX widgets.
+React Spring animations for GTK widgets in GTKX.
 
 Animate widget properties with `animated`, `useSpring`, and `useTransition`. GTKX drives React Spring with the GTK frame clock and skips animations when the desktop disables them. Use `useReducedMotion` to adapt effects to motion preferences.
 

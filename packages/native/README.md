@@ -1,6 +1,6 @@
 # @gtkx/native
 
-Native addon for GTKX foreign-function calls.
+Native Node.js addon for GTKX calls into GTK and other C libraries.
 
 This internal Rust addon calls system libraries through libffi, integrates the GLib and Node.js event loops, and manages native memory. GTKX installs it through runtime dependencies; application code normally uses the generated `@gtkx/gi` bindings. Prebuilt binaries target x64 and arm64 glibc Linux.
 

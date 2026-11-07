@@ -1,6 +1,6 @@
 # @gtkx/cairo
 
-Cairo drawing for GTKX applications.
+Cairo drawing for GTK apps built with GTKX.
 
 Draw paths, text, and images in a `GtkDrawingArea` callback or on an offscreen surface. The guide covers contexts, patterns, resizing, and redraws.
 

@@ -1,6 +1,6 @@
 # @gtkx/testing
 
-Test GTKX applications with native widgets.
+Test GTKX apps against real GTK widgets.
 
 Render components, query widgets by accessible role or name, drive pointer and keyboard input, and capture screenshots. Use the GTKX Vitest plugin to provide the headless display and global test hooks. With that setup, importing this package registers widget matchers and automatic cleanup.
 

@@ -1,6 +1,6 @@
 # @gtkx/vitest
 
-Run GTKX tests in isolated headless displays.
+Vitest plugin that runs GTK tests in isolated headless displays.
 
 The Vitest plugin gives each worker a private Wayland display and D-Bus session. It requires Sway, `dbus-daemon`, and the native GTKX dependencies. Use `@gtkx/testing` to render and interact with widgets.
 
