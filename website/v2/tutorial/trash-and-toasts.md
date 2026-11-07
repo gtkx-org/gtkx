@@ -12,7 +12,7 @@ This chapter belongs to the Notes tutorial for GTKX 2.0 and is not written yet. 
 
 ## Rename a note
 
-An `AdwAlertDialog` with a controlled entry; its Rename response stays disabled for an unchanged, empty, hidden or taken name.
+A note menu in the note header runs new `win.rename-note` (F2) and `win.trash-note` actions. Rename opens an `AdwAlertDialog` with a controlled entry; its Rename response stays disabled for an unchanged, empty, hidden or taken name.
 
 ## Move to the trash
 

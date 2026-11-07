@@ -20,7 +20,7 @@ This chapter belongs to the Notes tutorial for GTKX 2.0 and is not written yet. 
 
 ## The preferences dialog
 
-An `AdwPreferencesDialog` with a folder chooser built on `GtkFileDialog` and a `ComboRow` for the color scheme.
+A `win.preferences` action (Ctrl+,) in the main menu opens an `AdwPreferencesDialog` with a folder chooser built on `GtkFileDialog` and a `ComboRow` for the color scheme.
 
 ## Run it
 
