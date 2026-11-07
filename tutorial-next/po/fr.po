@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: dev.gtkx.Notes\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-07 18:02+0100\n"
+"POT-Creation-Date: 2026-11-07 18:17+0100\n"
 "PO-Revision-Date: 2026-11-07 17:58+0100\n"
 "Last-Translator: GTKX contributors\n"
 "Language-Team: French\n"
@@ -292,5 +292,13 @@ msgid "Writing"
 msgstr "Écriture"
 
 #: po/.gtkx-metadata/dev.gtkx.Notes.template.metainfo.xml:36
+msgid "Reading a note as rendered Markdown"
+msgstr "Lire une note en Markdown mis en forme"
+
+#: po/.gtkx-metadata/dev.gtkx.Notes.template.metainfo.xml:40
+msgid "Writing Markdown with syntax highlighting"
+msgstr "Écrire du Markdown avec la coloration syntaxique"
+
+#: po/.gtkx-metadata/dev.gtkx.Notes.template.metainfo.xml:46
 msgid "Initial release."
 msgstr "Première version."

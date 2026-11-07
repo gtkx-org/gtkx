@@ -22,10 +22,15 @@ export default defineConfig({
             bugtracker: "https://github.com/gtkx-org/gtkx/issues",
             "vcs-browser": "https://github.com/gtkx-org/gtkx",
         },
+        screenshots: [
+            { file: "assets/screenshot.png", caption: "Reading a note as rendered Markdown", isDefault: true },
+            { file: "assets/screenshot-editor.png", caption: "Writing Markdown with syntax highlighting" },
+        ],
         releases: [{ version: "1.0.0", date: "2026-11-07", notes: ["Initial release."] }],
         branding: { light: "#f8e45c", dark: "#865e3c" },
         contentRating: {},
         isDbusActivatable: true,
+        screenshotBaseUrl: "https://raw.githubusercontent.com/gtkx-org/gtkx/main/tutorial",
         targets: ["flatpak", "deb", "rpm", "appimage"],
         flatpak: {
             finishArgs: ["--filesystem=xdg-documents/Notes:create"],
