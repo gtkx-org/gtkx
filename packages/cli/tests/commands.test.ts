@@ -749,6 +749,40 @@ describe("CLI commands", () => {
         expect(await typecheck()).toMatch(/^src\/logo\.ts\(1,25\): error TS2307: [^\n]*\n$/);
     });
 
+    it("declares identical copies of a GSettings schema once and rejects differing copies", async () => {
+        using project = createProject();
+        project.write(
+            "tsconfig.json",
+            JSON.stringify({
+                compilerOptions: { module: "NodeNext", strict: true, skipLibCheck: false, types: [], noEmit: true },
+                files: ["node_modules/.gtkx/env.d.ts"],
+                include: ["src"],
+            }),
+        );
+        const schema = (key: string) =>
+            `<schemalist>
+                <schema id="org.gtkx.example" path="/org/gtkx/example/">
+                    <key name="${key}" type="b"><default>true</default></key>
+                </schema>
+            </schemalist>`;
+        for (const chapter of ["editor", "viewer", "linked"]) {
+            project.write(
+                `src/${chapter}/settings.ts`,
+                `import schema from "./data/org.gtkx.example.gschema.xml";\nexport const id: "org.gtkx.example" = schema.id;`,
+            );
+        }
+        project.write("src/editor/data/org.gtkx.example.gschema.xml", schema("preview"));
+        project.write("src/viewer/data/org.gtkx.example.gschema.xml", schema("preview"));
+        symlinkSync("../editor/data", join(project.root, "src/linked/data"), "dir");
+        const tsc = fileURLToPath(new URL("../../../node_modules/.bin/tsc", import.meta.url));
+
+        await invoke(["codegen", "--cwd", project.root]);
+        await promisify(execFile)(tsc, ["-p", "."], { cwd: project.root, timeout: 180_000 });
+
+        project.write("src/viewer/data/org.gtkx.example.gschema.xml", schema("sidebar"));
+        await expect(invoke(["codegen", "--cwd", project.root])).rejects.toThrow();
+    });
+
     it("bundles stylesheets imported with ?resource, warning about unbundled url() targets, while a slower Vite plugin resolves another import", async () => {
         using project = createProject();
         linkWorkspaceBindings(project.root);

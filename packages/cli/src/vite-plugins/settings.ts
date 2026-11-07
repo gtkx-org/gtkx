@@ -1,5 +1,5 @@
 import type { ModuleNode, Plugin, ResolvedConfig, Rollup, ViteDevServer } from "vite";
-import { error, errorMessage, info, sortStrings } from "@gtkx/utils";
+import { error, errorMessage, info } from "@gtkx/utils";
 import { readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import type { BuildManifestCollector } from "../internal/build-manifest.js";
@@ -9,13 +9,13 @@ import { createRetainedStagingDir, type RetainedStagingDir, withStagingDir } fro
 import { COMPILED_SCHEMAS_FILENAME, compileSchemas } from "../settings/compile.js";
 import { renderRuntimeModule } from "../settings/render.js";
 import {
-    assertUniqueSchemaBasenames,
     emitSchemaEnv,
     prependSchemaDir,
     projectRelativeSchemaPath,
     readProjectSchema,
     SCHEMA_SUFFIX,
     stageSchema,
+    uniqueSchemaFiles,
 } from "../settings/schema.js";
 import { createVirtualNamespace } from "./virtual-module.js";
 
@@ -182,8 +182,7 @@ const emitBuildSchemas = (
     }
 
     const rootDir = state.rootDir;
-    const schemaFiles = sortStrings(state.buildSchemas);
-    assertUniqueSchemaBasenames(schemaFiles);
+    const schemaFiles = uniqueSchemaFiles([...state.buildSchemas]);
     const schemas = buildSchemaPaths(rootDir, schemaFiles);
 
     if (buildManifest !== undefined) {
