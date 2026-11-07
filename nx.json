@@ -48,21 +48,21 @@
                     "configName": "tsconfig.lib.json"
                 }
             },
-            "exclude": ["tutorial/**"]
+            "exclude": ["tutorial/**", "tutorial-next/**"]
         },
         {
             "plugin": "@nx/oxlint",
             "options": {
                 "targetName": "lint-oxlint"
             },
-            "exclude": ["tutorial/**"]
+            "exclude": ["tutorial/**", "tutorial-next/**"]
         },
         {
             "plugin": "@nx/eslint/plugin",
             "options": {
                 "targetName": "lint-eslint"
             },
-            "exclude": ["tutorial/**"]
+            "exclude": ["tutorial/**", "tutorial-next/**"]
         },
         {
             "plugin": "@nx/vitest",
@@ -70,7 +70,7 @@
                 "testTargetName": "test",
                 "testMode": "run"
             },
-            "exclude": ["examples/**", "packages/e2e/**", "tutorial/**"]
+            "exclude": ["examples/**", "packages/e2e/**", "tutorial/**", "tutorial-next/**"]
         }
     ],
     "targetDefaults": {

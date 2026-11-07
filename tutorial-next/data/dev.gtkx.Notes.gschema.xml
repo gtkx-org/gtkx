@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="dev.gtkx.Notes" path="/dev/gtkx/Notes/">
+    <key name="folder" type="s">
+      <default>''</default>
+      <summary>Notes folder</summary>
+      <description>Folder that holds the notes, or empty for Notes in the Documents folder</description>
+    </key>
+  </schema>
+</schemalist>
