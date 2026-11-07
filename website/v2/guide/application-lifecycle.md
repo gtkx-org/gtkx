@@ -73,24 +73,30 @@ When the last `GLibUnix.signalAdd` source for a signal is removed, for example o
 
 ## Command-line apps
 
-With `HANDLES_COMMAND_LINE`, a second launch of a running app forwards its arguments to the primary instance and waits for its reply. GLib sends that reply when the `Gio.ApplicationCommandLine` is finalized or its `done()` method is called. GTKX finalizes it only after JavaScript garbage-collects the wrapper, so without `done()` the second launch can wait for minutes. Finish every command line in `onCommandLine`, setting the exit status first because `done()` freezes it before GLib applies the handler's return value:
+With `Gio.ApplicationFlags.HANDLES_COMMAND_LINE`, every launch's arguments reach the primary instance through the [`command-line`](https://docs.gtk.org/gio/signal.Application.command-line.html) signal instead of `activate`, including the first launch. GTKX renders the application's children once the application is activated or opened, so the handler calls `application.activate()` to show the window.
+
+A second launch waits for the primary instance's reply. GLib sends it when the `Gio.ApplicationCommandLine` is finalized or its [`done()`](https://docs.gtk.org/gio/method.ApplicationCommandLine.done.html) method is called. GTKX finalizes it only after JavaScript garbage-collects the wrapper, so without `done()` the second launch can wait for minutes. Set the exit status before calling `done()`, because `done()` freezes it before GLib applies the handler's return value:
 
 ```tsx
-import type * as Gio from "@gtkx/gi/gio";
+import * as Gio from "@gtkx/gi/gio";
+import { AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
+import { quit } from "@gtkx/react";
 
-const finish = (commandLine: Gio.ApplicationCommandLine, status: number): number => {
-    commandLine.setExitStatus(status);
-    commandLine.done();
-    return status;
-};
-
-export const handleCommandLine = (commandLine: Gio.ApplicationCommandLine, application: Gio.Application): number => {
+const handleCommandLine = (commandLine: Gio.ApplicationCommandLine, application: Gio.Application): number => {
     application.activate();
-    return finish(commandLine, 0);
+    commandLine.setExitStatus(0);
+    commandLine.done();
+    return 0;
 };
+
+export const App = () => (
+    <AdwApplication flags={Gio.ApplicationFlags.HANDLES_COMMAND_LINE} onCommandLine={handleCommandLine}>
+        <AdwApplicationWindow title="Tasks" onCloseRequest={quit} />
+    </AdwApplication>
+);
 ```
 
-Pass the handler as `onCommandLine` on the application element. A handler that answers after asynchronous work calls `setExitStatus` and `done()` when that work completes.
+A handler that answers after asynchronous work calls `setExitStatus` and `done()` when that work completes.
 
 During development, `gtkx dev` passes the arguments after `--` to the application, so `gtkx dev -- notes.txt` starts an app with `HANDLES_OPEN` on that file. pnpm and Yarn 2 or newer pass `--` on to the `dev` script, as in `pnpm dev -- notes.txt`; npm removes the first `--`, so write `npm run dev -- -- notes.txt`. An option before `--` must be one `gtkx dev` defines: `gtkx dev --verbose` stops with an error naming `--verbose` rather than starting the app, so application options always go after `--`.
 
