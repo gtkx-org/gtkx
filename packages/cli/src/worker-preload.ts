@@ -10,8 +10,10 @@ const FILE_PROTOCOL = "file:";
 const RAW_QUERY_RE = /[?&]raw(?:&|$)/;
 const INLINE_QUERY_RE = /[?&]inline(?:&|$)/;
 
-const dataUrl = (path: string): string =>
-    `data:${lookup(path) ?? "application/octet-stream"};base64,${readFileSync(path).toString("base64")}`;
+const inlineValue = (path: string): string =>
+    path.endsWith(".css")
+        ? readFileSync(path, "utf8")
+        : `data:${lookup(path) ?? "application/octet-stream"};base64,${readFileSync(path).toString("base64")}`;
 
 const assetModule = (url: string): string | undefined => {
     if (!url.startsWith(FILE_PROTOCOL)) {
@@ -27,7 +29,7 @@ const assetModule = (url: string): string | undefined => {
     }
 
     if (INLINE_QUERY_RE.test(url)) {
-        return `export default ${JSON.stringify(dataUrl(fileURLToPath(url)))};`;
+        return `export default ${JSON.stringify(inlineValue(fileURLToPath(url)))};`;
     }
 
     return undefined;
