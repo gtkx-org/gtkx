@@ -58,6 +58,8 @@ Ask the agent to inspect the running app before changing it, then verify the res
 3. Click, type, or press keys through the interaction tools.
 4. Take a screenshot to check the rendered result.
 
+A screenshot shows the window at the moment it is taken, so one taken straight after a click can catch a transition half done, such as a stack crossfading between pages. Take another once the animation has finished.
+
 ### Tools
 
 | Tool                    | Read-only | Use                                                                    |
@@ -107,6 +109,10 @@ Use `gtkx_search_api` to find a symbol or member, then `gtkx_get_api_docs` to re
 `gtkx_get_api_docs` accepts qualified names such as `Adw.Toast`, JSX names such as `AdwToast`, and member names such as `Gio.File.replaceContentsAsync` or `GtkWindow.close-request`. A member name returns only that member's section, which is much shorter than a class page, and an inherited member such as `Gtk.Button.setVisible` resolves to the ancestor that documents it. Pass `kind` when a signal and a method share a name. [`gtkx docs`](/v2/guide/configuration-and-codegen#generating-element-reference-docs) writes static reference pages from the same bindings.
 
 The server documents the project containing its working directory, falling back to a connected app's project. Pass `projectRoot` to select another project. Clients that browse MCP resources can read the reference there too. A project with `codegen: false` has no generated bindings to document.
+
+## Point the agent to the guide
+
+The server documents the generated bindings, not how to build a GTKX app. For that, give the agent this version's guide and tutorial as Markdown: [https://gtkx.dev/v2/llms.txt](https://gtkx.dev/v2/llms.txt) lists every page, and [https://gtkx.dev/v2/llms-full.txt](https://gtkx.dev/v2/llms-full.txt) holds all of their text in one large file. Each page also has a Markdown copy at its own URL with `.md` added, such as [https://gtkx.dev/v2/guide/mcp.md](https://gtkx.dev/v2/guide/mcp.md). See [Machine-readable documentation](/versions#machine-readable-documentation) for the other versions.
 
 ## Choose the available tools
 

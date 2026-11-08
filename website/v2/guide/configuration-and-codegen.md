@@ -205,6 +205,8 @@ In an application, codegen also writes `.gtkx/reference` for coding agents and m
 
 Commit the rules file and ignore `.gtkx/`, as scaffolded projects do. Set `agents.rules` or `agents.reference` to `false` to disable the corresponding output. Disabling the rules removes the GTKX section from `AGENTS.md`, and deletes that file and the `CLAUDE.md` import when nothing else remains in them. Disabling the reference also removes `.gtkx/reference` and its mention from the rules.
 
+The reference covers the project's bindings. To give an agent the GTKX guide as well, see [Point the agent to the guide](/v2/guide/mcp#point-the-agent-to-the-guide).
+
 ## Advanced: Customizing elements
 
 Use element behaviors when a native API needs custom prop handling or child placement. Export a `defineElements` map from a module, keyed by GLib type name, and register it through `elements.behaviors`:
