@@ -42,13 +42,13 @@ GTK prints `Failed to open display` and the app exits. Run the app from a termin
 
 - Editing a module that exports only components refreshes it in place.
 - Editing any other module, such as a custom hook or shared styles, refreshes the component modules that import it, directly or through other modules.
-- A component whose hook calls change remounts and resets only its own state.
+- A component whose hook calls change remounts, which resets its state and the state of the components inside it.
 - Editing an imported stylesheet replaces its rules. Editing a module's `injectGlobal` rules adds the edited rules, while the earlier ones stay until the app restarts.
 
 These changes restart the app and reset its state. The terminal usually names the cause first, such as `Module imports changed: <path>`.
 
 - an edit that reaches the entry module before a component module
-- a change to a module's runtime imports or re-exports
+- importing or re-exporting a module that the edited module did not import before, or no longer importing one; adding a name to an existing import, or editing type-only imports, refreshes instead
 - an edit to an imported resource, icon or settings schema, a new `?font` import, or an edit to a file a [worker](/v2/guide/workers) loaded
 - removing a module or stylesheet the app loaded
 - an edit that changes a construct-only prop, such as the `strings` of a `GtkStringList`
