@@ -256,17 +256,15 @@ const navigation = (version: DocumentationVersion): DefaultTheme.NavItem[] => [
     { text: "Examples", link: `https://github.com/gtkx-org/gtkx/tree/${version.examplesRef}/examples` },
     {
         text: "Project",
-        activeMatch: "^/(contributing/|blog/|versions)",
+        activeMatch: "^/(contributing/|blog/)",
         items: [
             { text: "Contributing", link: `/${CONTRIBUTING_ROOT}` },
             { text: "Blog", link: "/blog/" },
             { text: "Releases", link: "https://github.com/gtkx-org/gtkx/releases" },
             { text: "Discussions", link: "https://github.com/gtkx-org/gtkx/discussions" },
             { text: "Sponsor", link: "https://opencollective.com/gtkx" },
-            { text: "Documentation Versions", link: "/versions" },
         ],
     },
-    { component: "VersionSelect" },
 ];
 
 const versionSidebars = (version: DocumentationVersion): [string, DefaultTheme.SidebarItem[]][] => [
@@ -299,6 +297,15 @@ const prefixedLocale = (version: DocumentationVersion): [string, LocaleEntry] =>
 ];
 
 const prefixedVersions = versions.filter((version) => version.prefix !== "");
+
+const searchLocale = (version: DocumentationVersion): [string, DefaultTheme.LocalSearchOptions] => [
+    version.prefix === "" ? "root" : version.prefix.slice(1),
+    {
+        translations: {
+            button: { buttonText: `Search ${version.id} docs`, buttonAriaLabel: `Search the GTKX ${version.id} docs` },
+        },
+    },
+];
 
 const locales: Record<string, LocaleEntry> = {
     root: { label: "Documentation", lang: "en" },
@@ -564,6 +571,14 @@ export default defineConfig({
     },
     vite: {
         plugins: [highlightPlugin(), groupIconVitePlugin({ defaultLabels: codeBlockTitles() })],
+        resolve: {
+            alias: [
+                {
+                    find: /^\.\/VPNavBarTitle\.vue$/,
+                    replacement: fileURLToPath(new URL("./theme/components/NavBarTitle.vue", import.meta.url)),
+                },
+            ],
+        },
         server: {
             allowedHosts: ["workstation"],
         },
@@ -663,6 +678,7 @@ export default defineConfig({
                         boostDocument: (id: string) => (/^\/(blog|contributing)\//.test(id) ? 0.5 : 1),
                     },
                 },
+                locales: Object.fromEntries(versions.map((version) => searchLocale(version))),
             },
         },
         nav: navigation(rootVersion),
