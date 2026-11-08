@@ -17,7 +17,7 @@ This guide covers the GTKX integration. For drawing techniques, use the [Cairo m
 
 Add a `GtkDrawingArea` inside your application's JSX tree. Its `drawFunc` receives a managed Cairo context and the widget's current dimensions:
 
-<<< @/figures/guide/cairo-circle.tsx
+<<< @/figures/guide/cairo-circle.tsx [src/components/circle.tsx]
 
 <figure class="result">
     <img class="result-light" src="/figures/guide-cairo-circle-light.png" width="360" height="260" loading="lazy" alt="A window titled Cairo filled by a drawing area with a blue circle at its center." />

@@ -274,7 +274,7 @@ import { GtkMenuButton } from "@gtkx/jsx/gtk";
 />
 ```
 
-The widget stays in its item when the model or its items change. An ID with no matching item leaves its widget out of the menu. Menu items also take GTK's other [menu attributes](https://docs.gtk.org/gtk4/class.PopoverMenu.html#menu-models) in camelCase, such as `hiddenWhen` and `accel`.
+The widget stays in its item when the model or its items change. An ID with no matching item leaves its widget out of the menu. [Menus](/v2/guide/actions#menus) covers the other item attributes, such as `hiddenWhen` and `accel`.
 
 ## Toasts
 

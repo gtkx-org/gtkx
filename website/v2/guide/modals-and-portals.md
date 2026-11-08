@@ -69,7 +69,7 @@ Without `onClosed`, the close button and Escape do nothing and the dialog stays 
 
 `AdwAlertDialog` takes plain-text `heading` and `body` values and a `responses` array. Its `onResponse` prop receives the selected response ID and also answers the close request. Children appear between the body and the response buttons:
 
-<<< @/figures/guide/modals-rename-dialog.tsx
+<<< @/figures/guide/modals-rename-dialog.tsx [src/components/rename-dialog.tsx]
 
 <figure class="result">
     <img class="result-light" src="/figures/guide-modals-rename-dialog-light.png" width="480" height="360" loading="lazy" alt="A window titled Lists, dimmed behind an alert dialog with the heading Rename, the body Pick a new name for this list., an empty List name entry, and Cancel and Rename buttons, Rename highlighted." />
@@ -83,7 +83,7 @@ The tutorial builds dialogs in [Mount the dialogs](/v2/tutorial/actions-menus-sh
 
 `AdwAboutDialog` accepts `links`, `creditSections`, `acknowledgementSections`, `legalSections`, and `otherApps` as arrays:
 
-<<< @/figures/guide/modals-about-dialog.tsx
+<<< @/figures/guide/modals-about-dialog.tsx [src/components/about.tsx]
 
 <figure class="result">
     <img class="result-light" src="/figures/guide-modals-about-dialog-light.png" width="480" height="600" loading="lazy" alt="A window titled Notes behind an about dialog headed Notes, with a Details row, a group of Credits, Legal and Acknowledgements rows, and a Calendar row reading Plan your day with an external link icon." />
