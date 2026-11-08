@@ -17,7 +17,7 @@ npm install -D @types/mdast
 
 `fromMarkdown` turns a note's text into an [mdast](https://github.com/syntax-tree/mdast) syntax tree: a root node whose children are blocks, such as headings, paragraphs and lists, which hold inline nodes, such as text, emphasis and links. It is an ordinary npm package, running in the app's Node.js process like the file APIs.
 
-The list's excerpt has shown the first line as written, so Book club reads `Next up: *Piranesi*` with its asterisks. Removing the syntax with regular expressions would miss links, escapes and nested formatting, while the tree holds the text without it. `src/notes/note.ts` now takes the excerpt from the tree:
+The list's excerpt has been the first line that isn't a heading, as written, so Book club reads `Next up: *Piranesi*` with its asterisks. Removing the syntax with regular expressions would miss links, escapes and nested formatting, while the tree holds the text without it. `src/notes/note.ts` now takes the excerpt from the tree:
 
 <<< @/figures/tutorial/the-markdown-preview/src/notes/note.ts [src/notes/note.ts]
 
@@ -32,7 +32,7 @@ Inline formatting becomes [Pango markup](https://docs.gtk.org/Pango/pango_markup
 
 - [`GLib.markupEscapeText`](https://docs.gtk.org/glib/func.markup_escape_text.html) escapes the note's own text, so a `<` or `&` in a note shows as written instead of breaking the markup. Inline HTML shows as text too.
 - A link becomes an `<a href>` tag, which the label underlines and makes clickable.
-- `fromMarkdown` follows [CommonMark](https://spec.commonmark.org/), so GitHub's strikethrough, tables and task lists stay as text. `@types/mdast` also types the nodes of those extensions, such as `delete` and `footnoteReference`. The `switch` handles every inline type it lists, and the `string` return type makes TypeScript report any it misses.
+- `fromMarkdown` follows [CommonMark](https://spec.commonmark.org/), so GitHub's strikethrough, tables and task lists stay as text. `@types/mdast` also types the nodes of those extensions, such as `delete` and `footnoteReference`. The `switch` handles every inline type `@types/mdast` lists, and the `string` return type makes TypeScript report any it misses.
 
 `src/preview/markdown-preview.tsx` renders the blocks:
 
@@ -57,7 +57,7 @@ The note screen, `src/components/note-screen.tsx`, puts the editor and the previ
 
 The toggle button that sets `preview` belongs in the note's header bar, which the navigator builds from the screen's `options`, so the state lives in `src/app.tsx`:
 
-<<< @/figures/tutorial/the-markdown-preview/src/app.tsx{10,13,23,56-71} [src/app.tsx]
+<<< @/figures/tutorial/the-markdown-preview/src/app.tsx{10,13,23,56-72} [src/app.tsx]
 
 - `headerEnd` puts the button at the end of the content pane's header bar; [Headers](/v2/guide/navigation#headers) lists the other header options. `active` and `onNotifyActive` keep the button and the state in step, as in [The JSX prop model](/v2/guide/jsx-elements#the-jsx-prop-model).
 - The `Note` screen takes a function as its child instead of `component`, so it can pass `preview` along with the navigator's props; see React Navigation's [Passing additional data](https://reactnavigation.org/docs/hello-react-navigation#passing-additional-data).
