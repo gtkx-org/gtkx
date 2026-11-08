@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type DefaultTheme, defineConfig, type HeadConfig } from "vitepress";
+import { groupIconMdPlugin, groupIconVitePlugin } from "vitepress-plugin-group-icons";
 import { CONTRIBUTING_ROOT, contributingItems } from "./contributing.js";
 import { highlightPlugin } from "./highlight.js";
 import {
@@ -65,6 +66,28 @@ const sectionRoutes = (version: DocumentationVersion, section: string): string[]
 
     return existsSync(directory) ? markdownRoutes(directory, `${section}/`) : [];
 };
+
+const codeTitlePattern = /^\s*(?:`{3,}|~{3,}|<<<).*\[([^\]]+)\]/gm;
+
+/**
+ * Lists every code block title in the guides and tutorials. `groupIconVitePlugin` only learns the titles of
+ * pages it transforms before it writes its icon stylesheet, which during a build misses most `<<<` snippets.
+ */
+const codeBlockTitles = (): string[] =>
+    versions.flatMap((version) =>
+        sectionDirectories.flatMap((section) => {
+            const directory = join(versionDirectory(version), section);
+
+            if (!existsSync(directory)) {
+                return [];
+            }
+
+            return readdirSync(directory, { recursive: true, encoding: "utf8" })
+                .filter((path) => path.endsWith(".md"))
+                .flatMap((path) => [...readFileSync(join(directory, path), "utf8").matchAll(codeTitlePattern)])
+                .flatMap(([, codeTitle]) => (codeTitle ? [codeTitle] : []));
+        }),
+    );
 
 const versionRoutes = (version: DocumentationVersion): Set<string> => {
     const routes = sectionDirectories.flatMap((section) => sectionRoutes(version, section));
@@ -494,6 +517,9 @@ export default defineConfig({
             dangerLabel: "Danger",
             detailsLabel: "Details",
         },
+        config(md) {
+            md.use(groupIconMdPlugin);
+        },
     },
     sitemap: {
         hostname: url,
@@ -503,7 +529,7 @@ export default defineConfig({
                 .map(({ url: itemUrl, lastmod }) => ({ url: itemUrl, lastmod })),
     },
     vite: {
-        plugins: [highlightPlugin()],
+        plugins: [highlightPlugin(), groupIconVitePlugin({ defaultLabels: codeBlockTitles() })],
         server: {
             allowedHosts: ["workstation"],
         },

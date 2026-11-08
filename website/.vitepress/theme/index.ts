@@ -3,6 +3,7 @@ import DefaultTheme from "vitepress/theme-without-fonts";
 import VersionSelect from "./components/VersionSelect.vue";
 import VersionsTable from "./components/VersionsTable.vue";
 import Layout from "./Layout.vue";
+import "virtual:group-icons.css";
 import "./styles/index.css";
 
 export default {
