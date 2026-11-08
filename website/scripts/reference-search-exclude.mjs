@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 const frontmatter = /^---\n[\s\S]*?\n---\n+/;
 const siblingLink = /\]\(([^/)#]+\.md)(?:#[^)]*)?\)/gu;
 const searchableRoots = [join("@gtkx", "config", "index", "type-aliases", "Config.md")];
+const unsearchedPackages = [join("@gtkx", "gl")];
 const domAnimationExample = /```jsx\n(?:(?!```)[\s\S])*?animated\.[A-Za-z](?:(?!```)[\s\S])*?```\n*/gu;
 
 const walkEntry = (dir, entry) => {
@@ -41,15 +42,28 @@ const searchablePages = (referenceDir) => {
     return linkedPages(roots, new Set([join(referenceDir, "index.md")]));
 };
 
+const isUnsearched = (referenceDir, file) =>
+    unsearchedPackages.some((name) => {
+        const packageDir = join(referenceDir, name);
+
+        return file.startsWith(`${packageDir}/`) && file !== join(packageDir, "index.md");
+    });
+
+const searchMode = (referenceDir, searchable, file) => {
+    if (searchable.has(file)) {
+        return [];
+    }
+
+    return [isUnsearched(referenceDir, file) ? "search: false" : "search: title"];
+};
+
 const prepareReferenceSearch = (referenceDir, shouldRemoveDomAnimationExamples = false) => {
     const searchable = searchablePages(referenceDir);
 
     for (const file of walk(referenceDir)) {
         const source = readFileSync(file, "utf8").replace(frontmatter, "");
         const body = shouldRemoveDomAnimationExamples ? source.replaceAll(domAnimationExample, "") : source;
-        const fields = searchable.has(file)
-            ? ["editLink: false", "lastUpdated: false"]
-            : ["search: false", "editLink: false", "lastUpdated: false"];
+        const fields = [...searchMode(referenceDir, searchable, file), "editLink: false", "lastUpdated: false"];
         writeFileSync(file, `---\n${fields.join("\n")}\n---\n\n${body}`);
     }
 };

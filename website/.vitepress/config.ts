@@ -642,6 +642,22 @@ export default defineConfig({
         search: {
             provider: "local",
             options: {
+                _render: async (source, env, md) => {
+                    const html = await md.renderAsync(source, env);
+                    const search = env.frontmatter?.search;
+
+                    if (search === false) {
+                        return "";
+                    }
+
+                    if (search !== "title") {
+                        return html;
+                    }
+
+                    const page = /^(<p>[\s\S]*?<\/p>)\s*(<h1[\s\S]*?<\/h1>)/u.exec(html);
+
+                    return page ? `${page[2]}${page[1]}` : "";
+                },
                 miniSearch: {
                     searchOptions: {
                         boostDocument: (id: string) => (/^\/(blog|contributing)\//.test(id) ? 0.5 : 1),
