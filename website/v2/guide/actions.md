@@ -136,7 +136,7 @@ export const NoteTab = ({
 
 `section` groups items between separators, and `submenu` opens a nested menu. An item for an action with a parameter names its target in the action string, as in `win.open('todo.md')`. The menu rebuilds when `items` changes. Items also take GTK's other [menu attributes](https://docs.gtk.org/gtk4/class.PopoverMenu.html#menu-models) in camelCase, such as `icon`, and [Widgets in menus](/v2/guide/components#widgets-in-menus) puts a widget in place of an item.
 
-An item whose action is disabled is greyed out; `hiddenWhen: "action-disabled"` hides it instead. `primary` makes F10 open the main menu, as the [GNOME HIG](https://developer.gnome.org/hig/patterns/controls/menus.html) expects.
+An item whose action is disabled is greyed out; `hiddenWhen: "action-disabled"` hides it instead. `primary` makes F10 open the main menu, as the [GNOME HIG](https://developer.gnome.org/hig/reference/keyboard.html) expects.
 
 ## Buttons
 

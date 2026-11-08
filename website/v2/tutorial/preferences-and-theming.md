@@ -57,7 +57,7 @@ The preview state moves from the window to the `preview` key, so a note opens th
 <<< @/figures/tutorial/preferences-and-theming/src/components/window-actions.tsx{5,8,50,59,62-66,98,102-105} [src/components/window-actions.tsx]
 
 - `onChangeState` writes the key instead of the window's state, and the toggle button follows the action as before.
-- With no state left to pass down, `NoteScreen` becomes the screen's `component` instead of a render callback, which React Navigation [renders without its optimizations](https://reactnavigation.org/docs/hello-react-navigation/#passing-additional-data).
+- With no state left to pass down, `NoteScreen` becomes the screen's `component` instead of a render callback, which keeps the optimizations that React Navigation [drops for render callbacks](https://reactnavigation.org/docs/hello-react-navigation/#passing-additional-data).
 - `useNoteCommands` returns `showError` along with the commands.
 
 ## The preferences dialog
@@ -77,7 +77,7 @@ The `Dialog` union gains a `preferences` kind, and `Dialogs` passes the window's
 <<< @/figures/tutorial/preferences-and-theming/src/components/preferences.tsx [src/components/preferences.tsx]
 
 - [`AdwPreferencesDialog`](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/class.PreferencesDialog.html) holds pages of grouped rows. Notes has one page, with an Appearance group and a Storage group. `onClosed` clears the dialog state, as for the other dialogs. See [Dialogs](/v2/guide/modals-and-portals#dialogs).
-- `ComboRow` from `@gtkx/components` renders the Style row. `selectedId` shows the key's value, and `onSelectionChanged` writes the chosen one, which the window's effect then applies. The ID arrives as a plain string, and `toColorScheme` checks it against the schema's choices without a cast. See [DropDown](/v2/guide/components#dropdown).
+- `ComboRow` from `@gtkx/components` renders the Style row. `selectedId` shows the key's value, and `onSelectionChanged` writes the chosen one, which the window's effect then applies. The ID arrives as `string | null`, and `toColorScheme` checks it against the schema's choices without a cast. See [DropDown](/v2/guide/components#dropdown).
 - `FolderRow` keeps a `GtkFileDialog` in state through a portal and awaits its `selectFolder`, as [Awaiting async operations](/v2/guide/async-operations#awaiting-async-operations) shows. `useParentWindow` returns the Notes window, so the file dialog opens over it. See [Finding the parent window](/v2/guide/modals-and-portals#finding-the-parent-window).
 - Closing the file dialog rejects with `Gtk.DialogError.DISMISSED`, which `isDismissal` ignores. Other failures reach the window's error toast through `onError`. A folder without a local path, for which `getPath` returns `null`, is ignored.
 - Once a folder is chosen, a second button sets the key back to empty, which returns to the default folder.
