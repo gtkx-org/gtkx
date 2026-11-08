@@ -1,8 +1,6 @@
 name: Publish
 
 on:
-  release:
-    types: [published]
   workflow_dispatch:
 
 permissions:
@@ -46,7 +44,8 @@ jobs:
   publish:
     needs: build-native
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    environment: npm-release
+    timeout-minutes: 90
     permissions:
       contents: read
       packages: read
