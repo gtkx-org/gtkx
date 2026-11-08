@@ -34,6 +34,8 @@ Describe observable behavior and explain its limits. Avoid unsupported performan
 
 List command or tool options in a table whose first header is `Option` or `Tool`, with the default or a short attribute next and the description last. On phones the site stacks each row of such a table into an entry.
 
+Keep code sample lines within 80 columns. A desktop code block shows about 76, so longer lines scroll sideways. The formatter wraps pictured samples in `website/figures/` at 80 columns but leaves code inside Markdown alone, so wrap inline samples by hand.
+
 Check commands, imports, exported names, defaults, and requirements against the version being documented. The working tree is authoritative for the development docs; use the pinned release for stable docs. Preserve historical release announcements and changelogs as records of those releases.
 
 Before publishing documentation changes:
