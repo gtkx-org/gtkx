@@ -3,7 +3,8 @@
     "compilerOptions": {
         "outDir": "${configDir}/out-tsc",
         "tsBuildInfoFile": "${configDir}/tsconfig.tsbuildinfo",
-        "emitDeclarationOnly": true
+        "emitDeclarationOnly": true,
+        "allowArbitraryExtensions": true
     },
     "files": ["${configDir}/node_modules/.gtkx/env.d.ts"],
     "include": [

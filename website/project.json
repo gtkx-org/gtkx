@@ -133,7 +133,14 @@
             "cache": true,
             "dependsOn": ["^build"],
             "inputs": ["{projectRoot}/figures/**/*", "^production"],
-            "outputs": ["{projectRoot}/figures/node_modules/.gtkx"],
+            "outputs": [
+                "{projectRoot}/figures/node_modules/.gtkx",
+                "{projectRoot}/figures/tutorial/internationalization/data/dev.gtkx.Notes.gschema.d.xml.ts",
+                "{projectRoot}/figures/tutorial/note-links/data/dev.gtkx.Notes.gschema.d.xml.ts",
+                "{projectRoot}/figures/tutorial/packaging/data/dev.gtkx.Notes.gschema.d.xml.ts",
+                "{projectRoot}/figures/tutorial/preferences-and-theming/data/dev.gtkx.Notes.gschema.d.xml.ts",
+                "{projectRoot}/figures/tutorial/testing/data/dev.gtkx.Notes.gschema.d.xml.ts"
+            ],
             "options": {
                 "cwd": "{projectRoot}/figures"
             }
