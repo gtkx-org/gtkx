@@ -81,7 +81,7 @@ import { CREATE_COMMAND, docsLink, REPO_URL } from "./content";
   margin: 0 auto;
   padding: 0 clamp(1rem, 4vw, 2.5rem);
   display: grid;
-  grid-template-columns: 1.05fr 0.95fr;
+  grid-template-columns: 1fr 1fr;
   gap: clamp(2rem, 5vw, 4rem);
   align-items: center;
 }
@@ -152,6 +152,7 @@ import { CREATE_COMMAND, docsLink, REPO_URL } from "./content";
 }
 .shot__frame {
   position: relative;
+  width: 672px;
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-lg);
 }
@@ -174,9 +175,9 @@ import { CREATE_COMMAND, docsLink, REPO_URL } from "./content";
 }
 .shot__tag {
   position: absolute;
-  left: 50%;
-  top: calc(100% + 8px);
-  transform: translateX(-50%);
+  right: 12px;
+  top: 0;
+  transform: translateY(-55%);
   white-space: nowrap;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
@@ -223,6 +224,9 @@ import { CREATE_COMMAND, docsLink, REPO_URL } from "./content";
 @media (max-width: 860px) {
   .shot {
     padding-bottom: 0;
+  }
+  .shot__frame {
+    width: 100%;
   }
   .shot__code {
     position: relative;
