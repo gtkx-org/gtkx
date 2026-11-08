@@ -65,13 +65,17 @@ pnpm create gtkx@beta
 npm create gtkx@beta
 ```
 
+```bash [yarn]
+yarn create gtkx@beta
+```
+
 :::
 
 The scaffolder asks for a project directory, a display name, an application ID such as `com.example.MyApp`, and a package manager, then whether to use TypeScript and include the Vitest setup. It preselects the package manager that ran it and recommends pnpm. Keep TypeScript and Vitest for typed components and native widget tests.
 
 The directory can be a path, such as `~/Projects/my-app`, and any name works. `Unit Converter` gets the display name Unit Converter; because it is not a valid package name, the scaffolder also asks for one and suggests `unit-converter`.
 
-`yarn create` cannot run the prerelease scaffolder. To manage the project with Yarn, start it with npm or pnpm and choose Yarn as the package manager. Yarn projects get `nodeLinker: node-modules` in `.yarnrc.yml`, because GTKX generates its bindings into `node_modules` and does not support Plug'n'Play.
+The `yarn` command needs Yarn 2 or later. Yarn 1 cannot run the prerelease scaffolder; with Yarn 1, start the project with npm or pnpm and choose Yarn as the package manager. Yarn projects get `nodeLinker: node-modules` in `.yarnrc.yml`, because GTKX generates its bindings into `node_modules` and does not support Plug'n'Play.
 
 Start the app:
 
