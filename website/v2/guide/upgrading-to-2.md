@@ -65,22 +65,63 @@ The `"*"` wildcard is gone, and explicitly listing `Adw-1` or `Gtk-4.0` is rejec
 
 ## Check the behavior changes
 
-- GIR byte sequences are `Uint8Array`. Check code using array mutation, `Array.isArray`, or JSON serialization.
-- A returned `GObject.Value` is unwrapped and typed `unknown`; narrow it at the call site.
-- Promisified methods omit a leading success boolean from multi-value finish results when failure already rejects. `loadContentsAsync` resolves to `[Uint8Array, string | null]`.
-- Inout records and boxed values mutate the object passed in instead of repeating it in the return value.
-- Assets use relative `?resource`, `?icon`, `?font`, or `?url` imports. Settings schemas use query-free relative imports.
-- Development apps restart and reset their state when a module starts or stops importing or re-exporting a module, or when an imported resource or icon changes. Adding a name to an existing import, editing type-only imports and editing component bodies still use Fast Refresh; [The app restarts instead of refreshing](/v2/guide/troubleshooting#the-app-restarts-instead-of-refreshing) lists every cause.
-- Generated classes register with their own definitions, so production builds retain only reached bindings. Import a class if `GObject.typeFromName` must find it.
-- An application ends when its first render shows no window and nothing holds it. An app that rendered `null` until saved data loaded, as React Navigation's state persistence example does, now quits at once and `gtkx dev` prints `Application quit`. Render the window first and show a placeholder inside it; see [When the app ends](/v2/guide/application-lifecycle#when-the-app-ends).
-- Constructing an object with a key that is not one of its properties throws a `TypeError`, as in GJS, instead of skipping the key: `new Gio.Notification({ title: "Done" })` fails with "No property title on GNotification". Pass such values to the type's constructor function or setters, as in `Gio.Notification.new("Done")`.
-- GLib criticals are logged by GLib, as in C and GJS applications, instead of becoming uncaught exceptions. They no longer end the application or fail tests; see [Error Handling](/v2/guide/error-handling#glib-criticals-and-warnings).
-- A close the app does not answer no longer leaves React and the toolkit out of step. Adwaita dialogs without `onClosed` or `onCloseAttempt`, and JSX tab pages whose view has no `onClosePage`, stay open when the user closes them; `showSidebar`, `showContent`, `searchModeEnabled` and the `open` of bottom sheets and tab overviews are restored when the app passes them without taking the user's change. Development builds warn with the handler to add; see [Closing](/v2/guide/modals-and-portals#closing).
-- `bindPropertyFull` and `BindingGroup.bindFull` take transforms shaped as in GJS: `(binding, value) => [success, value]` receives the value read from one property and returns the value to write to the other, and `null` selects the default conversion. Rewrite functions taking GLib's closure arguments, `(binding, fromValue, toValue) => boolean`, to return the converted value instead of filling `toValue`. A `GObject.Closure` still receives the closure arguments. See [Binding properties](/v2/guide/subclassing#binding-properties).
-- `gtkx` commands stop with an error on an option they do not define instead of ignoring it, naming the option and listing the ones the command takes. Remove options GTKX never read from package scripts and CI, and put options meant for the application after `--`, as in `gtkx dev -- --verbose`.
-- `userEvent.type` presses keys named in braces, so `type(entry, "Ada{Enter}")` activates the entry. Text with a literal `{`, such as JSON, fails with "Unclosed key descriptor"; write it as <span v-pre>`{{`</span>. See [Testing](/v2/guide/testing).
+Work through the changes that apply to the project, then run `tsc --noEmit`. The typechecker catches the value and tuple changes; `gtkx build` catches stale resource imports.
 
-Run `tsc --noEmit` after these changes. The typechecker catches the value and tuple changes; `gtkx build` catches stale resource imports.
+### Byte sequences are `Uint8Array`
+
+GIR byte sequences are `Uint8Array`. Check code using array mutation, `Array.isArray`, or JSON serialization.
+
+### A returned `GObject.Value` is unwrapped
+
+A returned `GObject.Value` is unwrapped and typed `unknown`; narrow it at the call site.
+
+### Async results drop the success boolean
+
+Promisified methods omit a leading success boolean from multi-value finish results when failure already rejects. `loadContentsAsync` resolves to `[Uint8Array, string | null]`.
+
+### Inout records are updated in place
+
+Inout records and boxed values mutate the object passed in instead of repeating it in the return value.
+
+### Assets use query imports
+
+Assets use relative `?resource`, `?icon`, `?font`, or `?url` imports. Settings schemas use query-free relative imports.
+
+### Import changes restart the app
+
+Development apps restart and reset their state when a module starts or stops importing or re-exporting a module, or when an imported resource or icon changes. Adding a name to an existing import, editing type-only imports and editing component bodies still use Fast Refresh; [The app restarts instead of refreshing](/v2/guide/troubleshooting#the-app-restarts-instead-of-refreshing) lists every cause.
+
+### Builds keep only reached classes
+
+Generated classes register with their own definitions, so production builds retain only reached bindings. Import a class if `GObject.typeFromName` must find it.
+
+### An app without a window quits
+
+An application ends when its first render shows no window and nothing holds it. An app that rendered `null` until saved data loaded, as React Navigation's state persistence example does, now quits at once and `gtkx dev` prints `Application quit`. Render the window first and show a placeholder inside it; see [When the app ends](/v2/guide/application-lifecycle#when-the-app-ends).
+
+### Unknown construct properties throw
+
+Constructing an object with a key that is not one of its properties throws a `TypeError`, as in GJS, instead of skipping the key: `new Gio.Notification({ title: "Done" })` fails with "No property title on GNotification". Pass such values to the type's constructor function or setters, as in `Gio.Notification.new("Done")`.
+
+### GLib criticals are logged
+
+GLib criticals are logged by GLib, as in C and GJS applications, instead of becoming uncaught exceptions. They no longer end the application or fail tests; see [Error Handling](/v2/guide/error-handling#glib-criticals-and-warnings).
+
+### Unanswered closes are undone
+
+A close the app does not answer no longer leaves React and the toolkit out of step. Adwaita dialogs without `onClosed` or `onCloseAttempt`, and JSX tab pages whose view has no `onClosePage`, stay open when the user closes them; `showSidebar`, `showContent`, `searchModeEnabled` and the `open` of bottom sheets and tab overviews are restored when the app passes them without taking the user's change. Development builds warn with the handler to add; see [Closing](/v2/guide/modals-and-portals#closing).
+
+### Binding transforms take the GJS shape
+
+`bindPropertyFull` and `BindingGroup.bindFull` take transforms shaped as in GJS: `(binding, value) => [success, value]` receives the value read from one property and returns the value to write to the other, and `null` selects the default conversion. Rewrite functions taking GLib's closure arguments, `(binding, fromValue, toValue) => boolean`, to return the converted value instead of filling `toValue`. A `GObject.Closure` still receives the closure arguments. See [Binding properties](/v2/guide/subclassing#binding-properties).
+
+### `gtkx` rejects unknown options
+
+`gtkx` commands stop with an error on an option they do not define instead of ignoring it, naming the option and listing the ones the command takes. Remove options GTKX never read from package scripts and CI, and put options meant for the application after `--`, as in `gtkx dev -- --verbose`.
+
+### `userEvent.type` parses key names
+
+`userEvent.type` presses keys named in braces, so `type(entry, "Ada{Enter}")` activates the entry. Text with a literal `{`, such as JSON, fails with "Unclosed key descriptor"; write it as <span v-pre>`{{`</span>. See [Testing](/v2/guide/testing).
 
 ## Split JSX imports by namespace
 
@@ -187,13 +228,33 @@ See [Test translations](/v2/guide/internationalization#test-translations).
 
 The cairo stub-constructor `*ConstructorProps` aliases have no replacement because their constructors no longer exist.
 
+### Record constructors
+
+_Only affects code that constructs records with `new` or names their `*ConstructorProps` types._
+
 Record constructors now take a props object only when the record has public writable value fields, a supported native default constructor, or the zero-initialization contract of `GObject.Value`. For other records, `new` calls the record's native `new` constructor with the given arguments, as in GJS: `new GLib.String(text)` calls `GLib.String.new(text)`, and `new GLib.VariantType("s")` calls `GLib.VariantType.new("s")`. Records without a `new` constructor, or whose first zero-argument constructor has another name, come only from their native factories: use `GLib.Error.newLiteral(domain, code, message)` or `Graphene.Matrix.alloc().initIdentity()`. The synthetic `*ConstructorProps` types of all these records are removed. `GLib.String` exposes `str`, `len`, and `allocatedLen` as readonly; use methods such as `assign`, `append`, and `truncate` to update its buffer.
 
-Generated methods that expose unmanaged native addresses are also omitted. Replace `GLib.Bytes.getRegion` with `getData` or `newFromBytes`, use `GLib.Variant.getDataAsBytes` instead of `getData`, and close a `Gio.MemoryOutputStream` before calling `stealAsBytes` instead of `getData` or `stealData`.
+### Methods that return native addresses
+
+_Only affects code that reads raw native memory, such as the contents of `GLib.Bytes`, `GLib.Variant` or `Gio.MemoryOutputStream`._
+
+Generated methods that expose unmanaged native addresses are omitted. Replace `GLib.Bytes.getRegion` with `getData` or `newFromBytes`, use `GLib.Variant.getDataAsBytes` instead of `getData`, and close a `Gio.MemoryOutputStream` before calling `stealAsBytes` instead of `getData` or `stealData`.
+
+### `sink()` on closures and param specs
+
+_Only affects code that creates a `GObject.Closure` or `GObject.ParamSpec` and sinks it itself._
 
 Remove calls to `GObject.Closure.sink()` and `GObject.ParamSpec.sink()`. These generated methods are removed as part of the GTKX 2 ownership model: native handles manage reference sinking and release automatically, so no replacement call is needed.
 
+### `@gtkx/gl` debug output and sync waits
+
+_Only affects apps that use `@gtkx/gl`._
+
 `@gtkx/gl` no longer exposes `getDebugMessageLog` or `debugMessageCallback`, whose native contracts require caller-owned memory or callback lifetime management. Remove those calls; the shader, program, and pipeline info-log helpers remain available. Replace `clientWaitSyncLoop` with the generated `clientWaitSync`, which accepts the full timeout as a `bigint`.
+
+### Test compositor
+
+_Only affects test setups that chose a compositor other than the default, Sway._
 
 Headless displays always run Sway, so the Vitest plugin no longer accepts a `compositor` option and `@gtkx/vitest` no longer exports `CompositorId`. Delete the option and any `CompositorId` imports; tests need Sway, as described in the [testing setup](/v2/guide/testing#setup).
 
