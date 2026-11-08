@@ -122,11 +122,13 @@ Write the schema in a `.gschema.xml` file, usually `data/<application ID>.gschem
 </schemalist>
 ```
 
-Import the file without a query wherever a hook needs it. GTKX compiles and bundles the schema, and the import's default export is a generated module for the file's first schema, which the hooks use to check key names and value types:
+Import the file without a query wherever a hook needs it. GTKX compiles and bundles the schema. The import's default export describes the file's first schema, and every schema in the file is also a named export (`com_example_Notes` here). The hooks use that description to check key names and value types:
 
 ```ts
 import schema from "../data/com.example.Notes.gschema.xml";
 ```
+
+A schema without a `path` attribute is relocatable: give `GSettings` a `path` too, and each path keeps its own values.
 
 [Translate settings schemas](/v2/guide/internationalization#translate-settings-schemas) covers the schema text, and [Test data and settings](/v2/guide/testing#test-data-and-settings) how tests start from the defaults.
 
@@ -167,7 +169,7 @@ Wrap the windows inside the application element in `SettingsProvider`. The provi
 
 `useSetting(settings, schema, key)` returns the key's value and a setter, and re-renders when the value changes, including from another instance or `gsettings set`:
 
-```tsx [src/components/color-scheme-row.tsx]
+```tsx [src/components/dark-style-row.tsx]
 import { AdwSwitchRow } from "@gtkx/jsx/adw";
 import { useSetting } from "@gtkx/react";
 import schema from "../../data/com.example.Notes.gschema.xml";
@@ -180,7 +182,7 @@ export const DarkStyleRow = () => {
 };
 ```
 
-`scheme` is `"default" | "light" | "dark"`, from the key's `<choices>`. Other keys read as their unpacked GVariant type, such as a `number` for `i` and a `bigint` for `x`. A key declared with `enum` or `flags` reads as a number, and the module's `values` maps each nick to its number. A key the schema does not declare fails `tsc`, and so does a value of the wrong type.
+`scheme` is `"default" | "light" | "dark"`, from the key's `<choices>`. The schema's `values` holds those choices as a readonly tuple, so `(typeof schema.values)["color-scheme"][number]` names the type and `schema.values["color-scheme"]` lists them at runtime. Other keys read as their unpacked GVariant type, such as a `number` for `i` and a `bigint` for `x`. A key declared with `enum` or `flags` reads as a number, and `values` maps each nick to its number. A key the schema does not declare fails `tsc`, and so does a value of the wrong type.
 
 ### Binding a key to a property
 
@@ -248,6 +250,6 @@ export const SystemAppearance = () => {
 };
 ```
 
-`keys` maps each key to its GVariant type string, or to `enum` or `flags` for a key declared with those attributes; `values` gives the number of each enum nick, or the allowed strings of a key with choices. Copy them from the installed `.gschema.xml` under `/usr/share/glib-2.0/schemas`. Keep `as const satisfies SettingsSchema` so the hooks see literal types: `font` is a `string`, `scheme` is `0 | 1 | 2`, and a key the object does not list fails `tsc`.
+`keys` maps each key to its GVariant type string, or to `enum` or `flags` for a key declared with those attributes; `values` gives the number of each enum nick, or the allowed strings of a key with choices. Copy the key types from the installed `.gschema.xml` under `/usr/share/glib-2.0/schemas`, and the enum numbers from the `.enums.xml` file that declares the enum, here `org.gnome.desktop.enums.xml`. Keep `as const satisfies SettingsSchema` so the hooks see literal types: `font` is a `string`, `scheme` is `0 | 1 | 2`, and a key the object does not list fails `tsc`.
 
 GTKX does not bundle or compile a system schema; the app reads the copy installed on the user's machine. TypeScript cannot check the object against that copy. As in GJS, `GSettings` throws when the schema is not installed, and reading a key the installed schema does not declare throws, so an [error boundary](/v2/guide/error-handling#react-error-boundaries) can handle a missing package or a misspelled name.
