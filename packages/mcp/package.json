@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/mcp",
-    "version": "1.6.0",
+    "version": "1.6.1",
     "description": "MCP server exposing the GTK API reference and a running GTK4 app.",
     "keywords": [
         "gtkx",
