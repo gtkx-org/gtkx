@@ -8,7 +8,8 @@ description: "Create projects without prompts, defer dependency installation, an
 For an interactive first project, follow [Getting Started](/v2/guide/getting-started). To create a project from a script, pass the directory and `--yes`:
 
 ```bash
-npm create gtkx@beta -- my-app --yes --application-id com.example.MyApp --display-name "My App"
+npm create gtkx@beta -- my-app --yes --application-id com.example.MyApp \
+    --display-name "My App"
 ```
 
 ## Options

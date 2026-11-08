@@ -14,7 +14,8 @@ On the day of a GTKX release, a package manager's release-age gate holds back th
 Exempt GTKX for that one command. npm ignores `min-release-age-exclude` when it downloads the scaffolder, so lift its gate for the download with `--min-release-age=0`; the scaffolder's own install still applies the gate:
 
 ```bash
-pnpm_config_minimum_release_age_exclude='["@gtkx/*","create-gtkx"]' pnpm create gtkx@beta
+pnpm_config_minimum_release_age_exclude='["@gtkx/*","create-gtkx"]' \
+    pnpm create gtkx@beta
 npm create --min-release-age=0 gtkx@beta
 ```
 

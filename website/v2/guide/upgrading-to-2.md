@@ -34,7 +34,8 @@ npx --min-release-age=0 @gtkx/cli@beta upgrade
 ```
 
 ```bash [pnpm]
-pnpm_config_minimum_release_age_exclude='["@gtkx/*","create-gtkx"]' pnpm dlx @gtkx/cli@beta upgrade
+pnpm_config_minimum_release_age_exclude='["@gtkx/*","create-gtkx"]' \
+    pnpm dlx @gtkx/cli@beta upgrade
 ```
 
 :::

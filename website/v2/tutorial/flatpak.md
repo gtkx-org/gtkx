@@ -23,7 +23,8 @@ The sandbox reaches no other folder. A folder chosen in Preferences comes throug
 The build installs the GNOME runtime from Flathub, so add Flathub as a user remote once. GTKX builds with `flatpak-builder` when it is installed and with Flathub's `org.flatpak.Builder` Flatpak otherwise; install the latter, which also carries the linter Flathub runs. Then build the Flatpak:
 
 ```bash
-flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+flatpak remote-add --user --if-not-exists flathub \
+    https://dl.flathub.org/repo/flathub.flatpakrepo
 flatpak install --user flathub org.flatpak.Builder
 npm run deploy -- --target flatpak
 ```
@@ -35,8 +36,10 @@ The bundle is `build/out/dev.gtkx.Notes-1.0.0-x86_64.flatpak`, with `aarch64` on
 Flathub reviews every submission with `flatpak-builder-lint`. Lint the generated manifest and the repository the build exported, under `build/arm64/` on ARM:
 
 ```bash
-flatpak run --command=flatpak-builder-lint org.flatpak.Builder manifest build/x64/targets/flatpak/dev.gtkx.Notes.yml
-flatpak run --command=flatpak-builder-lint org.flatpak.Builder repo build/x64/targets/flatpak/repo
+flatpak run --command=flatpak-builder-lint org.flatpak.Builder \
+    manifest build/x64/targets/flatpak/dev.gtkx.Notes.yml
+flatpak run --command=flatpak-builder-lint org.flatpak.Builder \
+    repo build/x64/targets/flatpak/repo
 ```
 
 Fix each error, or explain it in the submission; [Flathub's linter documentation](https://docs.flathub.org/linter) describes each check and its exceptions. On a local build, the `repo` check reports `appstream-external-screenshot-url` and `appstream-screenshots-not-mirrored-in-ostree`: only Flathub's build copies the screenshots to Flathub's servers.
