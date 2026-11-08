@@ -15,7 +15,7 @@ GTKX runs your app on Node.js. Node owns the process, and GTKX drives GLib's mai
 
 ## Platform scope
 
-GTKX targets one platform, GTK and Adwaita on Linux, rather than abstracting over several. Your app uses the native libraries' own APIs, not a cross-platform subset of them. GTKX does not provide a Windows, macOS, mobile, or browser renderer. [Comparisons](/v2/guide/comparisons) describes how GTKX differs from GJS, node-gtk, React Native, and gtk4-rs and Relm4.
+GTKX targets one platform, GTK and Adwaita on Linux, rather than abstracting over several. Your app uses the native libraries' own APIs, not a cross-platform subset of them. GTKX does not provide a Windows, macOS, mobile, or browser renderer. [Comparisons](/v2/guide/comparisons) describes how GTKX differs from GJS, node-gtk, React Native, gtk4-rs and Relm4, and Electron and Tauri.
 
 GTKX generates TypeScript bindings from the native libraries installed for your project. Those bindings describe the available classes, methods, and JSX props. Shipping an app still requires compatible native libraries; see [Deploying](/v2/guide/deploying).
 

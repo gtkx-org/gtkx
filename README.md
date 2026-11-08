@@ -26,7 +26,7 @@
   <a href="https://opencollective.com/gtkx">Sponsor</a>
 </p>
 
-GTKX brings the workflow of modern web development to native GTK and Adwaita apps: declarative UI with React, a dev server with Fast Refresh, native UI tests in Vitest, and Flatpak, Debian, RPM, and AppImage packaging. [Why GTKX](https://gtkx.dev/v2/guide/why-gtkx) explains the approach, and [Comparisons](https://gtkx.dev/v2/guide/comparisons) sets it against GJS, node-gtk, React Native, and gtk4-rs and Relm4.
+GTKX brings the workflow of modern web development to native GTK and Adwaita apps: declarative UI with React, a dev server with Fast Refresh, native UI tests in Vitest, and Flatpak, Debian, RPM, and AppImage packaging. [Why GTKX](https://gtkx.dev/v2/guide/why-gtkx) explains the approach, and [Comparisons](https://gtkx.dev/v2/guide/comparisons) sets it against GJS, node-gtk, React Native, gtk4-rs and Relm4, and Electron and Tauri.
 
 ## Start an app
 

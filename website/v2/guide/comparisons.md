@@ -1,11 +1,11 @@
 ---
 title: "Comparisons"
-description: "How GTKX compares with GJS, node-gtk, React Native, and gtk4-rs and Relm4 for building GTK and Adwaita apps."
+description: "How GTKX compares with GJS, node-gtk, React Native, gtk4-rs and Relm4, and Electron and Tauri for building desktop apps."
 ---
 
 # Comparisons
 
-Several projects build GTK and Adwaita apps, or apps with React. This page describes how each one differs from GTKX in design and scope, and when it is the better fit.
+Several projects build GTK and Adwaita apps, or desktop apps with React and web technologies. This page describes how each one differs from GTKX in design and scope, and when it is the better fit.
 
 ## GJS
 
@@ -32,3 +32,11 @@ GTKX targets one platform and exposes all of it: every GTK and Adwaita widget an
 [gtk4-rs](https://gtk-rs.org/gtk4-rs/) is the Rust binding for GTK 4. Code builds and updates widgets imperatively, or loads them from UI templates. [Relm4](https://relm4.org) builds on gtk4-rs with an Elm-inspired component model and a `view!` macro that declares the UI. Both suit apps written in Rust. Neither provides hot reloading, a dev server or UI test automation; gtk4-rs's `#[gtk::test]` attribute runs a test on the GTK main thread, and driving the interface is left to the test.
 
 GTKX includes those tools along with React: a dev server with Fast Refresh, [tests](/v2/guide/testing) that find widgets by role and name and click and type into the real interface on a headless display, and [packaging](/v2/guide/deploying) for Flatpak, Debian, RPM and AppImage.
+
+## Electron and Tauri
+
+[Electron](https://www.electronjs.org) and [Tauri](https://tauri.app) build desktop apps whose interface is a web page written in HTML, CSS and JavaScript. Electron bundles Chromium and Node.js into each app. Tauri renders in the operating system's webview, WebKitGTK on Linux, and runs backend logic in Rust. Both build for Windows, macOS and Linux from one codebase, and Tauri also builds for Android and iOS.
+
+GTKX renders native GTK and Adwaita widgets instead of a web page, so an app gets the platform's look, accessibility and desktop integration, on Linux only. Its React components create widgets rather than DOM elements, so UI libraries that render to the DOM don't apply.
+
+Electron and Tauri are the better fit when one web codebase must run on several desktop platforms, or when the interface reuses DOM UI libraries.
