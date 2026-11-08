@@ -24,11 +24,13 @@ Install the development packages, which supply both native libraries and the GIR
 ::: code-group
 
 ```bash [Fedora 44]
-sudo dnf install gtk4-devel libadwaita-devel glib2-devel gobject-introspection-devel pkgconf-pkg-config
+sudo dnf install gtk4-devel libadwaita-devel glib2-devel \
+    gobject-introspection-devel pkgconf-pkg-config
 ```
 
 ```bash [Ubuntu 26.04]
-sudo apt install libgtk-4-dev libadwaita-1-dev libglib2.0-dev libgirepository1.0-dev pkgconf
+sudo apt install libgtk-4-dev libadwaita-1-dev libglib2.0-dev \
+    libgirepository1.0-dev pkgconf
 ```
 
 ```bash [Arch Linux]
@@ -84,7 +86,12 @@ The starter uses an Adwaita application window with a counter. Click the button 
 
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
-import { AdwApplication, AdwApplicationWindow, AdwHeaderBar, AdwToolbarView } from "@gtkx/jsx/adw";
+import {
+    AdwApplication,
+    AdwApplicationWindow,
+    AdwHeaderBar,
+    AdwToolbarView,
+} from "@gtkx/jsx/adw";
 import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { quit } from "@gtkx/react";
 import { useState } from "react";
@@ -110,7 +117,9 @@ const MainWindow = () => {
                     valign={Gtk.Align.CENTER}
                     halign={Gtk.Align.CENTER}
                 >
-                    <GtkLabel cssClasses={["title-1"]}>Welcome to GTKX!</GtkLabel>
+                    <GtkLabel cssClasses={["title-1"]}>
+                        Welcome to GTKX!
+                    </GtkLabel>
                     <GtkLabel cssClasses={["title-2"]}>Count: {count}</GtkLabel>
                     <GtkButton
                         label="Increment"
