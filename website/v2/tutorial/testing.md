@@ -145,6 +145,4 @@ npx vitest run -t trash
       Tests  25 passed (25)
 ```
 
-Two `Gtk-CRITICAL` lines about `gtk_text_buffer_delete_mark` also appear before the notes results. GtkSourceView logs them when a completion context is released after its text buffer, which happens as the test process exits; no test fails because of them.
-
 Change `openNote("Groceries")` in "opens a note in the editor" to `openNote("Shopping")` and run the tests again. The query fails after a second and lists each accessible role on screen with the names of its widgets, such as the list items Reading list and Groceries. Change it back afterwards.
