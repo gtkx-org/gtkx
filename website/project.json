@@ -109,7 +109,7 @@
             "dependsOn": ["build"]
         },
         "lint-oxlint": {
-            "dependsOn": ["...", "reference"]
+            "dependsOn": ["...", "reference", "codegen-figures"]
         },
         "typecheck": {
             "command": "vue-tsc --noEmit -p tsconfig.json",
