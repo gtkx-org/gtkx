@@ -4,7 +4,7 @@ import { GtkSwitch } from "@gtkx/jsx/gtk";
 import { type SettingsSchema, useBindSetting } from "@gtkx/react";
 import { act, render, renderHook, waitFor } from "@gtkx/testing";
 import { createRef } from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
 import { renderSettings, resetSettingsKey } from "../helpers/settings.js";
 
 const SCHEMA_ID = "com.gtkx.test.useSetting";
@@ -14,6 +14,14 @@ const SCHEMA: SettingsSchema<{ enabled: "b" }> = {
     path: null,
     keys: { enabled: "b" },
 };
+
+const useMisspelledProperty = (settings: Gio.Settings, toggle: Gtk.Switch) =>
+    // @ts-expect-error "activ" is not a property of Gtk.Switch
+    useBindSetting({ settings, schema: SCHEMA, key: "enabled", object: toggle, property: "activ" });
+
+const useReadOnlyProperty = (settings: Gio.Settings, toggle: Gtk.Switch) =>
+    // @ts-expect-error "scaleFactor" is readable but not writable
+    useBindSetting({ settings, schema: SCHEMA, key: "enabled", object: toggle, property: "scaleFactor" });
 
 describe("useBindSetting", () => {
     it("keeps the bound property in sync with the settings key", async () => {
@@ -112,7 +120,14 @@ describe("useBindSetting", () => {
         }
 
         await renderHook(() => {
-            useBindSetting({ settings, schema: SCHEMA, key: "enabled", object: toggle, property: "missingProperty" });
+            useBindSetting({
+                settings,
+                schema: SCHEMA,
+                key: "enabled",
+                object: toggle,
+                // @ts-expect-error the type rejects a name Gtk.Switch does not declare; this exercises the runtime path
+                property: "missingProperty",
+            });
         });
 
         await act(() => {
@@ -126,5 +141,10 @@ describe("useBindSetting", () => {
         });
         expect(settings.getBoolean("enabled")).toBe(false);
         await resetSettingsKey(SCHEMA_ID, "enabled");
+    });
+
+    it("accepts only the object's writable property names", () => {
+        expectTypeOf(useMisspelledProperty).toBeFunction();
+        expectTypeOf(useReadOnlyProperty).toBeFunction();
     });
 });
