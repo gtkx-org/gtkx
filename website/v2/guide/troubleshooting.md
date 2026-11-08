@@ -9,7 +9,7 @@ Each heading names a symptom. For errors your app reports at runtime, see [Error
 
 ## The create command runs an older scaffolder {#the-create-command-finds-no-version}
 
-On the day of a GTKX release, a package manager's release-age gate holds back the new `create-gtkx`, and the create command quietly runs an older one. pnpm 11 and newer gate by default and run the previous release. npm gates only when `min-release-age` is set, and then runs the newest stable release: during the 2.0 beta, that is the 1.x scaffolder, which creates a GTKX 1.x project. The scaffolder exempts GTKX's own packages in the project it creates (see [Scaffold Options](/v2/guide/scaffold-options#release-age-gates)), but the gate still applies to downloading the scaffolder.
+On the day of a GTKX release, a package manager's release-age gate holds back the new `create-gtkx`, and the create command quietly runs an older one. pnpm 11 and newer gate by default and run the previous release. npm gates only when `min-release-age` is set, and then runs the newest stable release: during the 2.0 beta, that is the 1.x scaffolder, which creates a GTKX 1.x project. Yarn 4.15 and newer gate by default and stop instead, reporting that every version of a `@gtkx` dependency is quarantined. The scaffolder exempts GTKX's own packages in the project it creates (see [Scaffold Options](/v2/guide/scaffold-options#release-age-gates)), but the gate still applies to downloading the scaffolder.
 
 Exempt GTKX for that one command. npm ignores `min-release-age-exclude` when it downloads the scaffolder, so lift its gate for the download with `--min-release-age=0`; the scaffolder's own install still applies the gate:
 
@@ -17,6 +17,8 @@ Exempt GTKX for that one command. npm ignores `min-release-age-exclude` when it 
 pnpm_config_minimum_release_age_exclude='["@gtkx/*","create-gtkx"]' \
     pnpm create gtkx@beta
 npm create --min-release-age=0 gtkx@beta
+YARN_NPM_PREAPPROVED_PACKAGES='@gtkx/*,create-gtkx' \
+    yarn create gtkx@beta
 ```
 
 ## Dependency installation fails while scaffolding
