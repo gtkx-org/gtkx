@@ -5,7 +5,7 @@ description: "Which GTKX release lines receive updates, what prereleases may cha
 
 # Releases
 
-Every GTKX package, `create-gtkx` included, is released under one version number, and a project keeps them all on the same release. The [changelog](https://github.com/gtkx-org/gtkx/releases) lists the changes in each release, and [Updating GTKX](/v2/guide/updating) moves a project to a newer one.
+Every GTKX package, `create-gtkx` included, is released under one version number, and a project keeps them all on the same release. Releases follow no fixed schedule: each one ships when its changes are ready. To follow them, watch the [changelog](https://github.com/gtkx-org/gtkx/releases), which lists the changes in each release, or read the release announcements on the [blog](/blog/). [Updating GTKX](/v2/guide/updating) moves a project to a newer one.
 
 ## Supported versions
 
