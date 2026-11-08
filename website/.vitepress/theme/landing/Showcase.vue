@@ -4,16 +4,16 @@ import { docsLink } from "./content";
 
 const shots = [
     {
-        name: "tasks-forms",
-        chapter: "tutorial/the-task-editor",
-        caption: "Edit Tasks",
-        alt: "The Tasks editor page with a title field, an importance switch, a due date, and notes.",
+        name: "notes-editor",
+        chapter: "tutorial/the-note-editor",
+        caption: "Edit a Note",
+        alt: "Notes editing a Markdown note in GtkSourceView, with highlighted headings, emphasis, links, and front matter.",
     },
     {
-        name: "tasks-i18n-fr",
+        name: "notes-i18n-fr",
         chapter: "tutorial/internationalization",
         caption: "Translate the App",
-        alt: "Tasks translated into French in the dark style, showing an empty search result.",
+        alt: "Notes translated into French in the dark style, showing a French note rendered as Markdown.",
     },
 ];
 </script>
@@ -21,19 +21,16 @@ const shots = [
 <template>
     <section id="tutorial" class="show">
         <div class="show__head section-head">
-            <h2 class="section-title">Build a task manager</h2>
+            <h2 class="section-title">Build a notes app</h2>
             <p class="section-sub">
-                Build Tasks one feature at a time: lists, search, preferences, and reminders. Then test it, translate
-                it, and create installable packages.
+                Build Notes one feature at a time: Markdown files, a live preview, search in a worker, and link
+                completion. Then test it, translate it, and create installable packages.
             </p>
         </div>
         <div class="show__strip">
             <figure v-for="s in shots" :key="s.name" class="show__shot">
                 <a class="show__frame" :href="docsLink(s.chapter)">
-                    <picture>
-                        <source :srcset="`/${s.name}.webp`" type="image/webp" />
-                        <img :src="`/${s.name}.png`" width="900" height="600" loading="lazy" :alt="s.alt" />
-                    </picture>
+                    <img :src="`/${s.name}.png`" width="960" height="640" loading="lazy" :alt="s.alt" />
                 </a>
                 <figcaption>
                     <a :href="docsLink(s.chapter)">{{ s.caption }}</a>

@@ -126,5 +126,5 @@ Run `npx gtkx upgrade` to move every GTKX package in the project to the newest r
 
 ## Next
 
-- [Tutorial](/v2/tutorial/): build Tasks, a task manager with persistence, navigation, and packaging.
+- [Tutorial](/v2/tutorial/): build Notes, a Markdown notes app with file watching, search, tests, and packaging.
 - [JSX Elements](/v2/guide/jsx-elements): how elements map props, signals and child slots to the native API.

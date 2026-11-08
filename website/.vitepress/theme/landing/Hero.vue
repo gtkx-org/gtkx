@@ -44,26 +44,23 @@ import { CREATE_COMMAND, docsLink, REPO_URL } from "./content";
             <figure class="hero__col hero__visual">
                 <div class="shot">
                     <div class="shot__frame">
-                        <picture>
-                            <source srcset="/tasks-screenshot.webp" type="image/webp" />
-                            <img
-                                src="/tasks-screenshot.png"
-                                width="900"
-                                height="600"
-                                alt="The Tasks app from the GTKX tutorial: an Adwaita window with a sidebar of smart views and lists next to a boxed task list."
-                            />
-                        </picture>
-                        <span class="shot__ring" aria-hidden="true"><span class="shot__tag">AdwToggleGroup</span></span>
+                        <img
+                            src="/notes-screenshot.png"
+                            width="960"
+                            height="640"
+                            alt="The Notes app from the GTKX tutorial: an Adwaita window with a list of notes next to a note rendered as Markdown."
+                        />
+                        <span class="shot__ring" aria-hidden="true"><span class="shot__tag">NoteRow</span></span>
                     </div>
                     <CodeBlock
                         class="shot__code"
-                        title="src/components/task-filter.tsx"
-                        :snippet="snippets.taskFilter"
+                        title="src/components/notes-screen.tsx"
+                        :snippet="snippets.noteList"
                     />
                 </div>
                 <figcaption class="shot__caption">
                     <a :href="docsLink('tutorial/')"
-                        >The Tasks app you build in the tutorial <Icon name="arrow" :size="15"
+                        >The Notes app you build in the tutorial <Icon name="arrow" :size="15"
                     /></a>
                 </figcaption>
             </figure>
@@ -151,7 +148,7 @@ import { CREATE_COMMAND, docsLink, REPO_URL } from "./content";
 }
 .shot {
   position: relative;
-  padding-bottom: 6.5rem;
+  padding-bottom: 8.5rem;
 }
 .shot__frame {
   position: relative;
@@ -167,10 +164,10 @@ import { CREATE_COMMAND, docsLink, REPO_URL } from "./content";
 }
 .shot__ring {
   position: absolute;
-  left: 52.4%;
-  top: 0.6%;
-  width: 20.4%;
-  height: 6.4%;
+  left: 0.4%;
+  top: 21.3%;
+  width: 29.2%;
+  height: 8.4%;
   border: 2px solid var(--brand);
   border-radius: var(--radius-pill);
   box-shadow: 0 0 0 4px var(--brand-soft);

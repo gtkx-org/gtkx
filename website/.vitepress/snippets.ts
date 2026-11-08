@@ -2,11 +2,15 @@ import type { BundledLanguage } from "shiki";
 
 type Snippet = { lang: BundledLanguage; code: string; mark?: string };
 
-const TASK_FILTER = `<AdwToggleGroup activeName={filter}>
-  <AdwToggle name="all" label={t("All")} />
-  <AdwToggle name="open" label={t("Open")} />
-  <AdwToggle name="done" label={t("Done")} />
-</AdwToggleGroup>
+const NOTE_LIST = `<ListView<Note>
+  items={shown.map((note) => ({
+    id: note.name,
+    value: note,
+  }))}
+  renderItem={({ item }) => (
+    <NoteRow note={item} />
+  )}
+/>
 `;
 
 const APP = `<AdwToolbarView top={<AdwHeaderBar />}>
@@ -40,18 +44,19 @@ const TEST = `it("saves the display name", async () => {
 `;
 
 const DEPLOY = `export default defineConfig({
-  applicationId: "com.example.Tasks",
+  applicationId: "dev.gtkx.Notes",
   applicationIcon: "data/icons",
   deploy: {
-    summary: "Manage your tasks and to-dos",
-    categories: ["Office"],
+    name: "Notes",
+    genericName: "Markdown Notes",
+    categories: ["Utility", "TextEditor"],
     targets: ["flatpak", "deb", "rpm", "appimage"],
   },
 });
 `;
 
 const SNIPPETS = {
-    taskFilter: { lang: "tsx", code: TASK_FILTER, mark: "AdwToggleGroup" },
+    noteList: { lang: "tsx", code: NOTE_LIST, mark: "NoteRow" },
     app: { lang: "tsx", code: APP },
     test: { lang: "tsx", code: TEST },
     deploy: { lang: "ts", code: DEPLOY },
