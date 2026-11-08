@@ -1354,6 +1354,33 @@ describe("generated bindings", () => {
         expect(diagnostics(directory.path, consumer, { declaration: true })).toEqual([]);
     });
 
+    it("emits declarations for exported classes that declare signals with withSignals", async () => {
+        using directory = createProject();
+        const { gi } = resolveStore(directory.path);
+        await runCodegen({ libraries: ["Gio-2.0"], girPath: resolveGirPath(undefined, directory.path), gi });
+        const consumer = `import { Application } from "@gtkx/gi/gio";
+            import { Object as GObject, TYPE_INT } from "@gtkx/gi/gobject";
+            import { registerClass, withSignals } from "@gtkx/runtime";
+            class CounterBase extends withSignals(GObject, { "cycle-completed": { paramTypes: [TYPE_INT] } }) {
+                tick(cycles: number): void {
+                    this.emit("cycle-completed", cycles);
+                    // @ts-expect-error unknown signal
+                    this.emit("cycle-complete", cycles);
+                }
+            }
+            export const Counter = registerClass(CounterBase, { typeName: "ConsumerExportedCounter" });
+            export class ServiceBase extends withSignals(Application, { ticked: { paramTypes: [TYPE_INT] } }) {
+                tick(): void {
+                    this.emit("ticked", 1);
+                    this.emit("activate");
+                }
+            }
+            export const Service = registerClass(ServiceBase, { typeName: "ConsumerExportedService" });
+            new Counter().connect("cycle-completed", () => {});
+            new Service({ applicationId: "org.example.Service" }).on("ticked", () => {});`;
+        expect(diagnostics(directory.path, consumer, { declaration: true })).toEqual([]);
+    });
+
     it("finds GIR files in the gir-1.0 directory under the introspection libdir", async () => {
         using directory = createProject();
         const bin = join(directory.path, "bin");

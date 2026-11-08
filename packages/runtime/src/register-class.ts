@@ -344,6 +344,26 @@ type RegisteredClass<
     RegisteredInstance<InstanceType<TClass>, TProperties, TSignals, TInterfaces>
 >;
 
+/** An instance of the base class {@link withSignals} returns. */
+type SignalBaseInstance<TInstance extends object, TSignals> = RegisteredInstance<
+    TInstance,
+    Record<never, PropertySpec>,
+    TSignals,
+    readonly []
+>;
+
+/**
+ * The base class {@link withSignals} returns. It is typed by the base class's instance type and construct
+ * arguments rather than by the base class itself, so a package that emits declarations can export a class
+ * extending it; the base class's static members are left out of its type.
+ */
+type SignalBaseClass<TInstance extends object, TArgs extends unknown[], TSignals, TAbstract extends boolean> = {
+    /** Object the class's instances inherit from. */
+    prototype: SignalBaseInstance<TInstance, TSignals>;
+} & (TAbstract extends true
+    ? abstract new (...args: TArgs) => SignalBaseInstance<TInstance, TSignals>
+    : new (...args: TArgs) => SignalBaseInstance<TInstance, TSignals>);
+
 /** A numeric GType, a generated or registered wrapper class, or a generated enum or flags type. */
 type SignalGType = bigint | AnyClass<TypedClass> | TypedEnum;
 
@@ -470,7 +490,12 @@ const SIGNAL_OVERRIDE_PATTERN = /^on[A-Z]/;
 function withSignals<T extends AnyClass, TSignals extends Record<string, SignalSpec>>(
     base: T,
     signals: TSignals,
-): RegisteredClass<T, Record<never, PropertySpec>, TSignals, readonly []>;
+): SignalBaseClass<
+    InstanceType<T>,
+    ConstructorParameters<T>,
+    TSignals,
+    T extends new (...args: never) => unknown ? false : true
+>;
 
 function withSignals(base: AnyClass, signals: Record<string, SignalSpec>): AnyClass {
     const klass: AnyClass = class extends base {};
@@ -1117,4 +1142,12 @@ function toNativeOptions(
     };
 }
 
-export { type Interface, registerClass, type RegisteredClass, type SignalGType, type SignalSpec, withSignals };
+export {
+    type Interface,
+    registerClass,
+    type RegisteredClass,
+    type SignalBaseClass,
+    type SignalGType,
+    type SignalSpec,
+    withSignals,
+};
