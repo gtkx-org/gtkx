@@ -34,12 +34,14 @@
     "devDependencies": {
         "@gtkx/cli": "^2.0.0-beta.12",
         "@gtkx/config": "^2.0.0-beta.12",
+        "@gtkx/mcp": "^2.0.0-beta.12",
         "@gtkx/storybook": "^2.0.0-beta.12",
         "@gtkx/testing": "^2.0.0-beta.12",
         "@types/mdast": "^4.0.4",
         "@types/node": "^26.6.6",
         "@types/react": "^19.3.0",
         "typescript": "^6.0.3",
+        "vite": "^8.3.5",
         "vitest": "^5.1.0"
     },
     "allowScripts": {
