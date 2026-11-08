@@ -4,7 +4,7 @@ description: "Create notes and open dialogs from menus and keyboard shortcuts wi
 
 # Add Menus and Shortcuts
 
-Turn New Note, the preview toggle and the app's dialogs into GIO actions, and run them from header bar buttons, a main menu and keyboard shortcuts.
+Add New Note, Keyboard Shortcuts and About as GIO actions, move the preview toggle onto one, and run them from header bar buttons, a main menu and keyboard shortcuts.
 
 ## Window actions
 
@@ -16,7 +16,7 @@ A command that a menu item, a button and a key all run is a GIO action: a named 
 - New Note is `enabled` once the folder has loaded. Until then `notes` is `null`, and everything that runs the action shows it as unavailable.
 - Preview is a stateful action. Its state is a boolean `GLib.Variant` made from the window's `preview` state, and `onChangeState` stores the value it is asked to change to. Activating a boolean action that has no `onActivate` requests the opposite state, so the action toggles without one. See [Parameters and state](/v2/guide/actions#parameters-and-state).
 - Keyboard Shortcuts and About pass the dialog to show to `onShowDialog`. [Mount the dialogs](#mount-the-dialogs) renders it.
-- `useNoteCommands` holds the commands the actions run. A command that fails shows its error in a toast. `useMarkup: false` shows the message as plain text, since an error message can contain characters such as `<` and `&` that markup would misread.
+- `useNoteCommands` holds the note commands that actions run, so far New Note. A command that fails shows its error in a toast. `useMarkup: false` shows the message as plain text, since an error message can contain characters such as `<` and `&` that markup would misread.
 
 New Note writes an empty `Untitled.md` and opens it. `createNote`, in `src/notes/files.ts`, tries `Untitled`, then `Untitled 2`, `Untitled 3` and so on:
 
@@ -71,7 +71,7 @@ The window moves from `src/app.tsx` into `src/components/window.tsx`, and its si
 
 ## Keyboard shortcuts
 
-`actionAccels` on the application element binds keys to actions by their prefixed names, and the application's own `quit` action becomes `app.quit`. `src/app.tsx` now holds only the application element:
+`actionAccels` on the application element binds keys to actions by their prefixed names. The application element declares `quit` in its own `actions` prop, so its name is `app.quit`. `src/app.tsx` now holds only the application element:
 
 <<< @/figures/tutorial/actions-menus-shortcuts/src/app.tsx{1-2,4,8-23} [src/app.tsx]
 
@@ -97,7 +97,7 @@ Which dialog is open is React state. `NotesWindow` keeps a `dialog` value that t
 
 - A dialog presents itself over the window when it mounts and closes when it unmounts. Its close button and Escape call `onClosed`, which sets `dialog` back to `none`. Without `onClosed` the dialog would stay open. See [Dialogs](/v2/guide/modals-and-portals#dialogs).
 - `Dialog` is a union keyed by `kind`, so a dialog can carry data: [Rename, Trash, and Undo](/v2/tutorial/trash-and-toasts) adds one that carries the name of the note to rename.
-- The about dialog's visible text goes through `t()`. [`AdwAboutDialog`](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/class.AboutDialog.html) lists its other properties, and [About dialog metadata](/v2/guide/modals-and-portals#about-dialog-metadata) covers its credit and legal sections.
+- The about dialog's name, description and credits go through `t()`; the developer name and copyright stay as written. [`AdwAboutDialog`](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/class.AboutDialog.html) lists its other properties, and [About dialog metadata](/v2/guide/modals-and-portals#about-dialog-metadata) covers its credit and legal sections.
 
 ## Run it
 
