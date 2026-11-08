@@ -106,7 +106,7 @@ const name = t("Recording {{index}}", { index });
 
 ## Use translations in components
 
-Import the React APIs from `@gtkx/i18n` so they use the configured gettext backend:
+Import `useTranslation` and `Trans` from `@gtkx/i18n`, not `react-i18next`. Importing `@gtkx/i18n` configures the gettext backend, and extraction does not follow `react-i18next` imports: their messages never reach the catalogs, and the generated declarations then reject their keys.
 
 ```tsx
 import { useTranslation } from "@gtkx/i18n";
@@ -123,7 +123,7 @@ See [react-i18next's documentation](https://react.i18next.com/latest/usetranslat
 
 ## Keep messages extractable
 
-Use ESM and the original names `t`, `useTranslation`, `Trans`, or `TransWithoutContext`. Keys, explicit `i18nKey` props, `context` and the `defaultValue` options must be string literals. Pass options as an inline object literal, without spreads or `as const`, and write `Trans` props out rather than spreading them: `t("Open", options)` fails extraction. A `Trans` component can derive its source from static children when `i18nKey` is omitted.
+Use ESM and the original names `t`, `useTranslation`, `Trans`, or `TransWithoutContext`, imported from `@gtkx/i18n`. Keys, explicit `i18nKey` props, `context` and the `defaultValue` options must be string literals. Pass options as an inline object literal, without spreads or `as const`, and write `Trans` props out rather than spreading them: `t("Open", options)` fails extraction. A `Trans` component can derive its source from static children when `i18nKey` is omitted.
 
 Extraction rejects aliases and member calls such as `i18n.t(...)`. CommonJS, tagged templates, and ICU MessageFormat are not extraction forms. These restrictions keep the catalog aligned with the calls that reach gettext.
 
