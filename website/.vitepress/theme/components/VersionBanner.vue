@@ -12,17 +12,13 @@ const notice = computed(() => {
         return undefined;
     }
 
-    const lead =
-        active.status === "prerelease"
-            ? `Prerelease docs, tracking main after GTKX ${active.label}.`
-            : `GTKX ${active.label} is no longer the current release.`;
+    const samePage = isSamePage(currentVersion);
 
     return {
-        lead,
+        lead: active.status === "prerelease" ? "Prerelease docs" : "Older release",
         href: link(currentVersion),
-        text: isSamePage(currentVersion)
-            ? `Read this page for ${currentVersion.label}`
-            : `Read the ${currentVersion.label} docs`,
+        text: currentVersion.label,
+        label: samePage ? `Read this page for ${currentVersion.label}` : `Read the ${currentVersion.label} docs`,
     };
 });
 </script>
@@ -31,9 +27,8 @@ const notice = computed(() => {
     <aside v-if="notice" class="version-banner" role="note">
         <span class="dot" aria-hidden="true"></span>
         <p>
-            {{ notice.lead }}
-            <a :href="notice.href">{{ notice.text }}</a>
-            · <a href="/versions">All versions</a>
+            {{ notice.lead }} · <a :href="notice.href" :aria-label="notice.label">{{ notice.text }}</a> ·
+            <a href="/versions">All versions</a>
         </p>
     </aside>
 </template>
@@ -70,5 +65,13 @@ const notice = computed(() => {
     color: var(--vp-c-brand-1);
     text-decoration: underline;
     text-underline-offset: 2px;
+}
+
+@media (max-width: 639px) {
+    .version-banner {
+        margin: -16px 0 16px;
+        padding: 0;
+        background: none;
+    }
 }
 </style>
