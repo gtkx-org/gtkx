@@ -43,7 +43,7 @@ A workspace package the app uses from source can import its icons the same way, 
 
 ### Settings schemas
 
-Import the application's own `.gschema.xml` without a query. GTKX compiles and bundles the schema, and the import returns the module the settings hooks read keys through; see [Your app's schema](/v2/guide/native-state#your-app-s-schema).
+Import the application's own `.gschema.xml` without a query. GTKX compiles and bundles the schema and generates its types beside it, and the import returns the module the settings hooks read keys through; see [Your app's schema](/v2/guide/native-state#your-app-s-schema).
 
 ### Types
 

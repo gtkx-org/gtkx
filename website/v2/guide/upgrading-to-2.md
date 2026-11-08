@@ -85,7 +85,7 @@ Inout records and boxed values mutate the object passed in instead of repeating 
 
 ### Assets use query imports
 
-Assets use relative `?resource`, `?icon`, `?font`, or `?url` imports. Settings schemas use query-free relative imports.
+Assets use relative `?resource`, `?icon`, `?font`, or `?url` imports. Settings schemas use query-free relative imports, typed by files [generated beside each schema](#type-settings-schema-imports).
 
 ### Import changes restart the app
 
@@ -207,6 +207,24 @@ plugins: [gtkx({ localeDir: resolve(import.meta.dirname, "dist/locale") })],
 ```
 
 See [Test translations](/v2/guide/internationalization#test-translations).
+
+## Type settings schema imports
+
+Codegen, `gtkx dev` and `gtkx build` write the types of each GSettings schema beside it, as `<name>.gschema.d.xml.ts`, instead of declaring schemas in `node_modules/.gtkx/env.d.ts`. TypeScript reads these files only with [`allowArbitraryExtensions`](https://www.typescriptlang.org/tsconfig/#allowArbitraryExtensions), so enable it and keep the generated files out of version control:
+
+```json [tsconfig.json]
+{
+    "compilerOptions": {
+        "allowArbitraryExtensions": true
+    }
+}
+```
+
+```text [.gitignore]
+*.d.xml.ts
+```
+
+A schema import with a wrong path now fails `tsc`, and schemas with the same file name in different directories get their own types. Codegen warns while a project with schemas lacks the option.
 
 ## Replace removed APIs
 
