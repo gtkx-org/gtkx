@@ -29,6 +29,7 @@ export {
     type Interface,
     registerClass,
     type RegisteredClass,
+    type SignalBaseClass,
     type SignalGType,
     type SignalSpec,
     withSignals,

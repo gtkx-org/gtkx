@@ -481,7 +481,8 @@ fn release_rank(gobject: usize, widget: Option<glib::Type>) -> u8 {
 }
 
 /// The objects only their wrappers reference that come first in the release order, as
-/// `(object, notification id)` pairs in the order they were first wrapped.
+/// `(object, notification id)` pairs: widgets and instances of registered classes in the order they
+/// were first wrapped, other objects newest first.
 fn next_unowned_objects(visited: &HashSet<usize>) -> Vec<(usize, usize)> {
     let widget = glib::Type::from_name("GtkWidget");
     let mut ranked: Vec<_> = LIVE_TOGGLE_REFS.with_borrow(|live| {
@@ -495,6 +496,9 @@ fn next_unowned_objects(visited: &HashSet<usize>) -> Vec<(usize, usize)> {
     };
     ranked.retain(|&(rank, ..)| rank == first);
     ranked.sort_unstable_by_key(|&(_, id, _)| id);
+    if first == 2 {
+        ranked.reverse();
+    }
     ranked
         .into_iter()
         .map(|(_, id, gobject)| (gobject, id))
@@ -555,9 +559,11 @@ unsafe fn release_unowned_object(gobject: *mut glib::gobject_ffi::GObject) {
 /// each is disposed when its native owners let it go, as in C, often inside the teardown of an
 /// object released here; objects GTK keeps until the process ends are never disposed. Objects only
 /// their wrappers reference are then released, which can leave more of them, until none is left.
-/// Widgets go first, then instances of registered classes, then other objects, each in the order
-/// they were first wrapped, so the views and JavaScript classes whose teardown calls back into
-/// JavaScript still find the models, items and other objects their JavaScript state holds.
+/// Widgets go first, then instances of registered classes, each in the order they were first
+/// wrapped, so the views and JavaScript classes whose teardown calls back into JavaScript still find
+/// the models, items and other objects their JavaScript state holds. Other objects go last, newest
+/// first, so an object goes before the one it came from, such as a `GtkSourceView` completion context
+/// before its buffer.
 /// Surfaces and objects in a wrapper borrow keep their toggle references for the environment's own
 /// teardown.
 pub(crate) fn release_unowned() {

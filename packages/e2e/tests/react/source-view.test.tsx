@@ -2,10 +2,16 @@ import * as Gtk from "@gtkx/gi/gtk";
 import * as GtkSource from "@gtkx/gi/gtksource";
 import { GtkSourceBuffer, type GtkSourceBufferProps, GtkSourceView } from "@gtkx/jsx/gtksource";
 import { render, screen, userEvent, waitFor } from "@gtkx/testing";
+import { execFile } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import { createRef, type ReactElement, type ReactNode, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
 import { getSourceBuffer } from "../helpers/buffer-text.js";
 import { expectNoBufferChangedOnReconcile } from "../helpers/text-buffer-view-render.js";
+
+const COMPLETION_QUIT_FIXTURE = fileURLToPath(new URL("../fixtures/completion-quit.ts", import.meta.url));
+const TSX_LOADER = new URL("../../../../scripts/register-workspace-loader.ts", import.meta.url).href;
 
 const getLanguage = (id: string): GtkSource.Language | null => GtkSource.LanguageManager.getDefault().getLanguage(id);
 const getScheme = (id: string): GtkSource.StyleScheme | null => GtkSource.StyleSchemeManager.getDefault().getScheme(id);
@@ -289,6 +295,18 @@ describe("render - SourceView", () => {
             const { buffer, rerender } = await renderJsLanguageSourceView(ref);
             await rerender(buildLanguageSourceView(ref, null));
             expect(buffer.getLanguage()).toBeNull();
+        });
+    });
+
+    describe("quit", () => {
+        it("releases a completion context before the buffer it completes when the app quits", async () => {
+            const { stderr } = await promisify(execFile)(
+                process.execPath,
+                ["--expose-gc", "--import", TSX_LOADER, COMPLETION_QUIT_FIXTURE],
+                { timeout: 30_000 },
+            );
+
+            expect(stderr).not.toContain("gtk_text_buffer_delete_mark");
         });
     });
 });
