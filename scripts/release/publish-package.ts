@@ -4,7 +4,7 @@ import {
     packageAt,
     registryDocument,
     verifyRelease,
-    visibilityTimeoutMs,
+    VISIBILITY_TIMEOUT_MS,
     type RegistryPackage,
     type ReleasePackage,
 } from "./verify-release.ts";
@@ -56,7 +56,7 @@ const checkReleaseChannel = async (packages: ReleasePackage[]): Promise<Registry
     return resolved;
 };
 
-const publishPackage = async (directory: string, timeoutMs = visibilityTimeoutMs()): Promise<void> => {
+const publishPackage = async (directory: string, timeoutMs = VISIBILITY_TIMEOUT_MS): Promise<void> => {
     const entry = resolveRegistry(packageAt(directory));
     const document = await registryDocument(entry, Math.min(10_000, timeoutMs));
     assertChannelCanAdvance(entry, document?.["dist-tags"]?.[entry.tag]);

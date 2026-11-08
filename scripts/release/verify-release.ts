@@ -99,19 +99,7 @@ const releasePackages = (): ReleasePackage[] => {
     ];
 };
 
-const visibilityTimeoutMs = (configured = process.env.GTKX_PUBLISH_VISIBILITY_TIMEOUT_MS): number => {
-    if (configured === undefined || configured === "") {
-        return 600_000;
-    }
-
-    const timeout = Number(configured);
-
-    if (!/^[1-9]\d*$/.test(configured.trim()) || !Number.isSafeInteger(timeout)) {
-        throw new Error("GTKX_PUBLISH_VISIBILITY_TIMEOUT_MS must be a positive integer number of milliseconds");
-    }
-
-    return timeout;
-};
+const VISIBILITY_TIMEOUT_MS = 600_000;
 
 const registryDocument = async (entry: RegistryPackage, timeoutMs = 10_000): Promise<RegistryDocument | undefined> => {
     const response = await fetch(new URL(encodeURIComponent(entry.name), entry.registry), {
@@ -179,7 +167,7 @@ export {
     registryDocument,
     releasePackages,
     verifyRelease,
-    visibilityTimeoutMs,
+    VISIBILITY_TIMEOUT_MS,
     type PackageManifest,
     type RegistryPackage,
     type ReleasePackage,
