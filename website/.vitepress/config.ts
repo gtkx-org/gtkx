@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type DefaultTheme, defineConfig, type HeadConfig } from "vitepress";
 import { groupIconMdPlugin, groupIconVitePlugin } from "vitepress-plugin-group-icons";
+import { BLOG_FEED, BLOG_TITLE, readBlogFeed, readBlogPosts } from "./blog.js";
 import { CONTRIBUTING_ROOT, contributingItems } from "./contributing.js";
 import { highlightPlugin } from "./highlight.js";
 import { figureLinks, optionTables } from "./markdown.js";
@@ -231,16 +232,7 @@ const contributingSidebar: DefaultTheme.SidebarItem[] = [{ text: "Contributing",
 const blogSidebar: DefaultTheme.SidebarItem[] = [
     {
         text: "Blog",
-        items: [
-            { text: "GTKX 2.0", link: "/blog/gtkx-2-0" },
-            { text: "GTKX 2.0 beta", link: "/blog/gtkx-2-0-beta-1" },
-            { text: "GTKX 1.6", link: "/blog/gtkx-1-6" },
-            { text: "GTKX 1.5", link: "/blog/gtkx-1-5" },
-            { text: "GTKX 1.4", link: "/blog/gtkx-1-4" },
-            { text: "GTKX 1.3", link: "/blog/gtkx-1-3" },
-            { text: "GTKX 1.1", link: "/blog/gtkx-1-1" },
-            { text: "GTKX 1.0", link: "/blog/gtkx-1-0" },
-        ],
+        items: readBlogPosts(websiteRoot).map((post) => ({ text: post.label, link: post.url })),
     },
 ];
 
@@ -636,6 +628,7 @@ export default defineConfig({
         ["link", { rel: "icon", type: "image/png", sizes: "32x32", href: "/favicon-32.png" }],
         ["link", { rel: "apple-touch-icon", href: "/apple-touch-icon.png" }],
         ["link", { rel: "manifest", href: "/site.webmanifest" }],
+        ["link", { rel: "alternate", type: "application/rss+xml", title: BLOG_TITLE, href: `/${BLOG_FEED}` }],
         ["meta", { name: "theme-color", content: "#e03a3e" }],
         ...fontPreloads,
         ["meta", { property: "og:site_name", content: title }],
@@ -687,6 +680,7 @@ export default defineConfig({
     },
 
     async buildEnd(siteConfig) {
+        await writeFile(join(siteConfig.outDir, BLOG_FEED), readBlogFeed(siteConfig.srcDir, url));
         const contributing = await loadDocumentationSources(siteConfig.srcDir, siteConfig.outDir, contributingLinks);
         const loaded = await Promise.all(
             versions.map((version) => loadDocumentationVersion(siteConfig.srcDir, siteConfig.outDir, version)),

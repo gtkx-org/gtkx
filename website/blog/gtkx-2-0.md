@@ -1,6 +1,8 @@
 ---
 title: "GTKX 2.0 is out"
 description: "GTKX 2.0 is the stable release of the 2.x line, with Adwaita bound by default, smaller production builds, GJS-shaped GObject APIs, Storybook, and an upgrade command."
+label: "GTKX 2.0"
+date: 2026-12-01
 image: /og.png
 ---
 

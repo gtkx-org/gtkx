@@ -1,6 +1,8 @@
 ---
 title: "GTKX 1.6: Agents and the road to 2.0"
 description: "GTKX 1.6 adds generated agent references, MCP setup, and opt-in migration flags for 2.0."
+label: "GTKX 1.6"
+date: 2026-08-29
 image: /og.png
 ---
 

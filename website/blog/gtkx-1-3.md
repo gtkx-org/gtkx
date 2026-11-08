@@ -1,6 +1,8 @@
 ---
 title: "GTKX 1.3: Introducing @gtkx/animated"
 description: "GTKX 1.3 adds React Spring animations, widget styles, a Cairo package, and more GObject subclassing support."
+label: "GTKX 1.3"
+date: 2026-08-21
 image: /animations-demo.png
 ---
 

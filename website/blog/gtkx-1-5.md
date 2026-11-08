@@ -1,6 +1,8 @@
 ---
 title: "GTKX 1.5: Native forms and gettext i18n"
 description: "GTKX 1.5 connects native form controls to React Hook Form and React translation APIs to GNU gettext."
+label: "GTKX 1.5"
+date: 2026-08-27
 image: /tasks-forms.png
 ---
 

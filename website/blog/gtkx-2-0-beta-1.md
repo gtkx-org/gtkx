@@ -1,6 +1,8 @@
 ---
 title: "GTKX 2.0 beta: migration changes"
 description: "GTKX 2.0 beta removes compatibility APIs and updates the Node.js, ESM, and internationalization requirements."
+label: "GTKX 2.0 beta"
+date: 2026-09-02
 image: /og.png
 ---
 
