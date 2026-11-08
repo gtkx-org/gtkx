@@ -90,32 +90,32 @@ The CLI generates `@gtkx/jsx` elements and `@gtkx/gi` bindings from your configu
 
 Apps created with `create-gtkx` already depend on the packages they need to run and test. Add libraries as your app needs them.
 
-| Package                                   | Description                                                           |
-| ----------------------------------------- | --------------------------------------------------------------------- |
-| **Apps**                                  |                                                                       |
-| [`create-gtkx`](packages/create-gtkx)     | Create native GTK and Adwaita apps with React and GTKX.               |
-| [`@gtkx/react`](packages/react)           | React renderer for native GTK and Adwaita apps.                       |
-| [`@gtkx/cli`](packages/cli)               | Development and packaging commands for GTK apps built with GTKX.      |
-| [`@gtkx/config`](packages/config)         | Typed configuration for GTK apps built with GTKX.                     |
-| **Libraries**                             |                                                                       |
-| [`@gtkx/components`](packages/components) | GTK collection views, selection controls, and toasts for React.       |
-| [`@gtkx/css`](packages/css)               | CSS-in-JS styling for GTK widgets in GTKX.                            |
-| [`@gtkx/navigation`](packages/navigation) | React Navigation navigators for GTK and Adwaita apps.                 |
-| [`@gtkx/forms`](packages/forms)           | React Hook Form controls for GTK and Adwaita apps.                    |
-| [`@gtkx/animated`](packages/animated)     | React Spring animations for GTK widgets in GTKX.                      |
-| [`@gtkx/i18n`](packages/i18n)             | Gettext localization for GTK apps through react-i18next.              |
-| [`@gtkx/cairo`](packages/cairo)           | Cairo drawing for GTK apps built with GTKX.                           |
-| [`@gtkx/gl`](packages/gl)                 | OpenGL 4.6 core bindings for GTK GL areas in GTKX.                    |
-| **Testing and tools**                     |                                                                       |
-| [`@gtkx/testing`](packages/testing)       | Test GTKX apps against real GTK widgets.                              |
-| [`@gtkx/vitest`](packages/vitest)         | Vitest plugin that runs GTK tests in isolated headless displays.      |
-| [`@gtkx/storybook`](packages/storybook)   | Storybook stories for native GTK components built with GTKX.          |
-| [`@gtkx/mcp`](packages/mcp)               | MCP tools for GTKX docs and running GTK apps.                         |
-| **Bindings and internals**                |                                                                       |
-| [`@gtkx/codegen`](packages/codegen)       | Generate TypeScript and JSX bindings for GTK and GObject libraries.   |
-| [`@gtkx/runtime`](packages/runtime)       | Runtime for generated GTK and GObject Introspection bindings in GTKX. |
-| [`@gtkx/native`](packages/native)         | Node.js addon that calls GTK and other C libraries for GTKX.          |
-| [`@gtkx/utils`](packages/utils)           | Shared Node.js utilities used by GTKX packages.                       |
+| Package                                   | Description                                                              |
+| ----------------------------------------- | ------------------------------------------------------------------------ |
+| **Apps**                                  |                                                                          |
+| [`create-gtkx`](packages/create-gtkx)     | Create native GTK and Adwaita apps with React and GTKX.                  |
+| [`@gtkx/react`](packages/react)           | React renderer for native GTK and Adwaita apps.                          |
+| [`@gtkx/cli`](packages/cli)               | Development and packaging commands for GTK apps built with GTKX.         |
+| [`@gtkx/config`](packages/config)         | Typed configuration for GTK apps built with GTKX.                        |
+| **Libraries**                             |                                                                          |
+| [`@gtkx/components`](packages/components) | GTK collection views, selection controls, and toasts for React.          |
+| [`@gtkx/css`](packages/css)               | CSS-in-JS styling for GTK widgets in GTKX.                               |
+| [`@gtkx/navigation`](packages/navigation) | React Navigation navigators for GTK and Adwaita apps.                    |
+| [`@gtkx/forms`](packages/forms)           | React Hook Form controls for GTK and Adwaita apps.                       |
+| [`@gtkx/animated`](packages/animated)     | React Spring animations for GTK widgets in GTKX.                         |
+| [`@gtkx/i18n`](packages/i18n)             | Gettext localization for GTK apps through react-i18next.                 |
+| [`@gtkx/cairo`](packages/cairo)           | Cairo drawing for GTK apps built with GTKX.                              |
+| [`@gtkx/gl`](packages/gl)                 | OpenGL 4.6 core bindings for GTK GL areas in GTKX.                       |
+| **Testing and tools**                     |                                                                          |
+| [`@gtkx/testing`](packages/testing)       | Test GTKX apps against real GTK widgets.                                 |
+| [`@gtkx/vitest`](packages/vitest)         | Vitest plugin that runs GTK tests in isolated headless displays.         |
+| [`@gtkx/storybook`](packages/storybook)   | Native Adwaita explorer for Storybook stories of GTKX components.        |
+| [`@gtkx/mcp`](packages/mcp)               | MCP server that inspects running GTKX apps and their generated bindings. |
+| **Bindings and internals**                |                                                                          |
+| [`@gtkx/codegen`](packages/codegen)       | Generate TypeScript and JSX bindings for GTK and GObject libraries.      |
+| [`@gtkx/runtime`](packages/runtime)       | Runtime for generated GTK and GObject Introspection bindings in GTKX.    |
+| [`@gtkx/native`](packages/native)         | Node.js addon that calls GTK and other C libraries for GTKX.             |
+| [`@gtkx/utils`](packages/utils)           | Shared Node.js utilities used by GTKX packages.                          |
 
 ## Contribute
 

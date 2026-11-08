@@ -1,7 +1,7 @@
 {
     "name": "@gtkx/mcp",
     "version": "2.0.0-beta.12",
-    "description": "MCP tools for GTKX docs and running GTK apps.",
+    "description": "MCP server that inspects running GTKX apps and their generated bindings.",
     "keywords": [
         "gtkx",
         "gtk",

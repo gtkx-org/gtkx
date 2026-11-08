@@ -17,6 +17,6 @@ export default defineConfig({
 
 [Guide](https://gtkx.dev/v2/guide/testing) · [API reference](https://gtkx.dev/v2/reference/@gtkx/vitest/) · [GTKX](https://gtkx.dev)
 
-GTKX requires Linux, Node.js, and the [native prerequisites](https://gtkx.dev/v2/guide/getting-started).
+GTKX requires Linux, Node.js, and the [native prerequisites](https://gtkx.dev/v2/guide/getting-started#what-you-need).
 
 [MPL-2.0](https://github.com/gtkx-org/gtkx/blob/main/LICENSE).
