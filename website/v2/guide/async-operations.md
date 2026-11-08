@@ -31,11 +31,16 @@ type OpenButtonProps = {
 const OpenButton = ({ onFile, onError }: OpenButtonProps) => {
     const parentWindow = useParentWindow();
     const [dialog, setDialog] = useState<Gtk.FileDialog | null>(null);
-    const [cancellable, setCancellable] = useState<Gio.Cancellable | null>(null);
+    const [cancellable, setCancellable] = useState<Gio.Cancellable | null>(
+        null,
+    );
     const [cancellableGeneration, setCancellableGeneration] = useState(0);
     const [isOpening, setIsOpening] = useState(false);
 
-    const open = async (fileDialog: Gtk.FileDialog, current: Gio.Cancellable) => {
+    const open = async (
+        fileDialog: Gtk.FileDialog,
+        current: Gio.Cancellable,
+    ) => {
         setIsOpening(true);
 
         try {
@@ -43,7 +48,8 @@ const OpenButton = ({ onFile, onError }: OpenButtonProps) => {
         } catch (error) {
             if (
                 error instanceof Gtk.DialogError &&
-                (error.code === Gtk.DialogError.DISMISSED || error.code === Gtk.DialogError.CANCELLED)
+                (error.code === Gtk.DialogError.DISMISSED ||
+                    error.code === Gtk.DialogError.CANCELLED)
             ) {
                 return;
             }
@@ -59,12 +65,17 @@ const OpenButton = ({ onFile, onError }: OpenButtonProps) => {
         <>
             {createPortal(<GtkFileDialog ref={setDialog} />, rootElement)}
             {createPortal(
-                <GCancellable key={cancellableGeneration} ref={setCancellable} />,
+                <GCancellable
+                    key={cancellableGeneration}
+                    ref={setCancellable}
+                />,
                 rootElement,
             )}
             <GtkButton
                 iconName="document-open-symbolic"
-                sensitive={dialog !== null && cancellable !== null && !isOpening}
+                sensitive={
+                    dialog !== null && cancellable !== null && !isOpening
+                }
                 onClicked={() => {
                     if (dialog && cancellable) void open(dialog, cancellable);
                 }}
