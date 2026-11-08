@@ -68,6 +68,7 @@ export default {
     mergeReadme: true,
     cleanOutputDir: true,
     githubPages: false,
+    indexFormat: "table",
     externalSymbolLinkMappings: {
         "@gtkx/testing": {
             tab: `${referenceLink}/@gtkx/testing/type-aliases/UserEvent#tab`,
