@@ -34,7 +34,7 @@ Use the returned class so TypeScript recognizes the registered properties and si
 
 ## Rendering a registered class
 
-Codegen does not emit elements for application-defined classes. Create an element with the registered type name and its props, then instantiate it through JSX:
+Codegen does not emit elements for application-defined classes. Create a component with `createElementComponent`, passing the props type, the registered type name and the class, then render it through JSX:
 
 ```tsx
 import { GtkAdjustment, type GtkScaleProps } from "@gtkx/jsx/gtk";
@@ -56,7 +56,7 @@ Declared native properties are passed into construction. Construct-only props mu
 
 ## Properties
 
-Use `declare` for native properties. A JavaScript field initializer would shadow the native accessor. Keep property maps inferred so their keys remain available to `useProperty` and other typed consumers.
+Use `declare` for native properties. A JavaScript field initializer would shadow the native accessor. Write the `properties` object inline, without a wider annotation such as `Record<string, ParamSpec>`, so its keys stay available to `useProperty` and other typed consumers.
 
 Property keys use camelCase; the ParamSpec uses the matching native spelling. For example, pair `displayName` with `paramSpecString("display-name", ...)`. Declare read-only and construct-only fields as `readonly`.
 
@@ -70,7 +70,7 @@ Some interface properties are read through a virtual function, such as `Gtk.Edit
 
 ### Inspecting a ParamSpec
 
-Use the generated ParamSpec reference for its metadata and flags. Class-level inspection is available through generated class-struct wrappers, such as `GObject.ObjectClass.peek(TaggedScale)`.
+A ParamSpec exposes `name`, `nick`, `blurb`, `flags`, `valueType` and `ownerType` as fields, and its default through `getDefaultValue()`. To look a property up on a class, use the class-struct wrapper: `GObject.ObjectClass.peek(TaggedScale).findProperty("tag")`.
 
 ### Binding properties
 
@@ -120,7 +120,9 @@ Handlers receive the signal arguments; JSX handlers also receive the emitting ob
 
 ## Default handlers
 
-A class method named `on<SignalName>`, such as `onClicked`, becomes the default handler for that signal. It receives the signal arguments with `this` bound to the instance. A subclass can replace it and chain to the previous implementation with `super.onClicked()`.
+A class method named `on<SignalName>`, such as `onCycleCompleted` for the `cycle-completed` signal above, becomes the signal's default handler. It receives the signal arguments with `this` bound to the instance. A registered subclass can replace it and chain to it with `super.onCycleCompleted()`.
+
+The method replaces the parent type's native default handler. When an inherited signal has a generated `vfunc` member, such as `Gtk.Button`'s `vfuncClicked` for `clicked`, override that instead and chain with `super`, as in [Subclass virtual methods](#subclass-virtual-methods).
 
 Reserve these names for default handlers when they match a signal. Use ordinary React handler props for application behavior attached to a rendered element.
 
@@ -149,7 +151,7 @@ This is type setup, not a component mount effect. If it throws, registration fai
 
 ### Custom layout callbacks
 
-For a container whose custom behavior is measurement and allocation, pass a `GtkCustomLayout` through `layoutManager`:
+A container whose only custom behavior is measurement and allocation needs no subclass. Pass a `GtkCustomLayout` through `layoutManager` instead:
 
 ```tsx
 import { AdwBin } from "@gtkx/jsx/adw";
@@ -194,7 +196,7 @@ class PaddedLabel extends Gtk.Label {
 registerClass(PaddedLabel, { typeName: "ExamplePaddedLabel" });
 ```
 
-Output parameters become return values, grouped into a tuple when there are several. Follow the [native operation's contract](https://docs.gtk.org/gtk4/vfunc.Widget.measure.html) when changing those values. Invoke the ordinary public method when using an instance; direct vfunc calls are for chaining from an override.
+Output parameters become return values, grouped into a tuple when there are several. Follow the [native operation's contract](https://docs.gtk.org/gtk4/vfunc.Widget.measure.html) when changing those values.
 
 Return whole numbers where the slot takes an integer, as `vfuncMeasure` does. GJS truncates a fractional result silently; GTKX rejects it with an error that names the vfunc, such as `TypeError: PaddedLabel.vfuncMeasure returned a value its native caller cannot take: Value 99.5 is not an integer, int32 expects a whole number`. Round sizes computed from fractional values, such as Pango units divided by `Pango.SCALE`, with `Math.round`, `Math.floor` or `Math.ceil` before returning them. See [Passing integers](/v2/guide/native-values#passing-integers).
 
@@ -206,6 +208,7 @@ A widget that draws with Cairo from its own `vfuncSnapshot`, as many C widgets a
 import { type ImageSurface } from "@gtkx/cairo";
 import * as Graphene from "@gtkx/gi/graphene";
 import * as Gtk from "@gtkx/gi/gtk";
+import { registerClass } from "@gtkx/runtime";
 
 class CanvasBase extends Gtk.Widget {
     surface: ImageSurface | null = null;
@@ -218,9 +221,11 @@ class CanvasBase extends Gtk.Widget {
         }
     }
 }
+
+const Canvas = registerClass(CanvasBase, { typeName: "ExampleCanvas" });
 ```
 
-The snapshot keeps what the context drew; releasing it only drops the context. Without `using`, each frame's context stays alive until garbage collection, and Cairo keeps a copy of `surface` for every frame in which the app draws into it afterwards, so memory grows with every stroke. A `GtkDrawingArea` `drawFunc` needs no call. See [Release contexts you create](/v2/guide/cairo#release-contexts-you-create).
+Without `using`, a widget that keeps drawing into `surface` grows in memory with every frame until garbage collection; [Release contexts you create](/v2/guide/cairo#release-contexts-you-create) explains why. A `GtkDrawingArea` `drawFunc` needs no call.
 
 ### Slots with no generated member
 
@@ -263,7 +268,11 @@ const LevelStore = registerClass(LevelStoreBase, {
 });
 ```
 
-Write vfuncs as prototype methods, not arrow-function fields. Every slot of an `Impl` type is optional, so TypeScript rejects `implements` on a class that fills none of them, such as a `Gtk.Scrollable` widget that only overrides the interface's adjustment and scroll-policy properties; register that class with `implements: [Gtk.Scrollable]` and leave out the `implements` clause. The `Impl` type checks signatures; it does not establish that every required native operation has an implementation. Follow the interface's prerequisites and behavior contract. For this example, [Gio.ListModel](https://docs.gtk.org/gio/iface.ListModel.html) also requires change notifications when items change.
+Write vfuncs as prototype methods, not arrow-function fields.
+
+Every slot of an `Impl` type is optional, so TypeScript rejects `implements` on a class that fills none of them, such as a `Gtk.Scrollable` widget that only overrides the interface's adjustment and scroll-policy properties; register that class with `implements: [Gtk.Scrollable]` and leave out the `implements` clause.
+
+The `Impl` type checks signatures; it does not establish that every required native operation has an implementation. Follow the interface's prerequisites and behavior contract. For this example, [Gio.ListModel](https://docs.gtk.org/gio/iface.ListModel.html) also requires change notifications when items change.
 
 Registration adds the interface's public members to instances. Inside the class, declare any added member you call, such as `declare itemsChanged: Gio.ListModel["itemsChanged"];`. Use a base class whose native state agrees with the implementation you provide.
 
