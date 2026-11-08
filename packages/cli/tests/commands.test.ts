@@ -1985,6 +1985,7 @@ describe("CLI commands", () => {
         configure(true);
         await invoke(["codegen", "--cwd", project.root]);
         expect(readFileSync(agentsPath, "utf8")).toContain("gtkx-agent-rules");
+        expect(readFileSync(agentsPath, "utf8")).toContain("https://gtkx.dev/v2/llms.txt");
 
         configure(false);
         await invoke(["codegen", "--cwd", project.root]);
