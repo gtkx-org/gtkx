@@ -15,17 +15,19 @@ In an existing GTKX project:
 npm install -D @gtkx/storybook@beta
 ```
 
-Create `.storybook/main.ts`:
+Start the explorer with `npx gtkx storybook`; add [`--headless --size 1280x900`](/v2/guide/cli#gtkx-storybook) when you need a private display. It finds story files such as `src/button.stories.tsx` under `src` without configuration. To choose other files, create `.storybook/main.ts`:
 
 ```ts
 import { defineConfig } from "@gtkx/storybook/config";
 
 export default defineConfig({
-    stories: ["src/**/*.stories.tsx"],
+    stories: ["src/components/**/*.stories.tsx"],
 });
 ```
 
-Patterns are relative to the GTKX project root. Your `gtkx.config.ts` still defines the application settings and additional GIR libraries. [Asset imports](/v2/guide/assets) work as they do in the application. Start the explorer with `npx gtkx storybook`; add [`--headless --size 1280x900`](/v2/guide/cli#gtkx-storybook) when you need a private display.
+Patterns are relative to the GTKX project root. Your `gtkx.config.ts` still defines the application settings and additional GIR libraries. [Asset imports](/v2/guide/assets) work as they do in the application.
+
+The explorer registers under the project's application ID with a `.Storybook` suffix, so it can run alongside `gtkx dev`. A running explorer exposes the [GTKX MCP server](/v2/guide/mcp) for live widget inspection and interaction.
 
 ### Stories from a shared package
 
@@ -39,15 +41,14 @@ export default defineConfig({
 
 Every matched file must lie inside the workspace root, the directory holding `pnpm-workspace.yaml` or the `package.json` with `workspaces`; the explorer stops with an error naming any file outside it. The explorer runs with the app's `gtkx.config.ts`, so the app has to declare the libraries the shared stories import. Stories without a `title` are named by their path from the workspace root, such as `packages/ui/src/badge`.
 
-To browse a shared package's stories on their own, add `@gtkx/cli`, `@gtkx/config`, `@gtkx/runtime`, `@gtkx/css`, `@gtkx/cairo` and `@gtkx/storybook` as development dependencies and run `gtkx storybook` in its directory. Like a [component library](/v2/guide/workspaces#component-libraries), it needs no `applicationId`; its explorer registers as `org.gtkx.Library.Storybook`.
+To browse a shared package's stories on their own, set it up as a [component library](/v2/guide/workspaces#component-libraries), add `@gtkx/storybook` as a development dependency and run `gtkx storybook` in its directory. It needs no `applicationId`; its explorer registers as `org.gtkx.Library.Storybook`.
 
 ## Define stories
 
-For a component accepting `label`, `enabled`, and `onClicked`, write `button.stories.tsx`:
+Keep each component in its own module so that Fast Refresh updates it in place. Write a component in `src/button.tsx`:
 
 ```tsx
 import { GtkButton } from "@gtkx/jsx/gtk";
-import type { Meta, StoryObj } from "@gtkx/storybook";
 import type { ReactNode } from "react";
 
 type ButtonProps = {
@@ -60,6 +61,15 @@ const Button = ({ label, enabled, onClicked }: ButtonProps): ReactNode => (
     <GtkButton label={label} sensitive={enabled} onClicked={onClicked} />
 );
 
+export { Button };
+```
+
+and its stories in `src/button.stories.tsx`:
+
+```tsx
+import type { Meta, StoryObj } from "@gtkx/storybook";
+import { Button } from "./button.js";
+
 const meta = {
     title: "Components/Button",
     component: Button,
@@ -67,7 +77,7 @@ const meta = {
     argTypes: {
         label: { control: "text" },
         enabled: { control: "boolean" },
-        onClicked: { action: "clicked", control: false },
+        onClicked: { action: "clicked" },
     },
 } satisfies Meta<typeof Button>;
 
@@ -80,7 +90,7 @@ export default meta;
 export { Default, Disabled };
 ```
 
-For component Fast Refresh, keep the component in its own module and import it into the story. Explicit `argTypes` create native boolean, text, number, and select controls. `argTypes.onClicked.action` records callback calls; asynchronous callbacks are recorded once when they settle. You can also provide `action("clicked")` from `@gtkx/storybook` directly as an argument.
+An argument gets a native control only when its `argTypes` entry sets [`control`](https://storybook.js.org/docs/api/arg-types#control): `boolean`, `text`, `number` or `range`, and `select`, `radio` or `inline-radio`. The explorer does not infer controls from the args, so an argument without `control` has none and needs no `control: false`. `argTypes.onClicked.action` records callback calls in the action panel; asynchronous callbacks are recorded once when they settle. You can also provide `action("clicked")` from `@gtkx/storybook` directly as an argument.
 
 Shared preview configuration belongs in `.storybook/preview.tsx`, exported as an object satisfying `Preview` from `@gtkx/storybook`. [Decorators](https://storybook.js.org/docs/writing-stories/decorators) return ordinary GTKX JSX and receive the resolved story context.
 
@@ -113,11 +123,15 @@ it("invokes the button callback", async () => {
 });
 ```
 
-Pass shared preview configuration as the second argument to `composeStories`. Render a window story as any component that creates its own window, with `{ container: rootElement }`; a story whose window is an `AdwApplicationWindow` also needs an `<AdwApplication>` around it, as in the [Testing guide](/v2/guide/testing#rendering-a-component). Native queries, events, screenshots, and cleanup come from `@gtkx/testing`. A running explorer also exposes the [GTKX MCP server](/v2/guide/mcp) for live widget inspection and interaction. The explorer's application ID is the project's ID with a `.Storybook` suffix, or `org.gtkx.Library.Storybook` in a package without an `applicationId`, so it can run alongside `gtkx dev`; pass that ID as `applicationId` to target the explorer.
+Pass shared preview configuration as the second argument to `composeStories`. Render a window story as any component that creates its own window, with `{ container: rootElement }` from `@gtkx/react`; a story whose window is an `AdwApplicationWindow` also needs an `<AdwApplication>` around it, as in the [Testing guide](/v2/guide/testing#rendering-a-component).
 
 ## Lifecycle and compatibility
 
-Control edits rerender the current story and retry previews that failed to render. Reset restores default arguments and remounts it. Switching stories unmounts the previous preview, including its windows and dialogs. Content stories receive the explorer's application and parent-window contexts; a story owning a separate window sets `parameters: { gtkx: { preview: "window" } }`. A content story whose component has its own header bar, such as a page split out of a window, shows the explorer's window controls in it, and they act on the explorer window: its close button closes the explorer. Pass `showStartTitleButtons` and `showEndTitleButtons` through to the header bar and set them to `false` in the story's `args`, or render the whole window in a `preview: "window"` story. Give a window story a component that does not call `quit()`, such as a window without the scaffold's `onCloseRequest={quit}`. `quit()` unmounts every root in the process and quits their applications, so it stops the explorer instead of closing the story.
+Control edits rerender the current story and retry previews that failed to render. Reset restores default arguments and remounts it. Switching stories unmounts the previous preview, including its windows and dialogs.
+
+Content stories render inside the explorer window and receive its application and parent-window contexts. They get a margin; set Storybook's [`layout`](https://storybook.js.org/docs/configure/story-layout) parameter to `"centered"` or `"fullscreen"` to center the story or drop the margin. A story owning a separate window sets `parameters: { gtkx: { preview: "window" } }`.
+
+A content story whose component has its own header bar, such as a page split out of a window, shows the explorer's window controls in it, and they act on the explorer window: its close button closes the explorer. Pass `showStartTitleButtons` and `showEndTitleButtons` through to the header bar and set them to `false` in the story's `args`, or render the whole window in a `preview: "window"` story. Give a window story a component that does not call `quit()`, such as a window without the scaffold's `onCloseRequest={quit}`. `quit()` unmounts every root in the process and quits their applications, so it stops the explorer instead of closing the story.
 
 GTKX reuses Storybook 10's composition APIs. This is a standalone native explorer. Browser addons, a browser manager, MDX, Autodocs, `play`, loaders, Storybook preview hooks, and static interactive publishing are unsupported. The explorer skips `.mdx` files matched by `stories` patterns and prints a warning naming them, so a configuration copied from Storybook works unchanged. Configured globals are available in context; there is no global toolbar.
 

@@ -109,4 +109,4 @@ export default defineConfig({
 });
 ```
 
-The tests run as the application `org.gtkx.Test`. To browse the components in the [Storybook explorer](/v2/guide/storybook), also add `@gtkx/storybook` and `@gtkx/css` as development dependencies and run `gtkx storybook`; the explorer registers as `org.gtkx.Library.Storybook`. In a workspace the package shares the bindings of the apps around it, under the rules described in [Monorepos](#monorepos).
+The tests run as the application `org.gtkx.Test`. To browse the components in the [Storybook explorer](/v2/guide/storybook), also add `@gtkx/storybook` as a development dependency and run `gtkx storybook`; the explorer registers as `org.gtkx.Library.Storybook`. In a workspace the package shares the bindings of the apps around it, under the rules described in [Monorepos](#monorepos).
