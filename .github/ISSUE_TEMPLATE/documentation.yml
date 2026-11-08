@@ -1,0 +1,30 @@
+name: Documentation
+description: Report a mistake or a gap on gtkx.dev or in a package README
+labels: [documentation]
+body:
+  - type: input
+    id: page
+    attributes:
+      label: Page
+      description: The URL of the page or README.
+      placeholder: https://gtkx.dev/v2/guide/getting-started
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: The documentation is
+      options:
+        - Wrong
+        - Outdated
+        - Unclear
+        - Missing
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What the page says, what you expected, and what you suggest instead.
+    validations:
+      required: true
