@@ -8,7 +8,7 @@ Index the full text of every note with MiniSearch in a worker thread, so searchi
 
 ## Build the index in a worker
 
-Your JavaScript runs on the same thread as GTK's main loop, so while it computes, the window can't redraw or take input. Indexing a few notes takes no time, but a folder of several thousand would freeze the window each time the index is rebuilt. [MiniSearch](https://lucaong.github.io/minisearch/) builds a full-text index in memory, and a [Node worker thread](https://nodejs.org/api/worker_threads.html) runs it beside the main thread. Install it; it ships its own types:
+Your JavaScript runs on the same thread as GTK's main loop, so while it computes, the window can't redraw or take input. Indexing a few notes takes no time, but a folder of several thousand would freeze the window until indexing finished. [MiniSearch](https://lucaong.github.io/minisearch/) builds a full-text index in memory, and a [Node worker thread](https://nodejs.org/api/worker_threads.html) runs it beside the main thread. Install it; it ships its own types:
 
 ```sh
 npm install minisearch
@@ -59,7 +59,7 @@ The `useState` initializer creates one `SearchIndex` when the screen mounts, and
 
 ## Focus search with Ctrl+F
 
-`FocusShortcut` at the top of the file is a `GtkShortcutController` in the sidebar box's `controllers` prop. Its `GLOBAL` scope handles Ctrl+F anywhere in the window, not only while the sidebar has focus. The callback needs the entry widget, so the entry's `ref` stores it in state (`setSearchEntry`), and the screen renders again with it once the entry exists. The callback returns whether `grabFocus` succeeded; `false`, before the entry exists or when it can't take focus, leaves the key to other handlers. See [Shortcuts without an action](/v2/guide/actions#shortcuts-without-an-action).
+`FocusShortcut`, above `NotesScreen`, is a `GtkShortcutController` in the sidebar box's `controllers` prop. Its `GLOBAL` scope handles Ctrl+F anywhere in the window, not only while the sidebar has focus. The callback needs the entry widget, so the entry's `ref` stores it in state (`setSearchEntry`), and the screen renders again with it once the entry exists. The callback returns whether `grabFocus` succeeded; `false`, before the entry exists or when it can't take focus, leaves the key to other handlers. See [Shortcuts without an action](/v2/guide/actions#shortcuts-without-an-action).
 
 ## Run it
 
