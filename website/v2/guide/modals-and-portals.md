@@ -12,9 +12,19 @@ Windows and Adwaita dialogs are JSX elements: rendering one opens it, and the ap
 Window elements present themselves on mount and destroy the native window on unmount. Render a secondary window conditionally, and handle `onCloseRequest` by clearing the state that rendered it:
 
 ```tsx
-import { AdwApplicationWindow, AdwHeaderBar, AdwToolbarView } from "@gtkx/jsx/adw";
+import {
+    AdwApplicationWindow,
+    AdwHeaderBar,
+    AdwToolbarView,
+} from "@gtkx/jsx/adw";
 
-const MirrorWindow = ({ open, onClose }: { open: boolean; onClose: () => void }) =>
+const MirrorWindow = ({
+    open,
+    onClose,
+}: {
+    open: boolean;
+    onClose: () => void;
+}) =>
     open ? (
         <AdwApplicationWindow
             title="Mirror"

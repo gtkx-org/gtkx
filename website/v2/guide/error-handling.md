@@ -18,10 +18,18 @@ const parseKeyFile = (contents: string) => {
     const keyFile = GLib.KeyFile.new();
 
     try {
-        keyFile.loadFromData(contents, Buffer.byteLength(contents), GLib.KeyFileFlags.NONE);
+        keyFile.loadFromData(
+            contents,
+            Buffer.byteLength(contents),
+            GLib.KeyFileFlags.NONE,
+        );
         return keyFile;
     } catch (error) {
-        if (error instanceof GLib.KeyFileError && error.code === GLib.KeyFileError.PARSE) return null;
+        if (
+            error instanceof GLib.KeyFileError &&
+            error.code === GLib.KeyFileError.PARSE
+        )
+            return null;
         throw error;
     }
 };
@@ -37,7 +45,13 @@ import * as GLib from "@gtkx/gi/glib";
 
 const reportMissingNote = (callback: Gio.AsyncReadyCallback) => {
     const task = Gio.Task.new(null, null, callback);
-    task.returnError(new GLib.Error(Gio.IOErrorEnum, Gio.IOErrorEnum.NOT_FOUND, "No such note"));
+    task.returnError(
+        new GLib.Error(
+            Gio.IOErrorEnum,
+            Gio.IOErrorEnum.NOT_FOUND,
+            "No such note",
+        ),
+    );
 };
 ```
 

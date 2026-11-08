@@ -75,7 +75,13 @@ Values returned by native libraries use their concrete wrapper classes. Check `s
 An `ImageSurface` lets you draw without a widget. Create a context for it, then save the result:
 
 ```ts
-import { Context, Format, ImageSurface, Status, statusToString } from "@gtkx/cairo";
+import {
+    Context,
+    Format,
+    ImageSurface,
+    Status,
+    statusToString,
+} from "@gtkx/cairo";
 
 const writeSwatch = (path: string): void => {
     const surface = new ImageSurface(Format.ARGB32, 256, 256);

@@ -117,7 +117,9 @@ it("invokes the button callback", async () => {
     let clicks = 0;
     await render(<Default onClicked={() => { clicks += 1; }} />);
 
-    await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Save" }));
+    await userEvent.click(
+        screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Save" }),
+    );
 
     expect(clicks).toBe(1);
 });

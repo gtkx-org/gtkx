@@ -115,9 +115,13 @@ import { SettingsPanel } from "../src/settings-panel.js";
 it("saves the display name", async () => {
     await render(<SettingsPanel />);
 
-    const name = screen.getByRole(Gtk.AccessibleRole.TEXT_BOX, { name: "Display name" });
+    const name = screen.getByRole(Gtk.AccessibleRole.TEXT_BOX, {
+        name: "Display name",
+    });
     await userEvent.type(name, "Ada");
-    await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Save" }));
+    await userEvent.click(
+        screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Save" }),
+    );
 
     expect(await screen.findByText("Settings saved")).toBeVisible();
 });
@@ -172,7 +176,10 @@ Some Adwaita rows expose their inner control under the row's title as well, as t
 ```ts
 import * as Adw from "@gtkx/gi/adw";
 
-const row = screen.getByRole(Gtk.AccessibleRole.SWITCH, { name: "Reimbursable", as: Adw.SwitchRow });
+const row = screen.getByRole(Gtk.AccessibleRole.SWITCH, {
+    name: "Reimbursable",
+    as: Adw.SwitchRow,
+});
 await userEvent.click(row);
 expect(row).toBeChecked();
 ```

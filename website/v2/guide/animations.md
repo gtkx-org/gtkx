@@ -63,7 +63,9 @@ export const Deadline = ({ isOverdue }: { isOverdue: boolean }) => {
     return (
         <AnimatedLabel
             label="Due today"
-            style={level.to((value) => ({ color: `mix(var(--window-fg-color), var(--error-color), ${value})` }))}
+            style={level.to((value) => ({
+                color: `mix(var(--window-fg-color), var(--error-color), ${value})`,
+            }))}
         />
     );
 };
@@ -75,7 +77,10 @@ The spring carries a number and the interpolation builds the declaration around 
 const styles = useSpring({ from: { color: "red" }, to: { color: "blue" } });
 
 <AnimatedLabel style={styles} label="Due today" />;
-<AnimatedLabel style={{ color: styles.color, paddingTop: 4 }} label="Due today" />;
+<AnimatedLabel
+    style={{ color: styles.color, paddingTop: 4 }}
+    label="Due today"
+/>;
 ```
 
 Nested blocks work too, so <span v-pre>`style={{ "&:hover": { color: styles.color } }}`</span> is animated without a React render. Only `style` is read this way; a spring nested inside another object-valued prop is not tracked.
@@ -94,7 +99,8 @@ import { GtkButton, GtkFixed, GtkFixedLayoutChild } from "@gtkx/jsx/gtk";
 
 const AnimatedFixedLayoutChild = animated(GtkFixedLayoutChild);
 
-const translate = (x: number): Gsk.Transform | null => Gsk.Transform.new().translate(new Graphene.Point({ x, y: 0 }));
+const translate = (x: number): Gsk.Transform | null =>
+    Gsk.Transform.new().translate(new Graphene.Point({ x, y: 0 }));
 
 export const Slide = ({ isOpen }: { isOpen: boolean }) => {
     const { x } = useSpring({ x: isOpen ? 240 : 0 });
