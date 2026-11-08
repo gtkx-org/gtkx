@@ -72,6 +72,14 @@ Flatpak needs `flatpak` and either `flatpak-builder` or the `org.flatpak.Builder
 `file`. GTKX downloads and verifies `nfpm` for Debian/RPM packaging and `appimagetool` for AppImage packaging.
 The command reports missing tools with installation hints.
 
+Flatpak builds install the GNOME runtime and SDK from a remote named `flathub` in your user installation; a
+system-wide `flathub` remote is not used. Add it once:
+
+```bash
+flatpak remote-add --user --if-not-exists flathub \
+    https://dl.flathub.org/repo/flathub.flatpakrepo
+```
+
 To use a local nFPM installation, set `deploy.tools.nfpm` to an executable name such as `"nfpm"` or a path such as `"./tools/nfpm"`. Relative paths start at the project root. This skips the pinned nFPM download for Debian and RPM packages.
 
 ## Preview and build
@@ -204,11 +212,14 @@ the architecture of imported addons.
 
 ```ts
 import { createRequire } from "node:module";
-import arm64Addon from "@node-rs/xxhash-linux-arm64-gnu/xxhash.linux-arm64-gnu.node?url";
-import x64Addon from "@node-rs/xxhash-linux-x64-gnu/xxhash.linux-x64-gnu.node?url";
+import arm64Addon from
+    "@node-rs/xxhash-linux-arm64-gnu/xxhash.linux-arm64-gnu.node?url";
+import x64Addon from
+    "@node-rs/xxhash-linux-x64-gnu/xxhash.linux-x64-gnu.node?url";
 
 const require = createRequire(import.meta.url);
-const addon = require(process.arch === "arm64" ? arm64Addon : x64Addon) as { xxh64(input: string): bigint };
+const addonPath = process.arch === "arm64" ? arm64Addon : x64Addon;
+const addon = require(addonPath) as { xxh64(input: string): bigint };
 ```
 
 Package managers treat a prebuild package for another CPU differently. pnpm installs it. Yarn skips it unless
@@ -247,6 +258,17 @@ file modes. A directory source installs every file below it, so a directory of m
 takes one entry. Generated desktop, AppStream, and MIME metadata take precedence over extra files targeting the
 same destination.
 
+### Screenshots and releases
+
+Software centers show the screenshots and release history from the AppStream metadata. Each
+`deploy.screenshots` entry takes an absolute `url` or a `file` relative to the project root. Software centers
+download screenshots over the network, so GTKX turns each `file` into a URL under `deploy.screenshotBaseUrl`.
+Without that option, GTKX uses the raw file URL of the project's GitHub or GitLab `origin` remote on its default
+branch, and deployment stops when there is no such remote. Push the screenshots before you publish a package.
+
+`deploy.releases` lists the release history. It defaults to one release for the `package.json` version, dated
+on the day of the build or by `SOURCE_DATE_EPOCH`.
+
 ### Desktop actions
 
 `deploy.desktopActions` adds entries to the application's launcher menu. Choosing one runs the application with
@@ -280,7 +302,10 @@ export const App = () => {
     };
 
     return (
-        <AdwApplication ref={application} actions={<GSimpleAction name="today" onActivate={showToday} />}>
+        <AdwApplication
+            ref={application}
+            actions={<GSimpleAction name="today" onActivate={showToday} />}
+        >
             <MainWindow view={view} />
         </AdwApplication>
     );
@@ -307,7 +332,8 @@ deploy: {
     extraFiles: {
         "lib/tally-report": "dist-report",
         "bin/tally-report": { source: "packaging/tally-report", mode: "0755" },
-        "share/licenses/tally/tally-report-NOTICES": "dist-report/BUNDLED-NOTICES",
+        "share/licenses/tally/tally-report-NOTICES":
+            "dist-report/BUNDLED-NOTICES",
     },
 },
 ```
@@ -380,5 +406,9 @@ confirm compliance with Flathub requirements. The [Flatpak tutorial](/v2/tutoria
 ## Flatpak in containers
 
 If Flatpak stops while spawning `rofiles-fuse`, set `deploy.flatpak.shouldUseRofilesFuse: false` in `gtkx.config.ts` and retry. This applies to both prebuilt and source builds when the container cannot provide FUSE.
+
+The failed build can leave a `rofiles-fuse` mount below `build/<arch>/targets/flatpak/state/rofiles/`, so GTKX
+cannot restore the output directory and reports "Device or resource busy". Unmount it with
+`fusermount3 -u <mount>` before retrying.
 
 If a failed deployment leaves an output directory that GTKX refuses to replace, keep it for diagnosis and choose a fresh directory, for example `npm run deploy -- --target flatpak --out build-flatpak-retry`.
