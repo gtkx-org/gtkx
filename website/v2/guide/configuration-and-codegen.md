@@ -99,7 +99,7 @@ gtkx codegen
 
 GTKX generates modules under `node_modules/.gtkx` and links them as `@gtkx/gi` and `@gtkx/jsx`. They belong to the project and are not separate npm dependencies. `gtkx dev`, `gtkx build` and the Vitest plugin also generate them when they are missing or out of date.
 
-Both packages always describe the same libraries. A project without `@gtkx/react` gets only `@gtkx/gi`, and its `@gtkx/jsx` comes back once `@gtkx/react` is installed again. Projects that resolve the same dependency directory share their generated bindings, as described in [Workspaces](/v2/guide/workspaces#monorepos).
+Both packages always describe the same libraries. A project without `@gtkx/react` gets only `@gtkx/gi`, and its `@gtkx/jsx` comes back once `@gtkx/react` is installed again. Projects that resolve the same dependency directory share their generated bindings, as described in [Shared bindings](/v2/guide/workspaces#shared-bindings).
 
 Import classes, enums, and functions from GI modules, and elements from JSX modules:
 

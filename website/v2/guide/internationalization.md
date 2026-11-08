@@ -47,7 +47,7 @@ Run codegen again after changing messages. It updates the template and merges th
 
 When `msginit` has no plural rule for a locale, such as `ar` or `zh_CN`, its catalog starts with a placeholder `Plural-Forms` header. Replace it before translating plural messages.
 
-Messages come from the `src` directory, or the project root without one, and from the workspace packages the application uses from source, as described in [Monorepos](/v2/guide/workspaces#monorepos). Their template locations are relative to the application, such as `../../packages/ui/src/rating.tsx:18`, and the application's catalogs translate them. Messages of packages installed from a registry are not extracted.
+Messages come from the `src` directory, or the project root without one, and from the workspace packages the application uses from source, as described in [Workspace sources](/v2/guide/workspaces#workspace-sources). Their template locations are relative to the application, such as `../../packages/ui/src/rating.tsx:18`, and the application's catalogs translate them. Messages of packages installed from a registry are not extracted.
 
 ## Plurals and context
 

@@ -149,7 +149,7 @@ Import the file without a query wherever a hook needs it. GTKX compiles and bund
 import schema from "../data/com.example.Notes.gschema.xml";
 ```
 
-GTKX installs and types schemas by file name, so imported schema files that share a name must be identical, including [copies in workspace packages](/v2/guide/workspaces#monorepos); otherwise GTKX stops with an error naming both.
+GTKX installs and types schemas by file name, so imported schema files that share a name must be identical, including [copies in workspace packages](/v2/guide/workspaces#workspace-sources); otherwise GTKX stops with an error naming both.
 
 A schema without a `path` attribute is relocatable: give `GSettings` a `path` too, and each path keeps its own values.
 

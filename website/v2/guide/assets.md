@@ -31,7 +31,7 @@ GTKX derives resource paths from the configured application ID: `com.example.Tas
 
 Keep these icons outside the `applicationIcon` directory (`data/icons` in scaffolded projects): deployment installs that directory into the system icon theme in full.
 
-A workspace package the app uses from source can import its icons the same way, and the app's declarations then include those names; see [Monorepos](/v2/guide/workspaces#monorepos).
+A workspace package the app uses from source can import its icons the same way, and the app's declarations then include those names; see [Workspace sources](/v2/guide/workspaces#workspace-sources).
 
 ### Fonts
 

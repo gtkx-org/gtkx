@@ -11,6 +11,8 @@ A workspace holds several GTKX apps and the packages of components they share. T
 
 GTKX apps and shared packages of components work in pnpm and npm workspaces with the package manager's default `node_modules` layout, and in Yarn workspaces whose root `.yarnrc.yml` sets `nodeLinker: node-modules`. Scaffolding into a directory the workspace lists, as in `pnpm create gtkx@beta apps/my-app`, adds the app to the workspace and prints the settings the root needs; see [Scaffold Options](/v2/guide/scaffold-options#workspaces).
 
+### Shared bindings
+
 Codegen writes the bindings into the `node_modules` directory the GTKX packages are installed in. In a workspace this is usually the root: pnpm keeps every package under the root `node_modules/.pnpm`, and npm and Yarn hoist them there. The bindings link `@gtkx/runtime`, `@gtkx/cairo`, `@gtkx/react`, `react` and `@types/react` from the app, so they use the same copies the app does.
 
 Apps that resolve the same directory share one set of bindings, generated for the union of their `libraries`. Codegen stops with an error naming the other app when apps sharing bindings differ in anything else:
@@ -22,6 +24,8 @@ Apps that resolve the same directory share one set of bindings, generated for th
 
 Keep these aligned across the workspace, for example with a [pnpm catalog](https://pnpm.io/catalogs). After changing `girPath` or `elements` in every app, run [`gtkx codegen --force`](/v2/guide/cli#gtkx-codegen) in one of them; the others share its bindings again the next time they generate theirs.
 
+### Namespaces per app
+
 Each app still imports only the libraries it declares and their dependencies, which are also what `gtkx deploy` requires of the installed system. Codegen gives an app that shares bindings its own `@gtkx/gi` and `@gtkx/jsx` packages, which expose those namespaces and link them to the shared bindings. They live in the app's `node_modules/.gtkx`, as a single project's bindings do, so the scaffold's `tsconfig.json` paths and editors keep finding them after any package install. An app at the workspace root, where the bindings are written, sees every namespace.
 
 Importing a namespace that only another app declared fails:
@@ -30,7 +34,13 @@ Importing a namespace that only another app declared fails:
 - in Node, which reports the subpath as not exported
 - in `tsc`, which reports the namespace as having no exports
 
+### Shared packages
+
 A shared package declares `@gtkx/react` as a peer dependency and imports `@gtkx/gi` and `@gtkx/jsx` subpaths like an app. List it in the dependencies of each app that uses it, so `gtkx dev` loads it through Vite. A shared package resolves the bindings from the workspace root, so it can import any library some app declares; each app that uses it has to declare the libraries the package imports.
+
+An app's [Storybook](/v2/guide/storybook#stories-from-a-shared-package) configuration can list a shared package's stories with a pattern such as `../../packages/ui/src/**/*.stories.tsx`. A shared package can also run its own tests and Storybook explorer without an `applicationId`, as a [component library](#component-libraries) does.
+
+### Workspace sources
 
 GTKX treats the sources of the workspace packages an app uses as part of the app. These are the packages that depend on `@gtkx/react` or `@gtkx/i18n` and that the app's dependencies, directly or through other such packages, link from outside `node_modules`: workspace packages and `link:` or `file:` directories. Codegen, `gtkx dev`, `gtkx build` and `gtkx deploy` read their `src` directories as they read the app's:
 
@@ -39,8 +49,6 @@ GTKX treats the sources of the workspace packages an app uses as part of the app
 - Saving one of their files in `gtkx dev` updates the app's template and declarations, as saving one of the app's does.
 
 Packages installed from a registry stay outside: their messages are not extracted, so a published [component library](#component-libraries) takes translated text from the app, for example as props.
-
-An app's [Storybook](/v2/guide/storybook#stories-from-a-shared-package) configuration can list a shared package's stories with a pattern such as `../../packages/ui/src/**/*.stories.tsx`. A shared package can also run its own tests and Storybook explorer without an `applicationId`, as a [component library](#component-libraries) does.
 
 ## Component libraries
 
