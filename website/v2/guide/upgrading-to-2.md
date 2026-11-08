@@ -5,9 +5,9 @@ description: "Migrate a GTKX 1.x application to GTKX 2, including configuration,
 
 # Upgrading to 2.0
 
-GTKX 2.0 makes the behaviors previewed in 1.6 unconditional and removes their compatibility APIs. [Prepare on 1.6](/guide/upgrading-to-2#prepare-on-1-6), then move every `@gtkx/*` package to the same 2.0 version and work through this checklist. Do not install `@gtkx/gi` or `@gtkx/jsx`; codegen creates them for the project.
+GTKX 2.0 makes the behaviors previewed in 1.6 unconditional and removes their compatibility APIs. [Prepare on 1.6](/guide/upgrading-to-2#prepare-on-1-6), then move every `@gtkx/*` package to the same 2.0 version and work through this checklist. Do not install `@gtkx/gi` or `@gtkx/jsx`; codegen creates them for the project. Security updates for 1.x end on 1 December 2026, as the [security policy](https://github.com/gtkx-org/gtkx/security/policy) states.
 
-Upgrade to Node.js 26.7 or newer and set `"type": "module"` in `package.json`; GTKX packages are ESM-only and explicitly reject `require()`. Localized projects also need GNU gettext 0.25 or newer.
+Upgrade to Node.js 26.7 or newer and set `"type": "module"` in `package.json`; GTKX packages are ESM-only and explicitly reject `require()`. Localized projects also need GNU gettext 0.23 or newer; see [Internationalization](/v2/guide/internationalization).
 
 The 2.0 packages require React 19.3 or newer, and `@gtkx/testing` requires Vitest 5. Upgrade `react`, `@types/react`, and `vitest` first, then run the 2.0 upgrade command from the project directory:
 
@@ -23,13 +23,21 @@ pnpm dlx @gtkx/cli@beta upgrade
 
 :::
 
-The 1.x CLI has no `upgrade` command, so this runs the 2.0 CLI without installing it first. It moves every `@gtkx/*` package declared in the project, or in each package of its workspace, to the newest 2.0 beta, including pnpm catalog entries, then installs and deduplicates with the project's package manager. Before installing, it exempts GTKX's own packages from the package manager's [release-age gate](/v2/guide/scaffold-options#release-age-gates) in the project or workspace root settings, so 2.0 installs on the day it is released; if the install still fails, it puts `package.json`, the lockfile and those settings back as they were. Later releases need only `npx gtkx upgrade`; see [Updating GTKX](/v2/guide/getting-started#updating-gtkx).
+The 1.x CLI has no `upgrade` command, so this runs the 2.0 CLI without installing it first. It moves every GTKX package in the project or its workspace to the newest 2.0 beta and installs it; [Updating GTKX](/v2/guide/updating) describes what it changes. Later releases need only `npx gtkx upgrade`.
 
-On a release day, the gate can also stop `npx` or `pnpm dlx` from downloading the 2.0 CLI. When npm's `min-release-age` is set, run `npx --min-release-age=0 @gtkx/cli@beta upgrade`; when pnpm's `minimumReleaseAge` is set, exempt GTKX for that one command:
+On the day of a release, the package manager's [release-age gate](/v2/guide/scaffold-options#release-age-gates) also applies to downloading the CLI, and the command quietly runs an older one. pnpm 11 and newer gate by default and run the previous release. npm gates only when `min-release-age` is set, and then runs the newest stable release: during the 2.0 beta, that is the 1.x CLI, which has no `upgrade` command. Exempt GTKX for that one command:
 
-```bash
+::: code-group
+
+```bash [npm]
+npx --min-release-age=0 @gtkx/cli@beta upgrade
+```
+
+```bash [pnpm]
 pnpm_config_minimum_release_age_exclude='["@gtkx/*","create-gtkx"]' pnpm dlx @gtkx/cli@beta upgrade
 ```
+
+:::
 
 Yarn's gate does not apply to `npx`.
 
@@ -63,7 +71,7 @@ The `"*"` wildcard is gone, and explicitly listing `Adw-1` or `Gtk-4.0` is rejec
 - Assets use relative `?resource`, `?icon`, `?font`, or `?url` imports. Settings schemas use query-free relative imports.
 - Changes to runtime imports, re-exports, or imported resources and icons restart development apps and reset their state. Edits to component bodies still use Fast Refresh.
 - Generated classes register with their own definitions, so production builds retain only reached bindings. Import a class if `GObject.typeFromName` must find it.
-- An application ends when its first render shows no window and nothing holds it. An app that rendered `null` until saved data loaded, as React Navigation's state persistence example does, now quits at once and `gtkx dev` prints `Application quit`. Render the window first and show a placeholder inside it; see [Restoring state](/v2/guide/navigation#restoring-state).
+- An application ends when its first render shows no window and nothing holds it. An app that rendered `null` until saved data loaded, as React Navigation's state persistence example does, now quits at once and `gtkx dev` prints `Application quit`. Render the window first and show a placeholder inside it; see [When the app ends](/v2/guide/application-lifecycle#when-the-app-ends).
 - Constructing an object with a key that is not one of its properties throws a `TypeError`, as in GJS, instead of skipping the key: `new Gio.Notification({ title: "Done" })` fails with "No property title on GNotification". Pass such values to the type's constructor function or setters, as in `Gio.Notification.new("Done")`.
 - GLib criticals are logged by GLib, as in C and GJS applications, instead of becoming uncaught exceptions. They no longer end the application or fail tests; see [Error Handling](/v2/guide/error-handling#glib-criticals-and-warnings).
 - A close the app does not answer no longer leaves React and the toolkit out of step. Adwaita dialogs without `onClosed` or `onCloseAttempt`, and JSX tab pages whose view has no `onClosePage`, stay open when the user closes them; `showSidebar`, `showContent`, `searchModeEnabled` and the `open` of bottom sheets and tab overviews are restored when the app passes them without taking the user's change. Development builds warn with the handler to add; see [Closing](/v2/guide/modals-and-portals#closing).
@@ -108,7 +116,7 @@ Use generated APIs instead of the removed runtime backing exports: `GObject.getP
 
 ## Update application lifecycle code
 
-React applications should keep rendering `AdwApplication` and `AdwApplicationWindow` through JSX. The replacements below apply to code that manages an application lifecycle directly.
+React applications should keep rendering `AdwApplication` and `AdwApplicationWindow` through JSX; [When the app ends](/v2/guide/application-lifecycle#when-the-app-ends) describes how they end. The replacements below apply to code that manages an application lifecycle directly.
 
 Replace `createApplication(ApplicationClass, props)` and `ApplicationClass.create(props)` with `new ApplicationClass(props)`. This works for Gio, Gtk, Adw, and custom application subclasses. Replace `getApplicationInstance(application)` and `application.getRegistrationState()` with `application.getIsRegistered()` and, once registered, `application.getIsRemote()`. Use the `activate` signal to build the primary instance's UI and the `runAsync(argv)` promise to observe completion.
 
@@ -119,8 +127,6 @@ Replace `runApplication(application, argv)` with `application.runAsync(argv): Pr
 An active run finishes automatically when it has no application windows or outstanding JavaScript `hold()` calls. Balance each `hold()` with `release()` to keep background work alive; the final release observes `inactivityTimeout`. A service starts with a ten-second grace period before its first use. Call `application.quit()` to force shutdown even while holds or windows remain. The promise resolves after GTKX completes shutdown and releases the process-wide default. Rejected command lines and remote instances resolve immediately; call `application.quit()` afterward to release their retained application state.
 
 GTKX tracks JavaScript holds and application windows; it cannot observe arbitrary holds acquired directly by native C code. Explicit holds survive forced shutdown and must still be balanced with `release()`; an unmatched release throws `RangeError`. Full native shutdown can run only once per instance; restarted applications and those already quit by native code may retain registration until finalization. Create another application when another complete lifecycle is needed.
-
-React holds an application until its first activated tree commits. `root.unmount()` and `root.render(null)` remove the UI while allowing explicit background holds to keep the application running. Release those holds when the work finishes. React's `quit()` also calls `quit()` on each application element it unmounts, so it ends the run even while the application holds itself, as `application.quit()` does. If initial asynchronous rendering or Suspense commits without a window, hold the application until that work can create one.
 
 ## Update Variant values
 
