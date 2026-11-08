@@ -1,3 +1,9 @@
+/**
+ * Renders React elements as GTK widgets: render roots, portals, and hooks for the application, windows,
+ * GObject properties, signals and GSettings.
+ *
+ * @packageDocumentation
+ */
 import "./bootstrap.js";
 
 export { createElementComponent } from "./components/element.js";

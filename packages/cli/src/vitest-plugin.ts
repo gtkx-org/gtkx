@@ -1,3 +1,8 @@
+/**
+ * Vite plugin stack that runs a GTKX application's tests in Vitest.
+ *
+ * @packageDocumentation
+ */
 import type { Plugin } from "vite";
 import { createConfigLoader } from "@gtkx/config/internal";
 import gtkxVitest, { type PluginOptions } from "@gtkx/vitest";

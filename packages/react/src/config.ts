@@ -1,3 +1,8 @@
+/**
+ * Element registration and renderer behaviors, such as `defineElements` and `defineBehavior`.
+ *
+ * @packageDocumentation
+ */
 import { BUILTIN_ELEMENTS as BUILTIN_ELEMENT_METADATA } from "@gtkx/config/elements";
 import type { ElementConfig } from "./reconciler/registry.js";
 

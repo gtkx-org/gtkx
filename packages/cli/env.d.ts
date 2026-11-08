@@ -1,3 +1,9 @@
+/**
+ * Ambient types for asset imports with the `?resource`, `?icon`, `?font`, `?url`, `?raw` and `?inline`
+ * queries, and for CSS imports.
+ *
+ * @packageDocumentation
+ */
 /// <reference types="vite/types/importMeta.d.ts" />
 /// <reference types="@gtkx/react/env" />
 

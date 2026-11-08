@@ -1,3 +1,8 @@
+/**
+ * Vite plugin that serves the project's resolved `gtkx.config.ts` as `virtual:gtkx-config`.
+ *
+ * @packageDocumentation
+ */
 import type { Plugin, UserConfig } from "vite";
 import { resolve } from "node:path";
 import { type ConfigLoader, createConfigLoader } from "./loader.ts";
