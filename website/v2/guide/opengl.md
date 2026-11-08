@@ -11,7 +11,7 @@ description: "Use GTKX's OpenGL bindings inside a GtkGLArea."
 npm install @gtkx/gl@beta
 ```
 
-This guide covers GTKX integration. Use the [Khronos OpenGL reference](https://registry.khronos.org/OpenGL-Refpages/gl4/) for the rendering API and the [GTKX GL reference](/v2/reference/@gtkx/gl/) for available bindings.
+This guide covers GTKX integration. Use the [Khronos OpenGL reference](https://registry.khronos.org/OpenGL-Refpages/gl4/) for the rendering API and the [GTKX GL reference](/v2/reference/@gtkx/gl/) for how its names and types map to the bindings.
 
 ## Draw in a widget
 
