@@ -18,7 +18,7 @@ GtkSourceView asks completion providers for suggestions, called proposals. A pro
 
 ## Offer note names
 
-GtkSourceView calls `vfuncIsTrigger` for each character typed, and the provider opens the popup when that character is the second `[` of `[[`. `openLinkAt` finds the last `[[` before the cursor on its line and returns where it starts and the query typed after it, or `null` once a `]` closes it.
+GtkSourceView calls `vfuncIsTrigger` when you type a character that can't be part of a word, such as `[`, and the provider opens the popup when that character is the second `[` of `[[`. `openLinkAt` finds the last `[[` before the cursor on its line and returns where it starts and the query typed after it, or `null` once a `]` closes it.
 
 `proposals` keeps the names that contain the query, ignoring case, and sorts the names that start with it first, then alphabetically. The `Gio.ListStore` that holds them is created for the registered `NoteLinkProposal` type.
 
