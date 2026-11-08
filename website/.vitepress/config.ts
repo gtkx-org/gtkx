@@ -655,8 +655,8 @@ export default defineConfig({
     },
 
     themeConfig: {
-        siteTitle: title,
-        logo: "/gtkx-mark.svg",
+        siteTitle: false,
+        logo: { light: "/logo-wordmark-light.svg", dark: "/logo-wordmark-dark.svg", alt: "GTKX" },
         search: {
             provider: "local",
             options: {

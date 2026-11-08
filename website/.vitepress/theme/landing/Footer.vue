@@ -20,6 +20,7 @@ const cols: { h: string; items: Link[] }[] = [
         items: [
             { t: "GitHub", href: REPO_URL },
             { t: "Contributing", href: "/contributing/" },
+            { t: "Brand", href: "/contributing/documentation#brand-assets" },
             { t: "Examples", href: EXAMPLES_URL },
             { t: "Issues", href: `${REPO_URL}/issues` },
             { t: "Releases", href: `${REPO_URL}/releases` },
@@ -54,8 +55,20 @@ const cols: { h: string; items: Link[] }[] = [
             <div class="footer__grid">
                 <div class="footer__brand">
                     <div class="footer__lockup">
-                        <img src="/gtkx-mark.svg" width="32" height="32" alt="" />
-                        <span class="footer__word">GTKX</span>
+                        <img
+                            class="footer__logo footer__logo--light"
+                            src="/logo-wordmark-light.svg"
+                            width="107"
+                            height="32"
+                            alt="GTKX"
+                        />
+                        <img
+                            class="footer__logo footer__logo--dark"
+                            src="/logo-wordmark-dark.svg"
+                            width="107"
+                            height="32"
+                            alt="GTKX"
+                        />
                     </div>
                     <p class="footer__tag">The React framework for Linux. Free &amp; open source.</p>
                 </div>
@@ -96,17 +109,17 @@ const cols: { h: string; items: Link[] }[] = [
   gap: 2rem;
 }
 .footer__lockup {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
   margin-bottom: 1rem;
 }
-.footer__word {
-  font-family: var(--font-display);
-  font-weight: 900;
-  font-size: 1.3rem;
-  letter-spacing: -0.03em;
-  color: var(--text-1);
+.footer__logo {
+  display: block;
+}
+.footer__logo--dark,
+html.dark .footer__logo--light {
+  display: none;
+}
+html.dark .footer__logo--dark {
+  display: block;
 }
 .footer__tag {
   font-family: var(--font-body);

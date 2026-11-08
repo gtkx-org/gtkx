@@ -200,7 +200,7 @@ const SCAFFOLD = `${CREATE_COMMAND}\ncd my-app\nnpm run dev`;
   width: 7px;
   height: 7px;
   border-radius: 2px;
-  background: var(--brand);
+  background: var(--brand-strong);
 }
 .step__list b {
   color: var(--text-1);

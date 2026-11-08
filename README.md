@@ -1,8 +1,9 @@
-<p align="center">
-  <img src="https://raw.githubusercontent.com/gtkx-org/gtkx/main/logo.svg" alt="GTKX" width="100" />
-</p>
-
-<h1 align="center">GTKX</h1>
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/gtkx-org/gtkx/main/website/public/logo-wordmark-dark.svg" />
+    <img src="https://raw.githubusercontent.com/gtkx-org/gtkx/main/website/public/logo-wordmark-light.svg" alt="GTKX" width="214" height="64" />
+  </picture>
+</h1>
 
 <p align="center">
   The React framework for Linux<br />

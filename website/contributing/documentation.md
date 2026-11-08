@@ -65,6 +65,21 @@ Place the figure where the text says what the reader should see. Its two images 
 
 Set `width` and `height` to half the PNG's pixel size, and describe the window in `alt`. Keep the attributes in this order: the site links each image wider than 400 to the PNG, so phone readers can open it at full size.
 
+## Brand assets
+
+The mark and the wordmark live in `website/public/`. Use these files instead of setting the name in text next to the mark.
+
+| File                                                | Use                                                                                                                                                                   |
+| --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `gtkx-mark.svg`                                     | The red tile: favicon, app icons, avatars. Never recolor it.                                                                                                          |
+| `logo-wordmark-light.svg`, `logo-wordmark-dark.svg` | The mark followed by "GTKX" in Red Hat Display 800, as outlines, for light and dark backgrounds. The site's navigation and footer, the README, and `og.png` use them. |
+| `gtkx-glyph.svg`                                    | The orbits without the tile, in `currentColor`, for single-color and small inline uses.                                                                               |
+
+- Leave clear space of at least one orbit width (11/128 of the tile, at least 4px) around the mark.
+- Don't set the wordmark in another typeface, in the gradient, or in red.
+- Don't place the red tile on a red or photographic background; use the glyph instead.
+- Red text uses `--text-brand`, and the large headline accent uses `--gradient-text`, which has a light and a dark value (`website/.vitepress/theme/styles/tokens.css`). Keep `--brand` for the mark, the glow, focus rings, and other non-text accents.
+
 ## Documentation versions
 
 [`website/versions.json`](https://github.com/gtkx-org/gtkx/blob/main/website/versions.json) defines each documented version:

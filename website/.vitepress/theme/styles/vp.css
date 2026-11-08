@@ -119,6 +119,12 @@ html.dark {
     font-family: var(--font-display);
 }
 
+.vp-doc h1,
+.vp-doc h2 {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
 .VPSidebarItem .text {
     overflow-wrap: anywhere;
 }

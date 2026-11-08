@@ -62,7 +62,7 @@
     --syntax-comment: var(--text-3);
 
     --gradient-glow: radial-gradient(60% 60% at 50% 0%, rgba(224, 58, 62, 0.28) 0%, rgba(224, 58, 62, 0) 70%);
-    --gradient-text: linear-gradient(92deg, #ff7a7c 0%, #e03a3e 55%, #b81c25 100%);
+    --gradient-text: linear-gradient(92deg, #e03a3e 0%, #971018 100%);
 
     --font-display: "Red Hat Display", system-ui, -apple-system, "Segoe UI", sans-serif;
     --font-body: "Red Hat Text", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -140,6 +140,7 @@ html.dark {
     --syntax-string: var(--green-500);
 
     --gradient-glow: radial-gradient(60% 60% at 50% 0%, rgba(224, 58, 62, 0.34) 0%, rgba(224, 58, 62, 0) 70%);
+    --gradient-text: linear-gradient(92deg, #ff9a9c 0%, #ee5a5d 100%);
 
     --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);
     --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.5);
