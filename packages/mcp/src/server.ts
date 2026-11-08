@@ -343,7 +343,8 @@ const screenshotTool = (appRouter: AppRouter): Tool =>
         description:
             "Capture a screenshot of a window. Returns base64-encoded PNG image data, and optionally writes " +
             "the PNG to `path` on the app's machine. You can't target widgets from a screenshot; use " +
-            "`gtkx_get_widget_tree` to find widget IDs for interaction.",
+            "`gtkx_get_widget_tree` to find widget IDs for interaction. A screenshot taken right after an " +
+            "interaction can catch an animation midway; take another once it finishes.",
         inputSchema: screenshotShape,
         handler: async ({ applicationId, appTimeout, returnImage, ...params }) => {
             const result = await appRouter.sendToApp<{ data: string; mimeType: string; savedPath?: string }>(
