@@ -126,7 +126,8 @@ Complete promotion on the prepared release branch before advancing `main`. That 
    ```
 
 4. Review release copy in the promoted `website/guide`, `website/tutorial`, contributor pages, landing components, the [Releases](/releases) page, root `README.md`, and `packages/*/README.md`. Replace beta installation commands and current-release status text with stable equivalents. Point 2.0 links at the new root paths and 1.x links at `/v1`; retain historical release names in dated posts and changelogs. Archived 1.x installation commands must remain pinned to 1.x. Keep the root README's link to `FUNDING.md`.
-5. Regenerate both API references and build the site:
+5. Review the release's announcement post, `website/blog/gtkx-2-0.md`, which the blog index and sidebar already list. Its date must be the release day, its release-notes link must name the tag being published, and its summary of changes must match the changelog. A release that moves the date updates the post, the blog index and the sidebar together.
+6. Regenerate both API references and build the site:
 
    ```bash
    pnpm nx run @gtkx/website:build
@@ -135,7 +136,7 @@ Complete promotion on the prepared release branch before advancing `main`. That 
 
    Check the landing links, version switcher, guide and tutorial sidebars, local search, generated references, old page anchors, and each version's `llms.txt` and `llms-full.txt`. The promoted version should be labeled stable, and archived pages should show their old-version banner. Inspect the root and archived Markdown downloads too.
 
-6. Include these changes in the reviewed, signed release-branch history, then follow [Review and advance main](/contributing/releases#review-and-advance-main). A subsequent Release workflow run rebuilds that branch from `main`; it must not discard the reviewed promotion changes.
+7. Include these changes in the reviewed, signed release-branch history, then follow [Review and advance main](/contributing/releases#review-and-advance-main). A subsequent Release workflow run rebuilds that branch from `main`; it must not discard the reviewed promotion changes.
 
 The script moves each version's `guide`, `tutorial`, and `reference` directories, updates `versions.json`, and synchronizes the Nx reference output paths. It rewrites absolute documentation links in website Markdown by the version they target, preserving intentional links between versions. Prerelease guides and tutorial chapters link to examples and tutorial sources on `main`; the script pins those `tree/main` and `blob/main` links in the promoted version's pages to `--examples-ref`, which also becomes its `examplesRef`, so the stable pages keep pointing at the release they document. It does not rewrite beta prose or package commands, such as Getting Started's note that the tutorial follows `main`, and it does not edit files outside `website/`. Generated reference links are corrected by regeneration.
 
