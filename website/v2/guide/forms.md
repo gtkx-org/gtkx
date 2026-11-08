@@ -69,7 +69,7 @@ You can also import `FormProvider` from `@gtkx/forms` to supply the control to r
 
 ## React Compiler
 
-GTKX compiles components with the React Compiler [by default](/v2/guide/configuration-and-codegen), so read a field with `useWatch` rather than `form.watch`. As [React Hook Form documents](https://react-hook-form.com/docs/useform/watch), the compiler can cache what `watch` returns, and the component keeps showing a stale value after `setValue`:
+GTKX compiles components with the React Compiler [by default](/v2/guide/configuration-and-codegen#every-option), so read a field with `useWatch` rather than `form.watch`. As [React Hook Form documents](https://react-hook-form.com/docs/useform/watch), the compiler can cache what `watch` returns, and the component keeps showing a stale value after `setValue`:
 
 ```tsx
 import { useWatch } from "@gtkx/forms";
@@ -112,7 +112,7 @@ const StopsError = () => {
 
 The rows retain their native props, children, refs and signal handlers.
 
-React Hook Form owns the value, so configure a spin row's range by passing a JSX `GtkAdjustment` to its `adjustment` prop, such as `adjustment={<GtkAdjustment lower={1} upper={10} stepIncrement={1} />}`, and use `setValue` or `reset` to change its current value. Those form updates do not echo back as user edits.
+Set a spin row's range with a JSX `GtkAdjustment` in its `adjustment` prop, such as `adjustment={<GtkAdjustment lower={1} upper={10} stepIncrement={1} />}`. The form owns the current value, so change it with `setValue` or `reset`. The row shows those values without reporting them as edits, so the options you pass to `setValue` alone decide dirty state and validation.
 
 If GTK clamps a value to the adjustment's range or cuts text at `maxLength`, the form keeps the stored value and submits it. The row is marked invalid, and a development build logs a warning, until an edit replaces the value.
 
