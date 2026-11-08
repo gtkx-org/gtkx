@@ -1,7 +1,7 @@
 {
     "name": "@gtkx/utils",
     "version": "2.0.0-beta.12",
-    "description": "Shared Node.js utilities for GTKX, the React toolchain for GTK.",
+    "description": "Shared Node.js utilities used by GTKX packages.",
     "keywords": [
         "gtkx",
         "gtk",

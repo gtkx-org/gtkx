@@ -2,7 +2,7 @@
 
 Gettext localization for GTK apps through react-i18next.
 
-Translate React content with `useTranslation` and `Trans`. The CLI extracts messages and compiles gettext catalogs; application bootstrap loads the catalog for the current locale.
+Translate React content with `useTranslation` and `Trans`. Codegen, `gtkx dev` and builds extract messages into gettext catalogs and compile them, so the gettext tools must be on `PATH`. At startup, the app loads the catalog for the current locale.
 
 In an existing GTKX app:
 
@@ -12,6 +12,6 @@ npm install @gtkx/i18n@beta
 
 [Guide](https://gtkx.dev/v2/guide/internationalization) · [API reference](https://gtkx.dev/v2/reference/@gtkx/i18n/) · [GTKX](https://gtkx.dev)
 
-GTKX requires Linux, Node.js, and the [native prerequisites](https://gtkx.dev/v2/guide/getting-started).
+GTKX requires Linux, Node.js, and the [native prerequisites](https://gtkx.dev/v2/guide/getting-started#what-you-need).
 
 [MPL-2.0](https://github.com/gtkx-org/gtkx/blob/main/LICENSE).

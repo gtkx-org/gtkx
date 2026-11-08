@@ -12,6 +12,6 @@ npm install @gtkx/animated@beta
 
 [Guide](https://gtkx.dev/v2/guide/animations) · [API reference](https://gtkx.dev/v2/reference/@gtkx/animated/) · [GTKX](https://gtkx.dev)
 
-GTKX requires Linux, Node.js, and the [native prerequisites](https://gtkx.dev/v2/guide/getting-started).
+GTKX requires Linux, Node.js, and the [native prerequisites](https://gtkx.dev/v2/guide/getting-started#what-you-need).
 
 [MPL-2.0](https://github.com/gtkx-org/gtkx/blob/main/LICENSE).
