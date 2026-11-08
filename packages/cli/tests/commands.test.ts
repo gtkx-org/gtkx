@@ -749,13 +749,81 @@ describe("CLI commands", () => {
         expect(await typecheck()).toMatch(/^src\/logo\.ts\(1,25\): error TS2307: [^\n]*\n$/);
     });
 
-    it("declares identical copies of a GSettings schema once and rejects differing copies", async () => {
+    it("types GSettings schema imports from declarations generated beside each schema", async () => {
+        using project = createProject();
+        const writeTsconfig = (compilerOptions: Record<string, unknown>) =>
+            project.write(
+                "tsconfig.json",
+                JSON.stringify({
+                    compilerOptions: { module: "NodeNext", strict: true, types: [], noEmit: true, ...compilerOptions },
+                    include: ["src", "tests"],
+                }),
+            );
+        const schema = (id: string) =>
+            `<schemalist>
+                <schema id="${id}" path="/${id.replaceAll(".", "/")}/">
+                    <key name="preview" type="b"><default>true</default></key>
+                </schema>
+            </schemalist>`;
+        const declarations = (path: string) => join(project.root, path.replace(".gschema.xml", ".gschema.d.xml.ts"));
+        const tsc = fileURLToPath(new URL("../../../node_modules/.bin/tsc", import.meta.url));
+        const typecheck = async () => {
+            try {
+                await promisify(execFile)(tsc, ["-p", ".", "--pretty", "false"], {
+                    cwd: project.root,
+                    timeout: 180_000,
+                });
+                return "";
+            } catch (error) {
+                return String((error as { stdout?: unknown }).stdout);
+            }
+        };
+        writeTsconfig({ allowArbitraryExtensions: true });
+        project.write("data/org.gtkx.example.gschema.xml", schema("org.gtkx.example"));
+        project.write("tests/fixtures/org.gtkx.example.gschema.xml", schema("org.gtkx.example.fixture"));
+        project.write("data/retired/org.gtkx.retired.gschema.xml", schema("org.gtkx.retired"));
+        project.write("data/retired/org.gtkx.custom.gschema.d.xml.ts", "export {};\n");
+        project.write(
+            "src/index.ts",
+            `import schema from "../data/org.gtkx.example.gschema.xml";
+            export const id: "org.gtkx.example" = schema.id;
+            export const preview: "b" = schema.keys.preview;`,
+        );
+        project.write(
+            "tests/fixture.ts",
+            `import schema from "./fixtures/org.gtkx.example.gschema.xml";
+            export const id: "org.gtkx.example.fixture" = schema.id;`,
+        );
+
+        expect(await invoke(["codegen", "--cwd", project.root])).not.toContain("allowArbitraryExtensions");
+        expect(existsSync(declarations("data/retired/org.gtkx.retired.gschema.xml"))).toBe(true);
+        expect(await typecheck()).toBe("");
+
+        project.write("src/typo.ts", 'export { default } from "../dta/org.gtkx.example.gschema.xml";');
+        expect(await typecheck()).toMatch(/^src\/typo\.ts\(1,25\): error TS2307: [^\n]*\n$/);
+
+        unlinkSync(join(project.root, "src/typo.ts"));
+        unlinkSync(join(project.root, "data/retired/org.gtkx.retired.gschema.xml"));
+        writeTsconfig({});
+        expect(await invoke(["codegen", "--cwd", project.root])).toContain("allowArbitraryExtensions");
+        expect(existsSync(declarations("data/retired/org.gtkx.retired.gschema.xml"))).toBe(false);
+        expect(existsSync(join(project.root, "data/retired/org.gtkx.custom.gschema.d.xml.ts"))).toBe(true);
+        expect(existsSync(declarations("data/org.gtkx.example.gschema.xml"))).toBe(true);
+    });
+
+    it("types identical copies of a GSettings schema and rejects differing copies", async () => {
         using project = createProject();
         project.write(
             "tsconfig.json",
             JSON.stringify({
-                compilerOptions: { module: "NodeNext", strict: true, skipLibCheck: false, types: [], noEmit: true },
-                files: ["node_modules/.gtkx/env.d.ts"],
+                compilerOptions: {
+                    module: "NodeNext",
+                    strict: true,
+                    skipLibCheck: false,
+                    allowArbitraryExtensions: true,
+                    types: [],
+                    noEmit: true,
+                },
                 include: ["src"],
             }),
         );

@@ -21,7 +21,7 @@
             },
             "cache": true,
             "dependsOn": ["gtkx:bindings", "@gtkx/cli:build"],
-            "outputs": ["{projectRoot}/node_modules/.gtkx"],
+            "outputs": ["{projectRoot}/node_modules/.gtkx", "{projectRoot}/tests/fixtures/*.gschema.d.xml.ts"],
             "inputs": [
                 "default",
                 "^production",

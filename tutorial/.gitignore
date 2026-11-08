@@ -4,3 +4,4 @@ package-lock.json
 dist/
 build/
 *.tsbuildinfo
+*.d.xml.ts

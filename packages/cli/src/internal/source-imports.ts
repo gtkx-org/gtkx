@@ -23,9 +23,15 @@ const SOURCE_LANGUAGES: Map<string, SourceLanguage> = new Map([
 ]);
 
 const SOURCE_ID_RE = /\.(?:[jt]sx?|m[jt]s)(?:\?.*)?$/i;
+const DECLARATION_FILE_RE = /\.d(?:\.[^./]+)?\.m?ts$/;
+const PROJECT_FILE_EXCLUDES = [
+    "**/{build,coverage,dist,node_modules,out-tsc}/**",
+    "**/.gtkx-output-*/**",
+    "**/.git/**",
+];
 
 const sourceLanguage = (path: string): SourceLanguage | undefined => {
-    if (path.endsWith(".d.ts") || path.endsWith(".d.mts")) {
+    if (DECLARATION_FILE_RE.test(path)) {
         return undefined;
     }
 
@@ -44,7 +50,7 @@ const discoverSourceFiles = (dir: string): string[] =>
     sortStringsBy(
         globSync("**/{*,.*}", {
             cwd: dir,
-            exclude: ["**/{build,coverage,dist,node_modules,out-tsc}/**", "**/.gtkx-output-*/**", "**/.git/**"],
+            exclude: PROJECT_FILE_EXCLUDES,
             withFileTypes: true,
         })
             .filter((entry) => entry.isFile())
@@ -192,6 +198,7 @@ export {
     importSourcesIn,
     importsIn,
     parseRuntimeImportsIn,
+    PROJECT_FILE_EXCLUDES,
     projectSourceDirs,
     readSource,
     SOURCE_ID_RE,

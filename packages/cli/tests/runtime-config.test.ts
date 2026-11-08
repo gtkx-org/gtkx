@@ -233,9 +233,6 @@ describe("runtime configuration", () => {
 
         project.write("src/base.ts", replacement);
         expect(start()).toBe("'updated'");
-        expect(declarations()).toContain("alternate.gschema.xml");
-        expect(declarations()).not.toContain("base.gschema.xml");
-        expect(declarations()).toContain("enabled");
         project.write("src/base.ts", `${replacement} export const =`);
         expect(start()).toBe("'updated'");
     });

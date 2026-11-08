@@ -405,7 +405,14 @@ msgstr "Durée d’un tour"
         project.write(
             "workspace/apps/recipes/tsconfig.json",
             JSON.stringify({
-                compilerOptions: { module: "NodeNext", strict: true, skipLibCheck: true, types: [], noEmit: true },
+                compilerOptions: {
+                    module: "NodeNext",
+                    strict: true,
+                    skipLibCheck: true,
+                    allowArbitraryExtensions: true,
+                    types: [],
+                    noEmit: true,
+                },
                 files: ["node_modules/.gtkx/env.d.ts"],
                 include: ["src"],
             }),

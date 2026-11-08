@@ -20,6 +20,7 @@ import { clearI18nTypes, emitI18nTypes } from "../i18n/types.js";
 import { removeAgentRules, upsertAgentRules } from "../internal/agent-rules.js";
 import { discoverSourceFilesIn } from "../internal/source-imports.js";
 import { emitSchemaEnv } from "../settings/schema.js";
+import { warnMissingSchemaTypesOption } from "../settings/schema-types-option.js";
 import { type ReferenceResult, writeReference } from "./reference.js";
 import { type CodegenContext, resolveCodegenContext } from "./store-resolver.js";
 
@@ -80,7 +81,11 @@ const runCodegen = async (options: RunCodegenOptions): Promise<RunCodegenResult>
     const { cwd } = options;
     const { config, configFile, isApplication, translationDomain } = options.resolved;
     await syncI18n(cwd, translationDomain, options.shouldPreserveI18nMetadata);
-    emitSchemaEnv(cwd);
+    const { schemaFiles } = emitSchemaEnv(cwd);
+
+    if (schemaFiles.length > 0) {
+        warnMissingSchemaTypesOption(cwd);
+    }
 
     removeShadowingStores(cwd, config);
 
