@@ -42,7 +42,7 @@ const MirrorWindow = ({
 
 Returning `true` keeps the window until React unmounts it.
 
-A window that should keep its state while hidden, such as one with `hideOnClose`, can stay mounted and pass `visible` instead. Mounted with `visible={false}`, it stays hidden until `visible` becomes `true`.
+A window that should keep its state while hidden, such as one with `hideOnClose`, can stay mounted and pass `visible` instead, setting it to `false` from `onCloseRequest`. Mounted with `visible={false}`, it stays hidden until `visible` becomes `true`.
 
 `AdwApplicationWindow` registers with its nearest application element, normally `AdwApplication`, and throws without one. To associate it with another window, pass `transientFor` explicitly.
 
@@ -106,11 +106,11 @@ The app decides what is open by what it renders. A close button, Escape, a gestu
 | Windows                                                | `onCloseRequest`                                                                                                                  | The window closes, so the user can always close it.     |
 | `visible` on `GtkPopover`, `active` on `GtkMenuButton` | `onClosed`, `onNotifyActive`                                                                                                      | The popover closes.                                     |
 
-The open-state props are `showSidebar` on `AdwOverlaySplitView`, `showContent` on `AdwNavigationSplitView`, `open` on `AdwBottomSheet` and `AdwTabOverview`, and `searchModeEnabled` on `GtkSearchBar`. Like a selection prop, each one is controlled when given; omitting it leaves it to the widget.
+Returning `false` from `onClosePage` lets libadwaita close the tab without the app answering.
+
+The open-state props are `showSidebar` on `AdwOverlaySplitView`, `showContent` on `AdwNavigationSplitView`, `open` on `AdwBottomSheet` and `AdwTabOverview`, and `searchModeEnabled` on `GtkSearchBar`. Like [`selectedIndex` on `GtkListBox`](/v2/guide/components#gtklistbox), each one is controlled when given; omitting it leaves it to the widget.
 
 In development, GTKX warns once per element type when nothing answers, naming the handler to add. It also warns when a window other than the last one, a dialog or a popover closed while the app still renders it open, as when an `onClosed` handler only logs.
-
-Returning `false` from `onClosePage` lets libadwaita close the tab without the app answering.
 
 ## Finding the parent window
 
@@ -137,7 +137,7 @@ const StatusArea = () => {
 };
 ```
 
-Pass `rootElement` from `@gtkx/react` when the object needs React ownership without a native parent. The [async operations example](/v2/guide/async-operations#awaiting-async-operations) uses this for a file dialog.
+Pass `rootElement` from `@gtkx/react` as the target when the object needs React ownership without a native parent. The [async operations example](/v2/guide/async-operations#awaiting-async-operations) uses this for a file dialog.
 
 See the [`createPortal` reference](/v2/reference/@gtkx/react/index/functions/createPortal) for GTKX's arguments, and React's [portal documentation](https://react.dev/reference/react-dom/createPortal) for context and component lifetime.
 
