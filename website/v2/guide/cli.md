@@ -7,7 +7,7 @@ description: "The gtkx commands and their options, with links to the guides that
 
 `@gtkx/cli` installs the `gtkx` command. Scaffolded projects call it from their package scripts, so `npm run dev` runs `gtkx dev`. Outside a script, run it from the project with `npx gtkx <command>`.
 
-`gtkx --help` lists the commands, and `gtkx <command> --help` lists a command's options. Each section below links to the guide page that explains the workflow. In the tables, an option shown with a placeholder such as `<dir>` takes a value, and one without is a boolean flag.
+`gtkx --help` lists the commands, `gtkx <command> --help` lists a command's options, and `gtkx --version` prints the installed version. Each section below links to the guide page that explains the workflow. In the tables, an option shown with a placeholder such as `<dir>` takes a value, and one without is a boolean flag.
 
 A command stops with an error on an option it does not define. Boolean options also take a `--no-` form, as in `--no-read-only`. Only `gtkx dev` and `gtkx storybook` pass arguments to the application; put them after `--`, as described in [Command-line apps](/v2/guide/application-lifecycle#command-line-apps).
 
