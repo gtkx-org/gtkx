@@ -167,6 +167,56 @@ const referenceSidebar = (version: DocumentationVersion): DefaultTheme.SidebarIt
 
 const referenceSidebars = new Map(versions.map((version) => [version.id, referenceSidebar(version)]));
 
+const parsePackageGroups = (source: string): [string, string[]][] => {
+    const parsed: unknown = JSON.parse(source);
+
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+        throw new TypeError("The generated reference package groups must be an object.");
+    }
+
+    return Object.entries(parsed).map(([title, names]) => {
+        if (!Array.isArray(names) || !names.every((name) => typeof name === "string")) {
+            throw new TypeError(`The reference package group ${title} must list package names.`);
+        }
+
+        return [title, names];
+    });
+};
+
+const referencePackageGroups = (version: DocumentationVersion): [string, string[]][] => {
+    const manifest = join(versionDirectory(version), REFERENCE_ROOT, "typedoc-package-groups.json");
+
+    return existsSync(manifest) ? parsePackageGroups(readFileSync(manifest, "utf8")) : [];
+};
+
+const packageGroups = new Map(versions.map((version) => [version.id, referencePackageGroups(version)]));
+
+const groupReferencePackages = (
+    version: DocumentationVersion,
+    items: DefaultTheme.SidebarItem[],
+): DefaultTheme.SidebarItem[] => {
+    const groups = packageGroups.get(version.id) ?? [];
+
+    if (groups.length === 0) {
+        return items;
+    }
+
+    const byName = new Map(items.map((item) => [item.text, item]));
+
+    return groups.map(([text, names]) => ({
+        text,
+        items: names.map((name) => {
+            const item = byName.get(name);
+
+            if (!item) {
+                throw new Error(`The reference package group ${text} lists ${name}, which has no reference sidebar entry.`);
+            }
+
+            return item;
+        }),
+    }));
+};
+
 const versionReferenceSidebar = (version: DocumentationVersion): DefaultTheme.SidebarItem[] =>
     referenceSidebars.get(version.id) ?? [];
 
@@ -190,13 +240,16 @@ const packageSidebar = (
     current: DefaultTheme.SidebarItem,
 ): DefaultTheme.SidebarItem[] => [
     referenceOverview(version),
-    ...versionReferenceSidebar(version).map((item) => (item === current ? item : packageLink(item))),
+    ...groupReferencePackages(
+        version,
+        versionReferenceSidebar(version).map((item) => (item === current ? item : packageLink(item))),
+    ),
 ];
 
 const referenceSidebarEntries = (version: DocumentationVersion): [string, DefaultTheme.SidebarItem[]][] => [
     [
         `${version.prefix}${referencePath}/`,
-        [referenceOverview(version), ...versionReferenceSidebar(version).map(packageLink)],
+        [referenceOverview(version), ...groupReferencePackages(version, versionReferenceSidebar(version).map(packageLink))],
     ],
     ...versionReferenceSidebar(version).flatMap((item): [string, DefaultTheme.SidebarItem[]][] =>
         item.link && isBrowsablePackage(item) ? [[item.link, packageSidebar(version, item)]] : [],
