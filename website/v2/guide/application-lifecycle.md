@@ -1,6 +1,6 @@
 ---
 title: "Application Lifecycle"
-description: "Start the application from the entry point, know when it ends, end pending work, handle termination signals and the command line."
+description: "Start the application from the entry point, know when it ends, end pending work, handle termination signals and the command line, and run an application without React."
 ---
 
 # Application Lifecycle
@@ -166,11 +166,81 @@ export const App = () => (
 
 A handler that answers after asynchronous work calls `setExitStatus` and `done()` when that work completes.
 
+The `mainOptions` prop declares the options the application accepts. GLib parses them in the launching process and lists them in `--help`. The `onHandleLocalOptions` handler reads them there, before the launch reaches the primary instance, and returns `-1` to continue the launch or an exit status to end it. With `HANDLES_COMMAND_LINE`, the `command-line` handler reads them from `commandLine.getOptionsDict()`. The list can't change once the application has started, and a render with a different list throws, so define it outside the component:
+
+```tsx [src/app.tsx]
+import * as GLib from "@gtkx/gi/glib";
+import { AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
+import { quit } from "@gtkx/react";
+
+const mainOptions = [
+    {
+        longName: "list",
+        shortName: "l",
+        description: "Print the task list and exit",
+    },
+];
+
+const handleLocalOptions = (options: GLib.VariantDict): number => {
+    if (!options.contains("list")) return -1;
+    console.log("No tasks");
+    return 0;
+};
+
+export const App = () => (
+    <AdwApplication
+        mainOptions={mainOptions}
+        onHandleLocalOptions={handleLocalOptions}
+    >
+        <AdwApplicationWindow title="Tasks" onCloseRequest={quit} />
+    </AdwApplication>
+);
+```
+
+An option that takes a value sets `arg`, such as `GLib.OptionArg.STRING`, and names the value in `--help` with `argDescription`. Read it with `options.lookupValue("name", null)?.getString()[0]`. GLib's [`add_main_option_entries`](https://docs.gtk.org/gio/method.Application.add_main_option_entries.html) documents the option fields and when each handler sees them.
+
 During development, `gtkx dev` passes the arguments after `--` to the application, so `gtkx dev -- notes.txt` starts an app with `HANDLES_OPEN` on that file. pnpm and Yarn 2 or newer pass `--` on to the `dev` script, as in `pnpm dev -- notes.txt`; npm removes the first `--`, so write `npm run dev -- -- notes.txt`. An option before `--` must be one `gtkx dev` defines: `gtkx dev --verbose` stops with an error naming `--verbose` rather than starting the app, so application options always go after `--`.
 
 A GTKX app needs a display even for `--help` and other options that exit before a window opens. The generated `@gtkx/gi/gtk` and `@gtkx/gi/adw` modules initialize GTK when they are imported, before the application parses its command line, so without a Wayland or X11 display the process prints `Failed to open display` and exits with status 1. Run command-line checks of a packaged app, such as a smoke test in a container or CI, inside a desktop session or a virtual display such as `xvfb-run`.
 
 GTKX sets the program name to the last segment of the production application ID before the entry module runs, as GJS does before an app's code. `--help` prints it as the usage line, and GTK's X11 backend uses it as the window class, even when a library such as GStreamer initializes while the app's modules load. A development ID such as `$development: { applicationId: "com.example.Tasks.Devel" }` keeps the name `Tasks` under `gtkx dev`. To choose another name, call `GLib.setPrgname()` before the application starts.
+
+## Running without React
+
+An app that uses the generated bindings without React constructs its application and runs it with `runAsync()`, as a GJS app calls `run()`:
+
+```ts [src/index.ts]
+import * as Gtk from "@gtkx/gi/gtk";
+import process from "node:process";
+
+const application = new Gtk.Application({
+    applicationId: "com.example.Notes",
+});
+
+application.on("activate", () => {
+    const window =
+        application.getActiveWindow() ??
+        new Gtk.ApplicationWindow({ application, title: "Notes" });
+    window.present();
+});
+
+process.exitCode = await application.runAsync([
+    "notes",
+    ...process.argv.slice(2),
+]);
+```
+
+`runAsync()` takes the command line, starting with the program name, or `null` for none. It parses GLib's options, registers the application, and activates it or hands the launch to the running instance. Node keeps running its event loop the whole time, so timers, `fetch` and `await` work as usual. The returned promise resolves with the exit status once the run has ended, and rejects if startup or shutdown throws.
+
+A primary instance runs while it has application windows or JavaScript `hold()` calls without a matching `release()`. Holds that native code takes don't count:
+
+- With neither, the run ends right after the current JavaScript turn. Create the window or call `hold()` in the `activate` handler itself, not after an `await`.
+- After the last window closes or the last `release()`, the run waits `inactivityTimeout` milliseconds (none by default), then ends. An application with `Gio.ApplicationFlags.IS_SERVICE` also waits up to ten seconds for its first use.
+- `application.quit()` ends the run even while windows or holds remain. It doesn't release the holds: each `hold()` still needs its `release()`.
+
+A launch that ends in the launching process, such as `--help`, and a launch handed to a running instance resolve at once. The application stays the process's default application until you call `application.quit()`.
+
+A second `runAsync()` while a run is active rejects. GLib shuts an application down fully only once, so create a new application for each complete run.
 
 ## Keeping a helper process alive
 

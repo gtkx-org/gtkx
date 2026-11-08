@@ -123,11 +123,7 @@ Replace `createApplication(ApplicationClass, props)` and `ApplicationClass.creat
 
 The `ApplicationInstance`, `ApplicationRegistrationState`, `ApplicationClass`, and `ApplicationConstructor` helper types are removed. Use generated application classes and their constructor props directly. Use `Gio.Application` in place of the removed `CommandLineApplication` interface. Runtime shutdown remains `quit()` from `@gtkx/runtime`.
 
-Replace `runApplication(application, argv)` with `application.runAsync(argv): Promise<number>` and `quitApplication(application)` with `application.quit()`. Pass an array beginning with the program name, or `null` or `[]` for no arguments; omitting the argument is an error. `RunApplicationResult` is removed. Command-line handling starts immediately while Node keeps control of the event loop. Observe the promise's exit status and handle startup or shutdown rejections.
-
-An active run finishes automatically when it has no application windows or outstanding JavaScript `hold()` calls. Balance each `hold()` with `release()` to keep background work alive; the final release observes `inactivityTimeout`. A service starts with a ten-second grace period before its first use. Call `application.quit()` to force shutdown even while holds or windows remain. The promise resolves after GTKX completes shutdown and releases the process-wide default. Rejected command lines and remote instances resolve immediately; call `application.quit()` afterward to release their retained application state.
-
-GTKX tracks JavaScript holds and application windows; it cannot observe arbitrary holds acquired directly by native C code. Explicit holds survive forced shutdown and must still be balanced with `release()`; an unmatched release throws `RangeError`. Full native shutdown can run only once per instance; restarted applications and those already quit by native code may retain registration until finalization. Create another application when another complete lifecycle is needed.
+Replace `runApplication(application, argv)` with `application.runAsync(argv): Promise<number>` and `quitApplication(application)` with `application.quit()`. Pass an array beginning with the program name, or `null` or `[]` for no arguments; omitting the argument is an error. `RunApplicationResult` is removed. [Running without React](/v2/guide/application-lifecycle#running-without-react) describes when a run ends, how holds keep it running, and what `quit()` does.
 
 ## Update Variant values
 
