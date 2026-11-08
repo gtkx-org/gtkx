@@ -13,11 +13,9 @@ GTKX brings that workflow to native GTK and Adwaita apps. You describe the inter
 
 GTKX runs your app on Node.js. Node owns the process, and GTKX drives GLib's main loop, which GTK uses for input, drawing, and timers, from Node's event loop on the main thread. Your app is an ordinary Node program, so it can use Node's standard library and npm packages, and GTKX's development and test tooling builds on Vite and Vitest. GLib and Gio bindings cover platform APIs such as settings, actions, and notifications.
 
-Check a package's runtime assumptions before adding it. A browser package may require `window` or `document`; a native Node addon must match the deployment architecture and runtime. Keep expensive computation off the UI thread so the window remains responsive.
-
 ## Platform scope
 
-GTKX targets one platform, GTK and Adwaita on Linux, rather than abstracting over several. Your app uses the native libraries' own APIs, not a cross-platform subset of them. GTKX does not provide a Windows, macOS, mobile, or browser renderer.
+GTKX targets one platform, GTK and Adwaita on Linux, rather than abstracting over several. Your app uses the native libraries' own APIs, not a cross-platform subset of them. GTKX does not provide a Windows, macOS, mobile, or browser renderer. [Comparisons](/v2/guide/comparisons) describes how GTKX differs from GJS, node-gtk, React Native, and gtk4-rs and Relm4.
 
 GTKX generates TypeScript bindings from the native libraries installed for your project. Those bindings describe the available classes, methods, and JSX props. Shipping an app still requires compatible native libraries; see [Deploying](/v2/guide/deploying).
 
