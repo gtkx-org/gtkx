@@ -11,12 +11,11 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/create-gtkx"><img src="https://img.shields.io/npm/v/create-gtkx?color=cb3837&logo=npm&label=create-gtkx" alt="npm version" /></a>
+  <a href="https://www.npmjs.com/package/create-gtkx"><img src="https://img.shields.io/npm/v/create-gtkx/beta?color=cb3837&logo=npm&label=create-gtkx" alt="npm version" /></a>
   <a href="https://www.npmjs.com/package/create-gtkx"><img src="https://img.shields.io/npm/dm/create-gtkx?color=cb3837&logo=npm&label=downloads" alt="npm downloads" /></a>
-  <img src="https://img.shields.io/badge/node-%E2%89%A526.7-339933?logo=node.js&logoColor=white" alt="Node >= 26.7" />
+  <img src="https://img.shields.io/node/v/create-gtkx/beta?color=339933&logo=node.js&logoColor=white&label=node" alt="Node.js version" />
   <a href="https://github.com/gtkx-org/gtkx/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MPL--2.0-blue.svg" alt="License: MPL-2.0" /></a>
   <a href="https://github.com/gtkx-org/gtkx/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/gtkx-org/gtkx/ci.yml?branch=main&logo=github&label=CI" alt="CI status" /></a>
-  <img src="https://img.shields.io/badge/TypeScript-strict-3178c6?logo=typescript&logoColor=white" alt="TypeScript" />
 </p>
 
 <p align="center">
@@ -27,7 +26,7 @@
   <a href="https://opencollective.com/gtkx">Sponsor</a>
 </p>
 
-GTKX brings the workflow of modern web development to native GTK and Adwaita apps: declarative UI with React, a dev server with Fast Refresh, native UI tests in Vitest, and Flatpak, Debian, RPM, and AppImage packaging. [Why GTKX](https://gtkx.dev/v2/guide/why-gtkx) explains the approach.
+GTKX brings the workflow of modern web development to native GTK and Adwaita apps: declarative UI with React, a dev server with Fast Refresh, native UI tests in Vitest, and Flatpak, Debian, RPM, and AppImage packaging. [Why GTKX](https://gtkx.dev/v2/guide/why-gtkx) explains the approach, and [Comparisons](https://gtkx.dev/v2/guide/comparisons) sets it against GJS, node-gtk, React Native, and gtk4-rs and Relm4.
 
 ## Start an app
 
@@ -85,7 +84,38 @@ The CLI generates `@gtkx/jsx` elements and `@gtkx/gi` bindings from your configu
 - [Tutorial](https://gtkx.dev/v2/tutorial/): build the Notes app, test it, and package it for distribution.
 - [Guides](https://gtkx.dev/v2/guide/why-gtkx): forms, navigation, animation, styling, testing, and deployment.
 - [API reference](https://gtkx.dev/v2/reference/): GTKX package exports. Widget props are documented in the generated `.gtkx/reference/` in your app.
-- [Examples](https://github.com/gtkx-org/gtkx/tree/main/examples): a counter, browser, widget showcase, animations, navigation, and component stories.
+- [Examples](https://github.com/gtkx-org/gtkx/tree/main/examples): a counter, a WebKitGTK browser, ports of the GTK and libadwaita demos, spring animations, navigation, and Storybook stories.
+
+## Packages
+
+Apps created with `create-gtkx` already depend on the packages they need to run and test. Add libraries as your app needs them.
+
+| Package                                   | Description                                                           |
+| ----------------------------------------- | --------------------------------------------------------------------- |
+| **Apps**                                  |                                                                       |
+| [`create-gtkx`](packages/create-gtkx)     | Create native GTK and Adwaita apps with React and GTKX.               |
+| [`@gtkx/react`](packages/react)           | React renderer for native GTK and Adwaita apps.                       |
+| [`@gtkx/cli`](packages/cli)               | Development and packaging commands for GTK apps built with GTKX.      |
+| [`@gtkx/config`](packages/config)         | Typed configuration for GTK apps built with GTKX.                     |
+| **Libraries**                             |                                                                       |
+| [`@gtkx/components`](packages/components) | GTK collection views, selection controls, and toasts for React.       |
+| [`@gtkx/css`](packages/css)               | CSS-in-JS styling for GTK widgets in GTKX.                            |
+| [`@gtkx/navigation`](packages/navigation) | React Navigation navigators for GTK and Adwaita apps.                 |
+| [`@gtkx/forms`](packages/forms)           | React Hook Form controls for GTK and Adwaita apps.                    |
+| [`@gtkx/animated`](packages/animated)     | React Spring animations for GTK widgets in GTKX.                      |
+| [`@gtkx/i18n`](packages/i18n)             | Gettext localization for GTK apps through react-i18next.              |
+| [`@gtkx/cairo`](packages/cairo)           | Cairo drawing for GTK apps built with GTKX.                           |
+| [`@gtkx/gl`](packages/gl)                 | OpenGL 4.6 core bindings for GTK GL areas in GTKX.                    |
+| **Testing and tools**                     |                                                                       |
+| [`@gtkx/testing`](packages/testing)       | Test GTKX apps against real GTK widgets.                              |
+| [`@gtkx/vitest`](packages/vitest)         | Vitest plugin that runs GTK tests in isolated headless displays.      |
+| [`@gtkx/storybook`](packages/storybook)   | Storybook stories for native GTK components built with GTKX.          |
+| [`@gtkx/mcp`](packages/mcp)               | MCP tools for GTKX docs and running GTK apps.                         |
+| **Bindings and internals**                |                                                                       |
+| [`@gtkx/codegen`](packages/codegen)       | Generate TypeScript and JSX bindings for GTK and GObject libraries.   |
+| [`@gtkx/runtime`](packages/runtime)       | Runtime for generated GTK and GObject Introspection bindings in GTKX. |
+| [`@gtkx/native`](packages/native)         | Native Node.js addon for GTKX calls into GTK and other C libraries.   |
+| [`@gtkx/utils`](packages/utils)           | Shared Node.js utilities for GTKX, the React toolchain for GTK.       |
 
 ## Contribute
 
@@ -94,6 +124,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for setup and checks, the [Code of Conduc
 ## Support GTKX
 
 [Contribute through Open Collective](https://opencollective.com/gtkx) to help cover recurring costs. Our [funding plan](FUNDING.md) explains expenses, fees, and the operating reserve.
+
+## Credits
+
+[Why GTKX](https://gtkx.dev/v2/guide/why-gtkx#credits) credits the projects GTKX builds on.
 
 ## License
 
