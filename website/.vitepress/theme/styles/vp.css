@@ -204,6 +204,10 @@ html.dark .vp-doc figure.result .result-dark {
     display: block;
 }
 
+.vp-doc table.option-table td:first-child code {
+    white-space: nowrap;
+}
+
 @media (max-width: 639px) {
     .vp-doc figure.result {
         margin: 24px -24px;
