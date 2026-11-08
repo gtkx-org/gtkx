@@ -202,6 +202,7 @@ const navigation = (version: DocumentationVersion): DefaultTheme.NavItem[] => [
             { text: "Blog", link: "/blog/" },
             { text: "Releases", link: "https://github.com/gtkx-org/gtkx/releases" },
             { text: "Discussions", link: "https://github.com/gtkx-org/gtkx/discussions" },
+            { text: "Sponsor", link: "https://opencollective.com/gtkx" },
             { text: "Documentation Versions", link: "/versions" },
         ],
     },
@@ -573,7 +574,16 @@ export default defineConfig({
     themeConfig: {
         siteTitle: title,
         logo: "/gtkx-mark.svg",
-        search: { provider: "local" },
+        search: {
+            provider: "local",
+            options: {
+                miniSearch: {
+                    searchOptions: {
+                        boostDocument: (id: string) => (/^\/(blog|contributing)\//.test(id) ? 0.5 : 1),
+                    },
+                },
+            },
+        },
         nav: navigation(rootVersion),
         sidebar,
         outline: { level: [2, 3] },
@@ -582,6 +592,7 @@ export default defineConfig({
             pattern: "https://github.com/gtkx-org/gtkx/edit/main/website/:path",
             text: "Edit this page on GitHub",
         },
+        lastUpdated: { formatOptions: { dateStyle: "medium" } },
         footer: {
             message: 'Released under the MPL-2.0 License. <a href="/versions">Documentation versions</a>.',
             copyright: "Copyright © 2026 GTKX contributors",

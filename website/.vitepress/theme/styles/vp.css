@@ -185,3 +185,7 @@ html.dark .vp-doc figure.result .result-dark {
         border-radius: 0;
     }
 }
+
+.VPLastUpdated time {
+    margin-inline-start: 0.25em;
+}
