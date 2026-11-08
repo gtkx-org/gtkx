@@ -199,6 +199,8 @@ await user.type(entry, "Replacement");
 await user.click(saveButton);
 ```
 
+### Keyboard
+
 `type` inserts text into an editable widget one character at a time, each as its own edit, and presses the keys named in braces, as in Testing Library's [`keyboard`](https://testing-library.com/docs/user-event/keyboard) syntax, so `type(entry, "Ada{Enter}")` types "Ada" and then activates the entry. Handlers that react to single typed characters, such as GtkSourceView's interactive completion, see each one. Type a literal `{` as <span v-pre>`{{`</span>.
 
 `keyboard(widget, keys)` sends the keys to the focused widget inside `widget`, or to `widget` itself. A widget that can take focus, or passes it to a child as a `GtkMenuButton` does to its button, is focused first unless the focus is already inside it, as a user would before typing. `{Space}` on a switch therefore toggles that switch, whatever had focus before. Keys go through GTK's key bindings and key controllers, including the ones GTK's own widgets add, so `{Space}` or `{Enter}` selects a swatch in a `GtkColorChooserWidget`.
@@ -215,13 +217,21 @@ Some key handlers read the real key event, which `keyboard` cannot create, so th
 
 Key controllers the app adds always receive the keys. In the same way, a click reaches GTK's own pointer handling of a widget only where `@gtkx/testing` knows its outcome, as for buttons, rows and tabs. A click on a color swatch or a completion proposal does nothing, so press `{Space}` or `{Enter}` on a swatch, and choose a proposal with the arrow keys and `{Enter}`. As in Testing Library, input that nothing handles is not an error.
 
+### Pointer buttons
+
 `pointer` takes Testing Library's [button tokens](https://testing-library.com/docs/user-event/pointer). `[MouseLeft]` clicks the widget as `click` does, and `[MouseRight]` and `[MouseMiddle]` press and release the other buttons for the click gestures on the widget and its ancestors that listen for them, so `pointer(cell, "[MouseRight]")` opens a context menu that a `GtkGestureClick` with `button={Gdk.BUTTON_SECONDARY}` shows. Add `>` to only press a button, as in `[MouseRight>]`, and a leading `/` to release it. A gesture's handlers read the pressed button with `getCurrentButton()` and the held modifiers with `getCurrentEventState()`. No real pointer event exists, so `getCurrentEvent()` returns `null`: port upstream code that reads the button from the event, such as `event.get_button()`, to `getCurrentButton()`.
 
+### Selection
+
 `selectOptions` and `deselectOptions` take positions rather than option values or labels, because GTK drop-downs, lists and grids have no option values: `selectOptions(dropDown, 2)` selects the third item, and an array selects several positions in a multiple-selection list. A position past the last item, or an option label, rejects with the range of valid positions and leaves the selection unchanged.
+
+### Sliders and drag and drop
 
 Use `slide(range, value)` for a slider. `drag` drives application-defined drag gestures and cannot drive a range's native slider. The [interaction reference](/v2/reference/@gtkx/testing/) covers the available helpers.
 
 Use `dragAndDrop(source, target)` to transfer a drag source's typed content to a `GtkDropTarget`. Use `drop(target, content)` when testing how a target handles a supplied value. Gesture helpers such as these, `drag` and `longPress` use the nearest controller from the given widget up through its ancestors, as GTK propagates pointer events, so you can pass the visible label of a cell whose container carries the controller.
+
+### Signals and waiting
 
 `fireEvent(object, signalName, ...args)` emits a GObject signal directly. Await its promise so the resulting React updates finish before asserting. Use it when testing a signal handler or a tree without a visible window. Wrap state changes made outside these helpers in `act`.
 

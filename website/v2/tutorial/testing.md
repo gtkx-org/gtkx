@@ -107,7 +107,7 @@ await act(() => {
 
 ## Type into the editor
 
-"completes a link to another note after [[" tests the completion provider from [Complete Note Links](/v2/tutorial/note-links). `userEvent.type(editor, "[[read")` inserts one character per edit, as typing does, so GtkSourceView sees the second `[` and opens its popup. `read` narrows the popup to Reading list. The popup belongs to the editor, so `within(editor)` waits for the proposal there and not for the Reading list row in the sidebar. `selectOnShow` has selected it, and while the popup shows, the keys that `keyboard` sends go to its list (see [Interacting and waiting](/v2/guide/testing#interacting-and-waiting)), so `{Enter}` inserts the link as it does for a user. The test then finds the link in the editor and in the file.
+"completes a link to another note after [[" tests the completion provider from [Complete Note Links](/v2/tutorial/note-links). `userEvent.type(editor, "[[read")` inserts one character per edit, as typing does, so GtkSourceView sees the second `[` and opens its popup. `read` narrows the popup to Reading list. The popup belongs to the editor, so `within(editor)` waits for the proposal there and not for the Reading list row in the sidebar. `selectOnShow` has selected it, and while the popup shows, the keys that `keyboard` sends go to its list (see [Keyboard](/v2/guide/testing#keyboard)), so `{Enter}` inserts the link as it does for a user. The test then finds the link in the editor and in the file.
 
 ## Test the stories
 
