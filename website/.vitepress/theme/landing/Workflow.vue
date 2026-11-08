@@ -5,6 +5,13 @@ import Icon from "../components/Icon.vue";
 import { CREATE_COMMAND, docsLink } from "./content";
 
 const SCAFFOLD = `${CREATE_COMMAND}\ncd my-app\nnpm run dev`;
+
+const PACKAGES = [
+    { file: ".flatpak", use: "A sandboxed application with a GNOME runtime" },
+    { file: ".deb", use: "Debian, Ubuntu, and derivatives" },
+    { file: ".rpm", use: "Fedora and other RPM distributions" },
+    { file: ".AppImage", use: "A downloadable executable file" },
+];
 </script>
 
 <template>
@@ -71,7 +78,7 @@ const SCAFFOLD = `${CREATE_COMMAND}\ncd my-app\nnpm run dev`;
                 </div>
             </li>
 
-            <li class="step">
+            <li class="step step--result">
                 <span class="step__num" aria-hidden="true">03</span>
                 <div class="step__text">
                     <p class="step__verb">Test</p>
@@ -87,9 +94,16 @@ const SCAFFOLD = `${CREATE_COMMAND}\ncd my-app\nnpm run dev`;
                 <div class="step__visual">
                     <CodeBlock title="tests/settings-panel.test.tsx" :snippet="snippets.test" />
                 </div>
+                <figure class="step__result">
+                    <figcaption>npm test</figcaption>
+                    <pre><span class="step__ok">✓</span> tests/settings-panel.test.tsx (1 test) 30ms
+
+ Test Files  <span class="step__ok">1 passed</span> (1)
+      Tests  <span class="step__ok">1 passed</span> (1)</pre>
+                </figure>
             </li>
 
-            <li class="step">
+            <li class="step step--result">
                 <span class="step__num" aria-hidden="true">04</span>
                 <div class="step__text">
                     <p class="step__verb">Ship</p>
@@ -105,6 +119,19 @@ const SCAFFOLD = `${CREATE_COMMAND}\ncd my-app\nnpm run dev`;
                 <div class="step__visual">
                     <CodeBlock title="gtkx.config.ts" :snippet="snippets.deploy" />
                 </div>
+                <figure class="step__result">
+                    <figcaption>npm run deploy</figcaption>
+                    <table>
+                        <tbody>
+                            <tr v-for="p in PACKAGES" :key="p.file">
+                                <td>
+                                    <code>{{ p.file }}</code>
+                                </td>
+                                <td>{{ p.use }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </figure>
             </li>
         </ol>
     </section>
@@ -144,6 +171,7 @@ const SCAFFOLD = `${CREATE_COMMAND}\ncd my-app\nnpm run dev`;
   font-weight: 900;
   font-size: 2.6rem;
   line-height: 1;
+  white-space: nowrap;
   background: var(--gradient-text);
   -webkit-background-clip: text;
   background-clip: text;
@@ -228,12 +256,74 @@ const SCAFFOLD = `${CREATE_COMMAND}\ncd my-app\nnpm run dev`;
 .step__visual {
   min-width: 0;
 }
+.step--result {
+  grid-template-rows: auto 1fr;
+}
+.step--result .step__num {
+  grid-row: 1 / span 2;
+}
+.step--result .step__visual {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+}
+.step__result {
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 0;
+  margin: 0;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-alt);
+}
+.step__result figcaption {
+  margin: 0 0 0.4rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-3);
+}
+.step__result pre {
+  margin: 0;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+.step__ok {
+  color: var(--callout-tip);
+}
+.step__result table {
+  border-collapse: collapse;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--text-2);
+}
+.step__result td {
+  padding: 0.2rem 0.8rem 0.2rem 0;
+  border: 0;
+  vertical-align: top;
+}
+.step__result td code {
+  font-family: var(--font-mono);
+  color: var(--text-1);
+  white-space: nowrap;
+}
 @media (max-width: 960px) {
   .step {
     grid-template-columns: 3.2rem minmax(0, 1fr);
   }
-  .step__visual {
+  .step__visual,
+  .step--result .step__visual,
+  .step__result {
     grid-column: 2;
+    grid-row: auto;
+  }
+  .step--result {
+    grid-template-rows: none;
+  }
+  .step--result .step__num {
+    grid-row: auto;
   }
 }
 @media (max-width: 560px) {
@@ -241,8 +331,21 @@ const SCAFFOLD = `${CREATE_COMMAND}\ncd my-app\nnpm run dev`;
     grid-template-columns: minmax(0, 1fr);
     gap: 0.8rem;
   }
-  .step__visual {
+  .step__visual,
+  .step--result .step__visual,
+  .step__result {
     grid-column: auto;
+  }
+  .step__result pre {
+    font-size: 0.7rem;
+  }
+  .step__result td {
+    display: block;
+    padding: 0;
+  }
+  .step__result tr {
+    display: block;
+    margin-bottom: 0.4rem;
   }
   .step__num {
     font-size: 2rem;

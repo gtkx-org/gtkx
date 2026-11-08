@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from "vue";
 import Icon from "../components/Icon.vue";
 import { docsLink } from "./content";
 
@@ -6,34 +7,84 @@ const shots = [
     {
         name: "notes-editor",
         chapter: "tutorial/the-note-editor",
-        caption: "Edit a Note",
+        tab: "Edit a Note",
+        caption: "GtkSourceView highlights headings, emphasis, links, and front matter as you type.",
         alt: "Notes editing a Markdown note in GtkSourceView, with highlighted headings, emphasis, links, and front matter.",
     },
     {
         name: "notes-i18n-fr",
         chapter: "tutorial/internationalization",
-        caption: "Translate the App",
+        tab: "Translate the App",
+        caption: "The interface and the rendered note in French, in the dark style.",
         alt: "Notes translated into French in the dark style, showing a French note rendered as Markdown.",
     },
 ];
+
+const selected = ref(0);
+const tabs = ref<HTMLButtonElement[]>([]);
+
+const select = (index: number): void => {
+    selected.value = (index + shots.length) % shots.length;
+    tabs.value[selected.value]?.focus();
+};
+
+const onKeydown = (event: KeyboardEvent): void => {
+    const moves: Record<string, number> = {
+        ArrowRight: selected.value + 1,
+        ArrowLeft: selected.value - 1,
+        Home: 0,
+        End: shots.length - 1,
+    };
+    const next = moves[event.key];
+    if (next === undefined) return;
+    event.preventDefault();
+    select(next);
+};
 </script>
 
 <template>
     <section id="tutorial" class="show">
         <div class="show__head section-head">
+            <p class="overline">The tutorial</p>
             <h2 class="section-title">Build a notes app</h2>
             <p class="section-sub">
                 Build Notes one feature at a time: Markdown files, a live preview, search in a worker, and link
                 completion. Then test it, translate it, and create installable packages.
             </p>
         </div>
-        <div class="show__strip">
-            <figure v-for="s in shots" :key="s.name" class="show__shot">
+        <div class="show__viewer">
+            <div class="show__tabs" role="tablist" aria-label="Tutorial chapters" @keydown="onKeydown">
+                <button
+                    v-for="(s, i) in shots"
+                    :id="`show-tab-${s.name}`"
+                    :key="s.name"
+                    ref="tabs"
+                    type="button"
+                    role="tab"
+                    class="show__tab"
+                    :aria-selected="i === selected"
+                    :aria-controls="`show-panel-${s.name}`"
+                    :tabindex="i === selected ? 0 : -1"
+                    @click="selected = i"
+                >
+                    {{ s.tab }}
+                </button>
+            </div>
+            <figure
+                v-for="(s, i) in shots"
+                v-show="i === selected"
+                :id="`show-panel-${s.name}`"
+                :key="s.name"
+                class="show__pane"
+                role="tabpanel"
+                :aria-labelledby="`show-tab-${s.name}`"
+            >
                 <a class="show__frame" :href="docsLink(s.chapter)">
                     <img :src="`/${s.name}.png`" width="960" height="640" loading="lazy" :alt="s.alt" />
                 </a>
                 <figcaption>
-                    <a :href="docsLink(s.chapter)">{{ s.caption }}</a>
+                    {{ s.caption }}
+                    <a :href="docsLink(s.chapter)">Read the chapter <Icon name="arrow" :size="14" /></a>
                 </figcaption>
             </figure>
         </div>
@@ -52,16 +103,45 @@ const shots = [
 .show__head {
   margin-bottom: clamp(1.8rem, 4vw, 2.8rem);
 }
-.show__strip {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1.2rem;
+.show__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem;
+  margin-bottom: 1.2rem;
 }
-.show__shot {
+.show__tab {
+  padding: 0.45rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text-2);
+  cursor: pointer;
+  transition: var(--transition-colors);
+}
+.show__tab:hover {
+  color: var(--text-1);
+  border-color: var(--border-strong);
+}
+.show__tab[aria-selected="true"] {
+  background: var(--brand-soft);
+  border-color: var(--brand);
+  color: var(--text-brand);
+}
+.show__tab:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+.show__pane {
   margin: 0;
 }
 .show__frame {
   display: block;
+  max-width: 962px;
+  margin: 0 auto;
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
@@ -76,12 +156,14 @@ const shots = [
   width: 100%;
   height: auto;
 }
-.show__shot figcaption {
-  margin-top: 0.7rem;
+.show__pane figcaption {
+  margin: 0.9rem 0 0;
+  text-align: center;
   font-family: var(--font-body);
   font-size: var(--text-sm);
+  color: var(--text-2);
 }
-.show__shot figcaption a,
+.show__pane figcaption a,
 .show__more a {
   display: inline-flex;
   align-items: center;
@@ -91,7 +173,10 @@ const shots = [
   text-decoration: none;
   transition: var(--transition-colors);
 }
-.show__shot figcaption a:hover,
+.show__pane figcaption a {
+  gap: 0.3rem;
+}
+.show__pane figcaption a:hover,
 .show__more a:hover {
   color: var(--brand-hover);
 }
@@ -101,23 +186,8 @@ const shots = [
   font-family: var(--font-body);
 }
 @media (max-width: 600px) {
-  .show__strip {
-    display: flex;
-    gap: 0.75rem;
-    margin: 0 calc(-1 * clamp(1rem, 4vw, 2.5rem));
-    padding: 0.25rem clamp(1rem, 4vw, 2.5rem) 0.75rem;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    scroll-padding-inline: clamp(1rem, 4vw, 2.5rem);
-    scrollbar-width: none;
-  }
-  .show__shot {
-    flex: 0 0 86%;
-    min-width: 0;
-    scroll-snap-align: start;
-  }
   .show__frame {
-    height: 250px;
+    height: 280px;
   }
   .show__frame img {
     width: 960px;
