@@ -181,12 +181,90 @@ html.dark .vp-doc figure.result .result-dark {
     display: block;
 }
 
+.vp-doc figure.result .result-full {
+    position: relative;
+    max-width: 100%;
+}
+
+.vp-doc figure.result .result-full img {
+    display: block;
+}
+
 @media (max-width: 639px) {
     .vp-doc figure.result {
         margin: 24px -24px;
         border-right: 0;
         border-left: 0;
         border-radius: 0;
+    }
+
+    .vp-doc figure.result .result-full::after {
+        content: "Full size";
+        position: absolute;
+        right: 8px;
+        bottom: 8px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: rgba(21, 21, 24, 0.78);
+        color: #fff;
+        font-size: 12px;
+        font-weight: 500;
+        line-height: 1.5;
+    }
+
+    .vp-doc table.option-table {
+        display: block;
+        margin: 16px 0;
+        border-top: 1px solid var(--vp-c-divider);
+    }
+
+    .vp-doc table.option-table thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+
+    .vp-doc table.option-table tbody,
+    .vp-doc table.option-table tr {
+        display: block;
+    }
+
+    .vp-doc table.option-table tr {
+        padding: 12px 0;
+        border: 0;
+        border-bottom: 1px solid var(--vp-c-divider);
+        background: none;
+    }
+
+    .vp-doc table.option-table td {
+        display: inline;
+        padding: 0;
+        border: 0;
+    }
+
+    .vp-doc table.option-table code {
+        white-space: nowrap;
+    }
+
+    .vp-doc table.option-table td:not(:first-child, :last-child) {
+        margin-left: 10px;
+        font-size: 13px;
+        color: var(--vp-c-text-2);
+    }
+
+    .vp-doc table.option-table td:not(:first-child, :last-child)::before,
+    .vp-doc table.option-table td:nth-child(2):last-child::before {
+        content: attr(data-label) ": ";
+        font-size: 13px;
+        color: var(--vp-c-text-2);
+    }
+
+    .vp-doc table.option-table td:last-child:not(:first-child) {
+        display: block;
+        margin-top: 6px;
     }
 }
 

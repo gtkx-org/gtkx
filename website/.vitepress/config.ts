@@ -6,6 +6,7 @@ import { type DefaultTheme, defineConfig, type HeadConfig } from "vitepress";
 import { groupIconMdPlugin, groupIconVitePlugin } from "vitepress-plugin-group-icons";
 import { CONTRIBUTING_ROOT, contributingItems } from "./contributing.js";
 import { highlightPlugin } from "./highlight.js";
+import { figureLinks, optionTables } from "./markdown.js";
 import {
     currentVersion,
     type DocumentationItem,
@@ -560,6 +561,8 @@ export default defineConfig({
         },
         config(md) {
             md.use(groupIconMdPlugin);
+            md.use(optionTables);
+            md.use(figureLinks);
         },
     },
     sitemap: {

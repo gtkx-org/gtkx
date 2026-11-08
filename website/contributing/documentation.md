@@ -30,6 +30,8 @@ Start a page with its purpose and prerequisites. Explain the GTKX-specific steps
 
 Describe observable behavior and explain its limits. Avoid claims of superiority, unsupported performance claims, and words such as "easy" or "simple" that substitute for explaining a task. Keep terminology consistent and make each paragraph follow from the previous one.
 
+List command or tool options in a table whose first header is `Option` or `Tool`, with the default or a short attribute next and the description last. On phones the site stacks each row of such a table into an entry.
+
 Check commands, imports, exported names, defaults, and requirements against the version being documented. The working tree is authoritative for the development docs; use the pinned release for stable docs. Preserve historical release announcements and changelogs as records of those releases.
 
 Before publishing documentation changes:
@@ -61,7 +63,7 @@ Place the figure where the text says what the reader should see. Its two images 
 </figure>
 ```
 
-Set `width` and `height` to half the PNG's pixel size, and describe the window in `alt`.
+Set `width` and `height` to half the PNG's pixel size, and describe the window in `alt`. Keep the attributes in this order: the site links each image wider than 400 to the PNG, so phone readers can open it at full size.
 
 ## Documentation versions
 
