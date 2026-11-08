@@ -537,7 +537,7 @@ export default defineConfig({
     description,
     lang: "en",
     locales,
-    appearance: "dark",
+    appearance: true,
     cleanUrls: true,
     lastUpdated: true,
     markdown: {
