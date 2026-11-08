@@ -119,6 +119,10 @@ html.dark {
     font-family: var(--font-display);
 }
 
+.VPSidebarItem .text {
+    overflow-wrap: anywhere;
+}
+
 .VPSidebarItem.collapsible > .item[role="button"] > .caret {
     display: none;
 }

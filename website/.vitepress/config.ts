@@ -159,16 +159,53 @@ const parseSidebar = (source: string): DefaultTheme.SidebarItem[] => {
 const referenceSidebar = (version: DocumentationVersion): DefaultTheme.SidebarItem[] => {
     const manifest = join(versionDirectory(version), REFERENCE_ROOT, "typedoc-sidebar.json");
 
-    return rewriteReferenceSidebar(version, parseSidebar(readFileSync(manifest, "utf8"))).map(({ text, link }) => ({
-        text,
-        link,
-    }));
+    return rewriteReferenceSidebar(version, parseSidebar(readFileSync(manifest, "utf8")));
 };
 
 const referenceSidebars = new Map(versions.map((version) => [version.id, referenceSidebar(version)]));
 
 const versionReferenceSidebar = (version: DocumentationVersion): DefaultTheme.SidebarItem[] =>
     referenceSidebars.get(version.id) ?? [];
+
+const largestBrowsableReferenceTree = 500;
+
+const sidebarSize = (items: DefaultTheme.SidebarItem[] = []): number =>
+    items.reduce((total, item) => total + 1 + sidebarSize(item.items), 0);
+
+const isBrowsablePackage = (item: DefaultTheme.SidebarItem): boolean =>
+    sidebarSize(item.items) <= largestBrowsableReferenceTree;
+
+const packageLink = ({ text, link }: DefaultTheme.SidebarItem): DefaultTheme.SidebarItem => ({ text, link });
+
+const referenceOverview = (version: DocumentationVersion): DefaultTheme.SidebarItem => ({
+    text: "Overview",
+    link: documentationLink(version, REFERENCE_ROOT),
+});
+
+const packageSidebar = (
+    version: DocumentationVersion,
+    current: DefaultTheme.SidebarItem,
+): DefaultTheme.SidebarItem[] => [
+    referenceOverview(version),
+    ...versionReferenceSidebar(version).map((item) => (item === current ? item : packageLink(item))),
+];
+
+const referenceSidebarEntries = (version: DocumentationVersion): [string, DefaultTheme.SidebarItem[]][] => [
+    [
+        `${version.prefix}${referencePath}/`,
+        [referenceOverview(version), ...versionReferenceSidebar(version).map(packageLink)],
+    ],
+    ...versionReferenceSidebar(version).flatMap((item): [string, DefaultTheme.SidebarItem[]][] =>
+        item.link && isBrowsablePackage(item) ? [[item.link, packageSidebar(version, item)]] : [],
+    ),
+];
+
+const unlistedReferencePackages = versions.flatMap((version) =>
+    versionReferenceSidebar(version).flatMap((item) => (item.link && !isBrowsablePackage(item) ? [item.link] : [])),
+);
+
+const isUnlistedReferencePage = (path: string): boolean =>
+    unlistedReferencePackages.some((link) => path !== link && path.startsWith(link));
 
 const configLinks = (version: DocumentationVersion, text: string): LinkedDocumentationItem[] =>
     hasCanonicalPage(version, configPage) ? [{ text, link: documentationLink(version, configPage) }] : [];
@@ -235,10 +272,7 @@ const navigation = (version: DocumentationVersion): DefaultTheme.NavItem[] => [
 const versionSidebars = (version: DocumentationVersion): [string, DefaultTheme.SidebarItem[]][] => [
     [`${version.prefix}/guide/`, guideSidebar(version)],
     [`${version.prefix}/tutorial/`, tutorialSidebar(version)],
-    [
-        `${version.prefix}${referencePath}/`,
-        [{ text: "Overview", link: documentationLink(version, REFERENCE_ROOT) }, ...versionReferenceSidebar(version)],
-    ],
+    ...referenceSidebarEntries(version),
 ];
 
 const sidebar: DefaultTheme.Sidebar = {
@@ -574,6 +608,11 @@ export default defineConfig({
             ["meta", { name: "twitter:description", content: pageDescription }],
             ["meta", { name: "twitter:image", content: pageImage }],
         ];
+
+        if (isUnlistedReferencePage(`/${route}`)) {
+            pageData.frontmatter.prev = false;
+            pageData.frontmatter.next = false;
+        }
 
         pageData.frontmatter.versionId = versionForPath(`/${route}`).id;
         pageData.frontmatter.versionLinks = versionLinks(route);
