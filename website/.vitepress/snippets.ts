@@ -13,9 +13,13 @@ const NOTE_LIST = `<ListView<Note>
 />
 `;
 
-const APP = `<AdwToolbarView top={<AdwHeaderBar />}>
+const APP = `<AdwToolbarView
+  top={<AdwHeaderBar />}
+>
   <GtkScale
-    adjustment={<GtkAdjustment upper={100} />}
+    adjustment={
+      <GtkAdjustment upper={100} />
+    }
     drawValue
     onValueChanged={(scale) =>
       setVolume(scale.getValue())
@@ -24,7 +28,7 @@ const APP = `<AdwToolbarView top={<AdwHeaderBar />}>
 </AdwToolbarView>
 `;
 
-const TEST = `it("saves the display name", async () => {
+const TEST = `it("saves the name", async () => {
   await render(<SettingsPanel />);
 
   const name = screen.getByRole(
@@ -32,13 +36,17 @@ const TEST = `it("saves the display name", async () => {
     { name: "Display name" },
   );
   await userEvent.type(name, "Ada");
-  await userEvent.click(screen.getByRole(
-    Gtk.AccessibleRole.BUTTON,
-    { name: "Save" },
-  ));
+  await userEvent.click(
+    screen.getByRole(
+      Gtk.AccessibleRole.BUTTON,
+      { name: "Save" },
+    ),
+  );
 
   expect(
-    await screen.findByText("Settings saved"),
+    await screen.findByText(
+      "Settings saved",
+    ),
   ).toBeVisible();
 });
 `;
@@ -49,8 +57,13 @@ const DEPLOY = `export default defineConfig({
   deploy: {
     name: "Notes",
     genericName: "Markdown Notes",
-    categories: ["Utility", "TextEditor"],
-    targets: ["flatpak", "deb", "rpm", "appimage"],
+    categories: [
+      "Utility", "TextEditor",
+    ],
+    targets: [
+      "flatpak", "deb",
+      "rpm", "appimage",
+    ],
   },
 });
 `;

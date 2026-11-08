@@ -236,11 +236,44 @@ import { CREATE_COMMAND, docsLink, REPO_URL } from "./content";
   }
 }
 @media (max-width: 480px) {
-  .shot__code :deep(.shiki) {
-    font-size: 0.62rem;
+  .hero__eyebrow {
+    display: none;
   }
-  .shot__tag {
-    font-size: 0.6rem;
+  .hero__actions {
+    width: auto;
+  }
+  .hero__cta {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem;
+  }
+  .hero__cta > .btn {
+    gap: 0.4rem;
+    padding-inline: 0.5rem;
+    font-size: 0.9375rem;
+  }
+  .hero__cta :deep(svg) {
+    flex: none;
+  }
+  .shot__frame {
+    height: 300px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .shot__frame img {
+    width: 960px;
+    max-width: none;
+    border: 0;
+    border-radius: 0;
+  }
+  .shot__ring {
+    left: 4px;
+    top: 136px;
+    width: 280px;
+    height: 54px;
+  }
+  .shot__code {
+    margin: 0.9rem 0 0;
   }
 }
 </style>

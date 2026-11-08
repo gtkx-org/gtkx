@@ -117,7 +117,10 @@ const community = [
 }
 @media (max-width: 480px) {
   .closing__community {
-    grid-template-columns: minmax(0, 1fr);
+    gap: 0.6rem;
+  }
+  .closing__community a {
+    padding: 0.85rem;
   }
   .closing__cta {
     display: grid;

@@ -102,7 +102,27 @@ const shots = [
 }
 @media (max-width: 600px) {
   .show__strip {
-    grid-template-columns: minmax(0, 1fr);
+    display: flex;
+    gap: 0.75rem;
+    margin: 0 calc(-1 * clamp(1rem, 4vw, 2.5rem));
+    padding: 0.25rem clamp(1rem, 4vw, 2.5rem) 0.75rem;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: clamp(1rem, 4vw, 2.5rem);
+    scrollbar-width: none;
+  }
+  .show__shot {
+    flex: 0 0 86%;
+    min-width: 0;
+    scroll-snap-align: start;
+  }
+  .show__frame {
+    height: 250px;
+  }
+  .show__frame img {
+    width: 960px;
+    max-width: none;
+    margin-left: -290px;
   }
 }
 </style>

@@ -144,7 +144,7 @@ const cols: { h: string; items: Link[] }[] = [
 @media (pointer: coarse) {
   .footer__list a {
     display: inline-block;
-    padding-block: 0.75rem;
+    padding-block: 0.5rem;
   }
   .footer__list {
     gap: 0;
@@ -168,10 +168,8 @@ const cols: { h: string; items: Link[] }[] = [
   .footer__grid {
     grid-template-columns: 1fr 1fr;
   }
-}
-@media (max-width: 460px) {
-  .footer__grid {
-    grid-template-columns: 1fr;
+  .footer__brand {
+    grid-column: 1 / -1;
   }
 }
 </style>
