@@ -69,7 +69,7 @@ Properties the widget changes in reaction still notify. When adding or removing 
 
 A prop the element does not have, such as a typo, a C-style name like `margin_top` or a prop from another toolkit, throws an error that names the element and, where it can, the closest prop it does have.
 
-Prefer JSX for object creation and child placement. The [generated element reference](/v2/guide/configuration-and-codegen#generating-element-reference-docs) shows the exact props, slots, and signals for each configured library.
+Create objects and place children with JSX rather than through refs, so GTKX manages their lifetime. The [generated element reference](/v2/guide/configuration-and-codegen#generating-element-reference-docs) shows the exact props, slots, and signals for each configured library.
 
 ### Member names
 
