@@ -58,7 +58,7 @@ The `Dialog` union gains a `rename` kind that carries the note's name, and `Dial
 
 - Node's [`rename`](https://nodejs.org/api/fs.html#fspromisesrenameoldpath-newpath) replaces a file that already has the new name, so `renameNote` checks for one first and fails instead. Unlike the `wx` flag in [Window actions](/v2/tutorial/actions-menus-shortcuts#window-actions), the check and the rename are separate steps: a file that another program creates between them is still replaced. Node has no rename that refuses to replace.
 - `trashNote` moves the file to the desktop trash with [`Gio.File.trashAsync`](https://docs.gtk.org/gio/method.File.trash_async.html), so a mistaken trash can also be undone from the Trash in Files. GTKX turns GIO's async and finish pair into one method that returns a promise and rejects on failure. See [Async Operations](/v2/guide/async-operations).
-- `isValidName` rejects an empty name, a name with spaces at either end, a `/`, which would point into another folder, and a leading `.`, which hides the file from the note list.
+- `isValidName` rejects an empty name, a name with whitespace at either end, a `/`, which would point into another folder, and a leading `.`, which hides the file from the note list.
 
 The provider's `rename` and `trash` run these operations and update the list. The saver gains two methods for them:
 
@@ -84,7 +84,7 @@ The provider's `rename` and `trash` run these operations and update the list. Th
 
 ## Run it
 
-Open a note and press F2. Rename stays disabled until the name is new and valid, and Enter renames the note. Open the note menu and choose Move to Trash: the note leaves the list, the sidebar title counts one fewer note, and a toast offers Undo. Click Undo and the note comes back and opens.
+Open a note and press F2. Rename stays disabled until the name is new, valid and unused, and Enter renames the note. Open the note menu and choose Move to Trash: the note leaves the list, the sidebar title counts one fewer note, and a toast offers Undo. Click Undo and the note comes back and opens.
 
 <figure class="result">
     <img class="result-light" src="/figures/tutorial-trash-and-toasts-light.png" width="720" height="480" loading="lazy" alt="The Notes window after Recipes was moved to the trash: the sidebar lists four notes, the content pane reads No Note Selected, and a toast at the bottom reads “Recipes” moved to Trash with an Undo button." />
