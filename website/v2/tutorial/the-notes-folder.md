@@ -14,7 +14,7 @@ Notes keeps its files in a `Notes` folder inside the user's Documents folder:
 
 [`GLib.getUserSpecialDir`](https://docs.gtk.org/glib/func.get_user_special_dir.html) returns the Documents folder set in `user-dirs.dirs`, which the desktop may have localized or moved, or `null` when there is none; Notes then uses the home folder. `@gtkx/gi/glib` holds the GLib bindings, generated like the elements in `@gtkx/jsx`.
 
-The rest is Node.js, which owns the process while GLib runs inside it. `readNotes` creates the folder on first launch, keeps the visible `.md` files, and reads them in parallel. `readNote` calls `stat` before reading a file, which gives its modification time and skips anything that isn't a file, such as a folder named `something.md`.
+The rest is ordinary Node.js code, since a GTKX app is a Node.js program ([Why Node.js](/v2/guide/why-gtkx#why-node-js)). `readNotes` creates the folder on first launch, keeps the visible `.md` files, and reads them in parallel. `readNote` calls `stat` before reading a file, which gives its modification time and skips anything that isn't a file, such as a folder named `something.md`.
 
 ## Read the notes
 
@@ -55,7 +55,7 @@ The app wraps the toolbar view in the provider and shows the screen in place of 
 
 ## Run it
 
-Save the files. The app restarts, creates the notes folder if it is missing, and shows the empty state. Add a few `.md` files to the folder, `~/Documents/Notes` on most desktops, then close the window and run `npm run dev` again: the app reads the folder only when it starts until [Save and Watch Files](/v2/tutorial/saving-and-watching) watches it. The window lists the notes, newest first.
+Save the files. The new imports restart the app, which creates the notes folder if it is missing and shows the empty state. Add a few `.md` files to the folder, `~/Documents/Notes` on most desktops, then close the window and run `npm run dev` again: the app reads the folder only when it starts until [Save and Watch Files](/v2/tutorial/saving-and-watching) watches it. The window lists the notes, newest first.
 
 <figure class="result">
     <img class="result-light" src="/figures/tutorial-the-notes-folder-light.png" width="360" height="294" loading="lazy" alt="The Notes window listing five notes, newest first: Website relaunch, Meeting notes, Trip to Lisbon, Book club and Recipes, each name above its first line of text in dimmed type." />
