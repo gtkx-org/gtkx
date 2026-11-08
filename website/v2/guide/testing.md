@@ -183,7 +183,7 @@ GTK ignores `accessibleLabel` on widgets whose accessible role takes no name, su
 
 Await every `userEvent` call. Helpers wait for the target to become actionable and flush React updates before resolving, and fail naming what blocks it, such as an open dialog over the target. Pointer helpers also wait until a pointer can reach the target; when an ancestor's `canTarget` is off, the error names the widget a pointer would land on instead, which the test can click.
 
-Keyboard modifiers and pointer buttons held with `>` stay held across calls until released. `userEvent.setup()` creates an instance with its own held state, and its `delay` option waits after each action:
+Keyboard modifiers and pointer buttons held with `>` stay held across calls until released, and the cleanup after each test releases those the default `userEvent` still holds. `userEvent.setup()` creates an instance with its own held state, and its `delay` option waits after each action:
 
 ```ts
 const user = userEvent.setup();
@@ -206,7 +206,7 @@ Some key handlers read the real key event, which `keyboard` cannot create, so th
 - The interactive search of the deprecated `GtkTreeView`.
 - A WebKit web view.
 
-Key controllers the app adds always receive the keys. In the same way, a click reaches GTK's own pointer handling of a widget only where `@gtkx/testing` knows its outcome, as for buttons, rows and tabs. A click on a color swatch does nothing, so press `{Space}` or `{Enter}` on it instead. As in Testing Library, input that nothing handles is not an error.
+Key controllers the app adds always receive the keys. In the same way, a click reaches GTK's own pointer handling of a widget only where `@gtkx/testing` knows its outcome, as for buttons, rows and tabs. A click on a color swatch or a completion proposal does nothing, so press `{Space}` or `{Enter}` on a swatch, and choose a proposal with the arrow keys and `{Enter}`. As in Testing Library, input that nothing handles is not an error.
 
 `pointer` takes Testing Library's [button tokens](https://testing-library.com/docs/user-event/pointer). `[MouseLeft]` clicks the widget as `click` does, and `[MouseRight]` and `[MouseMiddle]` press and release the other buttons for the click gestures on the widget and its ancestors that listen for them, so `pointer(cell, "[MouseRight]")` opens a context menu that a `GtkGestureClick` with `button={Gdk.BUTTON_SECONDARY}` shows. Add `>` to only press a button, as in `[MouseRight>]`, and a leading `/` to release it. A gesture's handlers read the pressed button with `getCurrentButton()` and the held modifiers with `getCurrentEventState()`. No real pointer event exists, so `getCurrentEvent()` returns `null`: port upstream code that reads the button from the event, such as `event.get_button()`, to `getCurrentButton()`.
 
