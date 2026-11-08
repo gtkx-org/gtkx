@@ -917,7 +917,8 @@ describe("CLI commands", () => {
             import notesPath from "../../data/notes.txt?url";
             import notes from "../../data/notes.txt?raw";
             import notesData from "../../data/notes.txt?inline";
-            parentPort?.postMessage({ path: notesPath, text: readFileSync(notesPath, "utf8"), raw: notes, inline: notesData, label });`;
+            import stylesheet from "../../data/page.css?inline";
+            parentPort?.postMessage({ path: notesPath, text: readFileSync(notesPath, "utf8"), raw: notes, inline: notesData, stylesheet, label });`;
         writeFileSync(
             join(shared.path, "package.json"),
             JSON.stringify({ name: "@example/shared", type: "module", exports: "./index.ts" }),
@@ -926,6 +927,7 @@ describe("CLI commands", () => {
         mkdirSync(join(project.root, "node_modules/@example"));
         symlinkSync(shared.path, join(project.root, "node_modules/@example/shared"), "dir");
         project.write("data/notes.txt", "worker asset");
+        project.write("data/page.css", "body { color: red; }\n");
         project.write("src/workers/read.ts", workerSource);
         project.write(
             "src/index.ts",
@@ -951,6 +953,7 @@ describe("CLI commands", () => {
                     text: "worker asset",
                     raw: "worker asset",
                     inline: "data:text/plain;base64,d29ya2VyIGFzc2V0",
+                    stylesheet: "body { color: red; }\\n",
                     label: "shared",
                 });
             });`,
@@ -968,6 +971,7 @@ describe("CLI commands", () => {
                 text: "worker asset",
                 raw: "worker asset",
                 inline: "data:text/plain;base64,d29ya2VyIGFzc2V0",
+                stylesheet: "body { color: red; }\n",
                 label: "shared",
             });
             project.write("data/notes.txt", "edited asset");
@@ -976,6 +980,7 @@ describe("CLI commands", () => {
                 text: "edited asset",
                 raw: "edited asset",
                 inline: "data:text/plain;base64,ZWRpdGVkIGFzc2V0",
+                stylesheet: "body { color: red; }\n",
                 label: "shared",
             });
             project.write("data/notes.txt", "worker asset");
@@ -1006,6 +1011,7 @@ describe("CLI commands", () => {
         expect(result().text).toBe("worker asset");
         expect(result().raw).toBe("worker asset");
         expect(result().inline).toBe("data:text/plain;base64,d29ya2VyIGFzc2V0");
+        expect(result().stylesheet).toBe("body { color: red; }\n");
         expect(result().label).toBe("shared");
         expect(result().path).toMatch(new RegExp(`^${RegExp.escape(join(project.root, "dist"))}/`));
 
