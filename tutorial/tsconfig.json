@@ -10,7 +10,8 @@
         "allowArbitraryExtensions": true,
         "lib": ["esnext"],
         "types": ["node", "react"],
-        "noEmit": true
+        "noEmit": true,
+        "erasableSyntaxOnly": true
     },
-    "include": ["src/**/*", "tests/**/*", "*.config.ts"]
+    "include": ["src/**/*", "tests/**/*", ".storybook/**/*", "*.config.ts"]
 }

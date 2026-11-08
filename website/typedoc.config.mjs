@@ -43,9 +43,25 @@ export default {
         "typedoc-vitepress-theme",
         "./typedoc-route-safe-router.mjs",
         "./typedoc-source-docs.mjs",
+        "./typedoc-package-groups.mjs",
     ],
     router: "route-safe",
     publicModuleNames,
+    packageGroups: {
+        Apps: ["@gtkx/react", "@gtkx/cli", "@gtkx/config"],
+        Libraries: [
+            "@gtkx/components",
+            "@gtkx/css",
+            "@gtkx/navigation",
+            "@gtkx/forms",
+            "@gtkx/animated",
+            "@gtkx/i18n",
+            "@gtkx/cairo",
+            "@gtkx/gl",
+        ],
+        "Testing and tools": ["@gtkx/testing", "@gtkx/vitest", "@gtkx/storybook"],
+        "Bindings and internals": ["@gtkx/codegen", "@gtkx/runtime"],
+    },
     entryPointStrategy: "packages",
     entryPoints: Object.keys(publicModuleNames).map((name) => `../packages/${name.replace("@gtkx/", "")}`),
     packageOptions: {
@@ -68,6 +84,7 @@ export default {
     mergeReadme: true,
     cleanOutputDir: true,
     githubPages: false,
+    indexFormat: "table",
     externalSymbolLinkMappings: {
         "@gtkx/testing": {
             tab: `${referenceLink}/@gtkx/testing/type-aliases/UserEvent#tab`,

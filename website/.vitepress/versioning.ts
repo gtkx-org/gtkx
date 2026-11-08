@@ -32,36 +32,51 @@ type VersionLink = {
 
 type VersionPageLookup = (version: DocumentationVersion, path: string) => boolean;
 
-const GUIDE_ROOT = "guide/why-gtkx";
+const GUIDE_ROOT = "guide/getting-started";
 const TUTORIAL_ROOT = "tutorial/";
 const REFERENCE_ROOT = "reference/";
 
 const guideGroups: DocumentationGroup[] = [
     {
-        text: "Getting Started",
+        text: "Introduction",
         items: [
-            { text: "Why GTKX", path: GUIDE_ROOT },
-            { text: "Getting Started", path: "guide/getting-started" },
-            { text: "Scaffold Options", path: "guide/scaffold-options" },
-            { text: "Configuration and Codegen", path: "guide/configuration-and-codegen" },
+            { text: "Why GTKX", path: "guide/why-gtkx" },
+            { text: "Comparisons", path: "guide/comparisons" },
+            { text: "Getting Started", path: GUIDE_ROOT },
         ],
     },
     {
         text: "Building Interfaces",
         items: [
+            { text: "JSX Elements", path: "guide/jsx-elements" },
+            { text: "Application Lifecycle", path: "guide/application-lifecycle" },
+            { text: "Modals and Portals", path: "guide/modals-and-portals" },
             { text: "Components", path: "guide/components" },
+            { text: "CSS", path: "guide/css" },
+            { text: "Assets", path: "guide/assets" },
             { text: "Navigation", path: "guide/navigation" },
             { text: "Forms", path: "guide/forms" },
-            { text: "Modals and Portals", path: "guide/modals-and-portals" },
-            { text: "CSS", path: "guide/css" },
+            { text: "Actions and Shortcuts", path: "guide/actions" },
+            { text: "Native State", path: "guide/native-state" },
             { text: "Animations", path: "guide/animations" },
+            { text: "Internationalization", path: "guide/internationalization" },
+        ],
+    },
+    {
+        text: "Project Setup",
+        items: [
+            { text: "Scaffold Options", path: "guide/scaffold-options" },
+            { text: "Configuration and Codegen", path: "guide/configuration-and-codegen" },
+            { text: "CLI", path: "guide/cli" },
         ],
     },
     {
         text: "Native Integration",
         items: [
-            { text: "Native Values", path: "guide/native-values" },
             { text: "Async Operations", path: "guide/async-operations" },
+            { text: "Error Handling", path: "guide/error-handling" },
+            { text: "Native Values", path: "guide/native-values" },
+            { text: "D-Bus", path: "guide/dbus" },
             { text: "Workers and Helper Processes", path: "guide/workers" },
             { text: "Subclassing GObject", path: "guide/subclassing" },
             { text: "Cairo", path: "guide/cairo" },
@@ -71,18 +86,18 @@ const guideGroups: DocumentationGroup[] = [
     {
         text: "Development Tools",
         items: [
-            { text: "Error Handling", path: "guide/error-handling" },
             { text: "Testing", path: "guide/testing" },
             { text: "Storybook", path: "guide/storybook" },
+            { text: "Workspaces", path: "guide/workspaces" },
             { text: "App Inspection (MCP)", path: "guide/mcp" },
+            { text: "Troubleshooting", path: "guide/troubleshooting" },
         ],
     },
     {
         text: "Shipping and Upgrading",
         items: [
-            { text: "Assets and Build Output", path: "guide/assets" },
-            { text: "Internationalization", path: "guide/internationalization" },
             { text: "Deploying", path: "guide/deploying" },
+            { text: "Updating GTKX", path: "guide/updating" },
             { text: "Upgrading to 2.0", path: "guide/upgrading-to-2" },
         ],
     },
@@ -91,6 +106,29 @@ const guideGroups: DocumentationGroup[] = [
 const guideItems: DocumentationItem[] = guideGroups.flatMap((group) => group.items);
 
 const tutorialItems: DocumentationItem[] = [
+    { text: "Introduction", path: TUTORIAL_ROOT },
+    { text: "Create a Window", path: "tutorial/your-first-window" },
+    { text: "List the Notes", path: "tutorial/the-notes-folder" },
+    { text: "Edit a Note", path: "tutorial/the-note-editor" },
+    { text: "Save and Watch Files", path: "tutorial/saving-and-watching" },
+    { text: "Render the Preview", path: "tutorial/the-markdown-preview" },
+    { text: "Develop with Fast Refresh", path: "tutorial/fast-refresh" },
+    { text: "Adapt the Layout", path: "tutorial/an-adaptive-layout" },
+    { text: "Search in a Worker", path: "tutorial/search-in-a-worker" },
+    { text: "Filter by Tag", path: "tutorial/tags-and-front-matter" },
+    { text: "Add Menus and Shortcuts", path: "tutorial/actions-menus-shortcuts" },
+    { text: "Rename, Trash, and Undo", path: "tutorial/trash-and-toasts" },
+    { text: "Add Preferences", path: "tutorial/preferences-and-theming" },
+    { text: "Complete Note Links", path: "tutorial/note-links" },
+    { text: "Develop the Preview in Storybook", path: "tutorial/storybook" },
+    { text: "Test the App", path: "tutorial/testing" },
+    { text: "Inspect with MCP", path: "tutorial/mcp" },
+    { text: "Translate the App", path: "tutorial/internationalization" },
+    { text: "Package the App", path: "tutorial/packaging" },
+    { text: "Prepare for Flathub", path: "tutorial/flatpak" },
+];
+
+const tasksTutorialItems: DocumentationItem[] = [
     { text: "Introduction", path: TUTORIAL_ROOT },
     { text: "Create a Window", path: "tutorial/your-first-window" },
     { text: "Display Tasks", path: "tutorial/a-list-of-tasks" },
@@ -112,7 +150,27 @@ const tutorialItems: DocumentationItem[] = [
     { text: "Prepare for Flathub", path: "tutorial/flatpak" },
 ];
 
-const documentationItems: DocumentationItem[] = [...guideItems, ...tutorialItems];
+const tutorialItemsByVersion = new Map<string, DocumentationItem[]>([["1.6", tasksTutorialItems]]);
+
+const tutorialPointerPaths: string[] = [
+    "tutorial/a-list-of-tasks",
+    "tutorial/the-task-store",
+    "tutorial/completing-and-deleting",
+    "tutorial/saving-to-disk",
+    "tutorial/lists-and-the-sidebar",
+    "tutorial/smart-views-and-search",
+    "tutorial/the-task-editor",
+    "tutorial/drag-to-reorder",
+    "tutorial/reminders",
+];
+
+const versionTutorialItems = (version: DocumentationVersion): DocumentationItem[] =>
+    tutorialItemsByVersion.get(version.id) ?? tutorialItems;
+
+const versionDocumentationItems = (version: DocumentationVersion): DocumentationItem[] => [
+    ...guideItems,
+    ...versionTutorialItems(version),
+];
 
 const STATUSES: ReadonlySet<string> = new Set<VersionStatus>(["current", "prerelease", "old"]);
 
@@ -338,7 +396,6 @@ const resolveVersionPath = (currentPath: string, target: DocumentationVersion, h
 export {
     currentVersion,
     type DocumentationItem,
-    documentationItems,
     documentationLink,
     type DocumentationVersion,
     featuredVersion,
@@ -352,9 +409,11 @@ export {
     retentionPolicy,
     rootVersion,
     TUTORIAL_ROOT,
-    tutorialItems,
+    tutorialPointerPaths,
     versionById,
+    versionDocumentationItems,
     versionForPath,
     type VersionLink,
     versions,
+    versionTutorialItems,
 };

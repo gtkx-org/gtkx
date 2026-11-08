@@ -3,12 +3,14 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type DefaultTheme, defineConfig, type HeadConfig } from "vitepress";
+import { groupIconMdPlugin, groupIconVitePlugin } from "vitepress-plugin-group-icons";
+import { BLOG_FEED, BLOG_TITLE, readBlogFeed, readBlogPosts, unpublishedBlogFiles } from "./blog.js";
 import { CONTRIBUTING_ROOT, contributingItems } from "./contributing.js";
 import { highlightPlugin } from "./highlight.js";
+import { figureLinks, optionTables } from "./markdown.js";
 import {
     currentVersion,
     type DocumentationItem,
-    documentationItems,
     documentationLink,
     type DocumentationVersion,
     GUIDE_ROOT,
@@ -20,19 +22,24 @@ import {
     retentionPolicy,
     rootVersion,
     TUTORIAL_ROOT,
-    tutorialItems,
+    tutorialPointerPaths,
+    versionDocumentationItems,
     versionForPath,
     type VersionLink,
     versions,
+    versionTutorialItems,
 } from "./versioning.js";
 
 const title = "GTKX";
-const description = "The React framework for Linux. Build native apps with React, TypeScript, and Adwaita widgets.";
+const description =
+    "The React framework for Linux. Build native Adwaita and GTK apps with the workflow of modern web development.";
 const url = "https://gtkx.dev";
 const ogImage = `${url}/og.png`;
 const websiteRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const referencePath = `/${REFERENCE_ROOT.replace(/\/$/, "")}`;
 const sectionDirectories = ["guide", "tutorial"];
+const configTypes = "@gtkx/config/index/type-aliases/";
+const configPage = `${REFERENCE_ROOT}${configTypes}Config`;
 
 type LinkedDocumentationItem = {
     text: string;
@@ -63,9 +70,31 @@ const sectionRoutes = (version: DocumentationVersion, section: string): string[]
     return existsSync(directory) ? markdownRoutes(directory, `${section}/`) : [];
 };
 
+const codeTitlePattern = /^\s*(?:`{3,}|~{3,}|<<<).*\[([^\]]+)\]/gm;
+
+/**
+ * Lists every code block title in the guides and tutorials. `groupIconVitePlugin` only learns the titles of
+ * pages it transforms before it writes its icon stylesheet, which during a build misses most `<<<` snippets.
+ */
+const codeBlockTitles = (): string[] =>
+    versions.flatMap((version) =>
+        sectionDirectories.flatMap((section) => {
+            const directory = join(versionDirectory(version), section);
+
+            if (!existsSync(directory)) {
+                return [];
+            }
+
+            return readdirSync(directory, { recursive: true, encoding: "utf8" })
+                .filter((path) => path.endsWith(".md"))
+                .flatMap((path) => [...readFileSync(join(directory, path), "utf8").matchAll(codeTitlePattern)])
+                .flatMap(([, codeTitle]) => (codeTitle ? [codeTitle] : []));
+        }),
+    );
+
 const versionRoutes = (version: DocumentationVersion): Set<string> => {
     const routes = sectionDirectories.flatMap((section) => sectionRoutes(version, section));
-    const known = new Set(documentationItems.map((item) => item.path));
+    const known = new Set([...versionDocumentationItems(version).map((item) => item.path), ...tutorialPointerPaths]);
     const unlisted = routes.filter((route) => !known.has(route));
 
     if (unlisted.length > 0) {
@@ -133,26 +162,125 @@ const parseSidebar = (source: string): DefaultTheme.SidebarItem[] => {
 const referenceSidebar = (version: DocumentationVersion): DefaultTheme.SidebarItem[] => {
     const manifest = join(versionDirectory(version), REFERENCE_ROOT, "typedoc-sidebar.json");
 
-    return rewriteReferenceSidebar(version, parseSidebar(readFileSync(manifest, "utf8"))).map(({ text, link }) => ({
-        text,
-        link,
-    }));
+    return rewriteReferenceSidebar(version, parseSidebar(readFileSync(manifest, "utf8")));
 };
 
 const referenceSidebars = new Map(versions.map((version) => [version.id, referenceSidebar(version)]));
 
+const parsePackageGroups = (source: string): [string, string[]][] => {
+    const parsed: unknown = JSON.parse(source);
+
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+        throw new TypeError("The generated reference package groups must be an object.");
+    }
+
+    return Object.entries(parsed).map(([title, names]) => {
+        if (!Array.isArray(names) || !names.every((name) => typeof name === "string")) {
+            throw new TypeError(`The reference package group ${title} must list package names.`);
+        }
+
+        return [title, names];
+    });
+};
+
+const referencePackageGroups = (version: DocumentationVersion): [string, string[]][] => {
+    const manifest = join(versionDirectory(version), REFERENCE_ROOT, "typedoc-package-groups.json");
+
+    return existsSync(manifest) ? parsePackageGroups(readFileSync(manifest, "utf8")) : [];
+};
+
+const packageGroups = new Map(versions.map((version) => [version.id, referencePackageGroups(version)]));
+
+const groupReferencePackages = (
+    version: DocumentationVersion,
+    items: DefaultTheme.SidebarItem[],
+): DefaultTheme.SidebarItem[] => {
+    const groups = packageGroups.get(version.id) ?? [];
+
+    if (groups.length === 0) {
+        return items;
+    }
+
+    const byName = new Map(items.map((item) => [item.text, item]));
+
+    return groups.map(([text, names]) => ({
+        text,
+        items: names.map((name) => {
+            const item = byName.get(name);
+
+            if (!item) {
+                throw new Error(
+                    `The reference package group ${text} lists ${name}, which has no reference sidebar entry.`,
+                );
+            }
+
+            return item;
+        }),
+    }));
+};
+
 const versionReferenceSidebar = (version: DocumentationVersion): DefaultTheme.SidebarItem[] =>
     referenceSidebars.get(version.id) ?? [];
+
+const largestBrowsableReferenceTree = 500;
+
+const sidebarSize = (items: DefaultTheme.SidebarItem[] = []): number =>
+    items.reduce((total, item) => total + 1 + sidebarSize(item.items), 0);
+
+const isBrowsablePackage = (item: DefaultTheme.SidebarItem): boolean =>
+    sidebarSize(item.items) <= largestBrowsableReferenceTree;
+
+const packageLink = ({ text, link }: DefaultTheme.SidebarItem): DefaultTheme.SidebarItem => ({ text, link });
+
+const referenceOverview = (version: DocumentationVersion): DefaultTheme.SidebarItem => ({
+    text: "Overview",
+    link: documentationLink(version, REFERENCE_ROOT),
+});
+
+const packageSidebar = (
+    version: DocumentationVersion,
+    current: DefaultTheme.SidebarItem,
+): DefaultTheme.SidebarItem[] => [
+    referenceOverview(version),
+    ...groupReferencePackages(
+        version,
+        versionReferenceSidebar(version).map((item) => (item === current ? item : packageLink(item))),
+    ),
+];
+
+const referenceSidebarEntries = (version: DocumentationVersion): [string, DefaultTheme.SidebarItem[]][] => [
+    [
+        `${version.prefix}${referencePath}/`,
+        [
+            referenceOverview(version),
+            ...groupReferencePackages(version, versionReferenceSidebar(version).map(packageLink)),
+        ],
+    ],
+    ...versionReferenceSidebar(version).flatMap((item): [string, DefaultTheme.SidebarItem[]][] =>
+        item.link && isBrowsablePackage(item) ? [[item.link, packageSidebar(version, item)]] : [],
+    ),
+];
+
+const unlistedReferencePackages = versions.flatMap((version) =>
+    versionReferenceSidebar(version).flatMap((item) => (item.link && !isBrowsablePackage(item) ? [item.link] : [])),
+);
+
+const isUnlistedReferencePage = (path: string): boolean =>
+    unlistedReferencePackages.some((link) => path !== link && path.startsWith(link));
+
+const configLinks = (version: DocumentationVersion, text: string): LinkedDocumentationItem[] =>
+    hasCanonicalPage(version, configPage) ? [{ text, link: documentationLink(version, configPage) }] : [];
 
 const guideSidebar = (version: DocumentationVersion): DefaultTheme.SidebarItem[] => [
     ...guideGroups
         .map((group) => ({ text: group.text, items: sidebarItems(version, group.items) }))
         .filter((group) => group.items.length > 0),
+    ...configLinks(version, "Config Reference"),
     { text: "API Reference", link: documentationLink(version, REFERENCE_ROOT) },
 ];
 
 const tutorialSidebar = (version: DocumentationVersion): DefaultTheme.SidebarItem[] => [
-    { text: "Tutorial", items: sidebarItems(version, tutorialItems) },
+    { text: "Tutorial", items: sidebarItems(version, versionTutorialItems(version)) },
 ];
 
 const contributingLinks = contributingItems.map((item) => ({ text: item.text, link: `/${item.path}` }));
@@ -162,48 +290,41 @@ const contributingSidebar: DefaultTheme.SidebarItem[] = [{ text: "Contributing",
 const blogSidebar: DefaultTheme.SidebarItem[] = [
     {
         text: "Blog",
-        items: [
-            { text: "GTKX 2.0 beta", link: "/blog/gtkx-2-0-beta-1" },
-            { text: "GTKX 1.6", link: "/blog/gtkx-1-6" },
-            { text: "GTKX 1.5", link: "/blog/gtkx-1-5" },
-            { text: "GTKX 1.4", link: "/blog/gtkx-1-4" },
-            { text: "GTKX 1.3", link: "/blog/gtkx-1-3" },
-            { text: "GTKX 1.1", link: "/blog/gtkx-1-1" },
-            { text: "GTKX 1.0", link: "/blog/gtkx-1-0" },
-        ],
+        items: readBlogPosts(websiteRoot).map((post) => ({ text: post.label, link: post.url })),
     },
 ];
 
 const navigation = (version: DocumentationVersion): DefaultTheme.NavItem[] => [
     { text: "Guide", link: documentationLink(version, GUIDE_ROOT), activeMatch: `${version.prefix}/guide/` },
+    ...configLinks(version, "Config").map((item) => ({
+        ...item,
+        activeMatch: `${version.prefix}/${REFERENCE_ROOT}${configTypes}`,
+    })),
     { text: "Tutorial", link: documentationLink(version, TUTORIAL_ROOT), activeMatch: `${version.prefix}/tutorial/` },
     {
         text: "API Reference",
         link: documentationLink(version, REFERENCE_ROOT),
-        activeMatch: `${version.prefix}/reference/`,
+        activeMatch: `${version.prefix}/${REFERENCE_ROOT}(?!${configTypes})`,
     },
     { text: "Examples", link: `https://github.com/gtkx-org/gtkx/tree/${version.examplesRef}/examples` },
     {
         text: "Project",
-        activeMatch: "^/(contributing/|blog/|versions)",
+        activeMatch: "^/(contributing/|blog/|releases)",
         items: [
             { text: "Contributing", link: `/${CONTRIBUTING_ROOT}` },
             { text: "Blog", link: "/blog/" },
-            { text: "Releases", link: "https://github.com/gtkx-org/gtkx/releases" },
+            { text: "Releases", link: "/releases" },
+            { text: "Changelog", link: "https://github.com/gtkx-org/gtkx/releases" },
             { text: "Discussions", link: "https://github.com/gtkx-org/gtkx/discussions" },
-            { text: "Documentation Versions", link: "/versions" },
+            { text: "Sponsor", link: "https://opencollective.com/gtkx" },
         ],
     },
-    { component: "VersionSelect" },
 ];
 
 const versionSidebars = (version: DocumentationVersion): [string, DefaultTheme.SidebarItem[]][] => [
     [`${version.prefix}/guide/`, guideSidebar(version)],
     [`${version.prefix}/tutorial/`, tutorialSidebar(version)],
-    [
-        `${version.prefix}${referencePath}/`,
-        [{ text: "Overview", link: documentationLink(version, REFERENCE_ROOT) }, ...versionReferenceSidebar(version)],
-    ],
+    ...referenceSidebarEntries(version),
 ];
 
 const sidebar: DefaultTheme.Sidebar = {
@@ -231,6 +352,15 @@ const prefixedLocale = (version: DocumentationVersion): [string, LocaleEntry] =>
 
 const prefixedVersions = versions.filter((version) => version.prefix !== "");
 
+const searchLocale = (version: DocumentationVersion): [string, DefaultTheme.LocalSearchOptions] => [
+    version.prefix === "" ? "root" : version.prefix.slice(1),
+    {
+        translations: {
+            button: { buttonText: `Search ${version.id} docs`, buttonAriaLabel: `Search the GTKX ${version.id} docs` },
+        },
+    },
+];
+
 const locales: Record<string, LocaleEntry> = {
     root: { label: "Documentation", lang: "en" },
     ...Object.fromEntries(prefixedVersions.map((version) => prefixedLocale(version))),
@@ -252,6 +382,43 @@ const fontPreloads: HeadConfig[] = isProdBuild
     : [];
 
 const docFile = (link: string): string => (link.endsWith("/") ? `${link.slice(1)}index.md` : `${link.slice(1)}.md`);
+
+const markdownCopies = new Set([
+    ...versions.flatMap((version) =>
+        sidebarItems(version, versionDocumentationItems(version)).map((item) => item.link),
+    ),
+    ...contributingLinks.map((item) => item.link),
+]);
+
+const isTutorialPointer = (route: string): boolean => {
+    const path = normalizeDocumentationPath(`/${route}`);
+    const chapters = versionTutorialItems(versionForPath(`/${route}`));
+
+    return tutorialPointerPaths.includes(path) && !chapters.some((item) => item.path === path);
+};
+
+const snippetImport = /^([ \t]*)<<< @\/(.+?)(\{[^}]*\})?(?:[ \t]*\[([^\]]+)\])?[ \t]*$/gm;
+
+/**
+ * Replaces each `<<< @/` snippet import with the fenced file it imports, so the Markdown copies served next to the
+ * pages and the `llms-full.txt` bundles carry the code instead of a path only VitePress can resolve.
+ */
+const inlineSnippets = async (sourceDirectory: string, source: string): Promise<string> => {
+    const imports = [...source.matchAll(snippetImport)];
+    const files = await Promise.all(
+        imports.map(([, , path = ""]) => readFile(join(sourceDirectory, path.trim()), "utf8")),
+    );
+
+    return imports.reduce((result, [line, indent = "", path = "", , codeTitle], index) => {
+        const language = path.trim().split(".").pop() ?? "";
+        const info = codeTitle ? `${language} [${codeTitle}]` : language;
+        const code = (files[index] ?? "").replace(/\n$/, "");
+        const fence = "`".repeat(Math.max(3, ...[...code.matchAll(/`{3,}/g)].map(([run]) => run.length + 1)));
+        const block = [`${fence}${info}`, ...code.split("\n"), fence].map((text) => (text ? `${indent}${text}` : text));
+
+        return result.replace(line, () => block.join("\n"));
+    }, source);
+};
 
 const frontmatterHead = (frontmatter: Record<string, unknown>): HeadConfig[] => {
     const existing = frontmatter.head;
@@ -304,7 +471,7 @@ const loadDocumentationSources = async (
     Promise.all(
         items.map(async (item) => {
             const file = docFile(item.link);
-            const source = await readFile(join(sourceDirectory, file), "utf8");
+            const source = await inlineSnippets(sourceDirectory, await readFile(join(sourceDirectory, file), "utf8"));
             const target = join(outputDirectory, file);
             await mkdir(dirname(target), { recursive: true });
             await writeFile(target, source);
@@ -324,7 +491,7 @@ const loadDocumentationVersion = async (
     sources: await loadDocumentationSources(
         sourceDirectory,
         outputDirectory,
-        sidebarItems(version, documentationItems),
+        sidebarItems(version, versionDocumentationItems(version)),
     ),
 });
 
@@ -468,18 +635,44 @@ export default defineConfig({
     description,
     lang: "en",
     locales,
-    appearance: "dark",
+    appearance: true,
     cleanUrls: true,
     lastUpdated: true,
+    srcExclude: ["figures/**", ...unpublishedBlogFiles(websiteRoot)],
+    markdown: {
+        container: {
+            infoLabel: "Info",
+            noteLabel: "Note",
+            tipLabel: "Tip",
+            importantLabel: "Important",
+            warningLabel: "Warning",
+            cautionLabel: "Caution",
+            dangerLabel: "Danger",
+            detailsLabel: "Details",
+        },
+        config(md) {
+            md.use(groupIconMdPlugin);
+            md.use(optionTables);
+            md.use(figureLinks);
+        },
+    },
     sitemap: {
         hostname: url,
         transformItems: (items) =>
             items
-                .filter(({ url: itemUrl }) => canonicalRoute(itemUrl) === itemUrl)
+                .filter(({ url: itemUrl }) => canonicalRoute(itemUrl) === itemUrl && !isTutorialPointer(itemUrl))
                 .map(({ url: itemUrl, lastmod }) => ({ url: itemUrl, lastmod })),
     },
     vite: {
-        plugins: [highlightPlugin()],
+        plugins: [highlightPlugin(), groupIconVitePlugin({ defaultLabels: codeBlockTitles() })],
+        resolve: {
+            alias: [
+                {
+                    find: /^\.\/VPNavBarTitle\.vue$/,
+                    replacement: fileURLToPath(new URL("./theme/components/NavBarTitle.vue", import.meta.url)),
+                },
+            ],
+        },
         server: {
             allowedHosts: ["workstation"],
         },
@@ -493,6 +686,7 @@ export default defineConfig({
         ["link", { rel: "icon", type: "image/png", sizes: "32x32", href: "/favicon-32.png" }],
         ["link", { rel: "apple-touch-icon", href: "/apple-touch-icon.png" }],
         ["link", { rel: "manifest", href: "/site.webmanifest" }],
+        ["link", { rel: "alternate", type: "application/rss+xml", title: BLOG_TITLE, href: `/${BLOG_FEED}` }],
         ["meta", { name: "theme-color", content: "#e03a3e" }],
         ...fontPreloads,
         ["meta", { property: "og:site_name", content: title }],
@@ -525,12 +719,26 @@ export default defineConfig({
             ["meta", { name: "twitter:image", content: pageImage }],
         ];
 
+        if (markdownCopies.has(`/${route}`)) {
+            head.push(["link", { rel: "alternate", type: "text/markdown", href: `/${docFile(`/${route}`)}` }]);
+        }
+
+        if (isTutorialPointer(route)) {
+            head.push(["meta", { name: "robots", content: "noindex" }]);
+        }
+
+        if (isUnlistedReferencePage(`/${route}`)) {
+            pageData.frontmatter.prev = false;
+            pageData.frontmatter.next = false;
+        }
+
         pageData.frontmatter.versionId = versionForPath(`/${route}`).id;
         pageData.frontmatter.versionLinks = versionLinks(route);
         pageData.frontmatter.head = [...frontmatterHead(pageData.frontmatter), ...head];
     },
 
     async buildEnd(siteConfig) {
+        await writeFile(join(siteConfig.outDir, BLOG_FEED), readBlogFeed(siteConfig.srcDir, url));
         const contributing = await loadDocumentationSources(siteConfig.srcDir, siteConfig.outDir, contributingLinks);
         const loaded = await Promise.all(
             versions.map((version) => loadDocumentationVersion(siteConfig.srcDir, siteConfig.outDir, version)),
@@ -548,15 +756,46 @@ export default defineConfig({
     },
 
     themeConfig: {
-        siteTitle: title,
-        logo: "/gtkx-mark.svg",
-        search: { provider: "local" },
+        siteTitle: false,
+        logo: { light: "/logo-wordmark-light.svg", dark: "/logo-wordmark-dark.svg", alt: "GTKX" },
+        search: {
+            provider: "local",
+            options: {
+                _render: async (source, env, md) => {
+                    const html = await md.renderAsync(source, env);
+                    const search = env.frontmatter?.search;
+
+                    if (search === false) {
+                        return "";
+                    }
+
+                    if (search !== "title") {
+                        return html;
+                    }
+
+                    const page = /^(<p>[\s\S]*?<\/p>)\s*(<h1[\s\S]*?<\/h1>)/u.exec(html);
+
+                    return page ? `${page[2]}${page[1]}` : "";
+                },
+                miniSearch: {
+                    searchOptions: {
+                        boostDocument: (id: string) => (/^\/(blog|contributing)\//.test(id) ? 0.5 : 1),
+                    },
+                },
+                locales: Object.fromEntries(versions.map((version) => searchLocale(version))),
+            },
+        },
         nav: navigation(rootVersion),
         sidebar,
+        outline: { level: [2, 3] },
         socialLinks: [{ icon: "github", link: "https://github.com/gtkx-org/gtkx" }],
         editLink: {
             pattern: "https://github.com/gtkx-org/gtkx/edit/main/website/:path",
             text: "Edit this page on GitHub",
+        },
+        lastUpdated: { formatOptions: { dateStyle: "medium" } },
+        notFound: {
+            quote: "The page may have moved or been renamed. Search the documentation, or start again from the home page.",
         },
         footer: {
             message: 'Released under the MPL-2.0 License. <a href="/versions">Documentation versions</a>.',

@@ -1,6 +1,6 @@
 # @gtkx/vitest
 
-Run GTKX tests in isolated headless displays.
+Vitest plugin that runs GTK tests in isolated headless displays.
 
 The Vitest plugin gives each worker a private Wayland display and D-Bus session. It requires Sway, `dbus-daemon`, and the native GTKX dependencies. Use `@gtkx/testing` to render and interact with widgets.
 
@@ -17,6 +17,6 @@ export default defineConfig({
 
 [Guide](https://gtkx.dev/v2/guide/testing) · [API reference](https://gtkx.dev/v2/reference/@gtkx/vitest/) · [GTKX](https://gtkx.dev)
 
-GTKX requires Linux, Node.js, and the [native prerequisites](https://gtkx.dev/v2/guide/getting-started).
+GTKX requires Linux, Node.js, and the [native prerequisites](https://gtkx.dev/v2/guide/getting-started#what-you-need).
 
 [MPL-2.0](https://github.com/gtkx-org/gtkx/blob/main/LICENSE).

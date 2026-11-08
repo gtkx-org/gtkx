@@ -1,72 +1,82 @@
 ---
-description: "Build a Flatpak for Tasks and prepare a source manifest for distribution."
+description: "Give the Flatpak access to the notes folder, build and lint it, and prepare a Flathub submission."
 ---
 
 # Prepare for Flathub
 
-[Translate the App](/v2/tutorial/internationalization) added a French catalog. Package it in a Flatpak, then use GTKX's source mode to prepare a manifest that rebuilds the application.
+Give the sandboxed Notes access to its notes folder, build and lint the Flatpak, and prepare the source build that [Flathub](https://flathub.org/), the app store and build service for Linux, accepts.
 
-## Build and install it
+## The notes folder in the sandbox
+
+A Flatpak runs in a sandbox that sees only the files its permissions grant. Notes reads the `Notes` folder in Documents, so grant that folder. Add a `flatpak` block to `deploy` in `gtkx.config.ts`:
+
+```ts [gtkx.config.ts]
+flatpak: {
+    finishArgs: ["--filesystem=xdg-documents/Notes:create"],
+},
+```
+
+`xdg-documents` is the folder that `XDG_DOCUMENTS_DIR` names in `~/.config/user-dirs.dirs`. Desktop sessions such as GNOME set it; without it, the permission grants nothing. The `:create` suffix creates `Notes` there on first launch. GTKX adds these arguments to its defaults, which grant the display, IPC and hardware rendering; see [Customize a package](/v2/guide/deploying#customize-a-package) and the [Flatpak permission reference](https://docs.flatpak.org/en/latest/sandbox-permissions.html).
+
+The sandbox reaches no other folder. A folder chosen in Preferences comes through the file chooser portal, which grants access but doesn't report changes other programs make there ([xdg-desktop-portal#567](https://github.com/flatpak/xdg-desktop-portal/issues/567)). A notes folder kept elsewhere needs its own `--filesystem` permission to update live.
+
+The build installs the GNOME runtime from Flathub, so add Flathub as a user remote once. GTKX builds with `flatpak-builder` when it is installed and with Flathub's `org.flatpak.Builder` Flatpak otherwise; install the latter, which also carries the linter Flathub runs. Then build the Flatpak:
 
 ```bash
+flatpak remote-add --user --if-not-exists flathub \
+    https://dl.flathub.org/repo/flathub.flatpakrepo
+flatpak install --user flathub org.flatpak.Builder
 npm run deploy -- --target flatpak
 ```
 
-GTKX writes the manifest under `build/<arch>/targets/flatpak/` and runs Flatpak Builder. The first build downloads its GNOME runtime from Flathub. If the build fails because FUSE is unavailable, follow the [container troubleshooting instructions](/v2/guide/deploying#flatpak-in-containers).
+The bundle is `build/out/dev.gtkx.Notes-1.0.0-x86_64.flatpak`, with `aarch64` on ARM. If the build stops at "Failure spawning rofiles-fuse", see [Flatpak in containers](/v2/guide/deploying#flatpak-in-containers).
 
-Install the resulting x64 bundle and launch it in French:
+## Check the build
 
-```bash
-flatpak install --user --reinstall build/out/com.gtkx.tutorial-1.0.0-x86_64.flatpak
-flatpak run --env=LANG=fr_FR.UTF-8 --env=LANGUAGE=fr --env=LC_ALL=fr_FR.UTF-8 com.gtkx.tutorial
-```
-
-Use the package matching your architecture. Tasks loads the installed catalog from `/app/share/locale`. On a fresh Flatpak installation, the translated starter task appears as **Arroser les plantes**.
-
-## Check storage and reminders
-
-Add a task named `Ship it`, quit, and reopen the Flatpak. Confirm the task persists. The storage backend from [Save Tasks](/v2/tutorial/saving-to-disk) uses GLib's data directory, which points into the Flatpak's private storage:
+Flathub reviews every submission with `flatpak-builder-lint`. Lint the generated manifest and the repository the build exported, under `build/arm64/` on ARM:
 
 ```bash
-cat ~/.var/app/com.gtkx.tutorial/data/com.gtkx.tutorial/tasks.json
+flatpak run --command=flatpak-builder-lint org.flatpak.Builder \
+    manifest build/x64/targets/flatpak/dev.gtkx.Notes.yml
+flatpak run --command=flatpak-builder-lint org.flatpak.Builder \
+    repo build/x64/targets/flatpak/repo
 ```
 
-The development app keeps its existing data under `~/.local/share/com.gtkx.tutorial/`. Both use the same GTKX application code.
+Fix each error, or explain it in the submission; [Flathub's linter documentation](https://docs.flathub.org/linter) describes each check and its exceptions. On a local build, the `repo` check reports `appstream-external-screenshot-url` and `appstream-screenshots-not-mirrored-in-ostree`: only Flathub's build copies the screenshots to Flathub's servers.
 
-Also check preferences and a reminder's **Mark Complete** action. Tasks uses the generated display and rendering permissions without adding filesystem or network access. For another application, `deploy.flatpak.finishArgs` configures additional permissions; consult the [Flatpak sandbox documentation](https://docs.flatpak.org/en/latest/sandbox-permissions.html).
+## Run it
 
-## Generate a source manifest
+Install the bundle and start Notes:
 
-The default `prebuilt` mode packages the local build. In `source` mode, the manifest checks out a pinned Git revision, installs dependencies offline, and runs `gtkx build` inside the SDK.
-
-After testing the prebuilt package, update `gtkx.config.ts` for source mode:
-
-```diff [gtkx.config.ts]
-@@ -17,0 +18,4 @@
-+        flatpak: {
-+            mode: "source",
-+            source: { url: "https://github.com/you/tasks.git" },
-+        },
+```bash
+flatpak install --user build/out/dev.gtkx.Notes-1.0.0-x86_64.flatpak
+flatpak run dev.gtkx.Notes
 ```
 
-Use your application's public repository URL. Install [`flatpak-node-generator`](https://github.com/flatpak/flatpak-builder-tools/tree/master/node) using its installation instructions; GTKX uses it to prepare the offline dependency sources.
+Notes creates `Documents/Notes` if it doesn't exist and lists the notes in it. A note another program saves there appears in the list. Check the sandbox's permissions:
 
-Commit the configuration, application sources, lockfile, icons, license, and translation catalogs, then push that commit to the configured repository. The source build must be able to fetch it. Generated MO files stay out of Git; the build reproduces them. Then generate the manifest:
+```bash
+flatpak info --show-permissions dev.gtkx.Notes
+```
+
+```txt
+[Context]
+shared=ipc;
+sockets=fallback-x11;wayland;
+devices=dri;
+filesystems=xdg-documents/Notes:create;
+```
+
+## Submit to Flathub
+
+Flathub builds open-source apps from source, so it takes a source-mode manifest, not the prebuilt one above. Push Notes to its own public repository with `package-lock.json` committed, tag a release, and set `deploy.flatpak.mode` to `"source"` with the repository's URL and tag, as [Source Flatpak builds](/v2/guide/deploying#publishing-on-flathub) explains. Install `flatpak-node-generator`, which lists the npm dependencies for Flathub's offline build, then write the manifest and `generated-sources.json` to `build/x64/targets/flatpak/` without building:
 
 ```bash
 npm run deploy -- --target flatpak --print-manifests
 ```
 
-Keep `com.gtkx.tutorial.yml` and `generated-sources.json` together in `build/<arch>/targets/flatpak/`. Regenerate them after dependency changes. The manifest includes the Node.js SDK extension and installs the bundle, icons, settings, and compiled catalogs.
-
-GTKX pins the current commit. To select a release tag instead, create and push that tag, then set `source.tag: "v1.0.0"` before regenerating. GTKX resolves the tag to a commit in your checkout.
-
-## Prepare your own submission
-
-Use your application's identity and metadata before publishing. The generated source manifest is a starting point: it rebuilds the application bundle, while native npm dependencies still use their packaged binaries. Review those dependencies against [Flathub's source-build requirements](https://docs.flathub.org/docs/for-app-authors/requirements#building-from-source) before submission.
-
-Build and test the final source manifest using [Flathub's submission instructions](https://docs.flathub.org/docs/for-app-authors/submission), including its manifest and repository checks. GTKX's manifest preview does not run that build or establish submission readiness.
+Flathub verifies that the application ID belongs to you, so replace `dev.gtkx.Notes` with an ID under a domain or repository you control; see [Flathub's requirements](https://docs.flathub.org/docs/for-app-authors/requirements#control-over-domain-or-repository). Then follow [Flathub's submission guide](https://docs.flathub.org/docs/for-app-authors/submission): test the source manifest with its build command and open the pull request with both generated files. Explain the `xdg-documents` permission there, because reviewers check every static permission.
 
 ## Next
 
-Browse the [complete tutorial source](https://github.com/gtkx-org/gtkx/tree/main/tutorial), or start your own application with `npm create gtkx@beta`.
+Notes is complete. The guide covers what it didn't need: [Cairo](/v2/guide/cairo) and [OpenGL](/v2/guide/opengl) drawing, [animations](/v2/guide/animations), [forms](/v2/guide/forms), [D-Bus](/v2/guide/dbus), and [workspaces](/v2/guide/workspaces) for apps that share code.

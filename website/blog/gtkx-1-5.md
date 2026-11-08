@@ -1,6 +1,8 @@
 ---
 title: "GTKX 1.5: Native forms and gettext i18n"
 description: "GTKX 1.5 connects native form controls to React Hook Form and React translation APIs to GNU gettext."
+label: "GTKX 1.5"
+date: 2026-08-27
 image: /tasks-forms.png
 ---
 
@@ -65,7 +67,7 @@ The [forms guide](/guide/forms) covers validation, disabled fields, custom contr
 
 `@gtkx/i18n` registers a backend on the default `i18next` singleton and re-exports `react-i18next`. Hooks, translation components, providers, and context use the upstream implementations. The direct `t` and `init` exports share the configured singleton. Catalog lookup uses the process-wide locale; GTKX does not provide a browser or server renderer.
 
-The storage model follows the Linux desktop. Source messages become a gettext POT template, translators edit PO files, builds compile MO catalogs, and GLib performs the runtime lookup. Interpolation keeps i18next's `{{name}}` syntax, while an explicit singular and plural pair becomes one gettext plural entry:
+The storage model follows the Linux desktop. Source messages become a gettext POT template, translators edit PO files, builds compile MO catalogs, and GLib performs the runtime lookup. Interpolation keeps i18next's <span v-pre>`{{name}}`</span> syntax, while an explicit singular and plural pair becomes one gettext plural entry:
 
 ```tsx
 import { t, useTranslation } from "@gtkx/i18n";

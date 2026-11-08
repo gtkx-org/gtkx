@@ -10,13 +10,9 @@ The workspace needs Linux, Node.js 26.7 or later, pnpm, the pinned Rust toolchai
 
 ## Submit a focused change
 
-Use a short imperative commit subject of at most ten words. Rely on the normal CI workflow's `Verify workspace` check for affected builds, tests, typechecking, linting, and E2E coverage, plus the current Rust advisory audit. CI compares pull requests to their merge base and pushes to the last successful main-branch run; manually dispatch CI to check the complete workspace.
+Use a short imperative commit subject of at most ten words. CI's `Verify workspace` check builds, tests, typechecks, and lints the affected projects; [Testing](https://gtkx.dev/contributing/testing#ci-verification-and-failure-reproduction) describes what it runs and how to reproduce a failing target. `pnpm build` emits JavaScript and declarations without checking types, so run a project's `typecheck` target to catch type errors before CI does.
 
-`pnpm build` emits JavaScript and declarations without full TypeScript checking. CI checks package, example, and workspace types separately. Native E2E coverage depends on AddressSanitizer and checks leaks after every test.
-
-Run `pnpm format` to format hand-written files with Oxfmt, or `pnpm nx format:write --base=origin/main` to format changed files. CI checks formatting as part of linting. Generated outputs, test fixtures, changelogs, and generated agent instructions are excluded; Markdown code fences retain their authored formatting. Rust source remains checked by rustfmt.
-
-Use the focused Nx targets described in [Testing](https://gtkx.dev/contributing/testing) when reproducing a CI failure.
+Run `pnpm format` before committing. CI checks formatting as part of linting; [Development Setup](https://gtkx.dev/contributing/development#clone-and-build) covers formatting only changed files.
 
 Follow the [pull request template](.github/PULL_REQUEST_TEMPLATE.md) and add `Closes #N` only when the pull request resolves that issue. Include a screenshot for visible UI changes.
 

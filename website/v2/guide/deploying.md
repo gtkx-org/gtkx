@@ -10,8 +10,8 @@ distribution, then add other targets or a [source Flatpak build](#publishing-on-
 
 ## Configure your application
 
-Keep the application's version, author, and license in `package.json`. GTKX uses those values unless you
-override them in `deploy`:
+GTKX reads the application's name, summary, version, developer, license, and homepage from the `name`,
+`description`, `version`, `author`, `license`, and `homepage` fields of `package.json`, unless `deploy` sets them:
 
 ```ts
 import { defineConfig } from "@gtkx/config";
@@ -40,7 +40,7 @@ GTKX preserves the directory's other sizes and variants.
 You can also point `applicationIcon` at a single SVG, PNG, or XPM file. When the option is omitted, GTKX looks
 for exactly one `<applicationId>.svg`, `.png`, or `.xpm` in the project root. Deployment requires an icon.
 
-Theme directories are copied in full. Keep icons imported with [`?icon`](/v2/guide/assets#import-project-data) elsewhere,
+Theme directories are copied in full. Keep icons imported with [`?icon`](/v2/guide/assets#icons) elsewhere,
 since the app bundles them itself. Keep development icons in a separate directory and select it with a
 [`$development` override](/v2/guide/configuration-and-codegen#every-option).
 
@@ -53,14 +53,14 @@ since the app bundles them itself. Keep development icons in a separate director
 | `rpm`      | `.rpm`                                 | Fedora and other RPM distributions           |
 | `appimage` | `.AppImage`                            | A downloadable executable file               |
 
-Flatpak is the default. Set `deploy.targets` for the project's usual formats, or override them for one run:
+Flatpak is the default. Set `deploy.targets` for the project's usual formats, or override them for one run with [`--target`](/v2/guide/cli#gtkx-deploy):
 
 ```bash
 gtkx deploy --target deb,rpm
 ```
 
-Packages are written to `build/out`. Manifests and staged files are under `build/<arch>/`. `gtkx deploy --out packages`
-changes this deployment directory to `packages`, with finished artifacts in `packages/out`.
+Packages are written to `build/out`. Manifests and staged files are under `build/<arch>/`. `deploy.outDir: "packages"`
+or [`gtkx deploy --out packages`](/v2/guide/cli#gtkx-deploy) changes this deployment directory to `packages`, with finished artifacts in `packages/out`.
 
 ### Build tools
 
@@ -71,6 +71,14 @@ for the catalog workflow.
 Flatpak needs `flatpak` and either `flatpak-builder` or the `org.flatpak.Builder` Flatpak. AppImage needs
 `file`. GTKX downloads and verifies `nfpm` for Debian/RPM packaging and `appimagetool` for AppImage packaging.
 The command reports missing tools with installation hints.
+
+Flatpak builds install the GNOME runtime and SDK from a remote named `flathub` in your user installation; a
+system-wide `flathub` remote is not used. Add it once:
+
+```bash
+flatpak remote-add --user --if-not-exists flathub \
+    https://dl.flathub.org/repo/flathub.flatpakrepo
+```
 
 To use a local nFPM installation, set `deploy.tools.nfpm` to an executable name such as `"nfpm"` or a path such as `"./tools/nfpm"`. Relative paths start at the project root. This skips the pinned nFPM download for Debian and RPM packages.
 
@@ -84,18 +92,16 @@ npm run deploy -- --target rpm --print-manifests
 
 With pnpm, run `pnpm run deploy --target rpm --print-manifests`; `pnpm deploy` is pnpm's built-in command and does not run the script.
 
-Use `--target deb` on Debian or Ubuntu. The preview writes the generated metadata to `build/<arch>/metadata/` and the
-package manifests to `build/<arch>/targets/` for review.
-
-This still builds and stages the application, but stops before package creation. It skips Node.js and
-packaging-tool downloads; cross-architecture addon downloads and source Flatpak dependency preparation may
-still need network access.
+Use `--target deb` on Debian or Ubuntu. The preview builds and stages the application, writes the generated
+metadata to `build/<arch>/metadata/` and the package manifests to `build/<arch>/targets/`, and stops before
+creating packages. It skips Node.js and packaging-tool downloads; cross-architecture addon downloads and source
+Flatpak dependency preparation may still need network access.
 
 GTKX validates the desktop entry and AppStream metadata. AppStream errors and unsupported tags fail every
 target. Other AppStream warnings are fatal when source-mode Flatpak is selected, including previews.
 Prebuilt Flatpak, Debian, RPM, and AppImage deployments report them and continue.
 
-Remove `--print-manifests` to build the package:
+Remove [`--print-manifests`](/v2/guide/cli#gtkx-deploy) to build the package:
 
 ```bash
 npm run deploy -- --target rpm
@@ -103,25 +109,42 @@ npm run deploy -- --target rpm
 
 The finished package is under `build/out`. Install it on a compatible system and open the application from
 the desktop launcher to check the packaged build. Even `--help` needs a display, so run command-line smoke tests
-in a desktop session or a virtual display; see [Command-line apps](/v2/guide/async-operations#command-line-apps). To package an existing production build:
+in a desktop session or a virtual display; see [Command-line apps](/v2/guide/application-lifecycle#command-line-apps).
+
+Each deployment replaces its managed output directory. Choose an empty directory or an earlier GTKX deploy
+directory below the project root, outside `dist/`; symlinked output paths and unrelated files are rejected.
+
+### Production build output
+
+`gtkx build` writes the production build to `dist/`. To package an existing build:
 
 ```bash
 gtkx build
 gtkx deploy --skip-build
 ```
 
-`--skip-build` always reads `dist/`, regardless of the deployment's `--out` directory. Keep
-`dist/gtkx-schemas.json` beside the bundle: it records the build's entry, configuration, imported schemas, and
-dependency notices. Deployment rejects a build of another entry, such as a helper built without `--out`, a
-different production configuration, or an older metadata format; rebuild to update it. Changes to the `deploy`
-block alone do not need a rebuild.
+[`--skip-build`](/v2/guide/cli#gtkx-deploy) always reads `dist/`; the deployment's `--out` option selects the package
+directory, not the build directory. Keep `dist/gtkx-schemas.json` beside the bundle: it records the build's entry,
+configuration, imported schemas, and dependency notices. Deployment rejects a build of another entry, such as a
+helper built without `--out`, a different production configuration, or an older metadata format; rebuild to update
+it. Changes to the `deploy` block alone do not need a rebuild.
 
-Each deployment replaces its managed output directory. Choose an empty directory or an earlier GTKX deploy
-directory below the project root, outside `dist/`; symlinked output paths and unrelated files are rejected.
+Use [`gtkx build --out`](/v2/guide/cli#gtkx-build) for another independently runnable build, such as a
+[helper command](#helper-commands):
+
+```bash
+gtkx build src/helper.ts --out dist-helper
+```
+
+Choose a directory below the project root that is empty or contains an earlier GTKX build, and add it to
+`.gitignore`, which scaffolded projects set up only for `dist/` and `build/`. GTKX rejects unrelated files,
+symlinked paths, output nested inside another build, and output inside the deploy output directory (`build/` unless
+`deploy.outDir` says otherwise), which every deployment replaces. Generated bundles contain their JavaScript
+dependencies; unresolved package imports fail the build.
 
 ### Architectures
 
-Deployment uses the host architecture unless `deploy.architectures` or `--arch` selects `x64`, `arm64`, or both:
+Deployment uses the host architecture unless `deploy.architectures` or [`--arch`](/v2/guide/cli#gtkx-deploy) selects `x64`, `arm64`, or both:
 
 ```bash
 gtkx deploy --target deb,rpm --arch x64,arm64
@@ -142,27 +165,28 @@ bindings call those libraries directly; the installed app does not need GIR file
 compatible native libraries on the host.
 
 Debian and RPM dependencies include GTK, libadwaita, and runtime requirements detected from staged binaries.
-RPM packages also require the shared library of every library in `libraries`, such as
+RPM packages also require the shared library of every other library in `libraries`, such as
 `libgtksourceview-5.so.0()(64bit)` for `GtkSource-5`, which RPM resolves to the right package on any distribution.
-Debian has no such relation, so list the Debian packages that ship those shared libraries in `deploy.depends.deb`,
-for example `["libgtksourceview-5-0"]`; while `deploy.depends.deb` is empty, a deb deployment warns and names
-the shared libraries it must cover. Otherwise the package installs on a system without the library and the app fails
-to start. Declare other system packages through `deploy.depends` as well. The opening example explicitly sets the GTKX
-baseline in `deploy.minimumLibraryVersions`; raise it when your app uses newer APIs, for example
-`{ "Gtk-4.0": "4.22", "Adw-1": "1.8" }`. GTKX writes these minimums into Debian and RPM package dependencies;
-it does not infer the minimum API version from your code. Publish the same requirements alongside an
-AppImage, and check prebuilt Flatpaks against the selected GNOME runtime.
+Debian has no such relation: list the packages that ship those libraries in `deploy.depends.deb`, for example
+`["libgtksourceview-5-0"]`, or the package installs on a system without them and the app fails to start. While
+`deploy.depends.deb` is empty, a deb deployment warns and names the shared libraries it must cover. Declare other
+system packages through `deploy.depends` as well.
+
+The opening example sets the GTKX baseline in `deploy.minimumLibraryVersions`. GTKX writes these minimums into
+Debian and RPM package dependencies but does not infer them from your code, so raise them when your app uses newer
+APIs, for example `{ "Gtk-4.0": "4.22", "Adw-1": "1.8" }`. Publish the same requirements alongside an AppImage, and
+check prebuilt Flatpaks against the selected GNOME runtime.
 
 ### Settings schemas
 
-Debian, RPM and Flatpak packages install the application's GSettings schemas into `share/glib-2.0/schemas`
-under their prefix and leave compiling them to the system: the distribution's GLib package compiles that
-directory when a package is installed, and the Flatpak manifest runs `glib-compile-schemas` after installing
-the app. Vendor `.gschema.override` files that a distribution or administrator places there therefore change
-the application's defaults, as they do for other GNOME applications. The AppImage and `node dist/bundle.mjs`
-read the `gschemas.compiled` that `gtkx build` writes beside the bundle, so vendor overrides do not apply to
-them. Copies of the schema files sit beside it, where GLib reads key summaries and descriptions, as every
-package does.
+Debian, RPM, and Flatpak packages install the application's GSettings schemas into `share/glib-2.0/schemas`
+under their prefix, where the system compiles them: the distribution's GLib package on installation, or
+`glib-compile-schemas` in the Flatpak build. Vendor `.gschema.override` files placed there by a distribution or
+administrator change the application's defaults, as they do for other GNOME applications. Every schema shares that
+directory, so each schema file name must start with the application ID.
+
+The AppImage and `node dist/bundle.mjs` read the `gschemas.compiled` that `gtkx build` writes beside the bundle,
+so vendor overrides do not apply to them.
 
 ### Additional native addons
 
@@ -187,10 +211,15 @@ than one architecture, import a prebuild for each and load the one matching `pro
 the architecture of imported addons.
 
 ```ts
-import arm64Addon from "@node-rs/xxhash-linux-arm64-gnu/xxhash.linux-arm64-gnu.node?url";
-import x64Addon from "@node-rs/xxhash-linux-x64-gnu/xxhash.linux-x64-gnu.node?url";
+import { createRequire } from "node:module";
+import arm64Addon from
+    "@node-rs/xxhash-linux-arm64-gnu/xxhash.linux-arm64-gnu.node?url";
+import x64Addon from
+    "@node-rs/xxhash-linux-x64-gnu/xxhash.linux-x64-gnu.node?url";
 
-const addon = require(process.arch === "arm64" ? arm64Addon : x64Addon) as { xxh64(input: string): bigint };
+const require = createRequire(import.meta.url);
+const addonPath = process.arch === "arm64" ? arm64Addon : x64Addon;
+const addon = require(addonPath) as { xxh64(input: string): bigint };
 ```
 
 Package managers treat a prebuild package for another CPU differently. pnpm installs it. Yarn skips it unless
@@ -229,6 +258,17 @@ file modes. A directory source installs every file below it, so a directory of m
 takes one entry. Generated desktop, AppStream, and MIME metadata take precedence over extra files targeting the
 same destination.
 
+### Screenshots and releases
+
+Software centers show the screenshots and release history from the AppStream metadata. Each
+`deploy.screenshots` entry takes an absolute `url` or a `file` relative to the project root. Software centers
+download screenshots over the network, so GTKX turns each `file` into a URL under `deploy.screenshotBaseUrl`.
+Without that option, GTKX uses the raw file URL of the project's GitHub or GitLab `origin` remote on its default
+branch, and deployment stops when there is no such remote. Push the screenshots before you publish a package.
+
+`deploy.releases` lists the release history. It defaults to one release for the `package.json` version, dated
+on the day of the build or by `SOURCE_DATE_EPOCH`.
+
 ### Desktop actions
 
 `deploy.desktopActions` adds entries to the application's launcher menu. Choosing one runs the application with
@@ -249,19 +289,24 @@ so the windows render only after the handler calls `activate()`:
 import type * as Adw from "@gtkx/gi/adw";
 import { AdwApplication } from "@gtkx/jsx/adw";
 import { GSimpleAction } from "@gtkx/jsx/gio";
-import { useRef } from "react";
+import { useRef, useState } from "react";
+import { MainWindow } from "./main-window.js";
 
 export const App = () => {
     const application = useRef<Adw.Application | null>(null);
+    const [view, setView] = useState("inbox");
 
     const showToday = () => {
-        selectView("today");
+        setView("today");
         application.current?.activate();
     };
 
     return (
-        <AdwApplication ref={application} actions={<GSimpleAction name="today" onActivate={showToday} />}>
-            <MainWindow />
+        <AdwApplication
+            ref={application}
+            actions={<GSimpleAction name="today" onActivate={showToday} />}
+        >
+            <MainWindow view={view} />
         </AdwApplication>
     );
 };
@@ -271,7 +316,7 @@ export const App = () => {
 
 An application can ship a command-line helper beside it, such as a `tally-report` command that prints the
 application's data without opening a window. Build the helper into its own directory, as in
-[Production build output](/v2/guide/assets#production-build-output), before every deployment, since
+[Production build output](#production-build-output), before every deployment, since
 `gtkx deploy` rebuilds only `dist/`:
 
 ```bash
@@ -287,7 +332,8 @@ deploy: {
     extraFiles: {
         "lib/tally-report": "dist-report",
         "bin/tally-report": { source: "packaging/tally-report", mode: "0755" },
-        "share/licenses/tally/tally-report-NOTICES": "dist-report/BUNDLED-NOTICES",
+        "share/licenses/tally/tally-report-NOTICES":
+            "dist-report/BUNDLED-NOTICES",
     },
 },
 ```
@@ -328,7 +374,7 @@ be available inside the project checkout. Without an explicit tag or commit, GTK
 commit. Source builds use Node.js from the SDK extension.
 
 Source mode needs a standalone project, with its lockfile and `packageManager` field in the application's
-directory. An app in a [workspace](/v2/guide/configuration-and-codegen#monorepos) shares the lockfile and package
+directory. An app in a [workspace](/v2/guide/workspaces#monorepos) shares the lockfile and package
 manager of the workspace root, so `gtkx deploy` stops with an error, including previews, when a workspace member
 selects source mode. Package a workspace member as a prebuilt Flatpak, or move it into its own repository to
 publish it from source.
@@ -361,4 +407,8 @@ confirm compliance with Flathub requirements. The [Flatpak tutorial](/v2/tutoria
 
 If Flatpak stops while spawning `rofiles-fuse`, set `deploy.flatpak.shouldUseRofilesFuse: false` in `gtkx.config.ts` and retry. This applies to both prebuilt and source builds when the container cannot provide FUSE.
 
-If a failed deployment leaves an output directory that GTKX refuses to replace, keep it for diagnosis and choose a fresh directory, for example `npm run deploy -- --target flatpak --out build-flatpak-retry`. The `--out` directory must be below the project root and outside `dist/`.
+The failed build can leave a `rofiles-fuse` mount below `build/<arch>/targets/flatpak/state/rofiles/`, so GTKX
+cannot restore the output directory and reports "Device or resource busy". Unmount it with
+`fusermount3 -u <mount>` before retrying.
+
+If a failed deployment leaves an output directory that GTKX refuses to replace, keep it for diagnosis and choose a fresh directory, for example `npm run deploy -- --target flatpak --out build-flatpak-retry`.

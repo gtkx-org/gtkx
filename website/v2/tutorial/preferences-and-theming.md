@@ -1,386 +1,96 @@
 ---
-description: "Store preferences in GSettings, add a preferences dialog, sort the list, and follow the system theme."
+description: "Store the notes folder, color scheme, preview state and window size in GSettings and edit them in a preferences dialog."
 ---
 
 # Add Preferences
 
-[Add Undo and Delete Confirmation](/v2/tutorial/trash-and-toasts) finished the app's dialog flow. This chapter keeps user choices in GSettings while task and list data stays in the JSON store from [Save Tasks](/v2/tutorial/saving-to-disk).
-
-## Add the settings schema
-
-GTKX imports, compiles, and generates types for the GSettings schemas used by the application. Create `data/com.gtkx.tutorial.gschema.xml`:
-
-```xml [data/com.gtkx.tutorial.gschema.xml]
-<?xml version="1.0" encoding="UTF-8"?>
-<schemalist>
-  <enum id="com.gtkx.tutorial.SortOrder">
-    <value nick="manual" value="0"/>
-    <value nick="due-date" value="1"/>
-    <value nick="title" value="2"/>
-    <value nick="created" value="3"/>
-  </enum>
-  <schema id="com.gtkx.tutorial" path="/com/gtkx/tutorial/">
-    <key name="sort-order" enum="com.gtkx.tutorial.SortOrder">
-      <default>'manual'</default>
-      <summary>Sort order</summary>
-      <description>How tasks are ordered in the list</description>
-    </key>
-    <key name="color-scheme" type="s">
-      <choices>
-        <choice value="default"/>
-        <choice value="light"/>
-        <choice value="dark"/>
-      </choices>
-      <default>'default'</default>
-      <summary>Color scheme</summary>
-      <description>Follow the system theme or force light or dark</description>
-    </key>
-    <key name="reminder-minutes" type="i">
-      <range min="0" max="1440"/>
-      <default>30</default>
-      <summary>Reminder lead time</summary>
-      <description>Minutes before a due time to show a reminder</description>
-    </key>
-    <key name="window-width" type="i">
-      <default>900</default>
-      <summary>Window width</summary>
-      <description>Last saved window width in pixels</description>
-    </key>
-    <key name="window-height" type="i">
-      <default>600</default>
-      <summary>Window height</summary>
-      <description>Last saved window height in pixels</description>
-    </key>
-  </schema>
-</schemalist>
-```
-
-Use the same application ID as the scaffold. The [GSettings reference](https://docs.gtk.org/gio/class.Settings.html) covers schemas and their native storage; GTKX supplies the typed imports and React bindings.
-
-Import the file wherever GTKX needs a schema:
-
-```ts
-import schema from "../../data/com.gtkx.tutorial.gschema.xml";
-```
-
-The import returns a generated schema module. `useSetting` and `useBindSetting` use it to check key names and value types.
-
-## Create the settings instance
-
-Both hooks receive an existing `Gio.Settings` instance. Create it for the application in `src/components/settings.tsx`:
-
-```tsx [src/components/settings.tsx]
-import type * as Gio from "@gtkx/gi/gio";
-import { GSettings } from "@gtkx/jsx/gio";
-import { createPortal, rootElement } from "@gtkx/react";
-import { createContext, type ReactNode, use, useState } from "react";
-import schema from "../../data/com.gtkx.tutorial.gschema.xml";
-
-const SettingsContext = createContext<Gio.Settings | null>(null);
-
-export const SettingsProvider = ({ children }: { children: ReactNode }) => {
-    const [settings, setSettings] = useState<Gio.Settings | null>(null);
-
-    return (
-        <>
-            {createPortal(<GSettings ref={setSettings} schemaId={schema.id} />, rootElement)}
-            {settings !== null && <SettingsContext value={settings}>{children}</SettingsContext>}
-        </>
-    );
-};
-
-export const useAppSettings = (): Gio.Settings => {
-    const settings = use(SettingsContext);
-    if (settings === null) {
-        throw new Error("SettingsProvider is required");
-    }
-
-    return settings;
-};
-```
-
-The portal places the non-widget settings object at GTKX's root while `SettingsProvider` owns its React lifecycle. The provider mounts its children once the instance is available and shares it through [React context](https://react.dev/learn/passing-data-deeply-with-context).
-
-In `src/app.tsx`, wrap `Window` inside the existing `AdwApplication`:
-
-```diff [src/app.tsx]
-@@ -0,0 +1 @@
-+import { SettingsProvider } from "./components/settings.js";
-@@ -12 +13,3 @@
--            <Window />
-+            <SettingsProvider>
-+                <Window />
-+            </SettingsProvider>
-```
-
-## Bind the window size
-
-In `src/components/window.tsx`, extend the React and GTKX imports, then hold the window instance in state and bind its default size:
-
-```diff [src/components/window.tsx]
-@@ -0,0 +1,5 @@
-+import * as Adw from "@gtkx/gi/adw";
-+import { quit, useBindSetting, useSetting } from "@gtkx/react";
-+import { useEffect, useRef, useState } from "react";
-+import schema from "../../data/com.gtkx.tutorial.gschema.xml";
-+import { useAppSettings } from "./settings.js";
-@@ -2 +6,0 @@
--import { useRef } from "react";
-@@ -12 +15,0 @@
--import * as Adw from "@gtkx/gi/adw";
-@@ -15 +17,0 @@
--import { quit } from "@gtkx/react";
-@@ -30,0 +33,7 @@
-+    const settings = useAppSettings();
-+    const [colorScheme] = useSetting(settings, schema, "color-scheme");
-+    const [window, setWindow] = useState<Adw.ApplicationWindow | null>(null);
-+
-+    useBindSetting({ settings, schema, key: "window-width", object: window, property: "defaultWidth" });
-+    useBindSetting({ settings, schema, key: "window-height", object: window, property: "defaultHeight" });
-+
-@@ -37,0 +47 @@
-+                ref={setWindow}
-```
-
-Set `ref={setWindow}` on `AdwApplicationWindow`. Both bindings wait for the mounted instance, then restore its saved size and write changes back. Keep the existing toast overlay ref.
-
-## Keep application choices together
-
-The generated schema supplies the allowed choices and enum values. A small application module adds the labels and Adwaita theme mapping used by the UI. Create `src/settings.ts`:
-
-```ts [src/settings.ts]
-import * as Adw from "@gtkx/gi/adw";
-import schema from "../data/com.gtkx.tutorial.gschema.xml";
-
-export type ColorScheme = typeof schema.values["color-scheme"][number];
-export type SortOrder = keyof typeof schema.values["sort-order"];
-type SortOrderValue = typeof schema.values["sort-order"][SortOrder];
-
-const COLOR_SCHEMES = {
-    default: { label: "Follow system", value: Adw.ColorScheme.DEFAULT },
-    light: { label: "Light", value: Adw.ColorScheme.FORCE_LIGHT },
-    dark: { label: "Dark", value: Adw.ColorScheme.FORCE_DARK },
-} as const satisfies Record<ColorScheme, { label: string; value: Adw.ColorScheme }>;
-
-const SORT_ORDERS = {
-    manual: "Manual",
-    "due-date": "Due date",
-    title: "Title",
-    created: "Date created",
-} satisfies Record<SortOrder, string>;
-
-const sortOrderIds = Object.keys(SORT_ORDERS) as SortOrder[];
-
-export const colorSchemeItems = (): { id: string; value: string }[] =>
-    Object.entries(COLOR_SCHEMES).map(([id, choice]) => ({ id, value: choice.label }));
-
-export const sortOrderItems = (): { id: string; value: string }[] =>
-    sortOrderIds.map((id) => ({ id, value: SORT_ORDERS[id] }));
-
-export const colorSchemeValue = (id: string): Adw.ColorScheme => COLOR_SCHEMES[id as ColorScheme].value;
-
-export const sortOrderFromSetting = (value: SortOrderValue): SortOrder =>
-    sortOrderIds.find((id) => schema.values["sort-order"][id] === value) as SortOrder;
-
-export const sortOrderToSetting = (order: SortOrder): SortOrderValue => schema.values["sort-order"][order];
-```
-
-The sort setting returns the schema's integer enum value. The conversion uses those declared values, so it also works when they are nonconsecutive. The label maps require an entry for each schema choice.
-
-Create `src/hooks/use-sort-order.ts`:
-
-```ts [src/hooks/use-sort-order.ts]
-import { useSetting } from "@gtkx/react";
-import schema from "../../data/com.gtkx.tutorial.gschema.xml";
-import { useAppSettings } from "../components/settings.js";
-import { sortOrderFromSetting, sortOrderToSetting, type SortOrder } from "../settings.js";
-
-export const useSortOrder = (): [SortOrder, (order: SortOrder) => void] => {
-    const settings = useAppSettings();
-    const [value, setValue] = useSetting(settings, schema, "sort-order");
-    return [sortOrderFromSetting(value), (order) => setValue(sortOrderToSetting(order))];
-};
-```
-
-## Sort visible tasks
-
-Import `SortOrder` from `settings.ts` in `src/store/selectors.ts`, then add the comparator:
-
-```diff [src/store/selectors.ts]
-@@ -0,0 +1 @@
-+import type { SortOrder } from "../settings.js";
-@@ -48 +49,20 @@
--export type VisibleOptions = { query: string; filter: Filter };
-+const byOrder =
-+    (order: SortOrder) =>
-+        (a: Task, b: Task): number => {
-+            switch (order) {
-+                case "due-date": {
-+                    if (a.due === b.due) return a.position - b.position;
-+                    if (!a.due) return 1;
-+                    if (!b.due) return -1;
-+                    return a.due < b.due ? -1 : 1;
-+                }
-+                case "title":
-+                    return a.title.localeCompare(b.title);
-+                case "created":
-+                    return a.createdAt.localeCompare(b.createdAt);
-+                default:
-+                    return a.position - b.position;
-+            }
-+        };
-+
-+export type VisibleOptions = { query: string; filter: Filter; sortOrder: SortOrder };
-@@ -58 +78 @@
--        .sort((a, b) => a.position - b.position);
-+        .sort(byOrder(options.sortOrder));
-```
-
-In `src/components/task-list.tsx`, read the setting and pass it to the selector:
-
-```diff [src/components/task-list.tsx]
-@@ -0,0 +1 @@
-+import { useSortOrder } from "../hooks/use-sort-order.js";
-@@ -11,0 +13 @@
-+    const [sortOrder] = useSortOrder();
-@@ -21 +23 @@
--    const visible = visibleTasks(tasks, selection, { query: searchQuery, filter });
-+    const visible = visibleTasks(tasks, selection, { query: searchQuery, filter, sortOrder });
-```
-
-## Open Preferences
-
-Add `"preferences"` to `DialogKind` in `src/types.ts`. Then connect the existing dialog state to a window action in `src/components/window-actions.tsx`:
-
-```diff [src/components/window-actions.tsx]
-@@ -18,0 +19 @@
-+            <GSimpleAction name="preferences" onActivate={() => showDialog("preferences")} />
-```
-
-Register the accelerator in `src/app.tsx`:
-
-```diff [src/app.tsx]
-@@ -9,0 +10 @@
-+                { detailedActionName: "win.preferences", accels: ["<Control>comma"] },
-```
-
-Add `{ label: "Preferences", action: "win.preferences" }` beside Keyboard Shortcuts in `src/components/main-menu.tsx`, and document the same accelerator in `src/components/shortcuts.tsx`:
-
-```diff [src/components/shortcuts.tsx]
-@@ -5,0 +6 @@
-+            <AdwShortcutsItem title="Preferences" accelerator="<Control>comma" />
-```
-
-Create `src/components/preferences.tsx`:
-
-```tsx [src/components/preferences.tsx]
-import { ComboRow } from "@gtkx/components";
-import { AdwPreferencesDialog, AdwPreferencesGroup, AdwPreferencesPage, AdwSpinRow } from "@gtkx/jsx/adw";
-import { GtkAdjustment } from "@gtkx/jsx/gtk";
-import { useSetting } from "@gtkx/react";
-import schema from "../../data/com.gtkx.tutorial.gschema.xml";
-import { useSortOrder } from "../hooks/use-sort-order.js";
-import { colorSchemeItems, sortOrderItems, type ColorScheme, type SortOrder } from "../settings.js";
-import { useAppSettings } from "./settings.js";
-
-export const Preferences = ({ onClose }: { onClose: () => void }) => {
-    const settings = useAppSettings();
-    const [scheme, setScheme] = useSetting(settings, schema, "color-scheme");
-    const [sortOrder, setSortOrder] = useSortOrder();
-    const [reminderMinutes, setReminderMinutes] = useSetting(settings, schema, "reminder-minutes");
-
-    return (
-        <AdwPreferencesDialog onClosed={onClose} title="Preferences">
-            <AdwPreferencesPage title="General" iconName="preferences-system-symbolic">
-                <AdwPreferencesGroup title="Appearance">
-                    <ComboRow
-                        title="Theme"
-                        items={colorSchemeItems()}
-                        selectedId={scheme}
-                        onSelectionChanged={(id) => setScheme(id as ColorScheme)}
-                    />
-                </AdwPreferencesGroup>
-                <AdwPreferencesGroup title="Tasks">
-                    <ComboRow
-                        title="Sort order"
-                        items={sortOrderItems()}
-                        selectedId={sortOrder}
-                        onSelectionChanged={(id) => setSortOrder(id as SortOrder)}
-                    />
-                    <AdwSpinRow
-                        title="Reminder lead time"
-                        subtitle="Minutes before a task is due"
-                        adjustment={<GtkAdjustment value={reminderMinutes} lower={0} upper={1440} stepIncrement={5} />}
-                        onNotifyValue={(value) => setReminderMinutes(value as number)}
-                    />
-                </AdwPreferencesGroup>
-            </AdwPreferencesPage>
-        </AdwPreferencesDialog>
-    );
-};
-```
-
-`ComboRow` maps the stored choice ID to an Adwaita preferences row. `GtkAdjustment` supplies the spin row's value and range through JSX.
-
-Mount the new dialog from `src/components/dialogs.tsx`:
-
-```diff [src/components/dialogs.tsx]
-@@ -0,0 +1 @@
-+import { Preferences } from "./preferences.js";
-@@ -35,0 +37,2 @@
-+        case "preferences":
-+            return <Preferences onClose={close} />;
-```
-
-## Apply the color scheme
-
-Create `src/theme.ts`:
-
-```ts [src/theme.ts]
-import * as Adw from "@gtkx/gi/adw";
-import { colorSchemeValue } from "./settings.js";
-
-export const applyColorScheme = (value: string): void => {
-    const manager = Adw.StyleManager.getDefault();
-    manager.setColorScheme(colorSchemeValue(value));
-};
-```
-
-Apply it when the setting changes in `src/components/window.tsx`:
-
-```diff [src/components/window.tsx]
-@@ -0,0 +1 @@
-+import { applyColorScheme } from "../theme.js";
-@@ -42,0 +44,4 @@
-+
-+    useEffect(() => {
-+        applyColorScheme(colorScheme);
-+    }, [colorScheme]);
-```
-
-The `default` choice follows the desktop theme; `light` and `dark` override it for the app.
-
-Include Preferences in the dialog type:
-
-```diff [src/types.ts]
-@@ -27 +27 @@
--export type DialogKind = "none" | "about" | "shortcuts" | "new-list";
-+export type DialogKind = "none" | "about" | "shortcuts" | "new-list" | "preferences";
-```
-
-Add the menu entry:
-
-```diff [src/components/main-menu.tsx]
-@@ -12,0 +13 @@
-+                    { section: [{ label: "Preferences", action: "win.preferences" }] },
-```
+Keep the notes folder, color scheme, preview state and window size in GSettings so they survive a restart, and edit the folder and color scheme in a preferences dialog.
+
+## A settings schema
+
+GSettings stores each preference under a key, and a schema declares each key's type and default. A new file, `data/dev.gtkx.Notes.gschema.xml`, declares the app's keys:
+
+<<< @/figures/tutorial/preferences-and-theming/data/dev.gtkx.Notes.gschema.xml [data/dev.gtkx.Notes.gschema.xml]
+
+- The schema ID is the application ID, and `path` is the same ID written as a path. See [Your app's schema](/v2/guide/native-state#your-app-s-schema).
+- An empty `folder` means `Notes` in the Documents folder, the default from [List the Notes](/v2/tutorial/the-notes-folder).
+- `color-scheme` is a string limited to its `<choices>`. `default` follows the system style.
+- `gettext-domain` names the catalog that translates the summaries and descriptions. See [Translate settings schemas](/v2/guide/internationalization#translate-settings-schemas).
+
+A module that imports the schema is enough for GTKX to compile it and type its keys. `src/settings.tsx` imports it and shares one `Gio.Settings` instance with the app:
+
+<<< @/figures/tutorial/preferences-and-theming/src/settings.tsx [src/settings.tsx]
+
+- `SettingsProvider` renders a `GSettings` element through a portal, keeps the instance in state, and renders its children once the instance exists, so `useAppSettings` always returns one. [The settings instance](/v2/guide/native-state#the-settings-instance) explains the pattern.
+- `schema.values["color-scheme"]` lists the key's choices, so `ColorScheme` is `"default" | "light" | "dark"`.
+- `COLOR_SCHEMES` gives each choice a label and its [`Adw.ColorScheme`](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/enum.ColorScheme.html). As a `Record<ColorScheme, …>`, it fails to typecheck if the schema gains a choice without an entry. Each label is a function, so `t` translates it when the dialog renders.
+- `colorSchemeItems` builds the items of the dialog's Style row, and `toColorScheme` turns the row's selected ID back into a choice, or `undefined` for any other string.
+
+`SettingsProvider` wraps the window in `src/app.tsx`. Ctrl+, runs the `win.preferences` action from [The preferences dialog](#the-preferences-dialog), the [GNOME HIG](https://developer.gnome.org/hig/reference/keyboard.html)'s shortcut for Preferences:
+
+<<< @/figures/tutorial/preferences-and-theming/src/app.tsx{5,17-20,29-31} [src/app.tsx]
+
+## Read and bind settings
+
+The window reads the folder and color scheme, and saves its size:
+
+<<< @/figures/tutorial/preferences-and-theming/src/components/window.tsx{2,11-12,16,66,76,88-90,93-107,111,117,121,127,134-136,138-150,154} [src/components/window.tsx]
+
+- `Window` reads `folder` and `color-scheme` with `useSetting`, which re-renders when a key changes. See [Reading and writing a key](/v2/guide/native-state#reading-and-writing-a-key).
+- The first effect applies the color scheme with [`Adw.StyleManager`](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/property.StyleManager.color-scheme.html). Every Adwaita widget follows it, and so do media queries in the app's own styles. See [Follow appearance preferences](/v2/guide/css#follow-appearance-preferences).
+- The second effect closes the open note when the folder changes, because the note belongs to the old folder.
+- The `useBindSetting` calls keep `window-width` and `window-height` in step with the window's `defaultWidth` and `defaultHeight`, which GTK updates as the window is resized. They replace the fixed 720 by 480 from [Two screens in a split view](/v2/tutorial/the-note-editor#two-screens-in-a-split-view): the window opens at the size it had when it closed, and at 960 by 640 the first time. GNOME's [Saving and Loading Window State](https://developer.gnome.org/documentation/tutorials/save-state.html) describes the same bind. See [Binding a key to a property](/v2/guide/native-state#binding-a-key-to-a-property).
+- The `ref` stores the window in state, so the binds wait until it exists.
+- `Dialogs` receives `showError` from `useNoteCommands`, for the folder errors in [The preferences dialog](#the-preferences-dialog).
+
+`NotesProvider` now receives a folder that can change. It switches to the new folder in place, so the window and the Preferences dialog stay open:
+
+<<< @/figures/tutorial/preferences-and-theming/src/notes/notes-provider.tsx{53-68} [src/notes/notes-provider.tsx]
+
+- The saver writes to the folder it was created with, so `NotesProvider` keeps the folder of its current saver. When the `folder` prop differs, it creates a saver for the new folder and clears the list during the render, as React's [Adjusting some state when a prop changes](https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes) shows.
+- The effect depends on `folder` and `saver`, so its cleanup stops watching the old folder and writes the old saver's pending edits to the old folder. The effect then reads and watches the new folder.
+
+The preview state moves from the window to the `preview` key, so a note opens the way the last one was shown, even after a restart. `NoteScreen` and the `preview` action read the key with `useSetting`:
+
+<<< @/figures/tutorial/preferences-and-theming/src/components/note-screen.tsx{6,12,14,16,19} [src/components/note-screen.tsx]
+
+<<< @/figures/tutorial/preferences-and-theming/src/components/window-actions.tsx{5,8,50,59,62-66,98,102-105} [src/components/window-actions.tsx]
+
+- `onChangeState` writes the key instead of the window's state, and the toggle button follows the action as before.
+- With no state left to pass down, `NoteScreen` becomes the screen's `component` instead of a render callback, which keeps the optimizations that React Navigation [drops for render callbacks](https://reactnavigation.org/docs/hello-react-navigation/#passing-additional-data).
+- `useNoteCommands` returns `showError` along with the commands.
+
+## The preferences dialog
+
+The `win.preferences` action shows the preferences dialog. The main menu and the shortcuts dialog list it:
+
+<<< @/figures/tutorial/preferences-and-theming/src/components/main-menu.tsx{20-23} [src/components/main-menu.tsx]
+
+<<< @/figures/tutorial/preferences-and-theming/src/components/shortcuts.tsx{12-15} [src/components/shortcuts.tsx]
+
+The `Dialog` union gains a `preferences` kind, and `Dialogs` passes the window's `onError` to the dialog:
+
+<<< @/figures/tutorial/preferences-and-theming/src/components/dialogs.tsx{2,10,17,20,28-30} [src/components/dialogs.tsx]
+
+`src/components/preferences.tsx` holds the dialog:
+
+<<< @/figures/tutorial/preferences-and-theming/src/components/preferences.tsx [src/components/preferences.tsx]
+
+- [`AdwPreferencesDialog`](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/class.PreferencesDialog.html) holds pages of grouped rows. Notes has one page, with an Appearance group and a Storage group. `onClosed` clears the dialog state, as for the other dialogs. See [Dialogs](/v2/guide/modals-and-portals#dialogs).
+- `ComboRow` from `@gtkx/components` renders the Style row. `selectedId` shows the key's value, and `onSelectionChanged` writes the chosen one, which the window's effect then applies. The ID arrives as `string | null`, and `toColorScheme` checks it against the schema's choices without a cast. See [DropDown](/v2/guide/components#dropdown).
+- `FolderRow` keeps a `GtkFileDialog` in state through a portal and awaits its `selectFolder`, as [Awaiting async operations](/v2/guide/async-operations#awaiting-async-operations) shows. `useParentWindow` returns the Notes window, so the file dialog opens over it. See [Finding the parent window](/v2/guide/modals-and-portals#finding-the-parent-window).
+- Closing the file dialog rejects with `Gtk.DialogError.DISMISSED`, which `isDismissal` ignores. Other failures reach the window's error toast through `onError`. A folder without a local path, for which `getPath` returns `null`, is ignored.
+- Once a folder is chosen, a second button sets the key back to empty, which returns to the default folder.
+- The row's subtitle shows the folder in use. `displayFolder`, a new function in `src/notes/files.ts`, writes the home folder as `~`:
+
+<<< @/figures/tutorial/preferences-and-theming/src/notes/files.ts{24-29,148} [src/notes/files.ts]
 
 ## Run it
 
-Press <kbd>Ctrl</kbd>+<kbd>,</kbd>. Change the theme and sort order, then close the dialog. Both changes take effect immediately. Resize the window, quit the process, and start it again. The window size and each preference return from GSettings.
+Open Preferences with Ctrl+, and choose Dark: the window turns dark at once. Choose another notes folder: the list shows that folder's notes, and Preferences stays open. Toggle the preview, resize the window and quit. The app opens again with the same style, folder, preview state and size.
 
-Set Reminder lead time to zero and leave it there. [Send Reminders](/v2/tutorial/reminders) will make that mean “notify when due.”
-
-## Next
-
-[Reorder Tasks](/v2/tutorial/drag-to-reorder) adds pointer and keyboard reordering when Manual is selected.
+<figure class="result">
+    <img class="result-light" src="/figures/tutorial-preferences-and-theming-light.png" width="720" height="480" loading="lazy" alt="The Notes window with the Preferences dialog open: an Appearance group with a Style row set to Light, and a Storage group with a Notes Folder row showing ~/Notes and a folder button." />
+    <img class="result-dark" src="/figures/tutorial-preferences-and-theming-dark.png" width="720" height="480" loading="lazy" alt="The Notes window with the Preferences dialog open: an Appearance group with a Style row set to Dark, and a Storage group with a Notes Folder row showing ~/Notes and a folder button." />
+    <figcaption>Captured from <a href="#the-preferences-dialog"><code>src/components/preferences.tsx</code></a> above, opened from the main menu.</figcaption>
+</figure>

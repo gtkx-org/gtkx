@@ -1,6 +1,8 @@
 ---
 title: "GTKX 1.4: Introducing @gtkx/navigation"
 description: "GTKX 1.4 adds native stack, tab, drawer, and split view navigators through React Navigation."
+label: "GTKX 1.4"
+date: 2026-08-25
 image: /tasks-screenshot.png
 ---
 

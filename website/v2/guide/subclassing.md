@@ -34,14 +34,17 @@ Use the returned class so TypeScript recognizes the registered properties and si
 
 ## Rendering a registered class
 
-Codegen does not emit elements for application-defined classes. Create an element with the registered type name and its props, then instantiate it through JSX:
+Codegen does not emit elements for application-defined classes. Create a component with `createElementComponent`, passing the props type, the registered type name and the class, then render it through JSX:
 
 ```tsx
 import { GtkAdjustment, type GtkScaleProps } from "@gtkx/jsx/gtk";
 import { createElementComponent } from "@gtkx/react";
 
 type TaggedScaleProps = GtkScaleProps<TaggedScale> & { tag?: string };
-const TaggedScaleElement = createElementComponent<TaggedScaleProps>("ExampleTaggedScale", TaggedScale);
+const TaggedScaleElement = createElementComponent<TaggedScaleProps>(
+    "ExampleTaggedScale",
+    TaggedScale,
+);
 
 <TaggedScaleElement
     tag="volume"
@@ -56,7 +59,7 @@ Declared native properties are passed into construction. Construct-only props mu
 
 ## Properties
 
-Use `declare` for native properties. A JavaScript field initializer would shadow the native accessor. Keep property maps inferred so their keys remain available to `useProperty` and other typed consumers.
+Use `declare` for native properties. A JavaScript field initializer would shadow the native accessor. Write the `properties` object inline, without a wider annotation such as `Record<string, ParamSpec>`, so its keys stay available to `useProperty` and other typed consumers.
 
 Property keys use camelCase; the ParamSpec uses the matching native spelling. For example, pair `displayName` with `paramSpecString("display-name", ...)`. Declare read-only and construct-only fields as `readonly`.
 
@@ -70,7 +73,7 @@ Some interface properties are read through a virtual function, such as `Gtk.Edit
 
 ### Inspecting a ParamSpec
 
-Use the generated ParamSpec reference for its metadata and flags. Class-level inspection is available through generated class-struct wrappers, such as `GObject.ObjectClass.peek(TaggedScale)`.
+A ParamSpec exposes `name`, `nick`, `blurb`, `flags`, `valueType` and `ownerType` as fields, and its default through `getDefaultValue()`. To look a property up on a class, use the class-struct wrapper: `GObject.ObjectClass.peek(TaggedScale).findProperty("tag")`.
 
 ### Binding properties
 
@@ -85,7 +88,8 @@ scale.bindPropertyFull(
     "label",
     GObject.BindingFlags.SYNC_CREATE | GObject.BindingFlags.BIDIRECTIONAL,
     (_binding, tag) => [true, `#${tag}`],
-    (_binding, text) => (text.startsWith("#") ? [true, text.slice(1)] : [false, null]),
+    (_binding, text) =>
+        text.startsWith("#") ? [true, text.slice(1)] : [false, null],
 );
 ```
 
@@ -93,19 +97,7 @@ The transform's value types come from the named properties when the objects decl
 
 ### Properties and the hooks
 
-Pass the instance to `useProperty(object, "tag")` to subscribe to a registered property. Inherited properties remain available. For an instance created by JSX, use a state setter as its callback ref:
-
-```tsx
-import { useProperty } from "@gtkx/react";
-import { useState } from "react";
-
-const [scale, setScale] = useState<TaggedScale | null>(null);
-const tag = useProperty(scale, "tag");
-
-<TaggedScaleElement ref={setScale} tag="volume" />;
-```
-
-The hook returns `undefined` while its target is absent, and its type includes `undefined` only when the target's type allows `null` or `undefined`; `useProperty(Adw.StyleManager.getDefault(), "dark")` is a `boolean`. React state keeps the subscription aligned when the element mounts, is replaced, or unmounts. `useSignal` and `useBindSetting` take instances the same way; mutable ref objects are not subscription targets.
+`useProperty`, `useSignal` and `useBindSetting` accept registered classes like any other object, typed from their declared properties and signals. See [Native State](/v2/guide/native-state#objects-that-jsx-creates) for passing an instance that JSX created.
 
 ## Declaring signals
 
@@ -128,11 +120,13 @@ const Counter = registerClass(CounterBase, { typeName: "ExampleCounter" });
 
 `registerClass` installs these signals on the new type. Its `signals` option declares signals too, typed on the returned class rather than inside the class body; a name declared in both places is an error. Each entry names its parameter GTypes and, when needed, its return GType, as GType values, generated classes, or generated enumerations and flags. Custom JSX components should include their signal handler props in their prop type.
 
-Handlers receive the signal arguments; JSX handlers also receive the emitting object last. See the [JSX prop model](/v2/guide/configuration-and-codegen#the-jsx-prop-model) for handler props and the [`registerClass` reference](/v2/reference/@gtkx/runtime/functions/registerClass) for signal options.
+Handlers receive the signal arguments; JSX handlers also receive the emitting object last. See the [JSX prop model](/v2/guide/jsx-elements#the-jsx-prop-model) for handler props and the [`registerClass` reference](/v2/reference/@gtkx/runtime/functions/registerClass) for signal options.
 
 ## Default handlers
 
-A class method named `on<SignalName>`, such as `onClicked`, becomes the default handler for that signal. It receives the signal arguments with `this` bound to the instance. A subclass can replace it and chain to the previous implementation with `super.onClicked()`.
+A class method named `on<SignalName>`, such as `onCycleCompleted` for the `cycle-completed` signal above, becomes the signal's default handler. It receives the signal arguments with `this` bound to the instance. A registered subclass can replace it and chain to it with `super.onCycleCompleted()`.
+
+The method replaces the parent type's native default handler. When an inherited signal has a generated `vfunc` member, such as `Gtk.Button`'s `vfuncClicked` for `clicked`, override that instead and chain with `super`, as in [Subclass virtual methods](#subclass-virtual-methods).
 
 Reserve these names for default handlers when they match a signal. Use ordinary React handler props for application behavior attached to a rendered element.
 
@@ -161,7 +155,7 @@ This is type setup, not a component mount effect. If it throws, registration fai
 
 ### Custom layout callbacks
 
-For a container whose custom behavior is measurement and allocation, pass a `GtkCustomLayout` through `layoutManager`:
+A container whose only custom behavior is measurement and allocation needs no subclass. Pass a `GtkCustomLayout` through `layoutManager` instead:
 
 ```tsx
 import { AdwBin } from "@gtkx/jsx/adw";
@@ -171,7 +165,9 @@ import { GtkCustomLayout, GtkLabel } from "@gtkx/jsx/gtk";
     layoutManager={
         <GtkCustomLayout
             measure={(widget, orientation, forSize) =>
-                widget.getFirstChild()?.measure(orientation, forSize) ?? [0, 0, -1, -1]
+                widget.getFirstChild()?.measure(orientation, forSize) ?? [
+                    0, 0, -1, -1,
+                ]
             }
             allocate={(widget, width, height, baseline) => {
                 widget.getFirstChild()?.allocate(width, height, baseline, null);
@@ -196,8 +192,12 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { registerClass } from "@gtkx/runtime";
 
 class PaddedLabel extends Gtk.Label {
-    override vfuncMeasure(orientation: Gtk.Orientation, forSize: number): [number, number, number, number] {
-        const [minimum, natural, minimumBaseline, naturalBaseline] = super.vfuncMeasure(orientation, forSize);
+    override vfuncMeasure(
+        orientation: Gtk.Orientation,
+        forSize: number,
+    ): [number, number, number, number] {
+        const [minimum, natural, minimumBaseline, naturalBaseline] =
+            super.vfuncMeasure(orientation, forSize);
 
         return [minimum + 10, natural + 10, minimumBaseline, naturalBaseline];
     }
@@ -206,7 +206,7 @@ class PaddedLabel extends Gtk.Label {
 registerClass(PaddedLabel, { typeName: "ExamplePaddedLabel" });
 ```
 
-Output parameters become return values, grouped into a tuple when there are several. Follow the [native operation's contract](https://docs.gtk.org/gtk4/vfunc.Widget.measure.html) when changing those values. Invoke the ordinary public method when using an instance; direct vfunc calls are for chaining from an override.
+Output parameters become return values, grouped into a tuple when there are several. Follow the [native operation's contract](https://docs.gtk.org/gtk4/vfunc.Widget.measure.html) when changing those values.
 
 Return whole numbers where the slot takes an integer, as `vfuncMeasure` does. GJS truncates a fractional result silently; GTKX rejects it with an error that names the vfunc, such as `TypeError: PaddedLabel.vfuncMeasure returned a value its native caller cannot take: Value 99.5 is not an integer, int32 expects a whole number`. Round sizes computed from fractional values, such as Pango units divided by `Pango.SCALE`, with `Math.round`, `Math.floor` or `Math.ceil` before returning them. See [Passing integers](/v2/guide/native-values#passing-integers).
 
@@ -218,21 +218,26 @@ A widget that draws with Cairo from its own `vfuncSnapshot`, as many C widgets a
 import { type ImageSurface } from "@gtkx/cairo";
 import * as Graphene from "@gtkx/gi/graphene";
 import * as Gtk from "@gtkx/gi/gtk";
+import { registerClass } from "@gtkx/runtime";
 
 class CanvasBase extends Gtk.Widget {
     surface: ImageSurface | null = null;
 
     override vfuncSnapshot(snapshot: Gtk.Snapshot): void {
-        using cr = snapshot.appendCairo(new Graphene.Rect().init(0, 0, this.getWidth(), this.getHeight()));
+        using cr = snapshot.appendCairo(
+            new Graphene.Rect().init(0, 0, this.getWidth(), this.getHeight()),
+        );
         if (this.surface) {
             cr.setSourceSurface(this.surface, 0, 0);
             cr.paint();
         }
     }
 }
+
+const Canvas = registerClass(CanvasBase, { typeName: "ExampleCanvas" });
 ```
 
-The snapshot keeps what the context drew; releasing it only drops the context. Without `using`, each frame's context stays alive until garbage collection, and Cairo keeps a copy of `surface` for every frame in which the app draws into it afterwards, so memory grows with every stroke. A `GtkDrawingArea` `drawFunc` needs no call. See [Release contexts you create](/v2/guide/cairo#release-contexts-you-create).
+Without `using`, a widget that keeps drawing into `surface` grows in memory with every frame until garbage collection; [Release contexts you create](/v2/guide/cairo#release-contexts-you-create) explains why. A `GtkDrawingArea` `drawFunc` needs no call.
 
 ### Slots with no generated member
 
@@ -275,7 +280,11 @@ const LevelStore = registerClass(LevelStoreBase, {
 });
 ```
 
-Write vfuncs as prototype methods, not arrow-function fields. Every slot of an `Impl` type is optional, so TypeScript rejects `implements` on a class that fills none of them, such as a `Gtk.Scrollable` widget that only overrides the interface's adjustment and scroll-policy properties; register that class with `implements: [Gtk.Scrollable]` and leave out the `implements` clause. The `Impl` type checks signatures; it does not establish that every required native operation has an implementation. Follow the interface's prerequisites and behavior contract. For this example, [Gio.ListModel](https://docs.gtk.org/gio/iface.ListModel.html) also requires change notifications when items change.
+Write vfuncs as prototype methods, not arrow-function fields.
+
+Every slot of an `Impl` type is optional, so TypeScript rejects `implements` on a class that fills none of them, such as a `Gtk.Scrollable` widget that only overrides the interface's adjustment and scroll-policy properties; register that class with `implements: [Gtk.Scrollable]` and leave out the `implements` clause.
+
+The `Impl` type checks signatures; it does not establish that every required native operation has an implementation. Follow the interface's prerequisites and behavior contract. For this example, [Gio.ListModel](https://docs.gtk.org/gio/iface.ListModel.html) also requires change notifications when items change.
 
 Registration adds the interface's public members to instances. Inside the class, declare any added member you call, such as `declare itemsChanged: Gio.ListModel["itemsChanged"];`. Use a base class whose native state agrees with the implementation you provide.
 
@@ -332,52 +341,7 @@ Throw from a vfunc that reports errors through `GError`. GTKX preserves a thrown
 
 ## Adding actions
 
-A window or application that React renders declares its actions with the `actions` prop, as the [tutorial](/v2/tutorial/actions-menus-shortcuts#define-the-window-actions) shows. A class that builds its own action group, such as a widget with a context menu, adds a table of actions with `addActionEntries`, GJS's `add_action_entries` and C's `g_action_map_add_action_entries`. Every `Gio.ActionMap` has it, including `Gio.SimpleActionGroup`, `Gtk.Application`, `Adw.Application`, `Gtk.ApplicationWindow` and the classes registered from them:
-
-```ts
-import * as Gio from "@gtkx/gi/gio";
-import * as Gtk from "@gtkx/gi/gtk";
-
-class ChartBase extends Gtk.Widget {
-    declare private chartActions: Gio.SimpleActionGroup;
-    declare depth: number;
-
-    override vfuncConstructed(): void {
-        super.vfuncConstructed();
-        this.depth = 5;
-        this.chartActions = new Gio.SimpleActionGroup();
-        this.chartActions.addActionEntries([
-            { name: "zoom-in", activate: () => this.setDepth(this.depth - 1) },
-            { name: "zoom-out", activate: () => this.setDepth(this.depth + 1) },
-            { name: "set-depth", parameterType: "i", activate: (_action, depth) => this.setDepth(depth?.getInt32() ?? 5) },
-            {
-                name: "show-hidden",
-                state: "false",
-                changeState: (action, value) => {
-                    if (value !== null) action.setState(value);
-                    this.queueDraw();
-                },
-            },
-        ]);
-        this.insertActionGroup("chart", this.chartActions);
-    }
-
-    setDepth(depth: number): void {
-        this.depth = Math.max(1, depth);
-        this.queueDraw();
-    }
-}
-```
-
-A menu item with the action `chart.zoom-in` then activates the first entry. Each entry, typed as `Gio.ActionEntryObj`, takes GJS's fields in camelCase:
-
-- `name`, the action's name.
-- `activate(action, parameter)`, connected to the action's `activate` signal.
-- `parameterType`, a GVariant type string such as `"s"` or a `GLib.VariantType`. Without it, the action takes no parameter.
-- `state`, the initial state in GVariant text such as `"'large'"` or `"true"`, a boolean or a `GLib.Variant`. Without it, the action is stateless.
-- `changeState(action, value)`, connected to `change-state`. Without it, a change request sets the state directly.
-
-As in GJS and C, both callbacks receive the action first and run with `this` set to it; a handler passed to `connect` receives only the signal's arguments. An entry without a string name, an invalid `parameterType` or a `state` that does not parse throws, and the entries before it stay added. `removeActionEntries` takes the same entries and removes the actions they name.
+A registered class that builds its own action group adds a table of actions with `addActionEntries`; see [Actions in a registered class](/v2/guide/actions#actions-in-a-registered-class). A window or application that React renders declares its actions with the `actions` prop, as [Actions and Shortcuts](/v2/guide/actions) shows.
 
 ## Elements that cannot be children
 
@@ -392,7 +356,3 @@ Objects created by native code do not run the JavaScript constructor or its fiel
 ## GtkBuilder and `.ui` files
 
 GTKX applications define their interface in JSX, where signal handlers are props; port a `.ui` file or a `Gtk.Template` to JSX rather than loading it. `Gtk.Builder` can still create instances of registered classes from XML, initialized in `vfuncConstructed` as above, but `<signal>` handlers in a `.ui` file are not supported. GTKX has no built-in JavaScript `Gtk.BuilderScope` like GJS's, and a scope implemented with `registerClass` cannot return a closure from `vfuncCreateClosure`, so such a file fails to load.
-
-## Next
-
-Continue with [Components](/v2/guide/components) for composing the registered element.

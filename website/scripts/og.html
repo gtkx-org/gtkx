@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <title>GTKX social card</title>
+        <style>
+            @font-face {
+                font-family: "Red Hat Display";
+                font-weight: 300 900;
+                src: url("../public/fonts/red-hat-display-normal-latin.woff2") format("woff2");
+            }
+            @font-face {
+                font-family: "Red Hat Mono";
+                font-weight: 300 700;
+                src: url("../public/fonts/red-hat-mono-normal-latin.woff2") format("woff2");
+            }
+            html,
+            body {
+                margin: 0;
+                width: 1200px;
+                height: 630px;
+                overflow: hidden;
+            }
+            body {
+                background:
+                    radial-gradient(70% 80% at 50% 0%, rgba(224, 58, 62, 0.34), rgba(224, 58, 62, 0) 70%), #151518;
+                color: rgba(255, 255, 255, 0.92);
+                font-family: "Red Hat Display", sans-serif;
+                padding: 128px 150px 0;
+                box-sizing: border-box;
+            }
+            .lockup {
+                display: block;
+                height: 128px;
+                width: auto;
+            }
+            h1 {
+                margin: 92px 0 0;
+                font-size: 64px;
+                font-weight: 800;
+                line-height: 1.12;
+                letter-spacing: -0.02em;
+            }
+            .accent {
+                background: linear-gradient(92deg, #ff9a9c 0%, #ee5a5d 100%);
+                -webkit-background-clip: text;
+                background-clip: text;
+                color: transparent;
+            }
+            p {
+                margin: 36px 0 0;
+                font: 400 26px/1 "Red Hat Mono", monospace;
+                color: rgba(235, 235, 245, 0.66);
+                letter-spacing: 0.01em;
+            }
+        </style>
+    </head>
+    <body>
+        <img class="lockup" src="../public/logo-wordmark-dark.svg" alt="GTKX" />
+        <h1>The React framework<br />for <span class="accent">Linux</span></h1>
+        <p>React · Adwaita · GTK4 · TypeScript</p>
+    </body>
+</html>

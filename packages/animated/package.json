@@ -1,7 +1,7 @@
 {
     "name": "@gtkx/animated",
     "version": "2.0.0-beta.13",
-    "description": "Spring animations for GTKX widgets.",
+    "description": "React Spring animations for GTK widgets in GTKX.",
     "keywords": [
         "gtkx",
         "gtk",

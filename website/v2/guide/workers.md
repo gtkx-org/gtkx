@@ -5,11 +5,11 @@ description: "Run computation away from the UI thread and manage native work out
 
 # Workers and Helper Processes
 
-Use Node workers for CPU-bound computation. Native asynchronous I/O can usually stay on the application thread; [await it](/v2/guide/async-operations) without blocking the interface.
+Move CPU-bound computation to a [Node worker](https://nodejs.org/api/worker_threads.html) so it doesn't block the interface. Native asynchronous I/O can stay on the application thread; [await it](/v2/guide/async-operations) instead.
 
 ## Moving work to a worker
 
-Keep CPU-bound work off the GTK thread with a [Node worker](https://nodejs.org/api/worker_threads.html):
+Start the worker from the application and send its results back as messages:
 
 ```ts
 import { Worker } from "node:worker_threads";
@@ -18,17 +18,17 @@ const worker = new Worker(new URL("./indexer.ts", import.meta.url));
 worker.on("message", (rows) => setRows(rows));
 ```
 
+Only one thread in a process can own GTKX's GLib integration, and in an application that is the main thread. A worker uses Node APIs and posts plain data to the main thread; it cannot import generated GI modules or make GTKX native calls.
+
 For `gtkx build` to emit the worker, its URL must appear directly inside `new Worker(...)` and name the source file through a relative path.
 
-During `gtkx dev` and Vitest, Node loads the worker's source directly, and `gtkx dev` restarts the app when a file the worker loaded changes. Its relative imports must name source files or [`?url`, `?raw` and `?inline` assets](#importing-files-in-a-worker), and its syntax must work with [Node's type stripping](https://nodejs.org/api/typescript.html#type-stripping). For TypeScript imports, add `"allowImportingTsExtensions": true` to the scaffold's `compilerOptions`; it already uses `NodeNext` and `noEmit`. Exercise workers in tests as well as builds, since the production bundle can accept syntax that direct loading cannot.
+During `gtkx dev` and Vitest, Node loads the worker's source directly, and `gtkx dev` restarts the app when a file the worker loaded changes. The worker's relative imports must name source files or [project files](#importing-files-in-a-worker), and its syntax must work with [Node's type stripping](https://nodejs.org/api/typescript.html#type-stripping). Exercise workers in tests as well as builds, since the production bundle can accept syntax that direct loading cannot.
 
-To have `tsc` report that syntax, add `"erasableSyntaxOnly": true` to `compilerOptions` as well. `tsc` then rejects parameter properties such as `constructor(private readonly path: string)`, enums, namespaces with code and other TypeScript that Node cannot strip, which would otherwise typecheck and build and only fail with a `SyntaxError` when the worker starts in `gtkx dev` or Vitest. The option applies to the whole project, including code that only Vite compiles.
-
-Only one thread in a process can own GTKX's GLib integration. An application's main thread owns it, so application workers must use Node APIs and send data back to the main thread; they cannot import generated GI modules or make GTKX native calls.
+For imports of TypeScript files, add `"allowImportingTsExtensions": true` to the scaffold's `compilerOptions`; it already uses `NodeNext` and `noEmit`. To have `tsc` report syntax that Node cannot strip, add `"erasableSyntaxOnly": true` as well. `tsc` then rejects parameter properties such as `constructor(private readonly path: string)`, enums, namespaces with code and other TypeScript that would otherwise typecheck and build and only fail with a `SyntaxError` when the worker starts in `gtkx dev` or Vitest. The option applies to the whole project, including code that only Vite compiles.
 
 ## Importing files in a worker
 
-A worker imports project files with `?url`, as the main thread does:
+A worker imports project files with `?url`, `?raw` and `?inline`, as the main thread does; [Assets](/v2/guide/assets#files-and-text) describes what each provides:
 
 ```ts
 import { readFileSync } from "node:fs";
@@ -37,25 +37,32 @@ import captionsPath from "../../data/captions.txt?url";
 const captions = readFileSync(captionsPath, "utf8");
 ```
 
-The import provides a real file path: the source file during `gtkx dev` and Vitest, and the copy in `dist/` after `gtkx build`. A `?raw` import provides the file's text instead, and an `?inline` import a `data:` URL of its contents, such as an image to embed in a generated HTML or SVG file. Both read the source file during `gtkx dev` and Vitest and are inlined by `gtkx build`. During `gtkx dev` and Vitest, a worker started with its own `execArgv` must include `process.execArgv` to keep this support. `?resource`, `?icon` and `?font` make assets available to GTK, so import them from the main thread. See [Assets](/v2/guide/assets#import-project-data).
+During `gtkx dev` and Vitest, a worker started with its own `execArgv` must include `process.execArgv` to keep this support. `?resource`, `?icon` and `?font` make assets available to GTK, so import them from the main thread.
 
 ## Standalone workers that own GTKX
 
-A standalone worker can initialize GTKX when no other thread has done so. Conflicting initialization fails during bootstrap.
-
-A thread starts GTKX when it first loads GTKX code, such as `@gtkx/gi`, `@gtkx/react` or `@gtkx/i18n`. A helper whose main thread calls `t()` from `@gtkx/i18n` therefore owns GTKX on that thread, so keep `@gtkx/*` imports out of the main thread of a helper that hands GTKX to a worker, and post plain data between them. `gtkx build` sets the program name and the locale on an entry's main thread only when that thread loads GTKX code, so building such a helper leaves GTKX to its worker:
+In a Node helper that is not a GTKX application, a worker can own GTKX instead of the main thread. A thread starts GTKX when it first loads GTKX code, such as `@gtkx/gi`, `@gtkx/react` or `@gtkx/i18n`, and a second thread that loads GTKX code fails during bootstrap. A helper whose main thread calls `t()` from `@gtkx/i18n` therefore owns GTKX on that thread, so keep `@gtkx/*` imports out of the main thread of a helper that hands GTKX to a worker, and post plain data between them. `gtkx build` sets the program name and the locale on an entry's main thread only when that thread loads GTKX code, so building such a helper leaves GTKX to its worker:
 
 ```ts
 import { Worker } from "node:worker_threads";
 
 const [folder, output] = process.argv.slice(2);
-const worker = new Worker(new URL("./thumbnailer.ts", import.meta.url), { workerData: { folder, output } });
+const worker = new Worker(new URL("./thumbnailer.ts", import.meta.url), {
+    workerData: { folder, output },
+});
 worker.on("message", (message) => {
     if (message === "cleanup-complete") void worker.terminate();
 });
 ```
 
-Before terminating a worker that owns GTKX, finish its native operations or cancel them and await completion. Disconnect signal handlers and remove other native callback registrations while the worker can still run cleanup. Then call `quit()` from `@gtkx/runtime` and send a cleanup-complete message to the parent. The parent must wait for that message before calling `worker.terminate()`. Calling `quit()` alone does not cancel pending operations or await their callbacks; terminating a worker with live native work or registrations is unsupported.
+Before the parent terminates a worker that owns GTKX, the worker must:
+
+1. Finish its native operations, or cancel them and await completion.
+2. Disconnect signal handlers and remove other native callback registrations.
+3. Call `quit()` from `@gtkx/runtime`.
+4. Post a cleanup-complete message. The parent calls `worker.terminate()` only after it arrives.
+
+`quit()` alone does not cancel pending operations or await their callbacks, and terminating a worker with live native work or registrations is unsupported.
 
 ## Callbacks from other threads
 
@@ -73,9 +80,14 @@ Gapless playback is the common case. A C or Vala player sets the next track's UR
 import * as GLib from "@gtkx/gi/glib";
 import * as Gst from "@gtkx/gi/gst";
 
-const tracks = ["file:///music/01.ogg", "file:///music/02.ogg", "file:///music/03.ogg"];
+const tracks = [
+    "file:///music/01.ogg",
+    "file:///music/02.ogg",
+    "file:///music/03.ogg",
+];
 const player = Gst.ElementFactory.make("playbin", "player");
-if (player === null) throw new Error("GStreamer's playbin element is not installed");
+if (player === null)
+    throw new Error("GStreamer's playbin element is not installed");
 
 player.getBus()?.addWatch(GLib.PRIORITY_DEFAULT, (_bus, message) => {
     if (message.type === Gst.MessageType.STREAM_START) {

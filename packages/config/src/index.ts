@@ -1,3 +1,8 @@
+/**
+ * Defines and merges a project's `gtkx.config.ts`.
+ *
+ * @packageDocumentation
+ */
 export {
     type AgentsOptions,
     type ApplicationConfig,

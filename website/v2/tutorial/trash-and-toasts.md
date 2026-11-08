@@ -1,470 +1,93 @@
 ---
-description: "Add Undo, permanent-delete confirmation, and a New List dialog."
+description: "Rename notes in a validating dialog and move them to the trash with an undo toast."
 ---
 
-# Add Undo and Delete Confirmation
+# Rename, Trash, and Undo
 
-[Add Menus and Shortcuts](/v2/tutorial/actions-menus-shortcuts) connected the delete commands. Give them a shared handler that closes an open editor, moves the task to Trash, and offers Undo. Add permanent-delete confirmation and the New List dialog alongside it.
+Rename the open note in a dialog that checks the new name, and move notes to the desktop trash with an Undo toast.
 
-## Add the toast overlay
+## Rename a note
 
-Install the GTKX collection and toast components from `tasks/`:
+A note menu joins the preview toggle at the end of the note's header bar. `src/components/note-menu.tsx` holds both buttons, and the menu's items run two new window actions, `win.rename-note` and `win.trash-note`:
 
-::: code-group
+<<< @/figures/tutorial/trash-and-toasts/src/components/note-menu.tsx [src/components/note-menu.tsx]
 
-```bash [npm]
-npm install @gtkx/components@beta
-```
+- The main menu's items act on the whole app. The note menu's act on the open note, which makes it what the [GNOME HIG](https://developer.gnome.org/hig/patterns/controls/menus.html#secondary-menus) calls a secondary menu. See [Menus](/v2/guide/actions#menus).
+- `PreviewToggle` is the toggle button from [Add Menus and Shortcuts](/v2/tutorial/actions-menus-shortcuts#menus), moved out of `src/components/window.tsx` unchanged.
 
-```bash [pnpm]
-pnpm add @gtkx/components@beta
-```
+F2 renames the open note, and the shortcuts dialog lists the key:
 
-:::
+<<< @/figures/tutorial/trash-and-toasts/src/app.tsx{11} [src/app.tsx]
 
-In `src/components/window.tsx`, add `AdwToastOverlay` to the Adwaita element import, and add these imports:
+<<< @/figures/tutorial/trash-and-toasts/src/components/shortcuts.tsx{23-26} [src/components/shortcuts.tsx]
 
-```diff [src/components/window.tsx]
-@@ -0,0 +1,2 @@
-+import { ToastProvider } from "@gtkx/components";
-+import { useRef } from "react";
-@@ -10 +12,2 @@
--import { AdwApplicationWindow, AdwStatusPage } from "@gtkx/jsx/adw";
-+import * as Adw from "@gtkx/gi/adw";
-+import { AdwApplicationWindow, AdwToastOverlay, AdwStatusPage } from "@gtkx/jsx/adw";
-```
+Both actions need the open note's name and are disabled while no note is open. `useOpenNoteName` from [Select the open note](/v2/tutorial/the-note-editor#select-the-open-note) can't provide it: a hook reads navigation state only inside `NavigationContainer`, and the window that declares the actions sits outside it. `src/navigation.ts` gains functions that read the route through the container ref instead:
 
-Inside `Window`, create the overlay ref:
+<<< @/figures/tutorial/trash-and-toasts/src/navigation.ts{22-39,47-54} [src/navigation.ts]
 
-```diff [src/components/window.tsx]
-@@ -30,0 +31 @@
-+    const toastOverlayRef = useRef<Adw.ToastOverlay | null>(null);
-@@ -34,49 +35,53 @@
--        <AdwApplicationWindow
--            controllers={<AppShortcuts />}
--            actions={<WindowActions />}
--            title="Tasks"
--            widthRequest={360}
--            heightRequest={294}
--            onCloseRequest={() => quit()}
--        >
--            <NavigationContainer ref={navigationRef}>
--                <Split.Navigator
--                    initialRouteName="Tasks"
--                    collapseCondition="max-width: 500sp"
--                    sidebarWidthFraction={0.25}
--                    minSidebarWidth={220}
--                    maxSidebarWidth={300}
--                    contentPlaceholder={<NothingSelected />}
--                >
--                    <Split.Screen name="Lists" component={Sidebar} options={{ title: "Tasks" }} />
--                    <Split.Screen
--                        name="Tasks"
--                        component={TasksScreen}
--                        initialParams={ALL_TASKS}
--                        options={({ route }) => ({
--                            title: selectionTitle(route.params, lists),
--                            headerStart: (
--                                <>
--                                    <GtkButton
--                                        iconName="list-add-symbolic"
--                                        tooltipText="New Task (Ctrl+N)"
--                                        actionName="win.new"
--                                    />
--                                    <SearchButton />
--                                </>
--                            ),
--                            headerEnd: <MainMenu />,
--                        })}
--                    />
--                    <Split.Screen
--                        name="Task"
--                        component={TaskScreen}
--                        options={({ route }) => ({
--                            headerTitle: <TaskTitle id={route.params.id} />,
--                            headerEnd: <TaskButtons id={route.params.id} />,
--                        })}
--                    />
--                </Split.Navigator>
--            </NavigationContainer>
--            <Dialogs />
--        </AdwApplicationWindow>
-+        <ToastProvider overlayRef={toastOverlayRef}>
-+            <AdwApplicationWindow
-+                controllers={<AppShortcuts />}
-+                actions={<WindowActions />}
-+                title="Tasks"
-+                widthRequest={360}
-+                heightRequest={294}
-+                onCloseRequest={() => quit()}
-+            >
-+                <AdwToastOverlay ref={toastOverlayRef}>
-+                    <NavigationContainer ref={navigationRef}>
-+                        <Split.Navigator
-+                            initialRouteName="Tasks"
-+                            collapseCondition="max-width: 500sp"
-+                            sidebarWidthFraction={0.25}
-+                            minSidebarWidth={220}
-+                            maxSidebarWidth={300}
-+                            contentPlaceholder={<NothingSelected />}
-+                        >
-+                            <Split.Screen name="Lists" component={Sidebar} options={{ title: "Tasks" }} />
-+                            <Split.Screen
-+                                name="Tasks"
-+                                component={TasksScreen}
-+                                initialParams={ALL_TASKS}
-+                                options={({ route }) => ({
-+                                    title: selectionTitle(route.params, lists),
-+                                    headerStart: (
-+                                        <>
-+                                            <GtkButton
-+                                                iconName="list-add-symbolic"
-+                                                tooltipText="New Task (Ctrl+N)"
-+                                                actionName="win.new"
-+                                            />
-+                                            <SearchButton />
-+                                        </>
-+                                    ),
-+                                    headerEnd: <MainMenu />,
-+                                })}
-+                            />
-+                            <Split.Screen
-+                                name="Task"
-+                                component={TaskScreen}
-+                                options={({ route }) => ({
-+                                    headerTitle: <TaskTitle id={route.params.id} />,
-+                                    headerEnd: <TaskButtons id={route.params.id} />,
-+                                })}
-+                            />
-+                        </Split.Navigator>
-+                    </NavigationContainer>
-+                </AdwToastOverlay>
-+                <Dialogs />
-+            </AdwApplicationWindow>
-+        </ToastProvider>
-```
+- `openNoteName` returns the open note's name, or `null` while the list shows or before the container is ready. See the container's [ref methods](https://reactnavigation.org/docs/navigation-container/#methods-on-the-ref).
+- `closeNoteIfOpen` goes back to the list when the given note is open. [Move to the trash](#move-to-the-trash) uses it.
 
-Wrap `AdwApplicationWindow` in `<ToastProvider overlayRef={toastOverlayRef}>`. Inside the window, wrap the existing `NavigationContainer` in `<AdwToastOverlay ref={toastOverlayRef}>`. Keep `<Dialogs />` after that overlay, inside the window.
+Reading the ref doesn't re-render anything, so the window keeps the name in state:
 
-The provider shares this overlay with `useToast`, including calls from window actions and shortcuts. See the [components guide](/v2/guide/components) for the toast API.
+<<< @/figures/tutorial/trash-and-toasts/src/components/window.tsx{9,13,18,21,23-29,33-36,70-73,91-92,105,113-116,121} [src/components/window.tsx]
 
-## Extend the persisted task actions
+- [`onStateChange`](https://reactnavigation.org/docs/navigation-container/#onstatechange) runs after every navigation, and stores `openNoteName()` in `openName`. It doesn't run for the initial state, which is the list, so `openName` starts as `null`.
+- `WindowActions` receives `openName`, so opening and closing a note enables and disables both actions, and their menu items with them.
+- The note screen's `headerEnd` holds both buttons from `note-menu.tsx`.
+- `NotesWindow` calls `useNoteCommands` for `renameNote` and passes it to the dialogs. [Undo from a toast](#undo-from-a-toast) shows the command.
 
-Add the two transitions to `TasksSlice` in `src/store/tasks.ts`:
+Rename shows `RenameDialog`, an `AdwAlertDialog` with an entry for the new name:
 
-```diff [src/store/tasks.ts]
-@@ -12,0 +13,2 @@
-+    restore: (id: string) => void;
-+    deleteForever: (id: string) => void;
-```
+<<< @/figures/tutorial/trash-and-toasts/src/components/rename-dialog.tsx [src/components/rename-dialog.tsx]
 
-```diff [src/store/tasks.ts]
-@@ -52,0 +53,2 @@
-+    restore: (id) => set((state) => ({ tasks: patch(state.tasks, id, { deleted: false }) })),
-+    deleteForever: (id) => set((state) => ({ tasks: state.tasks.filter((task) => task.id !== id) })),
-```
+- `draft` holds the entry's text and starts as the current name. `onChanged` updates it on every keystroke.
+- `canRename` enables the Rename response only for a name that is new, valid and not taken by another note. `isValidName` is in [Move to the trash](#move-to-the-trash).
+- `defaultResponse` with the entry's `activatesDefault` makes Enter pick Rename, and `closeResponse` makes Escape pick Cancel. Either way `onResponse` runs and calls `onClose`, which unmounts the dialog. See [Dialogs](/v2/guide/modals-and-portals#dialogs).
+- `SUGGESTED` gives Rename the accent color. [`AdwAlertDialog`](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/class.AlertDialog.html) lists the other response appearances.
 
-Permanent deletion leaves gaps in the surviving positions. Keep additions at the end of the stored manual order by changing `addTask` in the same file:
+The `Dialog` union gains a `rename` kind that carries the note's name, and `Dialogs` renders `RenameDialog` for it:
 
-```diff [src/store/tasks.ts]
-@@ -38 +38 @@
--                    position: state.tasks.length,
-+                    position: (state.tasks.at(-1)?.position ?? -1) + 1,
-```
+<<< @/figures/tutorial/trash-and-toasts/src/components/dialogs.tsx{2,5-9,14,17,25-33} [src/components/dialogs.tsx]
 
-The array retains manual order: deletion removes entries, and new tasks append after its final position. An empty array starts at zero.
+## Move to the trash
 
-## Carry the task into confirmation {#confirming-a-permanent-delete}
+`src/notes/files.ts` gains the file operations:
 
-Replace the dialog types in `src/types.ts`:
+<<< @/figures/tutorial/trash-and-toasts/src/notes/files.ts{1,3-11,79-116,142,147-148} [src/notes/files.ts]
 
-```diff [src/types.ts]
-@@ -27 +27,3 @@
--export type DialogKind = "none" | "about" | "shortcuts";
-+export type DialogKind = "none" | "about" | "shortcuts" | "new-list";
-+
-+export type DialogState = { kind: DialogKind } | { kind: "delete-task"; task: Task };
-```
+- Node's [`rename`](https://nodejs.org/api/fs.html#fspromisesrenameoldpath-newpath) replaces a file that already has the new name, so `renameNote` checks for one first and fails instead. Unlike the `wx` flag in [Window actions](/v2/tutorial/actions-menus-shortcuts#window-actions), the check and the rename are separate steps: a file that another program creates between them is still replaced. Node has no rename that refuses to replace.
+- `trashNote` moves the file to the desktop trash with [`Gio.File.trashAsync`](https://docs.gtk.org/gio/method.File.trash_async.html), so a mistaken trash can also be undone from the Trash in Files. GTKX turns GIO's async and finish pair into one method that returns a promise and rejects on failure. See [Async Operations](/v2/guide/async-operations).
+- `isValidName` rejects an empty name, a name with whitespace at either end, a `/`, which would point into another folder, and a leading `.`, which hides the file from the note list.
 
-Update the type import and dialog fields in `src/store/ui.ts`:
+The provider's `rename` and `trash` run these operations and update the list. The saver gains two methods for them:
 
-```diff [src/store/ui.ts]
-@@ -2 +2 @@
--import type { DialogKind, Filter } from "../types.js";
-+import type { DialogKind, DialogState, Filter, Task } from "../types.js";
-@@ -6 +6 @@
--    dialog: DialogKind;
-+    dialog: DialogState;
-@@ -7,0 +8 @@
-+    askDeleteTask: (task: Task) => void;
-@@ -18,2 +19,3 @@
--    dialog: "none",
--    showDialog: (dialog) => set({ dialog }),
-+    dialog: { kind: "none" },
-+    showDialog: (kind) => set({ dialog: { kind } }),
-+    askDeleteTask: (task) => set({ dialog: { kind: "delete-task", task } }),
-```
+<<< @/figures/tutorial/trash-and-toasts/src/notes/note-saver.ts{31-35,54-58} [src/notes/note-saver.ts]
 
-Add this helper to `src/navigation.ts` so deleting the current task also leaves its editor:
+<<< @/figures/tutorial/trash-and-toasts/src/notes/notes-provider.tsx{5-12,23-24,116-136,138} [src/notes/notes-provider.tsx]
 
-```diff [src/navigation.ts]
-@@ -46,0 +47,4 @@
-+
-+export const closeTaskIfOpen = (id: string): void => {
-+    if (openTaskId() === id) navigationRef.goBack();
-+};
-```
+- `settle` writes the note's pending save now and waits for it. Without it, a save still waiting out its delay from [Save and Watch Files](/v2/tutorial/saving-and-watching) would write the old name after the rename or trash and bring the file back.
+- `forget` drops what the saver knows about the old name: the text it last wrote and whether its saves are failing. Otherwise a note restored from the Trash in Files would match that text, and the watcher would skip it as the app's own write.
+- `rename` moves the note to its new key in the list and keeps its text and modification time.
 
-Create `src/components/delete-confirmation.tsx`:
+## Undo from a toast
 
-```tsx [src/components/delete-confirmation.tsx]
-import * as Adw from "@gtkx/gi/adw";
-import { AdwAlertDialog } from "@gtkx/jsx/adw";
-import { closeTaskIfOpen } from "../navigation.js";
-import { useStore } from "../store/index.js";
-import type { Task } from "../types.js";
+`useNoteCommands` gains the commands that the dialog and the actions run:
 
-export const DeleteConfirmation = ({ task }: { task: Task }) => {
-    const deleteForever = useStore((state) => state.deleteForever);
-    const showDialog = useStore((state) => state.showDialog);
+<<< @/figures/tutorial/trash-and-toasts/src/components/window-actions.tsx{5,13,24-42,45-47,52,59,65,74-91,113} [src/components/window-actions.tsx]
 
-    return (
-        <AdwAlertDialog
-            heading="Delete Task?"
-            body={`“${task.title}” will be permanently deleted. This cannot be undone.`}
-            defaultResponse="cancel"
-            closeResponse="cancel"
-            responses={[
-                { id: "cancel", label: "Cancel" },
-                { id: "delete", label: "Delete", appearance: Adw.ResponseAppearance.DESTRUCTIVE },
-            ]}
-            onResponse={(id) => {
-                if (id === "delete") {
-                    closeTaskIfOpen(task.id);
-                    deleteForever(task.id);
-                }
-                showDialog("none");
-            }}
-        />
-    );
-};
-```
-
-Cancel is both the default and close response. Delete uses Adwaita's destructive appearance and removes the task only after confirmation.
-
-## Add the New List dialog {#a-dialog-that-is-a-form}
-
-Create `src/components/new-list-dialog.tsx`:
-
-```tsx [src/components/new-list-dialog.tsx]
-import * as Adw from "@gtkx/gi/adw";
-import * as Gtk from "@gtkx/gi/gtk";
-import { AdwAlertDialog } from "@gtkx/jsx/adw";
-import { GtkBox, GtkEntry, GtkToggleButton } from "@gtkx/jsx/gtk";
-import { useState } from "react";
-import { useStore } from "../store/index.js";
-import { listDot } from "../styles.js";
-
-const PALETTE = ["#3584e4", "#2ec27e", "#e66100", "#9141ac", "#e01b24", "#f5c211"];
-
-export const NewListDialog = () => {
-    const addList = useStore((state) => state.addList);
-    const showDialog = useStore((state) => state.showDialog);
-    const [name, setName] = useState("");
-    const [color, setColor] = useState("#3584e4");
-    const [firstSwatch, setFirstSwatch] = useState<Gtk.ToggleButton | null>(null);
-
-    return (
-        <AdwAlertDialog
-            heading="New List"
-            defaultResponse="add"
-            closeResponse="cancel"
-            responses={[
-                { id: "cancel", label: "Cancel" },
-                {
-                    id: "add",
-                    label: "Add",
-                    appearance: Adw.ResponseAppearance.SUGGESTED,
-                    isEnabled: name.trim().length > 0,
-                },
-            ]}
-            onResponse={(id) => {
-                if (id === "add") addList(name.trim(), color);
-                showDialog("none");
-            }}
-        >
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={16} marginTop={8}>
-                <GtkEntry placeholderText="List name" activatesDefault onChanged={(self) => setName(self.text)} />
-                <GtkBox spacing={6} halign={Gtk.Align.CENTER}>
-                    {PALETTE.map((swatch, index) => (
-                        <GtkToggleButton
-                            key={swatch}
-                            ref={index === 0 ? setFirstSwatch : undefined}
-                            group={index === 0 ? undefined : firstSwatch}
-                            active={color === swatch}
-                            cssClasses={["flat"]}
-                            accessibleLabel={`Color ${swatch}`}
-                            onClicked={() => setColor(swatch)}
-                        >
-                            <GtkBox
-                                widthRequest={22}
-                                heightRequest={22}
-                                cssClasses={[listDot(swatch)]}
-                                accessibleRole={Gtk.AccessibleRole.PRESENTATION}
-                            />
-                        </GtkToggleButton>
-                    ))}
-                </GtkBox>
-            </GtkBox>
-        </AdwAlertDialog>
-    );
-};
-```
-
-The Add response is disabled until the name contains non-whitespace text. Its handler trims the accepted name, so `addList` in `src/store/lists.ts` can use it directly:
-
-```diff [src/store/lists.ts]
-@@ -13,5 +13,2 @@
--    addList: (name, color) => {
--        const trimmed = name.trim();
--        if (trimmed === "") return;
--        set((state) => ({ lists: [...state.lists, { id: crypto.randomUUID(), name: trimmed, color }] }));
--    },
-+    addList: (name, color) =>
-+        set((state) => ({ lists: [...state.lists, { id: crypto.randomUUID(), name, color }] })),
-```
-
-## Share the delete command
-
-Replace `src/components/dialogs.tsx` with the shared deletion hook and dialog selection:
-
-```tsx [src/components/dialogs.tsx]
-import { useToast } from "@gtkx/components";
-import { useStore } from "../store/index.js";
-import { About } from "./about.js";
-import { DeleteConfirmation } from "./delete-confirmation.js";
-import { NewListDialog } from "./new-list-dialog.js";
-import { Shortcuts } from "./shortcuts.js";
-import { closeTaskIfOpen } from "../navigation.js";
-import type { Task } from "../types.js";
-
-export const useRequestDeleteTask = (): ((task: Task) => void) => {
-    const { show } = useToast();
-
-    return (task) => {
-        const { moveToTrash, restore, askDeleteTask } = useStore.getState();
-        if (task.deleted) {
-            askDeleteTask(task);
-            return;
-        }
-        closeTaskIfOpen(task.id);
-        moveToTrash(task.id);
-        show({
-            useMarkup: false,
-            title: `“${task.title}” moved to Trash`,
-            buttonLabel: "Undo",
-            onButtonClicked: () => restore(task.id),
-        });
-    };
-};
-
-export const Dialogs = () => {
-    const dialog = useStore((state) => state.dialog);
-    const showDialog = useStore((state) => state.showDialog);
-    const close = (): void => showDialog("none");
-
-    switch (dialog.kind) {
-        case "about":
-            return <About onClose={close} />;
-        case "shortcuts":
-            return <Shortcuts onClose={close} />;
-        case "new-list":
-            return <NewListDialog />;
-        case "delete-task":
-            return <DeleteConfirmation task={dialog.task} />;
-        case "none":
-            return null;
-    }
-};
-```
-
-`useMarkup: false` keeps a task title literal, including ampersands and angle brackets. Undo restores the persisted task; the confirmation body also uses plain text by default.
-
-In `TaskRow` and `TaskButtons`, import `useRequestDeleteTask` from `./dialogs.js`, replace their `moveToTrash` store subscription with `const requestDeleteTask = useRequestDeleteTask()`, and call `requestDeleteTask(task)` from the delete buttons.
-
-In `src/components/app-shortcuts.tsx`, import the same hook and call it inside `AppShortcuts`. Replace `deleteOpenTask` with a handler that reads the current task:
-
-```diff [src/components/app-shortcuts.tsx]
-@@ -0,0 +1 @@
-+import { useRequestDeleteTask } from "./dialogs.js";
-@@ -18,0 +20 @@
-+    const requestDeleteTask = useRequestDeleteTask();
-@@ -26,3 +28,3 @@
--        const id = openTaskId();
--        if (id === null) return false;
--        useStore.getState().moveToTrash(id);
-+        const task = useStore.getState().tasks.find((candidate) => candidate.id === openTaskId());
-+        if (!task) return false;
-+        requestDeleteTask(task);
-```
-
-In `Window`, read `const showDialog = useStore((state) => state.showDialog)` and update the Lists screen header:
-
-```diff [src/components/window.tsx]
-@@ -30,0 +31 @@
-+    const showDialog = useStore((state) => state.showDialog);
-@@ -54 +55,14 @@
--                            <Split.Screen name="Lists" component={Sidebar} options={{ title: "Tasks" }} />
-+                            <Split.Screen
-+                                name="Lists"
-+                                component={Sidebar}
-+                                options={{
-+                                    title: "Tasks",
-+                                    headerStart: (
-+                                        <GtkButton
-+                                            iconName="list-add-symbolic"
-+                                            tooltipText="New List"
-+                                            onClicked={() => showDialog("new-list")}
-+                                        />
-+                                    ),
-+                                }}
-+                            />
-```
-
-Connect the shared delete handler in `src/components/task-row.tsx`:
-
-```diff [src/components/task-row.tsx]
-@@ -0,0 +1 @@
-+import { useRequestDeleteTask } from "./dialogs.js";
-@@ -14 +15 @@
--    const moveToTrash = useStore((state) => state.moveToTrash);
-+    const requestDeleteTask = useRequestDeleteTask();
-@@ -48 +49 @@
--                        onClicked={() => moveToTrash(task.id)}
-+                        onClicked={() => requestDeleteTask(task)}
-```
-
-Connect the shared delete handler in `src/components/task-buttons.tsx`:
-
-```diff [src/components/task-buttons.tsx]
-@@ -0,0 +1 @@
-+import { useRequestDeleteTask } from "./dialogs.js";
-@@ -6 +7 @@
--    const moveToTrash = useStore((state) => state.moveToTrash);
-+    const requestDeleteTask = useRequestDeleteTask();
-@@ -19 +20 @@
--            <GtkButton iconName="user-trash-symbolic" tooltipText="Delete (Delete)" onClicked={() => moveToTrash(task.id)} />
-+            <GtkButton iconName="user-trash-symbolic" tooltipText="Delete (Delete)" onClicked={() => requestDeleteTask(task)} />
-```
+- `renameNote` opens the note under its new name once the file is renamed. A failure, such as a name another program took after the dialog checked it, shows in a toast.
+- The `trashNote` command keeps the note's text, closes the note if it is open, so the editor can't save into a file that is gone, and moves the file to the trash.
+- The toast that follows has an Undo button, the [GNOME HIG](https://developer.gnome.org/hig/patterns/feedback/toasts.html)'s common use for a toast after a destructive action. See [Toasts](/v2/guide/components#toasts).
+- Undo writes the kept text back with `create` and opens the note. GIO doesn't say where in the trash the file went, so Undo makes a new file rather than restoring the old one, which stays in the trash. The new file has a new modification time, so the note returns at the top of the list. If another note took the name in the meantime, `create` picks the next free one, and `openNote` opens whichever name it used.
+- `useMarkup: false` shows the note's name as plain text, as for the error toasts.
 
 ## Run it
 
-Delete a task using its row button, editor button, and the Delete key outside the editor's text fields on separate attempts. Each action offers Undo and closes the editor when needed. Try a title containing `&` or `<b>`: the toast preserves the text.
+Open a note and press F2. Rename stays disabled until the name is new, valid and unused, and Enter renames the note. Open the note menu and choose Move to Trash: the note leaves the list, the sidebar title counts one fewer note, and a toast offers Undo. Click Undo and the note comes back and opens.
 
-Open Trash and delete again. Cancel and Escape preserve the task; Delete removes it permanently. Add another task afterward and check that it appears last in manual order.
-
-Open New List. Add stays disabled for an empty or whitespace-only name. Choose a color, type a name in the entry, and press Return; the saved list appears in the sidebar.
-
-## Next
-
-[Add Preferences](/v2/tutorial/preferences-and-theming) stores application choices in GSettings.
+<figure class="result">
+    <img class="result-light" src="/figures/tutorial-trash-and-toasts-light.png" width="720" height="480" loading="lazy" alt="The Notes window after Recipes was moved to the trash: the sidebar lists four notes, the content pane reads No Note Selected, and a toast at the bottom reads “Recipes” moved to Trash with an Undo button." />
+    <img class="result-dark" src="/figures/tutorial-trash-and-toasts-dark.png" width="720" height="480" loading="lazy" alt="The Notes window after Recipes was moved to the trash: the sidebar lists four notes, the content pane reads No Note Selected, and a toast at the bottom reads “Recipes” moved to Trash with an Undo button." />
+    <figcaption>Captured from <a href="#undo-from-a-toast"><code>src/components/window-actions.tsx</code></a> above, after Move to Trash on Recipes.</figcaption>
+</figure>

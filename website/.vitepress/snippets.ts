@@ -1,53 +1,78 @@
 import type { BundledLanguage } from "shiki";
 
-type Snippet = { lang: BundledLanguage; code: string };
+type Snippet = { lang: BundledLanguage; code: string; mark?: string };
 
-const HERO = `import {
-  AdwApplication, AdwApplicationWindow,
-  AdwHeaderBar, AdwToolbarView,
-} from "@gtkx/jsx/adw";
-import { GtkLabel } from "@gtkx/jsx/gtk";
-import { createRoot, quit } from "@gtkx/react";
-
-const App = () => (
-  <AdwApplication>
-    <AdwApplicationWindow
-      title="My App"
-      onCloseRequest={() => quit()}
-    >
-      <AdwToolbarView topBar={<AdwHeaderBar />}>
-        <GtkLabel>Hello from GTKX</GtkLabel>
-      </AdwToolbarView>
-    </AdwApplicationWindow>
-  </AdwApplication>
-);
-
-createRoot().render(<App />);
+const NOTE_LIST = `<ListView<Note>
+  items={shown.map((note) => ({
+    id: note.name,
+    value: note,
+  }))}
+  renderItem={({ item }) => (
+    <NoteRow note={item} />
+  )}
+/>
 `;
 
-const CONFIG = `import { defineConfig } from "@gtkx/config";
-
-export default defineConfig({
-  applicationId: "com.example.myapp",
-  libraries: ["WebKit-6.0"],
-});
-`;
-
-const APP = `<AdwToolbarView topBar={<AdwHeaderBar />}>
+const APP = `<AdwToolbarView
+  top={<AdwHeaderBar />}
+>
   <GtkScale
-    adjustment={<GtkAdjustment upper={100} />}
+    adjustment={
+      <GtkAdjustment upper={100} />
+    }
     drawValue
+    onValueChanged={(scale) =>
+      setVolume(scale.getValue())
+    }
   />
 </AdwToolbarView>
 `;
 
-const ECOSYSTEM = "npm install zod zustand";
+const TEST = `it("saves the name", async () => {
+  await render(<SettingsPanel />);
+
+  const name = screen.getByRole(
+    Gtk.AccessibleRole.TEXT_BOX,
+    { name: "Display name" },
+  );
+  await userEvent.type(name, "Ada");
+  await userEvent.click(
+    screen.getByRole(
+      Gtk.AccessibleRole.BUTTON,
+      { name: "Save" },
+    ),
+  );
+
+  expect(
+    await screen.findByText(
+      "Settings saved",
+    ),
+  ).toBeVisible();
+});
+`;
+
+const DEPLOY = `export default defineConfig({
+  applicationId: "dev.gtkx.Notes",
+  applicationIcon: "data/icons",
+  deploy: {
+    name: "Notes",
+    genericName: "Markdown Notes",
+    categories: [
+      "Utility", "TextEditor",
+    ],
+    targets: [
+      "flatpak", "deb",
+      "rpm", "appimage",
+    ],
+  },
+});
+`;
 
 const SNIPPETS = {
-    hero: { lang: "tsx", code: HERO },
-    config: { lang: "ts", code: CONFIG },
+    noteList: { lang: "tsx", code: NOTE_LIST, mark: "NoteRow" },
     app: { lang: "tsx", code: APP },
-    ecosystem: { lang: "bash", code: ECOSYSTEM },
+    test: { lang: "tsx", code: TEST },
+    deploy: { lang: "ts", code: DEPLOY },
 } satisfies Record<string, Snippet>;
 
 export { type Snippet, SNIPPETS };

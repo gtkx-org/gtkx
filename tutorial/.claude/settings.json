@@ -1,0 +1,18 @@
+{
+    "permissions": {
+        "allow": [
+            "Bash(npx gtkx codegen:*)",
+            "Bash(npx gtkx dev:*)",
+            "Bash(npx gtkx build:*)",
+            "Bash(npx tsc --noEmit)",
+            "Bash(npx vitest run:*)",
+            "Bash(npm run dev:*)",
+            "Bash(npm run build:*)",
+            "Bash(npm run codegen:*)",
+            "Bash(npm run typecheck:*)",
+            "Bash(npm test:*)"
+        ],
+        "deny": [],
+        "ask": []
+    }
+}

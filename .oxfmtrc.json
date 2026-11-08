@@ -30,6 +30,12 @@
             "options": {
                 "tabWidth": 2
             }
+        },
+        {
+            "files": ["website/figures/{guide,tutorial}/**"],
+            "options": {
+                "printWidth": 80
+            }
         }
     ]
 }

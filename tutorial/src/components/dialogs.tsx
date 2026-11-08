@@ -1,59 +1,35 @@
-import { useToast } from "@gtkx/components";
-import { t } from "@gtkx/i18n";
-import type { Task } from "../types.js";
-import { closeTaskIfOpen } from "../navigation.js";
-import { useStore } from "../store/index.js";
 import { About } from "./about.js";
-import { DeleteConfirmation } from "./delete-confirmation.js";
-import { NewListDialog } from "./new-list-dialog.js";
 import { Preferences } from "./preferences.js";
+import { RenameDialog } from "./rename-dialog.js";
 import { Shortcuts } from "./shortcuts.js";
 
-const useRequestDeleteTask = (): ((task: Task) => void) => {
-    const { show } = useToast();
+type Dialog =
+    | { kind: "none" }
+    | { kind: "about" }
+    | { kind: "shortcuts" }
+    | { kind: "preferences" }
+    | { kind: "rename"; name: string };
 
-    return (task) => {
-        const { moveToTrash, restore, askDeleteTask } = useStore.getState();
-        if (task.deleted) {
-            askDeleteTask(task);
-
-            return;
-        }
-        closeTaskIfOpen(task.id);
-        moveToTrash(task.id);
-        show({
-            useMarkup: false,
-            title: t("“{{title}}” moved to Trash", { title: task.title }),
-            buttonLabel: t("Undo"),
-            onButtonClicked: () => {
-                restore(task.id);
-            },
-        });
-    };
+type DialogsProps = {
+    dialog: Dialog;
+    onClose: () => void;
+    onRename: (from: string, to: string) => void;
+    onError: (error: unknown) => void;
 };
 
-const Dialogs = () => {
-    const dialog = useStore((state) => state.dialog);
-    const showDialog = useStore((state) => state.showDialog);
-    const close = () => {
-        showDialog("none");
-    };
-
+const Dialogs = ({ dialog, onClose, onRename, onError }: DialogsProps) => {
     switch (dialog.kind) {
         case "about": {
-            return <About onClose={close} />;
+            return <About onClose={onClose} />;
         }
         case "shortcuts": {
-            return <Shortcuts onClose={close} />;
+            return <Shortcuts onClose={onClose} />;
         }
         case "preferences": {
-            return <Preferences onClose={close} />;
+            return <Preferences onClose={onClose} onError={onError} />;
         }
-        case "new-list": {
-            return <NewListDialog />;
-        }
-        case "delete-task": {
-            return <DeleteConfirmation task={dialog.task} />;
+        case "rename": {
+            return <RenameDialog name={dialog.name} onRename={(to) => onRename(dialog.name, to)} onClose={onClose} />;
         }
         case "none": {
             return null;
@@ -61,4 +37,4 @@ const Dialogs = () => {
     }
 };
 
-export { Dialogs, useRequestDeleteTask };
+export { type Dialog, Dialogs };

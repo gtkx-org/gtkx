@@ -1,0 +1,4 @@
+{
+    "entryPoints": ["./src/overrides.ts"],
+    "readme": "../../website/.vitepress/reference-gl.md"
+}

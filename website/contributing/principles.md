@@ -14,11 +14,11 @@ These rules apply to new and existing code. The [architecture pages](/contributi
 | `@gtkx/native`       | Memory-safe FFI, native allocations and lifetimes, and unsafe ABI operations.                                                      |
 | `@gtkx/runtime`      | Binding semantics, value conversion, callbacks, signals, the GObject type system, and JavaScript representations of native values. |
 | `@gtkx/codegen`      | Executable ESM bindings and declarations derived from GIR, using explicit runtime descriptors.                                     |
-| Codegen overrides    | Wiring runtime implementations into generated modules.                                                                             |
+| Codegen overrides    | Library-specific helpers, application lifecycle, and upstream workarounds compiled with their generated namespace.                 |
 | `@gtkx/react`        | Reconciliation and primitives behind generated JSX elements.                                                                       |
 | Components and hooks | Lifecycle effects, presentation, list factories, and other composed behavior.                                                      |
 
-Review changes for clear ownership, observable tests, and a consumer requirement. Keep repository-specific behavior in repository tooling.
+Review changes for clear ownership, observable tests, and a consumer requirement.
 
 ### Keep the native module minimal
 
@@ -42,9 +42,11 @@ Generate executable ESM classes and functions and their TypeScript declarations 
 
 Binding construction belongs in generation and builds. GType registration for application subclasses remains a runtime operation using explicit class definitions and metadata.
 
-### Keep overrides as wiring
+### Keep library behavior in overrides
 
-Overrides attach implementations imported directly from runtime to generated exports, classes, or prototypes. Put implementations and complex logic in runtime; generated templates must not become a second binding implementation.
+Overrides are TypeScript modules compiled into the generated package beside the namespace they extend. Put behavior that needs concrete generated types there: helpers on GI types, application lifecycle, and upstream workarounds. Add to runtime only the general binding support they need.
+
+Runtime depends only on `@gtkx/native` and `@gtkx/utils` and never imports generated bindings, not even their types, because generated bindings import runtime.
 
 ### Keep the reconciler transparent
 
@@ -67,7 +69,7 @@ Persistent models still belong in JSX. Ordinary handlers, effects, setup code, h
 
 Give every type, descriptor, mapping, and implementation one owner. Import or derive it elsewhere. Codegen must reuse descriptor types exposed by `@gtkx/native`; bindings, declarations, JSX props, and reference pages must share their metadata.
 
-Fix generated behavior in its model, generator, configuration, or runtime, then regenerate. Share implementations where the contract is shared, keeping abstractions no broader than that contract requires.
+Fix generated behavior in its model, generator, configuration, overrides, or runtime, then regenerate. Share implementations where the contract is shared, keeping abstractions no broader than that contract requires.
 
 ## Prefer maintained dependencies over custom implementations
 

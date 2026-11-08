@@ -34,7 +34,12 @@ import { quit } from "@gtkx/react";
 
 export const App = () => (
     <AdwApplication>
-        <AdwApplicationWindow title="Notes" defaultWidth={800} defaultHeight={600} onCloseRequest={quit}>
+        <AdwApplicationWindow
+            title="Notes"
+            defaultWidth={800}
+            defaultHeight={600}
+            onCloseRequest={quit}
+        >
             <NavigationContainer>
                 <Notes />
             </NavigationContainer>
@@ -54,13 +59,19 @@ Pass a saved state to `initialState` and save each new one from `onStateChange`.
 ```tsx
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
-import { AdwApplication, AdwApplicationWindow, AdwSpinner } from "@gtkx/jsx/adw";
+import {
+    AdwApplication,
+    AdwApplicationWindow,
+    AdwSpinner,
+} from "@gtkx/jsx/adw";
 import { type InitialState, NavigationContainer } from "@gtkx/navigation";
 import { quit } from "@gtkx/react";
 import { useEffect, useState } from "react";
 
 const dataDir = GLib.buildFilenamev([GLib.getUserDataDir(), "notes"]);
-const stateFile = Gio.File.newForPath(GLib.buildFilenamev([dataDir, "navigation.json"]));
+const stateFile = Gio.File.newForPath(
+    GLib.buildFilenamev([dataDir, "navigation.json"]),
+);
 
 const loadState = async (): Promise<InitialState | undefined> => {
     try {
@@ -74,13 +85,23 @@ const loadState = async (): Promise<InitialState | undefined> => {
 const saveState = (state: object | undefined) => {
     GLib.mkdirWithParents(dataDir, 0o755);
     const bytes = new TextEncoder().encode(JSON.stringify(state));
-    stateFile.replaceContentsAsync(bytes, null, false, Gio.FileCreateFlags.NONE, null).catch((error: unknown) => {
-        console.error(error);
-    });
+    stateFile
+        .replaceContentsAsync(
+            bytes,
+            null,
+            false,
+            Gio.FileCreateFlags.NONE,
+            null,
+        )
+        .catch((error: unknown) => {
+            console.error(error);
+        });
 };
 
 export const App = () => {
-    const [restored, setRestored] = useState<{ state: InitialState | undefined }>();
+    const [restored, setRestored] = useState<{
+        state: InitialState | undefined;
+    }>();
 
     useEffect(() => {
         void loadState().then((state) => setRestored({ state }));
@@ -88,9 +109,17 @@ export const App = () => {
 
     return (
         <AdwApplication>
-            <AdwApplicationWindow title="Notes" defaultWidth={800} defaultHeight={600} onCloseRequest={quit}>
+            <AdwApplicationWindow
+                title="Notes"
+                defaultWidth={800}
+                defaultHeight={600}
+                onCloseRequest={quit}
+            >
                 {restored ? (
-                    <NavigationContainer initialState={restored.state} onStateChange={saveState}>
+                    <NavigationContainer
+                        initialState={restored.state}
+                        onStateChange={saveState}
+                    >
                         <Notes />
                     </NavigationContainer>
                 ) : (
@@ -111,7 +140,12 @@ A launch with a URI emits `open` before the window renders, so pass that state t
 ```tsx
 import * as Gio from "@gtkx/gi/gio";
 import { AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
-import { createNavigationContainerRef, getStateFromPath, type InitialState, NavigationContainer } from "@gtkx/navigation";
+import {
+    createNavigationContainerRef,
+    getStateFromPath,
+    type InitialState,
+    NavigationContainer,
+} from "@gtkx/navigation";
 import { quit } from "@gtkx/react";
 import { useState } from "react";
 
@@ -119,9 +153,13 @@ type NotesParams = { List: undefined; Note: { id: string } };
 
 const navigationRef = createNavigationContainerRef<NotesParams>();
 
-const linking = { initialRouteName: "List", screens: { List: "", Note: "note/:id" } } as const;
+const linking = {
+    initialRouteName: "List",
+    screens: { List: "", Note: "note/:id" },
+} as const;
 
-const stateFromUri = (uri: string) => getStateFromPath<NotesParams>(uri.replace(/^notes:\/\//, ""), linking);
+const stateFromUri = (uri: string) =>
+    getStateFromPath<NotesParams>(uri.replace(/^notes:\/\//, ""), linking);
 
 export const App = () => {
     const [initialState, setInitialState] = useState<InitialState>();
@@ -136,8 +174,16 @@ export const App = () => {
 
     return (
         <AdwApplication flags={Gio.ApplicationFlags.HANDLES_OPEN} onOpen={open}>
-            <AdwApplicationWindow title="Notes" defaultWidth={800} defaultHeight={600} onCloseRequest={quit}>
-                <NavigationContainer ref={navigationRef} initialState={initialState}>
+            <AdwApplicationWindow
+                title="Notes"
+                defaultWidth={800}
+                defaultHeight={600}
+                onCloseRequest={quit}
+            >
+                <NavigationContainer
+                    ref={navigationRef}
+                    initialState={initialState}
+                >
                     <Notes />
                 </NavigationContainer>
             </AdwApplicationWindow>
@@ -146,41 +192,19 @@ export const App = () => {
 };
 ```
 
-`initialRouteName` keeps the list beneath a linked note, so Back returns to it. `getPathFromState(state, linking)` turns a state back into a path, for example to copy a link to the visible page. During development, pass a URI after `--`, as in `pnpm dev -- notes://note/42`; see [command-line apps](/v2/guide/async-operations#command-line-apps).
+`initialRouteName` keeps the list beneath a linked note, so Back returns to it. `getPathFromState(state, linking)` turns a state back into a path, for example to copy a link to the visible page. During development, pass a URI after `--`, as in `pnpm dev -- notes://note/42`; see [command-line apps](/v2/guide/application-lifecycle#command-line-apps).
 
 ## Stack navigator
 
 `createStackNavigator` renders an `AdwNavigationView`. Define the route parameters to typecheck screens, `navigate` calls, and `route.params`:
 
-```tsx
-import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
-import { createStackNavigator, type StackScreenProps } from "@gtkx/navigation";
+<<< @/figures/guide/navigation-stack.tsx [src/notes.tsx]
 
-type NotesParams = { List: undefined; Note: { id: string } };
-
-const Stack = createStackNavigator<NotesParams>();
-
-const List = ({ navigation }: StackScreenProps<NotesParams, "List">) => (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-        <GtkButton label="Open note 42" onClicked={() => navigation.navigate("Note", { id: "42" })} />
-    </GtkBox>
-);
-
-const Note = ({ route, navigation }: StackScreenProps<NotesParams, "Note">) => (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-        <GtkLabel>{`Showing note ${route.params.id}`}</GtkLabel>
-        <GtkButton label="Done" onClicked={() => navigation.goBack()} />
-    </GtkBox>
-);
-
-export const Notes = () => (
-    <Stack.Navigator initialRouteName="List">
-        <Stack.Screen name="List" component={List} options={{ title: "Notes" }} />
-        <Stack.Screen name="Note" component={Note} options={({ route }) => ({ title: `Note ${route.params.id}` })} />
-    </Stack.Navigator>
-);
-```
+<figure class="result">
+    <img class="result-light" src="/figures/guide-navigation-stack-light.png" width="360" height="260" loading="lazy" alt="A window whose header bar shows the title Notes above a centered Open note 42 button." />
+    <img class="result-dark" src="/figures/guide-navigation-stack-dark.png" width="360" height="260" loading="lazy" alt="A window whose header bar shows the title Notes above a centered Open note 42 button." />
+    <figcaption>Captured from the sample above. The navigator draws the header bar and its title from the screen options.</figcaption>
+</figure>
 
 Each screen renders one root widget; wrap several widgets in a container such as `GtkBox`.
 
@@ -235,7 +259,10 @@ const Compose = () => {
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-            <GtkEntry placeholderText="Write something" onChanged={(entry) => setText(entry.text)} />
+            <GtkEntry
+                placeholderText="Write something"
+                onChanged={(entry) => setText(entry.text)}
+            />
             {pending && (
                 <AdwAlertDialog
                     heading="Discard draft?"
@@ -244,7 +271,11 @@ const Compose = () => {
                     closeResponse="keep"
                     responses={[
                         { id: "keep", label: "Keep Editing" },
-                        { id: "discard", label: "Discard", appearance: Adw.ResponseAppearance.DESTRUCTIVE },
+                        {
+                            id: "discard",
+                            label: "Discard",
+                            appearance: Adw.ResponseAppearance.DESTRUCTIVE,
+                        },
                     ]}
                     onResponse={(id) => {
                         if (id === "discard") {
@@ -260,7 +291,7 @@ const Compose = () => {
 };
 ```
 
-Dispatch the action supplied to the callback after confirmation. React Navigation documents the rest of the [removal guard lifecycle](https://reactnavigation.org/docs/preventing-going-back/).
+React Navigation documents the rest of the [removal guard lifecycle](https://reactnavigation.org/docs/preventing-going-back/).
 
 React Navigation 7 depends on `use-latest-callback` 0.2, which outside a browser updates the guard's callback in a passive effect. A passive effect that leaves the screen, such as `useEffect(() => { if (sent) navigation.goBack(); }, [sent])`, and runs before that update still sees the old `preventRemove` value, so the guard blocks a leave it should allow. Version 0.3 fixes this. Until React Navigation 7 accepts it, override the version: with npm, add it to `"overrides"` in `package.json`; with Yarn, to `"resolutions"`; with pnpm, to `overrides` in `pnpm-workspace.yaml`. For npm:
 
@@ -282,34 +313,17 @@ Stack screens emit `transitionStart` and `transitionEnd` from their native page 
 
 `createTabNavigator` renders an `AdwViewStack`. The switcher occupies the header title by default; `tabBarPosition="bottom"` puts an `AdwViewSwitcherBar` below the content:
 
-```tsx
-import { createTabNavigator } from "@gtkx/navigation";
+<<< @/figures/guide/navigation-tabs.tsx [src/mail.tsx]
 
-type MailParams = { Inbox: undefined; Archive: undefined };
-
-const Tabs = createTabNavigator<MailParams>();
-
-export const Mail = ({ unread }: { unread: number }) => (
-    <Tabs.Navigator tabBarPosition="bottom" screenOptions={{ animation: "fade" }}>
-        <Tabs.Screen
-            name="Inbox"
-            component={Inbox}
-            options={{ tabBarIcon: "mail-inbox-symbolic", tabBarBadge: unread, needsAttention: unread > 0 }}
-        />
-        <Tabs.Screen
-            name="Archive"
-            component={Archive}
-            options={{ tabBarLabel: "Archived", tabBarIcon: "folder-symbolic", lazy: false }}
-        />
-    </Tabs.Navigator>
-);
-```
+<figure class="result">
+    <img class="result-light" src="/figures/guide-navigation-tabs-light.png" width="360" height="440" loading="lazy" alt="A window titled Inbox showing an Inbox status page, with a switcher bar at the bottom holding an Inbox button with a badge of 3 and an Archived button." />
+    <img class="result-dark" src="/figures/guide-navigation-tabs-dark.png" width="360" height="440" loading="lazy" alt="A window titled Inbox showing an Inbox status page, with a switcher bar at the bottom holding an Inbox button with a badge of 3 and an Archived button." />
+    <figcaption>Captured from the sample above with <code>unread={3}</code>. The bottom switcher shows each screen's icon, label and badge.</figcaption>
+</figure>
 
 The switcher uses each screen's label, icon, badge and attention options. Tabs mount when first focused unless `lazy: false` is set. Set `animation: "fade"` for a crossfade.
 
-Set `useUnderline: true` to interpret underscores in the switcher label as keyboard mnemonics. For example, combine `title: "World"`, `tabBarLabel: "_World"`, and `useUnderline: true` in a screen's options to let Alt+W select the tab in either switcher position. The default is `false`, so existing labels keep literal underscores. With mnemonics enabled, write `__` for a literal underscore.
-
-Header titles remain plain text. Use `tabBarLabel` for mnemonic text and keep `title` plain, or provide a separate `headerTitle` when the mnemonic is in `title`.
+Set `useUnderline: true` to read underscores in the switcher label as keyboard mnemonics: with `tabBarLabel: "_World"`, Alt+W selects the tab in either switcher position. Write `__` for a literal underscore. Header titles stay plain text, so put the mnemonic in `tabBarLabel` and keep `title` plain.
 
 With a top switcher, leave the header's title widget available for it. To supply `headerTitle`, move the switcher to the bottom or place it explicitly through a custom `header`. Hiding the header leaves a top switcher visible on its own.
 
@@ -319,28 +333,17 @@ User selection emits `tabPress`, which a screen listener can prevent. Programmat
 
 `createDrawerNavigator` uses an `AdwOverlaySplitView`. Its sidebar lists the screens and marks the focused one; a button in the content header toggles the sidebar:
 
-```tsx
-import { createDrawerNavigator } from "@gtkx/navigation";
+<<< @/figures/guide/navigation-drawer.tsx [src/app.tsx]
 
-type AppParams = { Inbox: undefined; Settings: undefined };
-
-const Drawer = createDrawerNavigator<AppParams>();
-
-export const App = ({ isNarrow }: { isNarrow: boolean }) => (
-    <Drawer.Navigator collapsed={isNarrow} sidebarPosition="start">
-        <Drawer.Screen name="Inbox" component={Inbox} options={{ drawerIcon: "mail-inbox-symbolic" }} />
-        <Drawer.Screen
-            name="Settings"
-            component={Settings}
-            options={{ drawerLabel: "Preferences", drawerIcon: "emblem-system-symbolic" }}
-        />
-    </Drawer.Navigator>
-);
-```
+<figure class="result">
+    <img class="result-light" src="/figures/guide-navigation-drawer-light.png" width="640" height="400" loading="lazy" alt="A window with a sidebar titled Mail listing Inbox, selected, and Preferences with their icons, beside a content pane whose header has a sidebar toggle and the title Inbox above a No New Mail status page." />
+    <img class="result-dark" src="/figures/guide-navigation-drawer-dark.png" width="640" height="400" loading="lazy" alt="A window with a sidebar titled Mail listing Inbox, selected, and Preferences with their icons, beside a content pane whose header has a sidebar toggle and the title Inbox above a No New Mail status page." />
+    <figcaption>Captured from the sample above with <code>isNarrow={false}</code>. The sidebar stays beside the content and marks the focused screen.</figcaption>
+</figure>
 
 Set `collapsed` when the layout needs an overlay sidebar; the sidebar then closes after a selection. In a wide layout it stays beside the content. `defaultStatus` controls its initial visibility, and `pinSidebar` preserves visibility across collapse changes.
 
-Set `useUnderline: true` to enable keyboard mnemonics in drawer labels. For example, combine `title: "Settings"`, `drawerLabel: "_Settings"`, and `useUnderline: true` in a screen's options to let Alt+S select the screen while the sidebar is visible. Header titles remain plain text. Mnemonics default to disabled; when enabled, `__` displays a literal underscore.
+`useUnderline: true` works the same way for drawer labels: with `drawerLabel: "_Settings"`, Alt+S selects the screen while the sidebar is visible.
 
 Native opening and dismissal update the drawer's navigation state, so gestures and React Navigation's drawer actions stay in sync. See the [drawer configuration reference](/v2/reference/@gtkx/navigation/type-aliases/DrawerNavigationConfig) for sizing and placement.
 
@@ -353,7 +356,9 @@ import { GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { type DrawerContentProps, DrawerItemList } from "@gtkx/navigation";
 
 const Sidebar = (props: DrawerContentProps) => (
-    <AdwToolbarView top={<AdwHeaderBar titleWidget={<AdwWindowTitle title="Mail" />} />}>
+    <AdwToolbarView
+        top={<AdwHeaderBar titleWidget={<AdwWindowTitle title="Mail" />} />}
+    >
         <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER}>
             <DrawerItemList {...props} />
         </GtkScrolledWindow>
@@ -372,39 +377,15 @@ Activating a row emits `drawerItemPress`, which `preventDefault` cancels, before
 
 `createSplitViewNavigator` keeps its first screen in the sidebar and places the other screens in a content stack. Use it when the sidebar selects data, such as a folder whose messages appear beside it:
 
-```tsx
-import { AdwStatusPage } from "@gtkx/jsx/adw";
-import { GtkButton } from "@gtkx/jsx/gtk";
-import { createSplitViewNavigator, type SplitViewScreenProps } from "@gtkx/navigation";
+<<< @/figures/guide/navigation-split-view.tsx [src/mail.tsx]
 
-type MailParams = { Folders: undefined; Messages: { folder: string }; Message: { id: string } };
+<figure class="result">
+    <img class="result-light" src="/figures/guide-navigation-split-view-light.png" width="720" height="420" loading="lazy" alt="A window with a sidebar titled Mail holding a selected Inbox row, beside a content pane whose header bar is titled Inbox above a centered Open message 1 button." />
+    <img class="result-dark" src="/figures/guide-navigation-split-view-dark.png" width="720" height="420" loading="lazy" alt="A window with a sidebar titled Mail holding a selected Inbox row, beside a content pane whose header bar is titled Inbox above a centered Open message 1 button." />
+    <figcaption>Captured from the sample above. The navigator opens on the Inbox folder, which the sidebar selects first.</figcaption>
+</figure>
 
-const Split = createSplitViewNavigator<MailParams>();
-
-const Folders = ({ navigation }: SplitViewScreenProps<MailParams, "Folders">) => (
-    <GtkButton label="Inbox" onClicked={() => navigation.navigate("Messages", { folder: "inbox" })} />
-);
-
-export const Mail = () => (
-    <Split.Navigator
-        collapseCondition="max-width: 500sp"
-        minSidebarWidth={220}
-        maxSidebarWidth={300}
-        sidebarWidthFraction={0.25}
-        contentPlaceholder={(
-            <AdwStatusPage
-                iconName="mail-unread-symbolic"
-                title="No Folder Selected"
-                description="Pick a folder to read what is in it."
-            />
-        )}
-    >
-        <Split.Screen name="Folders" component={Folders} options={{ title: "Mail" }} />
-        <Split.Screen name="Messages" component={Messages} options={({ route }) => ({ title: route.params.folder })} />
-        <Split.Screen name="Message" component={Message} options={{ headerEnd: <GtkButton label="Reply" /> }} />
-    </Split.Navigator>
-);
-```
+`AdwSidebar` selects its first item on its own, and `activated` fires only when the user activates a row. The sample therefore names a content screen in `initialRouteName`, with `initialParams`, so the pane opens on the folder the sidebar shows as selected instead of on the placeholder.
 
 In a split view, `navigate` selects a content route: it updates that route and removes pages above it. Choosing another folder therefore replaces the selection instead of adding another folder page. Use `push` to keep multiple copies of a content page.
 
@@ -414,19 +395,30 @@ A content route that is not open yet is pushed above the current one, as in a st
 import { GtkLabel, GtkListBox, GtkListBoxRow } from "@gtkx/jsx/gtk";
 import type { SplitViewScreenProps } from "@gtkx/navigation";
 
-type SettingsParams = { Sections: undefined; Wifi: undefined; Proxy: undefined };
+type SettingsParams = {
+    Sections: undefined;
+    Wifi: undefined;
+    Proxy: undefined;
+};
 
 const sections = [
     { name: "Wifi", label: "Wi-Fi" },
     { name: "Proxy", label: "Proxy" },
 ] as const;
 
-const Sections = ({ navigation, route }: SplitViewScreenProps<SettingsParams, "Sections">) => (
+const Sections = ({
+    navigation,
+    route,
+}: SplitViewScreenProps<SettingsParams, "Sections">) => (
     <GtkListBox
         cssClasses={["navigation-sidebar"]}
         onRowActivated={(row) => {
             const section = sections[row.getIndex()];
-            if (section) navigation.reset({ index: 1, routes: [route, { name: section.name }] });
+            if (section)
+                navigation.reset({
+                    index: 1,
+                    routes: [route, { name: section.name }],
+                });
         }}
     >
         {sections.map((section) => (
@@ -440,11 +432,11 @@ const Sections = ({ navigation, route }: SplitViewScreenProps<SettingsParams, "S
 
 The reset switches sections without a page transition.
 
-The sidebar stays pinned beneath the content routes. Going back from the first content page clears the selection and restores `contentPlaceholder`, which sits below an untitled header bar so the window keeps its controls. An `initialRouteName` naming a content screen opens that screen instead of starting with the placeholder.
+The sidebar stays pinned beneath the content routes. Going back from the first content page clears the selection and restores `contentPlaceholder`, which sits below an untitled header bar so the window keeps its controls.
 
 Content pages use the stack's headers, back controls and transition events. The first selection fills an empty pane and emits no page transition. The sidebar has its own header without a back button.
 
-`collapseCondition` collapses the panes while an [`Adw.BreakpointCondition`](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/type_func.BreakpointCondition.parse.html) holds, measured against the navigator's size. libadwaita applies it during layout, as it applies an `AdwBreakpoint` setter, so the panes change before GTK moves keyboard focus. Setting `collapsed` from a breakpoint's `onApply` and `onUnapply` handlers lands after GTK has moved focus, and widening the window can then select the focused sidebar row. Use `collapsed` when the layout depends on application state rather than size.
+`collapseCondition` collapses the panes while an [`Adw.BreakpointCondition`](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/type_func.BreakpointCondition.parse.html) holds, measured against the navigator's size. libadwaita applies it during layout, as it applies an `AdwBreakpoint` setter, so the panes change before GTK moves keyboard focus. Setting `collapsed` from a breakpoint's `onApply` and `onUnapply` handlers lands after GTK has moved focus, and widening the window can then select the focused sidebar row. Use `collapsed` when the layout depends on application state rather than size.
 
 As with window breakpoints, give the window a minimum size the collapsed layout fits:
 
@@ -461,16 +453,21 @@ export const App = () => (
 );
 ```
 
-`useSplitViewCollapsed()` tells the navigator's screens whether the panes are collapsed, whether `collapsed` or `collapseCondition` collapsed them. libadwaita's [`AdwSidebar`](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/class.Sidebar.html) switches to page mode with the breakpoint that collapses its split view, so a sidebar screen reads the hook instead of repeating the condition in a window breakpoint:
+`useSplitViewCollapsed()` tells the navigator's screens whether the panes are collapsed, whether `collapsed` or `collapseCondition` collapsed them. libadwaita's [`AdwSidebar`](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/class.Sidebar.html) switches to page mode with the breakpoint that collapses its split view, so a sidebar screen reads the hook instead of repeating the condition in a window breakpoint:
 
 ```tsx
 import * as Adw from "@gtkx/gi/adw";
 import { AdwSidebar, AdwSidebarItem, AdwSidebarSection } from "@gtkx/jsx/adw";
-import { type SplitViewScreenProps, useSplitViewCollapsed } from "@gtkx/navigation";
+import {
+    type SplitViewScreenProps,
+    useSplitViewCollapsed,
+} from "@gtkx/navigation";
 
 const folders = ["Inbox", "Sent", "Archive"];
 
-const Folders = ({ navigation }: SplitViewScreenProps<MailParams, "Folders">) => {
+const Folders = ({
+    navigation,
+}: SplitViewScreenProps<MailParams, "Folders">) => {
     const isCollapsed = useSplitViewCollapsed();
 
     return (
@@ -504,37 +501,65 @@ Focus follows the selected content route even when the sidebar remains visible. 
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
-import { createTabViewNavigator, type TabViewScreenProps } from "@gtkx/navigation";
+import {
+    createTabViewNavigator,
+    type TabViewScreenProps,
+} from "@gtkx/navigation";
 
 type DocumentParams = { Document: { title: string } };
 
 const Tabs = createTabViewNavigator<DocumentParams>();
 
-const Document = ({ route, navigation }: TabViewScreenProps<DocumentParams, "Document">) => (
+const Document = ({
+    route,
+    navigation,
+}: TabViewScreenProps<DocumentParams, "Document">) => (
     <GtkBox orientation={Gtk.Orientation.VERTICAL}>
         <GtkLabel label={route.params.title} />
         <GtkButton
             label="Open related"
-            onClicked={() => navigation.openTab("Document", { title: "Related" }, { parent: route.key })}
+            onClicked={() =>
+                navigation.openTab(
+                    "Document",
+                    { title: "Related" },
+                    { parent: route.key },
+                )
+            }
         />
     </GtkBox>
 );
 
 export const Documents = () => (
     <Tabs.Navigator
-        overview={{ enableNewTab: true, onCreateTab: () => ({ name: "Document", params: { title: "Untitled" } }) }}
+        overview={{
+            enableNewTab: true,
+            onCreateTab: () => ({
+                name: "Document",
+                params: { title: "Untitled" },
+            }),
+        }}
         screenOptions={({ route }) => ({ title: route.params.title })}
     >
-        <Tabs.Screen name="Document" component={Document} initialParams={{ title: "Untitled" }} />
+        <Tabs.Screen
+            name="Document"
+            component={Document}
+            initialParams={{ title: "Untitled" }}
+        />
     </Tabs.Navigator>
 );
 ```
 
-Tabs are addressed by route key. The navigation object adds `openTab`, `closeTab`, `closeOtherTabs`, `closeTabsBefore`, `closeTabsAfter`, `selectTab`, `reorderTab` and `pinTab`, also available as `TabViewActions`. Opening with `parent` places the tab after its parent and the parent's descendants, and closing it selects that parent again. Pinned tabs stay ahead of the others; the state's `pinnedKeys` lists them. Screen options map to the page: `title`, `icon`, `tooltip`, `keyword`, `loading`, `needsAttention`, the indicator options and the thumbnail alignment. The header shows the window title unless `headerTitle` is set. Screens mount when first selected unless `lazy: false`.
+Tabs are addressed by route key. The navigation object adds [tab actions](/v2/reference/@gtkx/navigation/type-aliases/TabViewActionHelpers) such as `openTab`, `closeTab`, `selectTab` and `pinTab`, also available as `TabViewActions`. Opening with `parent` places the tab after its parent and the parent's descendants, and closing it selects that parent again. Pinned tabs stay ahead of the others; the state's `pinnedKeys` lists them.
+
+[Screen options](/v2/reference/@gtkx/navigation/type-aliases/TabViewNavigationOptions) set the native tab page's properties, such as `title`, `icon`, `loading` and `needsAttention`. The header shows the window title unless `headerTitle` is set. Screens mount when first selected unless `lazy: false`.
 
 `navigate` selects the last open tab of a screen and updates its params, or opens one when none is open. Give the screen a `getId` to identify tabs by their params: `navigate` and `openTab` then select the tab with the same id and open a new tab for a new id.
 
-Native interaction flows back into the state: selecting a tab emits a cancellable `tabPress`, dragging reorders the route, and the close button dispatches `closeTab`, which `usePreventRemove` can refuse. Closing the last tab is left unhandled, so a parent navigator or the container's `onUnhandledAction` decides whether the window closes. A tab view inside a section of the app has no window to close; set `replaceLastTab` there, and closing the last tab replaces it with a new tab of the initial route. The overview's `open` follows the same rule as other [open-state props](/v2/guide/modals-and-portals#closing): when given, update it from `onOpenChange`, or leave it out to let the overview open and close on its own. The [tab view configuration reference](/v2/reference/@gtkx/navigation/) lists the tab bar, overview, menu and drop target settings.
+Native interaction flows back into the state: selecting a tab emits a cancellable `tabPress`, dragging reorders the route, and the close button dispatches `closeTab`, which `usePreventRemove` can refuse.
+
+Closing the last tab is left unhandled, so a parent navigator or the container's `onUnhandledAction` decides whether the window closes. A tab view inside a section of the app has no window to close; set `replaceLastTab` there, and closing the last tab replaces it with a new tab of the initial route.
+
+The overview's `open` follows the same rule as other [open-state props](/v2/guide/modals-and-portals#closing): when given, update it from `onOpenChange`, or leave it out to let the overview open and close on its own. The [tab view configuration reference](/v2/reference/@gtkx/navigation/type-aliases/TabViewNavigationConfig) lists the tab bar, overview, menu and drop target settings.
 
 ### Tab context menu
 
@@ -543,7 +568,11 @@ Native interaction flows back into the state: selecting a tab emits a cancellabl
 ```tsx
 import { GMenu, GSimpleAction } from "@gtkx/jsx/gio";
 import { AdwApplicationWindow } from "@gtkx/jsx/adw";
-import { NavigationContainer, TabViewActions, useNavigationContainerRef } from "@gtkx/navigation";
+import {
+    NavigationContainer,
+    TabViewActions,
+    useNavigationContainerRef,
+} from "@gtkx/navigation";
 import { useRef } from "react";
 
 export const DocumentWindow = () => {
@@ -555,14 +584,28 @@ export const DocumentWindow = () => {
             actions={
                 <GSimpleAction
                     name="close-others"
-                    onActivate={() => navigation.dispatch(TabViewActions.closeOtherTabs(menuTab.current ?? undefined))}
+                    onActivate={() =>
+                        navigation.dispatch(
+                            TabViewActions.closeOtherTabs(
+                                menuTab.current ?? undefined,
+                            ),
+                        )
+                    }
                 />
             }
         >
             <NavigationContainer ref={navigation}>
                 <Tabs.Navigator
                     renderMenu={(ref) => (
-                        <GMenu ref={ref} items={[{ label: "Close Other Tabs", action: "win.close-others" }]} />
+                        <GMenu
+                            ref={ref}
+                            items={[
+                                {
+                                    label: "Close Other Tabs",
+                                    action: "win.close-others",
+                                },
+                            ]}
+                        />
                     )}
                     onSetupMenu={(route) => {
                         menuTab.current = route?.key ?? null;
@@ -595,21 +638,32 @@ import type { NavigatorScreenParams } from "@gtkx/navigation";
 import { createDrawerNavigator, createStackNavigator } from "@gtkx/navigation";
 
 type NotesParams = { List: undefined; Note: { id: string } };
-type AppParams = { Notes: NavigatorScreenParams<NotesParams>; Settings: undefined };
+type AppParams = {
+    Notes: NavigatorScreenParams<NotesParams>;
+    Settings: undefined;
+};
 
 const Drawer = createDrawerNavigator<AppParams>();
 const Stack = createStackNavigator<NotesParams>();
 
 const NotesStack = () => (
     <Stack.Navigator>
-        <Stack.Screen name="List" component={List} options={{ title: "Notes" }} />
+        <Stack.Screen
+            name="List"
+            component={List}
+            options={{ title: "Notes" }}
+        />
         <Stack.Screen name="Note" component={Note} />
     </Stack.Navigator>
 );
 
 export const App = () => (
     <Drawer.Navigator>
-        <Drawer.Screen name="Notes" component={NotesStack} options={{ headerShown: false }} />
+        <Drawer.Screen
+            name="Notes"
+            component={NotesStack}
+            options={{ headerShown: false }}
+        />
         <Drawer.Screen name="Settings" component={Settings} />
     </Drawer.Navigator>
 );
@@ -626,7 +680,9 @@ import { DrawerActions } from "@gtkx/navigation";
         headerStart: (
             <GtkButton
                 iconName="sidebar-show-symbolic"
-                onClicked={() => navigation.dispatch(DrawerActions.toggleDrawer())}
+                onClicked={() =>
+                    navigation.dispatch(DrawerActions.toggleDrawer())
+                }
             />
         ),
     })}
@@ -640,7 +696,7 @@ Route parameters and actions follow React Navigation's [nesting rules](https://r
 
 ## Hooks
 
-Use the hooks re-exported from `@gtkx/navigation`. React Navigation documents [screen focus effects](https://reactnavigation.org/docs/use-focus-effect/) and [navigation access](https://reactnavigation.org/docs/use-navigation/). GTKX's `useTheme` value follows the Adwaita state described above.
+Import React Navigation's hooks, such as [`useFocusEffect`](https://reactnavigation.org/docs/use-focus-effect/) and [`useNavigation`](https://reactnavigation.org/docs/use-navigation/), from `@gtkx/navigation`. `useTheme` returns the [container's theme](#navigationcontainer). GTKX adds [`useSplitViewCollapsed`](#split-view-navigator) for split view screens and [`useTabView`](#windows-and-transfers) for tab view screens and their header content.
 
 ## Static configuration
 
@@ -664,7 +720,7 @@ declare module "@react-navigation/core" {
 }
 ```
 
-GTKX uses the interface declared by `@react-navigation/core`, so augment that module. Install it directly with `npm install @react-navigation/core@^7`: pnpm keeps transitive dependencies out of the project's `node_modules`, and TypeScript cannot augment a module it cannot resolve. The same pattern works with a static navigator. See React Navigation's [TypeScript guide](https://reactnavigation.org/docs/typescript/) for nested screens and inferred route parameters.
+GTKX uses the interface declared by `@react-navigation/core`, so augment that module. Install it directly with `npm install @react-navigation/core@^7`: pnpm keeps transitive dependencies out of the project's `node_modules`, and TypeScript cannot augment a module it cannot resolve. Until it resolves, `navigate` from `useNavigation()` rejects every route, typed as `never`. The same pattern works with a static navigator. See React Navigation's [TypeScript guide](https://reactnavigation.org/docs/typescript/) for nested screens and inferred route parameters.
 
 ## Testing
 
@@ -683,16 +739,18 @@ it("opens a note and comes back", async () => {
         </NavigationContainer>,
     );
 
-    await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Open note 42" }));
+    await userEvent.click(
+        await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
+            name: "Open note 42",
+        }),
+    );
     await screen.findByText("Showing note 42");
 
-    await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Back" }));
+    await userEvent.click(
+        screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Back" }),
+    );
     expect(screen.queryByText("Showing note 42")).toBeNull();
 });
 ```
 
 For tab navigation, query the view switcher's `Gtk.AccessibleRole.TAB` and its label. `userEvent.keyboard(widget, "{Escape}")` exercises native back navigation. See [Testing](/v2/guide/testing) for setup and query behavior.
-
-## Next
-
-Continue with [CSS](/v2/guide/css) to style these pages with the `style` prop and GTK4's own CSS engine.

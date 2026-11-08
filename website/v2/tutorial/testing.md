@@ -1,509 +1,148 @@
 ---
-description: "Test Tasks through real native widgets in an isolated headless session."
+description: "Test Notes headless with real files in a temporary folder."
 ---
 
 # Test the App
 
-Extend the entry-row tests from [Add Tasks](/v2/tutorial/the-task-store#test-the-entry-row) to cover the completed app. Use `@gtkx/testing` to render the app and interact with its Adwaita widgets in a headless session. These are integration tests: they drive widgets directly from TypeScript.
+Test the app's workflows the way a user runs them: open a note, type, use the menus, and check what lands in the notes folder. The tests render the whole app in a headless session, find widgets through the accessibility tree, and work on real files in a temporary folder, without mocks.
 
-## Isolate the application data
+The project already has the testing setup you chose when [scaffolding it](/v2/tutorial/#check-your-setup): Vitest, `@gtkx/testing`, the `test` script and `vitest.config.ts`. [Testing](/v2/guide/testing) covers the tools in full.
 
-Keep the Vitest configuration from Save Tasks. It selects English and loads the isolated-data setup file:
+## A temporary notes folder
 
-```ts [vitest.config.ts]
-import gtkx from "@gtkx/cli/vitest-plugin";
-import { defineConfig } from "vitest/config";
+Replace `vitest.config.ts`:
 
-export default defineConfig({
-    plugins: [gtkx()],
-    test: {
-        include: ["tests/**/*.test.{ts,tsx}"],
-        setupFiles: ["./tests/setup.ts"],
-        bail: 1,
-        env: {
-            LANG: "C.UTF-8",
-            LANGUAGE: "en",
-            LC_ALL: "C.UTF-8",
-        },
-    },
-});
+<<< @/figures/tutorial/testing/vitest.config.ts [vitest.config.ts]
+
+- `setupFiles` runs `tests/setup.ts` in each test file's worker before the file's tests.
+- `env` runs the tests in the C locale with English messages, so the names they look for stay the same whatever the language of the machine.
+
+Create `tests/setup.ts`:
+
+<<< @/figures/tutorial/testing/tests/setup.ts [tests/setup.ts]
+
+- `XDG_DATA_HOME` points into a temporary directory, so a note moved to the trash goes to a trash there instead of yours. GLib reads the variable once, when the test file imports GTKX, so the setup file sets it at the top level rather than in `beforeEach`. See [Test data and settings](/v2/guide/testing#test-data-and-settings).
+- Before each test, `beforeEach` copies the fixtures into a new notes folder and gives them fixed modification times, so the list's newest-first order is known.
+- Tests use GLib's in-memory settings backend and never touch your settings. A value one test writes would stay for the next test in the file, so `beforeEach` resets every key in the schema and then points `folder` at the new notes folder.
+
+The fixtures are two notes. Create `tests/fixtures/Groceries.md`:
+
+<<< @/figures/tutorial/testing/tests/fixtures/Groceries.md [tests/fixtures/Groceries.md]
+
+And `tests/fixtures/Reading list.md`:
+
+<<< @/figures/tutorial/testing/tests/fixtures/Reading list.md [tests/fixtures/Reading list.md]
+
+## Find widgets by role and name
+
+Create `tests/notes.test.tsx` with the suite below. It covers each feature from the earlier chapters, one test per workflow; the rest of this chapter explains how its tests work.
+
+::: details The complete `tests/notes.test.tsx`
+
+<<< @/figures/tutorial/testing/tests/notes.test.tsx [tests/notes.test.tsx]
+
+:::
+
+The first test checks the order of the list:
+
+```tsx
+const noteRows = (): Promise<Gtk.Widget[]> =>
+    screen.findAllByRole(Gtk.AccessibleRole.LIST_ITEM);
+
+describe("Notes", () => {
+    it("lists the Markdown files in the folder, newest first", async () => {
+        await render(<App />, { container: rootElement });
+
+        const [first, second] = await noteRows();
+        expect(first).toHaveAccessibleName("Reading list");
+        expect(second).toHaveAccessibleName("Groceries");
+    });
 ```
 
-Replace `tests/setup.ts` to reset the lists and UI state as well as tasks:
+- `render` with `container: rootElement` renders `App` as `src/index.tsx` does, with its application element and window, instead of inside a test window. See [Rendering a component](/v2/guide/testing#rendering-a-component).
+- `screen` searches every open window, including dialogs and popovers. Queries take a `Gtk.AccessibleRole` and an accessible name: the names that earlier chapters gave the rows (the note's name), the editor (Note text) and the search entry (Search Notes). An icon button has no label, so its tooltip names it, as in `{ name: "Note Menu" }`. See [Finding widgets](/v2/guide/testing#finding-widgets).
+- `findBy` and `findAllBy` queries wait for the widget to appear, here for the notes to load. `getBy` queries expect the widget to be there already, and `queryBy` queries return `null` when it isn't, to check that something is gone.
+- `toHaveAccessibleName`, `toBeVisible` and the other widget matchers are available once the file imports `@gtkx/testing`. See [Assertions and debugging](/v2/guide/testing#assertions-and-debugging).
 
-```ts [tests/setup.ts]
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { afterAll, beforeEach } from "vitest";
-import { applicationId } from "virtual:gtkx-config";
+The `as` option in `openNote` keeps only a `Gtk.TextView` and types the result as one, so `editorText` can read its buffer.
 
-const dataHome = mkdtempSync(join(tmpdir(), "gtkx-tutorial-"));
-process.env.XDG_DATA_HOME = dataHome;
+## Check the notes folder
 
-const { useStore } = await import("../src/store/index.js");
-const { seedLists, seedTasks } = await import("../src/store/seed.js");
+The tests read the notes folder to check what the app wrote, and write to it to act as another program would:
 
-beforeEach(() => {
-    rmSync(join(dataHome, applicationId), { recursive: true, force: true });
-    useStore.setState({
-        tasks: seedTasks,
-        lists: seedLists,
-        filter: "all",
-        searchMode: false,
-        searchQuery: "",
-        dialog: { kind: "none" },
-    });
-});
+```tsx
+it("saves what is typed to the note's file", async () => {
+    await render(<App />, { container: rootElement });
 
-afterAll(() => {
-    rmSync(dataHome, { recursive: true, force: true });
-});
-```
+    const editor = await openNote("Groceries");
+    await userEvent.type(editor, "- Rice\n");
 
-Set the data directory before importing the store: its storage backend reads that path during initialization. Each test resets the app's data; mounting a new `App` supplies a fresh navigation container. GTKX cleans up rendered trees between tests. The explicit locale keeps queries consistent when the app gains translations later.
-
-## Drive the widgets
-
-Replace `tests/tasks.test.tsx` with these app-level checks. State reset now lives in `tests/setup.ts`:
-
-```tsx [tests/tasks.test.tsx]
-import * as Gtk from "@gtkx/gi/gtk";
-import { rootElement } from "@gtkx/react";
-import { render, screen, userEvent } from "@gtkx/testing";
-import { describe, expect, it } from "vitest";
-import { App } from "../src/app.js";
-
-describe("Tasks", () => {
-    it("adds a task through the entry row", async () => {
-        await render(<App />, { container: rootElement });
-
-        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
-        await userEvent.type(entry, "Book flights");
-        await userEvent.keyboard(entry, "{Enter}");
-
-        expect(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Book flights" })).toBeDefined();
-    });
-
-    it("keeps an unnamed list from being submitted", async () => {
-        await render(<App />, { container: rootElement });
-
-        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "New List" }));
-        const name = await screen.findByPlaceholderText("List name");
-        await userEvent.type(name, "   ");
-
-        expect(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Add" })).toBeDisabled();
-    });
-
-    it("rejects dragging while the task list is filtered", async () => {
-        await render(<App />, { container: rootElement });
-
-        await userEvent.click(await screen.findByText("Open"));
-        const source = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the plants/ });
-        const target = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Welcome to Tasks/ });
-
-        await expect(userEvent.dragAndDrop(source, target, "t2")).rejects.toThrow();
+    await waitFor(() => {
+        expect(
+            readFileSync(join(notesFolder(), "Groceries.md"), "utf8"),
+        ).toContain("- Rice");
     });
 });
 ```
 
-`App` returns an `AdwApplication`, so mount it at `rootElement` rather than inside the default harness window. Await rendering and interactions so assertions observe the resulting GTK state.
+- `userEvent` helpers act as a user does and wait until React has applied the result. Await each one. See [Interacting and waiting](/v2/guide/testing#interacting-and-waiting).
+- The app saves 400 milliseconds after the last edit, so `waitFor` retries the assertion until the file has the new text, for up to a second.
+- "shows notes added and removed outside the app" and "reloads an open note changed outside the app" write and delete files with `node:fs` and wait for the list and the editor to follow, which tests the file watching from [Save and Watch Files](/v2/tutorial/saving-and-watching).
+- "moves a note to the trash and undoes it" finds the moved file under `Trash/files` in the temporary `XDG_DATA_HOME`.
+- "says when a note can't be saved" makes the file read-only with `chmodSync` and waits for the error toast.
 
-Queries use `Gtk.AccessibleRole` and the widget's accessible name. `findByRole` waits for a widget; `queryByRole` returns `null` when it is absent. Keyboard input takes its target widget as the first argument.
+## Change settings
 
-These cases cover an ordinary interaction, a blank input, and an unavailable drag operation. The drag payload is the task ID supplied by the app's `GtkDragSource`.
+A test that needs a setting other than its default writes it with `Gio.Settings` before rendering, as "opens the note a preview link points to" does to open notes in the preview.
 
-## Check the complete workflows
+A setting written while the app is open updates React state outside the `userEvent` helpers, so "switches to another folder with the window and Preferences open" writes the new folder inside `act`:
 
-Create `tests/workflows.test.tsx` for persistence, navigation, editing, deletion, and ordering. These checks use the tutorial's three starter tasks and drive the same widgets a user operates. The cases cover literal markup characters, repeated clicks, empty forms, and deletion after reordering.
-
-<details>
-<summary>Complete workflow tests</summary>
-
-```tsx [tests/workflows.test.tsx]
-import * as Adw from "@gtkx/gi/adw";
-import { getUserDataDir } from "@gtkx/gi/glib";
-import * as Gtk from "@gtkx/gi/gtk";
-import { rootElement } from "@gtkx/react";
-import { render, screen, userEvent, waitFor, within } from "@gtkx/testing";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-import { applicationId } from "virtual:gtkx-config";
-import { describe, expect, it } from "vitest";
-import { App } from "../src/app.js";
-
-const openWaterThePlants = async (): Promise<void> => {
-    const row = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the plants/ });
-    await userEvent.click(row);
-    await screen.findByText("Notes");
-};
-
-const findTitleEntry = (): Promise<Adw.EntryRow> =>
-    screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /^Title/, as: Adw.EntryRow });
-
-const importantSwitch = (isChecked: boolean): Gtk.Switch =>
-    screen.getByRole(Gtk.AccessibleRole.SWITCH, { checked: isChecked, as: Gtk.Switch });
-
-describe("Tasks", () => {
-    it("persists text entered through a native row", async () => {
-        await render(<App />, { container: rootElement });
-
-        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
-        await userEvent.type(entry, "Buy milk & café");
-        await userEvent.keyboard(entry, "{Enter}");
-
-        expect(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Buy milk & café" })).toBeDefined();
-        const file = join(getUserDataDir(), applicationId, "tasks.json");
-        const saved: unknown = JSON.parse(readFileSync(file, "utf8"));
-        expect(saved).toHaveProperty("state.tasks", expect.arrayContaining([
-            expect.objectContaining({ title: "Buy milk & café" }),
-        ]));
-    });
-
-    it.each(["missing", "<b>missing</b>", "missing & < café"])("shows the literal search query %s", async (query) => {
-        await render(<App />, { container: rootElement });
-
-        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Search (Ctrl+F)" }));
-        const search = await screen.findByPlaceholderText("Search tasks…");
-        await userEvent.type(search, query);
-
-        expect(await screen.findByText(`No tasks match “${query}”`)).toHaveTextContent(`No tasks match “${query}”`);
-    });
-
-    it.each(["Errands & café", "<b>Travel</b>"])("creates a list with the literal name %s", async (title) => {
-        await render(<App />, { container: rootElement });
-
-        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "New List" }));
-        const name = await screen.findByPlaceholderText("List name");
-        await userEvent.type(name, title);
-        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Add" }));
-
-        const row = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: title });
-        expect(row).toHaveAccessibleName(title);
-        await userEvent.click(row);
-
-        expect(screen.queryByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the plants/ })).toBeNull();
-    });
-
-    it("marks a task complete", async () => {
-        await render(<App />, { container: rootElement });
-
-        const [checkbox] = await screen.findAllByRole(Gtk.AccessibleRole.CHECKBOX);
-        await userEvent.click(checkbox);
-
-        expect(checkbox).toBeChecked();
-    });
-
-    it("opens the editor when a row is activated", async () => {
-        await render(<App />, { container: rootElement });
-
-        await openWaterThePlants();
-
-        expect(await screen.findByText("Notes")).toHaveTextContent("Notes");
-    });
-
-    it("keeps the Delete key available while editing a task title", async () => {
-        await render(<App />, { container: rootElement });
-
-        await openWaterThePlants();
-        const title = await findTitleEntry();
-        await userEvent.click(title);
-        await userEvent.keyboard(title, "{Delete}");
-
-        expect(await screen.findByText("Notes")).toHaveTextContent("Notes");
-        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Back" }));
-        expect(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the plants/ })).toBeDefined();
-    });
-
-    it("goes back to the list from the editor", async () => {
-        await render(<App />, { container: rootElement });
-
-        await openWaterThePlants();
-        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Back" }));
-
-        expect(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the plants/ })).toBeDefined();
-        expect(screen.queryByText("Notes")).toBeNull();
-    });
-
-    it("shows another list when its sidebar row is selected", async () => {
-        await render(<App />, { container: rootElement });
-
-        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /^Work/ }));
-
-        expect(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Prepare the weekly report/ })).toBeDefined();
-        expect(screen.queryByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the plants/ })).toBeNull();
-    });
-
-    it("opens the editor for a task added with the New Task button", async () => {
-        await render(<App />, { container: rootElement });
-
-        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "New Task (Ctrl+N)" }));
-
-        expect(await screen.findByText("Notes")).toHaveTextContent("Notes");
-        expect(await findTitleEntry()).toHaveTextContent("New Task");
-    });
-
-    it("returns to the list when the open task is moved to trash", async () => {
-        await render(<App />, { container: rootElement });
-
-        await openWaterThePlants();
-        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Delete (Delete)" }));
-
-        expect(screen.queryByText("Notes")).toBeNull();
-        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /^Trash/ }));
-        expect(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the plants/ })).toBeDefined();
-    });
-
-    it("permanently deletes a task through the Trash confirmation", async () => {
-        await render(<App />, { container: rootElement });
-
-        const row = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the plants/ });
-        await userEvent.click(within(row).getByRole(Gtk.AccessibleRole.BUTTON, { name: "Delete task" }));
-        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /^Trash/ }));
-        const trashed = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the plants/ });
-        await userEvent.click(within(trashed).getByRole(Gtk.AccessibleRole.BUTTON, { name: "Delete task" }));
-        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Delete" }));
-
-        expect(screen.queryByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the plants/ })).toBeNull();
-    });
-
-    it("reorders tasks by dragging", async () => {
-        await render(<App />, { container: rootElement });
-
-        const source = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the plants/ });
-        const target = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Prepare the weekly report/ });
-        await userEvent.dragAndDrop(source, target, "t2");
-
-        const [first, second] = await screen.findAllByRole(Gtk.AccessibleRole.LIST_ITEM, {
-            name: /Water the plants|Prepare the weekly report/,
-        });
-
-        expect(first).toHaveAccessibleName("Prepare the weekly report");
-        expect(second).toHaveAccessibleName("Water the plants");
-
-        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Work" }));
-        expect(screen.queryByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Water the plants" })).toBeNull();
-        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "All Tasks" }));
-        const returned = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Water the plants" });
-        const destination = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Prepare the weekly report" });
-        await userEvent.dragAndDrop(returned, destination, "t2");
-
-        const [water, review] = await screen.findAllByRole(Gtk.AccessibleRole.LIST_ITEM, {
-            name: /Water the plants|Prepare the weekly report/,
-        });
-        expect(water).toHaveAccessibleName("Water the plants");
-        expect(review).toHaveAccessibleName("Prepare the weekly report");
-    });
-
-    it("reorders the focused task with the keyboard", async () => {
-        await render(<App />, { container: rootElement });
-
-        const source = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the plants/ });
-        await userEvent.keyboard(source, "{Alt>}{ArrowDown}{/Alt}");
-
-        const [first, second] = await screen.findAllByRole(Gtk.AccessibleRole.LIST_ITEM, {
-            name: /Water the plants|Prepare the weekly report/,
-        });
-        expect(first).toHaveAccessibleName("Prepare the weekly report");
-        expect(second).toHaveAccessibleName("Water the plants");
-    });
-
-    it("ignores text drops that do not name a task", async () => {
-        await render(<App />, { container: rootElement });
-
-        const source = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the plants/ });
-        const target = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Prepare the weekly report/ });
-        await userEvent.dragAndDrop(source, target, "outside the application");
-
-        const [welcome, water, report] = await screen.findAllByRole(Gtk.AccessibleRole.LIST_ITEM, {
-            name: /Welcome to Tasks|Water the plants|Prepare the weekly report/,
-        });
-        expect(welcome).toHaveAccessibleName("Welcome to Tasks");
-        expect(water).toHaveAccessibleName("Water the plants");
-        expect(report).toHaveAccessibleName("Prepare the weekly report");
-    });
-
-    it("keeps an empty new-list form open until it has a name", async () => {
-        await render(<App />, { container: rootElement });
-
-        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "New List" }));
-        const add = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Add" });
-        const name = await screen.findByPlaceholderText("List name");
-        expect(add).toBeDisabled();
-        await userEvent.type(name, " ".repeat(3));
-        expect(add).toBeDisabled();
-        await userEvent.type(name, "Errands");
-        await waitFor(() => {
-            expect(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Add" })).toBeEnabled();
-        });
-        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Add" }));
-
-        expect(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /^Errands/ })).toBeDefined();
-    });
-
-    it("keeps one color selected when the same swatch is clicked repeatedly", async () => {
-        await render(<App />, { container: rootElement });
-
-        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "New List" }));
-
-        const orange = await screen.findByLabelText("Color #e66100");
-        await userEvent.click(orange);
-        await userEvent.click(orange);
-
-        expect(orange).toBePressed();
-        expect(await screen.findByLabelText("Color #3584e4")).not.toBePressed();
-    });
-});
-
-describe("task form - happy path", () => {
-    it("applies title and Important edits across navigation", async () => {
-        await render(<App />, { container: rootElement });
-        await openWaterThePlants();
-        const title = await findTitleEntry();
-        await userEvent.clear(title);
-        await userEvent.type(title, "Water the balcony");
-        await userEvent.keyboard(title, "{Enter}");
-        await userEvent.click(importantSwitch(true));
-        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Back" }));
-        const updated = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the balcony/ });
-        await userEvent.click(updated);
-        const reopenedTitle = await findTitleEntry();
-        expect(reopenedTitle.getText()).toBe("Water the balcony");
-        expect(importantSwitch(false)).not.toBeChecked();
-    });
-});
-
-describe("task form - edge cases", () => {
-    it("rejects a blank title and trims a valid title", async () => {
-        await render(<App />, { container: rootElement });
-        await openWaterThePlants();
-        const title = await findTitleEntry();
-        await userEvent.clear(title);
-        await userEvent.type(title, " ".repeat(3));
-        await userEvent.keyboard(title, "{Enter}");
-
-        expect(title).toBeInvalid();
-
-        await userEvent.type(title, "  Water the balcony  ");
-        await userEvent.keyboard(title, "{Enter}");
-
-        expect(title).toHaveTextContent("Water the balcony");
-        expect(title).toBeValid();
-    });
-
-    it("keeps an unapplied title local while editing importance and another task", async () => {
-        await render(<App />, { container: rootElement });
-        await openWaterThePlants();
-        const title = await findTitleEntry();
-        await userEvent.clear(title);
-        await userEvent.type(title, "Unapplied draft");
-        await userEvent.click(importantSwitch(true));
-        expect(title.getText()).toBe("Unapplied draft");
-        expect(importantSwitch(false)).not.toBeChecked();
-        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Back" }));
-        expect(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the plants/ })).toBeDefined();
-        expect(screen.queryByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Unapplied draft/ })).toBeNull();
-        const otherTask = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Prepare the weekly report/ });
-        await userEvent.click(otherTask);
-        const otherTitle = await findTitleEntry();
-        expect(otherTitle.getText()).toBe("Prepare the weekly report");
-    });
-});
-
-describe("literal deletion toasts", () => {
-    it.each(["Ordinary task", "<b>Read</b>", "Read & < café"])(
-        "deletes and restores the literal task %s",
-        async (title) => {
-            await render(<App />, { container: rootElement });
-            const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
-            await userEvent.type(entry, title);
-            await userEvent.keyboard(entry, "{Enter}");
-            const row = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: title });
-            await userEvent.click(within(row).getByRole(Gtk.AccessibleRole.BUTTON, { name: "Delete task" }));
-            expect(await screen.findByText(`“${title}” moved to Trash`)).toHaveTextContent(`“${title}” moved to Trash`);
-            await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Undo" }));
-            expect(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: title })).toHaveAccessibleName(title);
-        },
-    );
-});
-
-describe("manual order after permanent deletion", () => {
-    it.each([false, true])("appends after deleting leading tasks (reordered: %s)", async (reordered) => {
-        await render(<App />, { container: rootElement });
-        if (reordered) {
-            const source = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Prepare the weekly report" });
-            const target = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Welcome to Tasks" });
-            await userEvent.dragAndDrop(source, target, "t3");
-        }
-        for (const title of ["Welcome to Tasks", "Water the plants"]) {
-            const row = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: title });
-            await userEvent.click(within(row).getByRole(Gtk.AccessibleRole.BUTTON, { name: "Delete task" }));
-        }
-        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /^Trash/ }));
-        for (const title of ["Welcome to Tasks", "Water the plants"]) {
-            const row = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: title });
-            await userEvent.click(within(row).getByRole(Gtk.AccessibleRole.BUTTON, { name: "Delete task" }));
-            await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Delete" }));
-        }
-        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /^All Tasks/ }));
-        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
-        await userEvent.type(entry, "Newly appended task");
-        await userEvent.keyboard(entry, "{Enter}");
-        const lastSurvivor = "Prepare the weekly report";
-        const [survivor, added] = await screen.findAllByRole(Gtk.AccessibleRole.LIST_ITEM, {
-            name: (name) => name === lastSurvivor || name === "Newly appended task",
-        });
-        expect(survivor).toHaveAccessibleName(lastSurvivor);
-        expect(added).toHaveAccessibleName("Newly appended task");
-    });
-
-    it("starts a new manual list after every task was permanently deleted", async () => {
-        await render(<App />, { container: rootElement });
-        const titles = [
-            "Welcome to Tasks",
-            "Water the plants",
-            "Prepare the weekly report",
-        ];
-        for (const title of titles) {
-            const row = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: title });
-            await userEvent.click(within(row).getByRole(Gtk.AccessibleRole.BUTTON, { name: "Delete task" }));
-        }
-        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /^Trash/ }));
-        for (const title of titles) {
-            const row = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: title });
-            await userEvent.click(within(row).getByRole(Gtk.AccessibleRole.BUTTON, { name: "Delete task" }));
-            await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Delete" }));
-        }
-        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /^All Tasks/ }));
-        expect(await screen.findByText("No Tasks Yet")).toHaveTextContent("No Tasks Yet");
-        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
-        for (const title of ["First new task", "Second new task"]) {
-            await userEvent.type(entry, title);
-            await userEvent.keyboard(entry, "{Enter}");
-        }
-        const [first, second] = await screen.findAllByRole(Gtk.AccessibleRole.LIST_ITEM, {
-            name: /First new task|Second new task/,
-        });
-        expect(first).toHaveAccessibleName("First new task");
-        expect(second).toHaveAccessibleName("Second new task");
-    });
+```tsx
+await act(() => {
+    Gio.Settings.new(schema.id).setString("folder", otherFolder);
 });
 ```
 
-</details>
+`act` applies the updates before the test continues; without it, React warns that an update was not wrapped in `act(...)`. The test then checks that the window it started with now lists the other folder, and that Preferences stayed open.
 
-## Run and inspect
+## Type into the editor
+
+"completes a link to another note after [[" tests the completion provider from [Complete Note Links](/v2/tutorial/note-links). `userEvent.type(editor, "[[read")` inserts one character per edit, as typing does, so GtkSourceView sees the second `[` and opens its popup. `read` narrows the popup to Reading list. The popup belongs to the editor, so `within(editor)` waits for the proposal there and not for the Reading list row in the sidebar. `selectOnShow` has selected it, and while the popup shows, the keys that `keyboard` sends go to its list (see [Keyboard](/v2/guide/testing#keyboard)), so `{Enter}` inserts the link as it does for a user. The test then finds the link in the editor and in the file.
+
+## Test the stories
+
+The preview's tests render the stories from [Develop the Preview in Storybook](/v2/tutorial/storybook) instead of repeating their Markdown. Create `tests/preview.test.tsx`:
+
+<<< @/figures/tutorial/testing/tests/preview.test.tsx [tests/preview.test.tsx]
+
+- `composeStories` turns each story into a component with the story's arguments applied. See [Reuse stories in native tests](/v2/guide/storybook#reuse-stories-in-native-tests).
+- A story takes props that override its arguments, so the link test passes its own `onActivateLink` and collects the targets it receives.
+- These components have no window of their own, so `render` puts them in a test window.
+
+## Run the tests
+
+The tests run in a private headless display and session bus, which need Sway and `dbus-daemon`. Install them as [Setup](/v2/guide/testing#setup) shows, then run:
 
 ```bash
 npm test
 ```
 
-Each worker gets its own runtime directory, session bus, and headless compositor. The development window can stay open while the tests run.
+Each test starts from the fixtures and the default settings, so any test also runs on its own. To run only the tests whose names contain "trash":
 
-Use `screen.debug()` to inspect the current widget tree or `screen.logRoles()` to inspect accessible names. Check the query and the rendered state when a test fails; assert the expected behavior without depending on diagnostic text.
+```bash
+npx vitest run -t trash
+```
 
-The [testing guide](/v2/guide/testing) covers scoped queries, hooks, screenshots, and additional interactions. For Vitest configuration and assertions, use the [Vitest documentation](https://vitest.dev/guide/).
+## Run it
 
-## Next
+`npm test` passes both files:
 
-[Package the App](/v2/tutorial/packaging) adds the icon, desktop metadata, and installable packages.
+```txt
+ ✓ tests/preview.test.tsx (3 tests)
+ ✓ tests/notes.test.tsx (22 tests)
+
+ Test Files  2 passed (2)
+      Tests  25 passed (25)
+```
+
+Change `openNote("Groceries")` in "opens a note in the editor" to `openNote("Shopping")` and run the tests again. The query fails after a second and lists each accessible role on screen with the names of its widgets, such as the list items Reading list and Groceries. Change it back afterwards.

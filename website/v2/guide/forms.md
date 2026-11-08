@@ -5,7 +5,7 @@ description: "Connect React Hook Form to native Adwaita rows, focus and validati
 
 # Forms
 
-`@gtkx/forms` connects [React Hook Form](https://react-hook-form.com) to native Adwaita rows. Use it for GTKX-specific input, focus and validation feedback; use the [React Hook Form documentation](https://react-hook-form.com/docs) for form state, validation rules and submission.
+`@gtkx/forms` connects [React Hook Form](https://react-hook-form.com) to native Adwaita rows. This page covers what is GTKX-specific: native input, focus and validation feedback. For form state, validation rules and submission, see the [React Hook Form documentation](https://react-hook-form.com/docs).
 
 Install the package:
 
@@ -33,7 +33,11 @@ const themes = [
     { id: "dark", value: "Dark" },
 ];
 
-export const PreferencesForm = ({ onSave }: { onSave: (values: Preferences) => void }) => {
+export const PreferencesForm = ({
+    onSave,
+}: {
+    onSave: (values: Preferences) => void;
+}) => {
     const form = useForm<Preferences>({
         defaultValues: { displayName: "", theme: "system" },
     });
@@ -63,7 +67,9 @@ export const PreferencesForm = ({ onSave }: { onSave: (values: Preferences) => v
 
 You can also import `FormProvider` from `@gtkx/forms` to supply the control to rows below it. When a row relies on the provider, give it the form type explicitly, such as `<EntryRow<Preferences> name="displayName" />`, to check its field name.
 
-GTKX compiles components with the React Compiler by default, so read a field with `useWatch` rather than `form.watch`. As [React Hook Form documents](https://react-hook-form.com/docs/useform/watch), the compiler can cache what `watch` returns, and the component keeps showing a stale value after `setValue`:
+## React Compiler
+
+GTKX compiles components with the React Compiler [by default](/v2/guide/configuration-and-codegen#every-option), so read a field with `useWatch` rather than `form.watch`. As [React Hook Form documents](https://react-hook-form.com/docs/useform/watch), the compiler can cache what `watch` returns, and the component keeps showing a stale value after `setValue`:
 
 ```tsx
 import { useWatch } from "@gtkx/forms";
@@ -71,7 +77,7 @@ import { useWatch } from "@gtkx/forms";
 const theme = useWatch({ control: form.control, name: "theme" });
 ```
 
-React Hook Form also updates nested entries of `formState.errors` in place, and the compiler caches what a component renders from them. A message read below a field array or a nested object, such as `errors.stops?.root?.message`, can stay hidden when the error joins one already reported beside it, for example a field array `validate` rule failing on submit after an empty row was reported. Add the `"use no memo"` directive at the top of a component that renders such messages, so React re-renders it from the current errors:
+React Hook Form also updates nested `formState.errors` objects in place, so the compiler can keep rendering an old result for a message read below a field array or a nested object. For example, once `errors.stops` holds an error for an empty row, a field array `validate` rule that fails on submit adds `root` to that same object, and a label showing `errors.stops?.root?.message` never appears. Add the [`"use no memo"`](https://react.dev/reference/react-compiler/directives/use-no-memo) directive at the top of a component that renders such messages:
 
 ```tsx
 import { useFieldArray, useForm } from "@gtkx/forms";
@@ -85,7 +91,9 @@ const StopsError = () => {
     useFieldArray({
         control: form.control,
         name: "stops",
-        rules: { validate: (stops) => stops.length <= 6 || "Plan at most six stops" },
+        rules: {
+            validate: (stops) => stops.length <= 6 || "Plan at most six stops",
+        },
     });
     const message = form.formState.errors.stops?.root?.message;
 
@@ -102,9 +110,13 @@ const StopsError = () => {
 | `SpinRow`                      | Number       |
 | `ComboRow`                     | Item ID      |
 
-The rows retain their native props, children, refs and signal handlers. React Hook Form owns the value, so configure a spin row's range by passing a JSX `GtkAdjustment` to its `adjustment` prop, such as `adjustment={<GtkAdjustment lower={1} upper={10} stepIncrement={1} />}`, and use `setValue` or `reset` to change its current value. Those form updates do not echo back as user edits. If GTK clamps a value to the adjustment's range or cuts text at `maxLength`, the form keeps the stored value and submits it. The row is marked invalid, and a development build logs a warning, until an edit replaces the value.
+The rows retain their native props, children, refs and signal handlers.
 
-`ComboRow` shares the [collection component's sources and renderers](/v2/guide/components#dropdown). Item IDs remain stable when items move or their labels change. Strings and other primitive values have a default display; structured values require `renderItem`. Passing `control` also lets TypeScript infer item and section types for renderers.
+Set a spin row's range with a JSX `GtkAdjustment` in its `adjustment` prop, such as `adjustment={<GtkAdjustment lower={1} upper={10} stepIncrement={1} />}`. The form owns the current value, so change it with `setValue` or `reset`. The row shows those values without reporting them as edits, so the options you pass to `setValue` alone decide dirty state and validation.
+
+If GTK clamps a value to the adjustment's range or cuts text at `maxLength`, the form keeps the stored value and submits it. The row is marked invalid, and a development build logs a warning, until an edit replaces the value.
+
+`ComboRow` takes the same `items`, `sections` and renderers as the [collection `DropDown`](/v2/guide/components#dropdown) and stores the selected item's ID, which stays stable when items move or their labels change. Passing `control` also lets TypeScript infer item and section types for renderers.
 
 A form `ComboRow` uses a non-nullable string field. Supply an explicit default ID that exists in its choices. An empty source preserves that ID, so asynchronously reloaded choices restore the selection without changing the form's value or dirty state. See the [React Hook Form defaults guidance](https://react-hook-form.com/docs/useform#defaultValues) for asynchronous defaults and resets.
 
@@ -124,8 +136,41 @@ Leaving the row's native subtree marks the field touched and supports blur valid
 
 ## Other GTK controls
 
-For a control without a form row, use `Controller` from `@gtkx/forms`. Its render callback supplies the form value and handlers; connect them to the control's JSX props and signals. Add `GtkEventControllerFocus` through `controllers` to forward `onLeave` to `field.onBlur`.
+For a control without a form row, use [`Controller`](https://react-hook-form.com/docs/usecontroller/controller) from `@gtkx/forms` and connect its `field` to the control's props and signals:
 
-Give `field.ref` a handle with a no-argument `focus()` method that calls the widget's `grabFocus()`. Passing the widget directly does not work: GTK's `focus` method expects a direction. Use `fieldState.invalid` to apply the control's validation presentation.
+```tsx
+import { Controller, useForm } from "@gtkx/forms";
+import { GtkCheckButton, GtkEventControllerFocus } from "@gtkx/jsx/gtk";
+
+type Terms = { accepted: boolean };
+
+export const TermsForm = () => {
+    const form = useForm<Terms>({ defaultValues: { accepted: false } });
+
+    return (
+        <Controller
+            control={form.control}
+            name="accepted"
+            rules={{ required: "Accept the terms to continue" }}
+            render={({ field, fieldState }) => (
+                <GtkCheckButton
+                    label="I accept the terms"
+                    active={field.value}
+                    onToggled={(button) => field.onChange(button.getActive())}
+                    ref={(button) =>
+                        field.ref(button && { focus: () => button.grabFocus() })
+                    }
+                    cssClasses={fieldState.invalid ? ["error"] : []}
+                    controllers={
+                        <GtkEventControllerFocus onLeave={field.onBlur} />
+                    }
+                />
+            )}
+        />
+    );
+};
+```
+
+`field.ref` needs a handle with a no-argument `focus()` method. Passing the widget directly does not work, because GTK's `focus` method expects a direction. `GtkEventControllerFocus` reports when focus leaves the control, which marks the field touched.
 
 See the [forms reference](/v2/reference/@gtkx/forms/) for GTKX prop types and the [testing guide](/v2/guide/testing) for driving native controls.

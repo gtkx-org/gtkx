@@ -169,6 +169,17 @@ const copy = async (): Promise<void> => {
   color: rgba(235, 235, 245, 0.92);
   background: rgba(255, 255, 255, 0.08);
 }
+@media (max-width: 480px) {
+  .cb__shiki :deep(.shiki) {
+    padding: 0.8rem 0.9rem;
+    font-size: var(--text-xs);
+  }
+}
+@media (max-width: 380px) {
+  .cb__shiki :deep(.shiki) {
+    font-size: 0.6875rem;
+  }
+}
 @media (pointer: coarse) {
   .cb__copy {
     width: 44px;
