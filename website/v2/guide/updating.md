@@ -13,6 +13,8 @@ npx gtkx upgrade
 
 Pass a version or dist-tag to choose one, as in `npx gtkx upgrade 2.0.1`, and [`--cwd <dir>`](/v2/guide/cli#gtkx-upgrade) to upgrade a project outside the current directory. To move a 1.x project to 2.0, follow [Upgrading to 2.0](/v2/guide/upgrading-to-2) instead.
 
+Read the [changelog](https://github.com/gtkx-org/gtkx/releases) before you update: it lists each release's changes, with breaking changes apart. A prerelease can remove an API that an earlier prerelease added, as [Releases](/releases#prereleases) explains, along with how to pin an exact release.
+
 ## What the command changes
 
 The command rewrites every GTKX package version in the project, or in each package of its workspace, including pnpm catalog entries, and keeps their range operators. A `peerDependencies` range, such as a shared package's `@gtkx/react`, moves only when it does not accept the new version, so a range like `^1.6.0 || ^2.0.0` stays as written. It then installs and deduplicates with the project's package manager.
