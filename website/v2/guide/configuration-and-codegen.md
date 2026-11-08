@@ -44,6 +44,12 @@ export default defineConfig({
 });
 ```
 
+The app reads the resolved application ID from `virtual:gtkx-config`, a module GTKX generates from the config file. Under `gtkx dev` it holds the `$development` value. The scaffold's `src/gtkx-env.d.ts` types the module:
+
+```ts
+import { applicationId } from "virtual:gtkx-config";
+```
+
 For shared configuration, `mergeConfig(base, override)` applies the override over the base; arrays concatenate with override entries first.
 
 ### Selecting another configuration
@@ -120,22 +126,31 @@ Production builds remove unused generated classes. Import a class as a runtime v
 An object that first reaches JavaScript through a callback GIR types only as a `GObject.Closure` loses its class in a production build unless the app references that class as a value. A type annotation is erased, so the object arrives as its nearest retained ancestor, often a plain `GObject.Object`. For example, the `invocation` that `Gio.DBusConnection.registerObjectWithClosures2` passes to a method-call handler lacks `returnValue`, and the first D-Bus call fails, although the same code works in `gtkx dev` and tests. The handlers given to `Gio.busOwnName` and other closure-typed functions behave the same way. Check the class in the handler to keep it in the bundle:
 
 ```ts
-if (!(invocation instanceof Gio.DBusMethodInvocation)) throw new TypeError("Expected a D-Bus method invocation");
+if (!(invocation instanceof Gio.DBusMethodInvocation)) {
+    throw new TypeError("Expected a D-Bus method invocation");
+}
 ```
 
 `Gtk.ClosureExpression` callbacks follow the same rule. An `AdwComboRow` whose `expression` names the items of an `AdwEnumListModel` receives `Adw.EnumListItem` objects; without a value reference to that class, the bundle passes plain objects and `item.getValue()` throws when the row first renders:
 
 ```ts
-const easingName = Gtk.ClosureExpression.new(GObject.TYPE_STRING, (item: unknown) => {
-    if (!(item instanceof Adw.EnumListItem)) throw new TypeError("Expected an enum list item");
-    return item.getName();
-}, null);
+const easingName = Gtk.ClosureExpression.new(
+    GObject.TYPE_STRING,
+    (item: unknown) => {
+        if (!(item instanceof Adw.EnumListItem)) {
+            throw new TypeError("Expected an enum list item");
+        }
+        return item.getName();
+    },
+    null,
+);
 ```
 
 When a production build receives such an object through a closure and has dropped its class, it prints a warning once for that class, naming the class to reference and the module to import it from:
 
 ```text
-[gtkx:runtime] warn AdwEnumListItem objects reach JavaScript as GObject because the production build dropped Adw.EnumListItem, ...
+[gtkx:runtime] warn AdwEnumListItem objects reach JavaScript as GObject
+because the production build dropped Adw.EnumListItem, ...
 ```
 
 The object is still wrapped as its nearest retained ancestor, so the warning usually comes right before the error it explains. Objects returned from typed functions, methods and properties keep at least their declared class and never trigger it, nor do private library classes that have no generated class. Development and tests load every class and never print it.
@@ -143,7 +158,9 @@ The object is still wrapped as its nearest retained ancestor, so the warning usu
 A type assertion is erased too, so it does not keep a more derived class than the declared one. `Gst.parseLaunch` declares a `Gst.Element`, so `(pipeline as Gst.Bin).getByName("sink")` throws `getByName is not a function` in a production build unless the app references `Gst.Bin` as a value. No warning precedes these errors. Narrow with `instanceof` instead of a cast:
 
 ```ts
-const pipeline = Gst.parseLaunch("videotestsrc ! videoconvert ! appsink name=sink");
+const pipeline = Gst.parseLaunch(
+    "videotestsrc ! videoconvert ! appsink name=sink",
+);
 if (!(pipeline instanceof Gst.Bin)) throw new TypeError("Expected a bin");
 const sink = pipeline.getByName("sink");
 ```
@@ -199,6 +216,33 @@ export default defineConfig({
 });
 ```
 
-Wrap each behavior with `defineBehavior` from `@gtkx/react/config`, supplying its GI class as the type argument. Behaviors apply to descendants and run before built-in behaviors. A behavior's `update` returns the names of the props it handles; any other prop must be a native property of the element. The [ElementBehavior reference](/v2/reference/@gtkx/react/config/type-aliases/ElementBehavior) describes the hooks.
+Wrap each behavior with `defineBehavior` from `@gtkx/react/config`, supplying its GI class as the type argument. A behavior on a type also covers its subclasses, and it runs before the built-in behaviors. A behavior's `update` returns the names of the props it handles; any other prop must be a native property of the element. The [ElementBehavior reference](/v2/reference/@gtkx/react/config/type-aliases/ElementBehavior) describes the hooks.
 
-Declare additional props by augmenting the namespace module that owns them, with a top-level import of that module. Keep application effects and higher-level behavior in React components.
+To add a prop, declare it on the props interface of the namespace module that owns the type. This module adds `cursorName` to every widget:
+
+```ts [src/elements.ts]
+import type * as Gtk from "@gtkx/gi/gtk";
+import { defineBehavior, defineElements } from "@gtkx/react/config";
+
+declare module "@gtkx/jsx/gtk" {
+    interface GtkWidgetProps {
+        cursorName?: string;
+    }
+}
+
+const cursor = defineBehavior<Gtk.Widget>({
+    update: (widget, prev, next) => {
+        const name = next.cursorName;
+        if (name !== prev.cursorName) {
+            widget.setCursorFromName(typeof name === "string" ? name : null);
+        }
+        return ["cursorName"];
+    },
+});
+
+export default defineElements({
+    GtkWidget: { behaviors: [cursor] },
+});
+```
+
+Any element of a `GtkWidget` subclass then accepts it, as in `<GtkButton label="Open" cursorName="pointer" />`. The `declare module` block must sit in a file with a top-level `import` or `export`; without one, it replaces `@gtkx/jsx/gtk` instead of extending it. Keep application effects and higher-level behavior in React components.
