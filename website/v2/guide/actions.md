@@ -27,8 +27,15 @@ export const Window = () => {
             onCloseRequest={quit}
             actions={
                 <>
-                    <GSimpleAction name="new" onActivate={() => setCount(count + 1)} />
-                    <GSimpleAction name="clear" enabled={count > 0} onActivate={() => setCount(0)} />
+                    <GSimpleAction
+                        name="new"
+                        onActivate={() => setCount(count + 1)}
+                    />
+                    <GSimpleAction
+                        name="clear"
+                        enabled={count > 0}
+                        onActivate={() => setCount(0)}
+                    />
                 </>
             }
         >
@@ -65,7 +72,13 @@ An action with a `state` is a toggle or a choice. Render the state from React an
 import * as GLib from "@gtkx/gi/glib";
 import { GSimpleAction } from "@gtkx/jsx/gio";
 
-export const PreviewAction = ({ preview, onPreviewChange }: { preview: boolean; onPreviewChange: (preview: boolean) => void }) => (
+export const PreviewAction = ({
+    preview,
+    onPreviewChange,
+}: {
+    preview: boolean;
+    onPreviewChange: (preview: boolean) => void;
+}) => (
     <GSimpleAction
         name="preview"
         state={GLib.Variant.newBoolean(preview)}
@@ -86,7 +99,13 @@ Actions that belong to part of the window, such as a tab's context menu, go in a
 import { GSimpleAction, GSimpleActionGroup } from "@gtkx/jsx/gio";
 import { GtkBox } from "@gtkx/jsx/gtk";
 
-export const NoteTab = ({ onPin, onClose }: { onPin: () => void; onClose: () => void }) => (
+export const NoteTab = ({
+    onPin,
+    onClose,
+}: {
+    onPin: () => void;
+    onClose: () => void;
+}) => (
     <GtkBox
         actionGroups={
             <GSimpleActionGroup
@@ -129,8 +148,16 @@ import { GtkButton } from "@gtkx/jsx/gtk";
 
 export const Toolbar = () => (
     <>
-        <GtkButton iconName="list-add-symbolic" tooltipText="New Note (Ctrl+N)" actionName="win.new" />
-        <GtkButton label="Open To-do" actionName="win.open" actionTarget={GLib.Variant.newString("todo.md")} />
+        <GtkButton
+            iconName="list-add-symbolic"
+            tooltipText="New Note (Ctrl+N)"
+            actionName="win.new"
+        />
+        <GtkButton
+            label="Open To-do"
+            actionName="win.open"
+            actionTarget={GLib.Variant.newString("todo.md")}
+        />
     </>
 );
 ```
@@ -151,7 +178,10 @@ export const App = () => (
     <AdwApplication
         actionAccels={[
             { detailedActionName: "win.new", accels: ["<Control>n"] },
-            { detailedActionName: "win.shortcuts", accels: ["<Control>question"] },
+            {
+                detailedActionName: "win.shortcuts",
+                accels: ["<Control>question"],
+            },
             { detailedActionName: "app.quit", accels: ["<Control>q"] },
         ]}
         actions={<GSimpleAction name="quit" onActivate={() => quit()} />}
@@ -169,9 +199,18 @@ A key that runs code without an action, or that only applies in part of the wind
 
 ```tsx [src/components/search-shortcut.tsx]
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkCallbackAction, GtkShortcut, GtkShortcutController, GtkShortcutTrigger } from "@gtkx/jsx/gtk";
+import {
+    GtkCallbackAction,
+    GtkShortcut,
+    GtkShortcutController,
+    GtkShortcutTrigger,
+} from "@gtkx/jsx/gtk";
 
-export const SearchShortcut = ({ onToggleSearch }: { onToggleSearch: () => void }) => (
+export const SearchShortcut = ({
+    onToggleSearch,
+}: {
+    onToggleSearch: () => void;
+}) => (
     <GtkShortcutController
         scope={Gtk.ShortcutScope.GLOBAL}
         shortcuts={
@@ -227,7 +266,12 @@ class ChartBase extends Gtk.Widget {
         this.chartActions.addActionEntries([
             { name: "zoom-in", activate: () => this.setDepth(this.depth - 1) },
             { name: "zoom-out", activate: () => this.setDepth(this.depth + 1) },
-            { name: "set-depth", parameterType: "i", activate: (_action, depth) => this.setDepth(depth?.getInt32() ?? 5) },
+            {
+                name: "set-depth",
+                parameterType: "i",
+                activate: (_action, depth) =>
+                    this.setDepth(depth?.getInt32() ?? 5),
+            },
             {
                 name: "show-hidden",
                 state: "false",

@@ -44,7 +44,10 @@ A row's content is not the row a screen reader announces: GTK names a list row o
 ```tsx
 <ListView<Task>
     items={tasks.map((task) => ({ id: task.id, value: task }))}
-    rowProps={({ item }) => ({ accessibleLabel: item.title, isSelectable: !item.isArchived })}
+    rowProps={({ item }) => ({
+        accessibleLabel: item.title,
+        isSelectable: !item.isArchived,
+    })}
     renderItem={({ item }) => <TaskRow task={item} />}
 />
 ```
@@ -103,7 +106,9 @@ import { GtkInscription, GtkListView, GtkNoSelection } from "@gtkx/jsx/gtk";
     factory={
         <ListItemFactory<Gtk.StringObject>
             rowProps={({ item }) => ({ accessibleLabel: item.getString() })}
-            renderItem={({ item }) => <GtkInscription text={item.getString()} />}
+            renderItem={({ item }) => (
+                <GtkInscription text={item.getString()} />
+            )}
         />
     }
 />
@@ -142,7 +147,9 @@ const Documents = () => {
     return (
         <AdwTabView
             onClosePage={(page, view) => {
-                setTitles((current) => current.filter((title) => title !== page.getTitle()));
+                setTitles((current) =>
+                    current.filter((title) => title !== page.getTitle()),
+                );
                 view.closePageFinish(page, true);
                 return true;
             }}
@@ -172,7 +179,10 @@ import { AdwTabBar } from "@gtkx/jsx/adw";
 
 <AdwTabBar
     view={view}
-    extraDropTarget={{ actions: Gdk.DragAction.COPY, types: [GObject.typeFromName("gchararray")] }}
+    extraDropTarget={{
+        actions: Gdk.DragAction.COPY,
+        types: [GObject.typeFromName("gchararray")],
+    }}
     onExtraDragDrop={(page, value) => {
         const title = value.getString();
         if (title === null) return false;
@@ -204,7 +214,13 @@ The grid creates the layout child for the widget, and changing `column` or `row`
 
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkLabel, GtkStack, GtkStackPage, GtkStackSwitcher } from "@gtkx/jsx/gtk";
+import {
+    GtkBox,
+    GtkLabel,
+    GtkStack,
+    GtkStackPage,
+    GtkStackSwitcher,
+} from "@gtkx/jsx/gtk";
 import { useState } from "react";
 
 export const Editor = () => {
@@ -242,7 +258,15 @@ import { GtkMenuButton } from "@gtkx/jsx/gtk";
         <GMenu
             items={[
                 { section: [{ custom: "theme" }] },
-                { section: [{ label: "Preferences", action: "win.preferences", accel: "<Control>comma" }] },
+                {
+                    section: [
+                        {
+                            label: "Preferences",
+                            action: "win.preferences",
+                            accel: "<Control>comma",
+                        },
+                    ],
+                },
             ]}
         />
     }
@@ -269,7 +293,9 @@ const NotifyButton = () => {
     return (
         <GtkButton
             label="Show notification"
-            onClicked={() => toast.show({ title: "Task saved", useMarkup: false })}
+            onClicked={() =>
+                toast.show({ title: "Task saved", useMarkup: false })
+            }
         />
     );
 };

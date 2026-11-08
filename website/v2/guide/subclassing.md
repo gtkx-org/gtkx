@@ -41,7 +41,10 @@ import { GtkAdjustment, type GtkScaleProps } from "@gtkx/jsx/gtk";
 import { createElementComponent } from "@gtkx/react";
 
 type TaggedScaleProps = GtkScaleProps<TaggedScale> & { tag?: string };
-const TaggedScaleElement = createElementComponent<TaggedScaleProps>("ExampleTaggedScale", TaggedScale);
+const TaggedScaleElement = createElementComponent<TaggedScaleProps>(
+    "ExampleTaggedScale",
+    TaggedScale,
+);
 
 <TaggedScaleElement
     tag="volume"
@@ -85,7 +88,8 @@ scale.bindPropertyFull(
     "label",
     GObject.BindingFlags.SYNC_CREATE | GObject.BindingFlags.BIDIRECTIONAL,
     (_binding, tag) => [true, `#${tag}`],
-    (_binding, text) => (text.startsWith("#") ? [true, text.slice(1)] : [false, null]),
+    (_binding, text) =>
+        text.startsWith("#") ? [true, text.slice(1)] : [false, null],
 );
 ```
 
@@ -161,7 +165,9 @@ import { GtkCustomLayout, GtkLabel } from "@gtkx/jsx/gtk";
     layoutManager={
         <GtkCustomLayout
             measure={(widget, orientation, forSize) =>
-                widget.getFirstChild()?.measure(orientation, forSize) ?? [0, 0, -1, -1]
+                widget.getFirstChild()?.measure(orientation, forSize) ?? [
+                    0, 0, -1, -1,
+                ]
             }
             allocate={(widget, width, height, baseline) => {
                 widget.getFirstChild()?.allocate(width, height, baseline, null);
@@ -186,8 +192,12 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { registerClass } from "@gtkx/runtime";
 
 class PaddedLabel extends Gtk.Label {
-    override vfuncMeasure(orientation: Gtk.Orientation, forSize: number): [number, number, number, number] {
-        const [minimum, natural, minimumBaseline, naturalBaseline] = super.vfuncMeasure(orientation, forSize);
+    override vfuncMeasure(
+        orientation: Gtk.Orientation,
+        forSize: number,
+    ): [number, number, number, number] {
+        const [minimum, natural, minimumBaseline, naturalBaseline] =
+            super.vfuncMeasure(orientation, forSize);
 
         return [minimum + 10, natural + 10, minimumBaseline, naturalBaseline];
     }
@@ -214,7 +224,9 @@ class CanvasBase extends Gtk.Widget {
     surface: ImageSurface | null = null;
 
     override vfuncSnapshot(snapshot: Gtk.Snapshot): void {
-        using cr = snapshot.appendCairo(new Graphene.Rect().init(0, 0, this.getWidth(), this.getHeight()));
+        using cr = snapshot.appendCairo(
+            new Graphene.Rect().init(0, 0, this.getWidth(), this.getHeight()),
+        );
         if (this.surface) {
             cr.setSourceSurface(this.surface, 0, 0);
             cr.paint();

@@ -33,7 +33,11 @@ const themes = [
     { id: "dark", value: "Dark" },
 ];
 
-export const PreferencesForm = ({ onSave }: { onSave: (values: Preferences) => void }) => {
+export const PreferencesForm = ({
+    onSave,
+}: {
+    onSave: (values: Preferences) => void;
+}) => {
     const form = useForm<Preferences>({
         defaultValues: { displayName: "", theme: "system" },
     });
@@ -87,7 +91,9 @@ const StopsError = () => {
     useFieldArray({
         control: form.control,
         name: "stops",
-        rules: { validate: (stops) => stops.length <= 6 || "Plan at most six stops" },
+        rules: {
+            validate: (stops) => stops.length <= 6 || "Plan at most six stops",
+        },
     });
     const message = form.formState.errors.stops?.root?.message;
 
@@ -151,9 +157,13 @@ export const TermsForm = () => {
                     label="I accept the terms"
                     active={field.value}
                     onToggled={(button) => field.onChange(button.getActive())}
-                    ref={(button) => field.ref(button && { focus: () => button.grabFocus() })}
+                    ref={(button) =>
+                        field.ref(button && { focus: () => button.grabFocus() })
+                    }
                     cssClasses={fieldState.invalid ? ["error"] : []}
-                    controllers={<GtkEventControllerFocus onLeave={field.onBlur} />}
+                    controllers={
+                        <GtkEventControllerFocus onLeave={field.onBlur} />
+                    }
                 />
             )}
         />

@@ -26,7 +26,12 @@ import { quit } from "@gtkx/react";
 
 export const App = () => (
     <AdwApplication>
-        <AdwApplicationWindow title="Notes" defaultWidth={600} defaultHeight={400} onCloseRequest={quit} />
+        <AdwApplicationWindow
+            title="Notes"
+            defaultWidth={600}
+            defaultHeight={400}
+            onCloseRequest={quit}
+        />
     </AdwApplication>
 );
 ```
@@ -40,8 +45,15 @@ import { AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
 import { quit } from "@gtkx/react";
 
 export const App = () => (
-    <AdwApplication onActivate={(application) => application.getActiveWindow()?.present()}>
-        <AdwApplicationWindow title="Notes" defaultWidth={600} defaultHeight={400} onCloseRequest={quit} />
+    <AdwApplication
+        onActivate={(application) => application.getActiveWindow()?.present()}
+    >
+        <AdwApplicationWindow
+            title="Notes"
+            defaultWidth={600}
+            defaultHeight={400}
+            onCloseRequest={quit}
+        />
     </AdwApplication>
 );
 ```
@@ -132,7 +144,10 @@ import * as Gio from "@gtkx/gi/gio";
 import { AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
 import { quit } from "@gtkx/react";
 
-const handleCommandLine = (commandLine: Gio.ApplicationCommandLine, application: Gio.Application): number => {
+const handleCommandLine = (
+    commandLine: Gio.ApplicationCommandLine,
+    application: Gio.Application,
+): number => {
     application.activate();
     commandLine.setExitStatus(0);
     commandLine.done();
@@ -140,7 +155,10 @@ const handleCommandLine = (commandLine: Gio.ApplicationCommandLine, application:
 };
 
 export const App = () => (
-    <AdwApplication flags={Gio.ApplicationFlags.HANDLES_COMMAND_LINE} onCommandLine={handleCommandLine}>
+    <AdwApplication
+        flags={Gio.ApplicationFlags.HANDLES_COMMAND_LINE}
+        onCommandLine={handleCommandLine}
+    >
         <AdwApplicationWindow title="Tasks" onCloseRequest={quit} />
     </AdwApplication>
 );

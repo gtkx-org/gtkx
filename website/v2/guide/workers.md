@@ -47,7 +47,9 @@ In a Node helper that is not a GTKX application, a worker can own GTKX instead o
 import { Worker } from "node:worker_threads";
 
 const [folder, output] = process.argv.slice(2);
-const worker = new Worker(new URL("./thumbnailer.ts", import.meta.url), { workerData: { folder, output } });
+const worker = new Worker(new URL("./thumbnailer.ts", import.meta.url), {
+    workerData: { folder, output },
+});
 worker.on("message", (message) => {
     if (message === "cleanup-complete") void worker.terminate();
 });
@@ -78,9 +80,14 @@ Gapless playback is the common case. A C or Vala player sets the next track's UR
 import * as GLib from "@gtkx/gi/glib";
 import * as Gst from "@gtkx/gi/gst";
 
-const tracks = ["file:///music/01.ogg", "file:///music/02.ogg", "file:///music/03.ogg"];
+const tracks = [
+    "file:///music/01.ogg",
+    "file:///music/02.ogg",
+    "file:///music/03.ogg",
+];
 const player = Gst.ElementFactory.make("playbin", "player");
-if (player === null) throw new Error("GStreamer's playbin element is not installed");
+if (player === null)
+    throw new Error("GStreamer's playbin element is not installed");
 
 player.getBus()?.addWatch(GLib.PRIORITY_DEFAULT, (_bus, message) => {
     if (message.type === Gst.MessageType.STREAM_START) {
