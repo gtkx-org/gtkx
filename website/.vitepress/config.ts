@@ -30,7 +30,8 @@ import {
 } from "./versioning.js";
 
 const title = "GTKX";
-const description = "The React framework for Linux. Build native apps with React, TypeScript, and Adwaita widgets.";
+const description =
+    "The React framework for Linux. Build native Adwaita and GTK apps with the workflow of modern web development.";
 const url = "https://gtkx.dev";
 const ogImage = `${url}/og.png`;
 const websiteRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -332,6 +333,43 @@ const fontPreloads: HeadConfig[] = isProdBuild
 
 const docFile = (link: string): string => (link.endsWith("/") ? `${link.slice(1)}index.md` : `${link.slice(1)}.md`);
 
+const markdownCopies = new Set([
+    ...versions.flatMap((version) =>
+        sidebarItems(version, versionDocumentationItems(version)).map((item) => item.link),
+    ),
+    ...contributingLinks.map((item) => item.link),
+]);
+
+const isTutorialPointer = (route: string): boolean => {
+    const path = normalizeDocumentationPath(`/${route}`);
+    const chapters = versionTutorialItems(versionForPath(`/${route}`));
+
+    return tutorialPointerPaths.includes(path) && !chapters.some((item) => item.path === path);
+};
+
+const snippetImport = /^([ \t]*)<<< @\/(.+?)(\{[^}]*\})?(?:[ \t]*\[([^\]]+)\])?[ \t]*$/gm;
+
+/**
+ * Replaces each `<<< @/` snippet import with the fenced file it imports, so the Markdown copies served next to the
+ * pages and the `llms-full.txt` bundles carry the code instead of a path only VitePress can resolve.
+ */
+const inlineSnippets = async (sourceDirectory: string, source: string): Promise<string> => {
+    const imports = [...source.matchAll(snippetImport)];
+    const files = await Promise.all(
+        imports.map(([, , path = ""]) => readFile(join(sourceDirectory, path.trim()), "utf8")),
+    );
+
+    return imports.reduce((result, [line, indent = "", path = "", , codeTitle], index) => {
+        const language = path.trim().split(".").pop() ?? "";
+        const info = codeTitle ? `${language} [${codeTitle}]` : language;
+        const code = (files[index] ?? "").replace(/\n$/, "");
+        const fence = "`".repeat(Math.max(3, ...[...code.matchAll(/`{3,}/g)].map(([run]) => run.length + 1)));
+        const block = [`${fence}${info}`, ...code.split("\n"), fence].map((text) => (text ? `${indent}${text}` : text));
+
+        return result.replace(line, () => block.join("\n"));
+    }, source);
+};
+
 const frontmatterHead = (frontmatter: Record<string, unknown>): HeadConfig[] => {
     const existing = frontmatter.head;
 
@@ -383,7 +421,7 @@ const loadDocumentationSources = async (
     Promise.all(
         items.map(async (item) => {
             const file = docFile(item.link);
-            const source = await readFile(join(sourceDirectory, file), "utf8");
+            const source = await inlineSnippets(sourceDirectory, await readFile(join(sourceDirectory, file), "utf8"));
             const target = join(outputDirectory, file);
             await mkdir(dirname(target), { recursive: true });
             await writeFile(target, source);
@@ -550,6 +588,7 @@ export default defineConfig({
     appearance: true,
     cleanUrls: true,
     lastUpdated: true,
+    srcExclude: ["figures/**"],
     markdown: {
         container: {
             infoLabel: "Info",
@@ -571,7 +610,7 @@ export default defineConfig({
         hostname: url,
         transformItems: (items) =>
             items
-                .filter(({ url: itemUrl }) => canonicalRoute(itemUrl) === itemUrl)
+                .filter(({ url: itemUrl }) => canonicalRoute(itemUrl) === itemUrl && !isTutorialPointer(itemUrl))
                 .map(({ url: itemUrl, lastmod }) => ({ url: itemUrl, lastmod })),
     },
     vite: {
@@ -628,6 +667,14 @@ export default defineConfig({
             ["meta", { name: "twitter:description", content: pageDescription }],
             ["meta", { name: "twitter:image", content: pageImage }],
         ];
+
+        if (markdownCopies.has(`/${route}`)) {
+            head.push(["link", { rel: "alternate", type: "text/markdown", href: `/${docFile(`/${route}`)}` }]);
+        }
+
+        if (isTutorialPointer(route)) {
+            head.push(["meta", { name: "robots", content: "noindex" }]);
+        }
 
         if (isUnlistedReferencePage(`/${route}`)) {
             pageData.frontmatter.prev = false;
@@ -695,6 +742,9 @@ export default defineConfig({
             text: "Edit this page on GitHub",
         },
         lastUpdated: { formatOptions: { dateStyle: "medium" } },
+        notFound: {
+            quote: "The page may have moved or been renamed. Search the documentation, or start again from the home page.",
+        },
         footer: {
             message: 'Released under the MPL-2.0 License. <a href="/versions">Documentation versions</a>.',
             copyright: "Copyright © 2026 GTKX contributors",

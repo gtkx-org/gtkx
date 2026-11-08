@@ -1,7 +1,7 @@
 ---
 title: "GTKX: The React framework for Linux"
 titleTemplate: false
-description: Build native Linux apps with React and TypeScript. GTKX combines Adwaita and GTK widgets with Node.js, Fast Refresh, testing, and packaging tools.
+description: "Build native Adwaita and GTK apps for Linux with the workflow of modern web development: React components, Fast Refresh, native UI tests, and packaging."
 layout: home
 markdownStyles: false
 footer: false
