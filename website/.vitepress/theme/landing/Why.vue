@@ -149,6 +149,9 @@ import { docsLink } from "./content";
   background: var(--bg-soft);
   color: var(--text-2);
 }
+html.dark .arch__tag--off {
+  background: var(--border);
+}
 .arch figcaption {
   margin-top: 0.9rem;
   font-family: var(--font-body);

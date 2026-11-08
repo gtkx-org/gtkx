@@ -95,6 +95,14 @@ html.dark {
     color: var(--vp-c-brand-1);
 }
 
+@media (min-width: 960px) {
+    .vp-doc :is(p, li) > code,
+    .vp-doc :is(p, li) > a > code {
+        display: inline-block;
+        line-height: 1.4;
+    }
+}
+
 .vp-doc .post-date {
     margin-top: -0.5rem;
     color: var(--text-2);
