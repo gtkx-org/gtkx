@@ -3,16 +3,10 @@ import { copyFileSync, existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { publishPackage } from "../../../scripts/release/publish-package.ts";
-import {
-    nativePlatforms,
-    readManifest,
-    visibilityTimeoutMs,
-    type PackageManifest,
-} from "../../../scripts/release/verify-release.ts";
+import { nativePlatforms, readManifest, type PackageManifest } from "../../../scripts/release/verify-release.ts";
 import { nativeArtifactHash, verifyNativeArtifacts } from "./verify-artifacts.ts";
 
 const { values } = parseArgs({ options: { "from-artifacts": { type: "boolean", default: false } } });
-const timeoutMs = visibilityTimeoutMs(process.env.GTKX_PUBLISH_VISIBILITY_TIMEOUT_MS);
 
 const packageDir = process.cwd();
 const manifestPath = join(packageDir, "package.json");
@@ -77,7 +71,7 @@ for (const platform of platforms) {
     }
 
     writeFileSync(platformManifestPath, `${JSON.stringify(platformManifest, null, 2)}\n`);
-    await publishPackage(platformDir, timeoutMs);
+    await publishPackage(platformDir);
 }
 
 manifest.optionalDependencies = optionalDependencies;
