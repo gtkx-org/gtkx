@@ -1,22 +1,33 @@
 import { isPathInside, isPathWithin, sortStrings, toPosixPath } from "@gtkx/utils";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import {
+    copyFileSync,
+    existsSync,
+    globSync,
+    mkdirSync,
+    readFileSync,
+    realpathSync,
+    rmSync,
+    writeFileSync,
+} from "node:fs";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import type { SourceImport } from "../internal/source-imports.js";
 import { I18N_TYPES_FILENAME, i18nTypesPath } from "../i18n/types.js";
 import { discoverProjectImports } from "../internal/import-scan.js";
-import { sourcePackageRoots } from "../internal/source-imports.js";
+import { PROJECT_FILE_EXCLUDES, sourcePackageRoots } from "../internal/source-imports.js";
 import { createRetainedStagingDir, type RetainedStagingDir } from "../internal/staging-dir.js";
 import { isBareRelativeAsset, parseIconSpecifier, parseResourceSpecifier } from "../vite-plugins/asset-specifier.js";
 import { compileSchemas } from "./compile.js";
 import { createSchemaResolver, type ParsedSchemaFile, parseSchemaFile } from "./parser.js";
-import { renderEnvModule } from "./render.js";
+import { GTKX_SCHEMA_TYPES_HEADER, renderEnvModule, renderSchemaTypes } from "./render.js";
 
 type SchemaEnvResult = {
     path: string;
     isWritten: boolean;
+    schemaFiles: string[];
 };
 
 const SCHEMA_SUFFIX = ".gschema.xml";
+const SCHEMA_TYPES_SUFFIX = ".gschema.d.xml.ts";
 const RESOURCE_QUERY = "?resource=";
 const ICON_QUERY = "?icon=";
 
@@ -52,8 +63,6 @@ const projectRelativeSchemaPath = (root: string, filePath: string): string | nul
 
     return isProjectSchema ? toPosixPath(relative(projectRoot, path)) : null;
 };
-
-const getRelativeModuleSpecifier = (filePath: string): string => `*/${basename(filePath)}`;
 
 const isRelativeImport = (source: string): boolean => source.startsWith("./") || source.startsWith("../");
 
@@ -160,8 +169,8 @@ const uniqueSchemaFiles = (schemaFiles: string[]): string[] => {
             owners.set(name, filePath);
         } else if (!readFileSync(owner).equals(readFileSync(filePath))) {
             throw new Error(
-                `${owner} and ${filePath} are both named ${name} but differ. GSettings schemas are installed and ` +
-                    "typed by file name, so copies of a schema must be identical. Make them identical, or rename one.",
+                `${owner} and ${filePath} are both named ${name} but differ. GSettings schemas are installed by ` +
+                    "file name, so copies of a schema must be identical. Make them identical, or rename one.",
             );
         }
     }
@@ -197,13 +206,6 @@ const stageAndCompileProjectSchemas = (
 
 const schemaEnvPath = (rootDir: string): string => join(rootDir, "node_modules", ".gtkx", "env.d.ts");
 
-const parseProjectSchemas = (schemaFiles: string[], specifierFor: (filePath: string) => string): ParsedSchemaFile[] => {
-    const files = schemaFiles.map((path) => parseSchemaFile(path, specifierFor(path)));
-    const resolveSchema = createSchemaResolver(files);
-
-    return files.map((file) => resolveSchema(file));
-};
-
 const readProjectSchema = (root: string, filePath: string): ParsedSchemaFile => {
     const file = parseSchemaFile(filePath, basename(filePath));
     const { files: paths } = projectSchemaFiles(root);
@@ -232,24 +234,71 @@ const didWriteChanges = (path: string, content: string): boolean => {
     return true;
 };
 
+const schemaTypesPath = (schemaFile: string): string =>
+    `${schemaFile.slice(0, -SCHEMA_SUFFIX.length)}${SCHEMA_TYPES_SUFFIX}`;
+
+const schemaFileOf = (typesFile: string): string =>
+    `${typesFile.slice(0, -SCHEMA_TYPES_SUFFIX.length)}${SCHEMA_SUFFIX}`;
+
+const findProjectFiles = (root: string, suffix: string): string[] =>
+    [root, ...sourcePackageRoots(root)].flatMap((dir) =>
+        globSync(`**/*${suffix}`, { cwd: dir, exclude: PROJECT_FILE_EXCLUDES }).map((path) => join(dir, path)),
+    );
+
+const typedSchemaFiles = (root: string, imports: SourceImport[]): string[] => {
+    const imported = uniqueSchemaFiles(findImportedSchemaFiles(imports).filter((path) => existsSync(path)));
+
+    return sortStrings(
+        new Set([...findProjectFiles(root, SCHEMA_SUFFIX).map((path) => canonicalPath(path)), ...imported]),
+    );
+};
+
+const removeStaleSchemaTypes = (root: string): void => {
+    for (const path of findProjectFiles(root, SCHEMA_TYPES_SUFFIX)) {
+        if (!existsSync(schemaFileOf(path)) && readFileOrNull(path)?.startsWith(GTKX_SCHEMA_TYPES_HEADER)) {
+            rmSync(path, { force: true });
+        }
+    }
+};
+
+const emitSchemaTypes = (root: string, imports: SourceImport[]): string[] => {
+    const schemaFiles = typedSchemaFiles(root, imports);
+    const parsed = schemaFiles.map((path) => ({ path, file: parseSchemaFile(path, basename(path)) }));
+    const resolveSchema = createSchemaResolver(parsed.map(({ file }) => file));
+    const declarations = parsed.map(({ path, file }) => ({
+        path: schemaTypesPath(path),
+        content: renderSchemaTypes(resolveSchema(file)),
+    }));
+
+    for (const { path, content } of declarations) {
+        didWriteChanges(path, content);
+    }
+
+    removeStaleSchemaTypes(root);
+
+    return schemaFiles;
+};
+
+/**
+ * Writes the project's import declarations: `node_modules/.gtkx/env.d.ts` for asset imports, and a
+ * `<name>.gschema.d.xml.ts` beside every GSettings schema of the project, which TypeScript resolves for an import
+ * of the schema under `allowArbitraryExtensions`. Declarations of schemas that no longer exist are removed.
+ */
 const emitSchemaEnv = (rootDir: string): SchemaEnvResult => {
     const path = schemaEnvPath(rootDir);
     const { imports, isComplete } = discoverProjectImports(rootDir);
+    const schemaFiles = emitSchemaTypes(rootDir, imports);
 
     if (!isComplete) {
-        return { path, isWritten: false };
+        return { path, isWritten: false, schemaFiles };
     }
 
-    const imported = parseProjectSchemas(
-        uniqueSchemaFiles(findImportedSchemaFiles(imports)),
-        getRelativeModuleSpecifier,
-    );
     const assets = findAssetModuleSpecifiers(imports);
     const references = existsSync(i18nTypesPath(rootDir)) ? [`./${I18N_TYPES_FILENAME}`] : [];
-    const content = renderEnvModule(imported, assets, { references });
+    const content = renderEnvModule(assets, { references });
     const isWritten = didWriteChanges(path, content);
 
-    return { path, isWritten };
+    return { path, isWritten, schemaFiles };
 };
 
 export {

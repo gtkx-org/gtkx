@@ -29,7 +29,8 @@
     ],
     "files": ["./node_modules/.gtkx/env.d.ts"],
     "compilerOptions": {
-        "rootDir": "../.."
+        "rootDir": "../..",
+        "allowArbitraryExtensions": true
     },
     "include": ["tests/**/*.ts", "tests/**/*.tsx", "tests/**/*.mts"]
 }
