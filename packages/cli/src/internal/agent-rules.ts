@@ -74,6 +74,9 @@ const rulesBody = (heading: string, hasReference: boolean, commands: string[][])
     "Never call UI work done without looking at the running app. With `gtkx dev` up, the gtkx MCP server " +
         "exposes the live widget tree, queries, clicks and screenshots; use them to confirm the change landed.",
     "",
+    "The GTKX guide is available as Markdown: https://gtkx.dev/v2/llms.txt lists every page and " +
+        "https://gtkx.dev/v2/llms-full.txt holds the full text.",
+    "",
     "This block is written by `gtkx codegen`. Anything outside the markers is yours and is left alone, and " +
         "committing the block with your work keeps the tree clean.",
 ];
