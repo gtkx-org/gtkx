@@ -74,6 +74,7 @@ The mark and the wordmark live in `website/public/`. Use these files instead of 
 | `gtkx-mark.svg`                                     | The red tile: favicon, app icons, avatars. Never recolor it.                                                                                                          |
 | `logo-wordmark-light.svg`, `logo-wordmark-dark.svg` | The mark followed by "GTKX" in Red Hat Display 800, as outlines, for light and dark backgrounds. The site's navigation and footer, the README, and `og.png` use them. |
 | `gtkx-glyph.svg`                                    | The orbits without the tile, in `currentColor`, for single-color and small inline uses.                                                                               |
+| `og.png`                                            | The social card of every page. Its source is `website/scripts/og.html`; after editing it, run `node website/scripts/og.mjs`, which renders it with a local Chromium.  |
 
 - Leave clear space of at least one orbit width (11/128 of the tile, at least 4px) around the mark.
 - Don't set the wordmark in another typeface, in the gradient, or in red.
