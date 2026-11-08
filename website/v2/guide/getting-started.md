@@ -17,21 +17,37 @@ Install [Node.js](https://nodejs.org/en/download) with your preferred version ma
 node --version
 ```
 
-### Native libraries on Fedora 44
+### Native libraries
 
 Install the development packages, which supply both native libraries and the GIR files used to generate bindings:
 
-```bash
+::: code-group
+
+```bash [Fedora 44]
 sudo dnf install gtk4-devel libadwaita-devel glib2-devel gobject-introspection-devel pkgconf-pkg-config
 ```
 
-The package names are listed in Fedora's [GTK](https://packages.fedoraproject.org/pkgs/gtk4/gtk4-devel/), [libadwaita](https://packages.fedoraproject.org/pkgs/libadwaita/libadwaita-devel/), and [GObject Introspection](https://packages.fedoraproject.org/pkgs/gobject-introspection/gobject-introspection-devel/) package documentation. Check the installed versions:
+```bash [Ubuntu 26.04]
+sudo apt install libgtk-4-dev libadwaita-1-dev libglib2.0-dev libgirepository1.0-dev pkgconf
+```
+
+```bash [Arch Linux]
+sudo pacman -S --needed gtk4 libadwaita glib2 gobject-introspection pkgconf
+```
+
+:::
+
+Check the installed versions:
 
 ```bash
 pkg-config --modversion gtk4 libadwaita-1 glib-2.0
 ```
 
-Other distributions need equivalent development packages meeting the minimum versions above. See [GTK's Linux installation guide](https://www.gtk.org/docs/installations/linux) for package names. A runtime-only package is insufficient for code generation.
+Other distributions need equivalent development packages; [GTK's Linux installation guide](https://www.gtk.org/docs/installations/linux) lists their names. A runtime-only package is insufficient for code generation.
+
+::: tip Older distributions
+Debian 13 and Ubuntu 24.04 ship GTK and libadwaita releases older than the minimums. Run the Fedora command inside a [Toolbx](https://containertoolbx.org/) or [Distrobox](https://distrobox.it/) container, which shares your desktop session with the app.
+:::
 
 Run the app from a graphical desktop session. In a development container, the container also needs access to the session's display and D-Bus; installing libraries alone does not provide that connection.
 
@@ -39,17 +55,17 @@ Run the app from a graphical desktop session. In a development container, the co
 
 ::: code-group
 
-```bash [npm]
-npm create gtkx@beta
-```
-
 ```bash [pnpm]
 pnpm create gtkx@beta
 ```
 
+```bash [npm]
+npm create gtkx@beta
+```
+
 :::
 
-The scaffolder asks for a project directory, a display name, an application ID such as `com.example.MyApp`, and a package manager, then whether to use TypeScript and include the Vitest setup. Keep both for typed components and native widget tests.
+The scaffolder asks for a project directory, a display name, an application ID such as `com.example.MyApp`, and a package manager, then whether to use TypeScript and include the Vitest setup. It preselects the package manager that ran it and recommends pnpm. Keep TypeScript and Vitest for typed components and native widget tests.
 
 The directory can be a path, such as `~/Projects/my-app`, and any name works. `Unit Converter` gets the display name Unit Converter; because it is not a valid package name, the scaffolder also asks for one and suggests `unit-converter`.
 
@@ -63,6 +79,60 @@ npm run dev
 ```
 
 The starter uses an Adwaita application window with a counter. Click the button to increase the count. Change its label in `src/app.tsx` and save; the open window should update.
+
+::: details The starter `src/app.tsx`
+
+```tsx
+import * as Gtk from "@gtkx/gi/gtk";
+import { AdwApplication, AdwApplicationWindow, AdwHeaderBar, AdwToolbarView } from "@gtkx/jsx/adw";
+import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
+import { quit } from "@gtkx/react";
+import { useState } from "react";
+
+const MainWindow = () => {
+    const [count, setCount] = useState(0);
+
+    return (
+        <AdwApplicationWindow
+            title={"My App"}
+            defaultWidth={400}
+            defaultHeight={300}
+            onCloseRequest={quit}
+        >
+            <AdwToolbarView top={<AdwHeaderBar />}>
+                <GtkBox
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={20}
+                    marginTop={40}
+                    marginBottom={40}
+                    marginStart={40}
+                    marginEnd={40}
+                    valign={Gtk.Align.CENTER}
+                    halign={Gtk.Align.CENTER}
+                >
+                    <GtkLabel cssClasses={["title-1"]}>Welcome to GTKX!</GtkLabel>
+                    <GtkLabel cssClasses={["title-2"]}>Count: {count}</GtkLabel>
+                    <GtkButton
+                        label="Increment"
+                        onClicked={() => setCount((c) => c + 1)}
+                        cssClasses={["suggested-action", "pill"]}
+                    />
+                </GtkBox>
+            </AdwToolbarView>
+        </AdwApplicationWindow>
+    );
+};
+
+export const App = () => (
+    <AdwApplication>
+        <MainWindow />
+    </AdwApplication>
+);
+
+export default App;
+```
+
+:::
 
 For noninteractive creation and existing directories, see [Scaffold Options](/v2/guide/scaffold-options).
 
@@ -128,3 +198,5 @@ Run `npx gtkx upgrade` to move every GTKX package in the project to the newest r
 
 - [Tutorial](/v2/tutorial/): build Notes, a Markdown notes app with file watching, search, tests, and packaging.
 - [JSX Elements](/v2/guide/jsx-elements): how elements map props, signals and child slots to the native API.
+- [Examples](https://github.com/gtkx-org/gtkx/tree/main/examples): complete apps, from Hello World to the GTK and Adwaita demos, run from the GTKX repository.
+- [Discussions](https://github.com/gtkx-org/gtkx/discussions): ask questions and share what you build.
