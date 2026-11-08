@@ -34,6 +34,9 @@ type ResolvedReactCompilerOptions = ReactCompilerOptions & {
 
 /**
  * GTKX project configuration authored in `gtkx.config.ts` and validated when loaded.
+ *
+ * [Configuration and Codegen](https://gtkx.dev/v2/guide/configuration-and-codegen) shows how to set up the file
+ * and what codegen generates from it.
  */
 type Config = {
     /**
