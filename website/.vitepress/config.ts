@@ -209,7 +209,9 @@ const groupReferencePackages = (
             const item = byName.get(name);
 
             if (!item) {
-                throw new Error(`The reference package group ${text} lists ${name}, which has no reference sidebar entry.`);
+                throw new Error(
+                    `The reference package group ${text} lists ${name}, which has no reference sidebar entry.`,
+                );
             }
 
             return item;
@@ -249,7 +251,10 @@ const packageSidebar = (
 const referenceSidebarEntries = (version: DocumentationVersion): [string, DefaultTheme.SidebarItem[]][] => [
     [
         `${version.prefix}${referencePath}/`,
-        [referenceOverview(version), ...groupReferencePackages(version, versionReferenceSidebar(version).map(packageLink))],
+        [
+            referenceOverview(version),
+            ...groupReferencePackages(version, versionReferenceSidebar(version).map(packageLink)),
+        ],
     ],
     ...versionReferenceSidebar(version).flatMap((item): [string, DefaultTheme.SidebarItem[]][] =>
         item.link && isBrowsablePackage(item) ? [[item.link, packageSidebar(version, item)]] : [],
