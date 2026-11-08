@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { parseArgs } from "node:util";
-import { releasePackages, verifyRelease, visibilityTimeoutMs } from "./verify-release.ts";
+import { releasePackages, VISIBILITY_TIMEOUT_MS, verifyRelease } from "./verify-release.ts";
 
 const { values } = parseArgs({
     options: {
@@ -14,7 +14,6 @@ if (values["verify-only"]) {
     const registry = new URL(process.env.NPM_CONFIG_REGISTRY ?? "https://registry.npmjs.org/");
     await verifyRelease(packages.map((entry) => ({ ...entry, registry: entry.registry ?? registry })));
 } else {
-    const timeoutMs = visibilityTimeoutMs();
     const { checkReleaseChannel } = await import("./publish-package.ts");
     const resolved = await checkReleaseChannel(packages);
 
@@ -32,5 +31,5 @@ if (values["verify-only"]) {
         { stdio: "inherit" },
     );
 
-    await verifyRelease(resolved, timeoutMs);
+    await verifyRelease(resolved, VISIBILITY_TIMEOUT_MS);
 }
