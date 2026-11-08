@@ -5,7 +5,7 @@ description: "Use GTKX's OpenGL bindings inside a GtkGLArea."
 
 # OpenGL
 
-`@gtkx/gl` provides OpenGL bindings for drawing inside a `GtkGLArea`. Install it alongside your application:
+`@gtkx/gl` provides OpenGL bindings for drawing inside a `GtkGLArea`. `create-gtkx` projects don't include it; install it:
 
 ```bash
 npm install @gtkx/gl@beta
@@ -35,7 +35,7 @@ export const ColorArea = () => (
 );
 ```
 
-GTK presents the result as part of the surrounding widget tree. Returning `Gdk.EVENT_STOP` marks the render signal as handled. As with other GTKX signals, handlers can receive the emitting area as their final argument.
+GTK presents the result as part of the surrounding widget tree. Returning `Gdk.EVENT_STOP` marks the render signal as handled. Like every signal handler, `onRender` also receives the area as its last argument (see the [JSX prop model](/v2/guide/jsx-elements#the-jsx-prop-model)).
 
 For complete shader and geometry setup, see the [GLArea, Gears and Shadertoy examples](https://github.com/gtkx-org/gtkx/tree/main/examples/gtk-demo/src/demos/opengl).
 
@@ -43,21 +43,52 @@ For complete shader and geometry setup, see the [GLArea, Gears and Shadertoy exa
 
 The bindings are generated from the OpenGL 4.6 core registry. Commands omit the `gl` prefix and start with a lowercase letter; constants omit `GL_`. For example, use `gl.compileShader` and `gl.TRIANGLES`.
 
-Object creation and deletion also have singular helpers: `gl.genBuffer()` returns one name, while `gl.genBuffers(count)` returns an array. Pass typed-array views directly for geometry uploads, alongside the byte length required by the command. `GLint64` and `GLuint64` use `bigint`, with BigInt typed arrays for their array arguments.
+Object creation and deletion also have singular helpers: `gl.genBuffer()` returns one name, while `gl.genBuffers(count)` returns an array. Pass typed-array views directly, with their byte length where the command takes a size, as in `gl.bufferData(gl.ARRAY_BUFFER, vertices.byteLength, vertices, gl.STATIC_DRAW)`. `GLint64` and `GLuint64` values are `bigint`.
 
-Pass `null` as the lengths of `shaderSource` to read each source up to its end, as `NULL` does in C:
+Pass `null` as the lengths of `shaderSource` to read each source to its end, as `NULL` does in C:
 
 ```ts
 gl.shaderSource(shader, 1, [source], null);
 ```
 
-The lengths count UTF-8 bytes, so `[source.length]`, which counts UTF-16 code units, truncates a source containing any non-ASCII character, even in a comment, and compilation then fails. A negative entry, such as `[-1]`, also marks a source that runs to its end.
+Explicit lengths count UTF-8 bytes, so `[source.length]`, which counts UTF-16 code units, truncates any source with a non-ASCII character, even one in a comment.
 
-Generic state queries such as `getIntegerv` are not exported. Use the available typed queries for the object you are inspecting, such as `getShaderiv` or `getProgramiv`. Shader and program info-log helpers return the driver's diagnostics as strings.
+Generic state queries such as `getIntegerv` are not exported. Use the typed query for the object you are inspecting, such as `getShaderiv` or `getProgramiv`. `getShaderInfoLog` and `getProgramInfoLog` return the driver's diagnostics as strings.
 
 ## Manage context resources
 
-Create shaders and buffers in `onRealize`, after calling `area.makeCurrent()` and checking `area.getError()`. Realization follows the native widget's lifecycle, so it can happen after the React component mounts. Keep GL object names in refs and delete those resources in `onUnrealize`, making the area's context current first.
+Create GL objects in `onRealize` and delete them in `onUnrealize`, making the area's context current first in both. Realization follows the native widget's lifecycle, so it can happen after the React component mounts. Keep the object names in refs:
+
+```tsx
+import * as gl from "@gtkx/gl";
+import { GtkGLArea } from "@gtkx/jsx/gtk";
+import { useRef } from "react";
+
+export const BufferArea = () => {
+    const buffer = useRef<number | null>(null);
+
+    return (
+        <GtkGLArea
+            hexpand
+            vexpand
+            onRealize={(area) => {
+                area.makeCurrent();
+                if (area.getError()) {
+                    return;
+                }
+                buffer.current = gl.genBuffer();
+            }}
+            onUnrealize={(area) => {
+                area.makeCurrent();
+                if (buffer.current !== null) {
+                    gl.deleteBuffer(buffer.current);
+                    buffer.current = null;
+                }
+            }}
+        />
+    );
+};
+```
 
 `onRender` and `onResize` already run with the context current. Call `makeCurrent()` before issuing GL commands from other handlers. GTK sets the viewport when the area resizes; use `onResize` for other size-dependent state, such as a camera's aspect ratio.
 
@@ -69,7 +100,47 @@ Changing React state does not itself repaint the GL scene. Obtain the area throu
 
 With the default `autoRender`, GTK emits the render signal whenever the widget draws. With `autoRender={false}`, ordinary redraws reuse the previous frame; resizing the area or calling `queueRender()` requests a new one.
 
-For continuous animation, use a GTK tick callback to advance the scene and call `queueRender()`. Tie its registration and removal to the mounted area's lifetime.
+For continuous animation, advance the scene and call `queueRender()` from a [tick callback](https://docs.gtk.org/gtk4/method.Widget.add_tick_callback.html), registered while the area is mounted:
+
+```tsx
+import * as Gdk from "@gtkx/gi/gdk";
+import * as GLib from "@gtkx/gi/glib";
+import type * as Gtk from "@gtkx/gi/gtk";
+import * as gl from "@gtkx/gl";
+import { GtkGLArea } from "@gtkx/jsx/gtk";
+import { useLayoutEffect, useRef, useState } from "react";
+
+export const PulsingArea = () => {
+    const [area, setArea] = useState<Gtk.GLArea | null>(null);
+    const seconds = useRef(0);
+
+    useLayoutEffect(() => {
+        if (area === null) {
+            return;
+        }
+        const id = area.addTickCallback((_widget, clock) => {
+            seconds.current = Number(clock.getFrameTime()) / 1_000_000;
+            area.queueRender();
+            return GLib.SOURCE_CONTINUE;
+        });
+        return () => area.removeTickCallback(id);
+    }, [area]);
+
+    return (
+        <GtkGLArea
+            ref={setArea}
+            hexpand
+            vexpand
+            onRender={() => {
+                const red = 0.5 + 0.5 * Math.sin(seconds.current);
+                gl.clearColor(red, 0.5, 0.5, 1);
+                gl.clear(gl.COLOR_BUFFER_BIT);
+                return Gdk.EVENT_STOP;
+            }}
+        />
+    );
+};
+```
 
 ## Show an error
 
