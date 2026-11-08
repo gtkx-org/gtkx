@@ -23,6 +23,14 @@ const THEME: ThemeRegistrationRaw = {
             settings: { foreground: "var(--syntax-keyword)" },
         },
         {
+            scope: ["entity.other.attribute-name", "entity.name.function", "support.function"],
+            settings: { foreground: "var(--syntax-keyword)" },
+        },
+        {
+            scope: ["punctuation.section.embedded", "meta.brace", "punctuation.separator", "punctuation.terminator"],
+            settings: { foreground: "var(--syntax-punctuation)" },
+        },
+        {
             scope: ["storage.type.function.arrow"],
             settings: { foreground: "var(--syntax-plain)" },
         },
