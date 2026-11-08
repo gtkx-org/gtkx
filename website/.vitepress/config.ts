@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type DefaultTheme, defineConfig, type HeadConfig } from "vitepress";
 import { groupIconMdPlugin, groupIconVitePlugin } from "vitepress-plugin-group-icons";
-import { BLOG_FEED, BLOG_TITLE, readBlogFeed, readBlogPosts } from "./blog.js";
+import { BLOG_FEED, BLOG_TITLE, readBlogFeed, readBlogPosts, unpublishedBlogFiles } from "./blog.js";
 import { CONTRIBUTING_ROOT, contributingItems } from "./contributing.js";
 import { highlightPlugin } from "./highlight.js";
 import { figureLinks, optionTables } from "./markdown.js";
@@ -638,7 +638,7 @@ export default defineConfig({
     appearance: true,
     cleanUrls: true,
     lastUpdated: true,
-    srcExclude: ["figures/**"],
+    srcExclude: ["figures/**", ...unpublishedBlogFiles(websiteRoot)],
     markdown: {
         container: {
             infoLabel: "Info",

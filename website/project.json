@@ -31,6 +31,9 @@
                 {
                     "dependentTasksOutputFiles": "**/*.{md,js,d.ts,json}",
                     "transitive": true
+                },
+                {
+                    "runtime": "node -e \"import('./website/.vitepress/blog.ts').then((blog) => console.log(blog.unpublishedBlogFiles('website').join(' ')))\""
                 }
             ],
             "outputs": ["{projectRoot}/.vitepress/dist"],

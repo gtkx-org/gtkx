@@ -62,6 +62,13 @@ export const blogPost = (url: string, frontmatter: Record<string, unknown>): Blo
 };
 
 /**
+ * Whether a post dated `date` (YYYY-MM-DD) is public on `today`. A post dated after the build day (UTC) stays out of
+ * the build, so a release announcement appears with the first deploy on or after its date.
+ */
+export const isPublished = (date: string, today: Date = new Date()): boolean =>
+    date <= today.toISOString().slice(0, 10);
+
+/**
  * Orders posts newest first.
  */
 export const sortPosts = (posts: BlogPost[]): BlogPost[] =>
@@ -73,17 +80,35 @@ const readFrontmatter = (path: string): Record<string, unknown> => {
     return match ? (parse(match[1]) as Record<string, unknown>) : {};
 };
 
-/**
- * Reads every post under `blog/` for configuration that runs before VitePress can load content.
- */
-export const readBlogPosts = (srcDir: string): BlogPost[] => {
+const readAllBlogPosts = (srcDir: string): { file: string; post: BlogPost }[] => {
     const directory = join(srcDir, BLOG_ROOT);
-    const posts = readdirSync(directory)
-        .filter((file) => file.endsWith(".md") && file !== "index.md")
-        .map((file) => blogPost(`/${BLOG_ROOT}/${file.replace(/\.md$/, "")}`, readFrontmatter(join(directory, file))));
 
-    return sortPosts(posts);
+    return readdirSync(directory)
+        .filter((file) => file.endsWith(".md") && file !== "index.md")
+        .map((file) => ({
+            file: `${BLOG_ROOT}/${file}`,
+            post: blogPost(`/${BLOG_ROOT}/${file.replace(/\.md$/, "")}`, readFrontmatter(join(directory, file))),
+        }));
 };
+
+/**
+ * Reads every published post under `blog/` for configuration that runs before VitePress can load content.
+ */
+export const readBlogPosts = (srcDir: string, today: Date = new Date()): BlogPost[] =>
+    sortPosts(
+        readAllBlogPosts(srcDir)
+            .map(({ post }) => post)
+            .filter((post) => isPublished(post.date, today)),
+    );
+
+/**
+ * Lists the source files of posts dated after `today`, relative to `srcDir`, for `srcExclude`.
+ */
+export const unpublishedBlogFiles = (srcDir: string, today: Date = new Date()): string[] =>
+    readAllBlogPosts(srcDir)
+        .filter(({ post }) => !isPublished(post.date, today))
+        .map(({ file }) => file)
+        .toSorted();
 
 const escapeXml = (text: string): string => text.replace(/[<>&"']/g, (character) => `&#${character.charCodeAt(0)};`);
 

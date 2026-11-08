@@ -140,7 +140,7 @@ Complete promotion on the prepared release branch before advancing `main`. That 
    ```
 
 4. Review release copy in the promoted `website/guide`, `website/tutorial`, contributor pages, landing components, the [Releases](/releases) page, root `README.md`, and `packages/*/README.md`. Replace beta installation commands and current-release status text with stable equivalents. Point 2.0 links at the new root paths and 1.x links at `/v1`; retain historical release names in dated posts and changelogs. Archived 1.x installation commands must remain pinned to 1.x. Point the root README's version and Node.js badges at the `latest` dist-tag instead of `beta`, and keep its link to `FUNDING.md`.
-5. Review the release's announcement post, `website/blog/gtkx-2-0.md`, which the blog index and sidebar already list. Its date must be the release day, its release-notes link must name the tag being published, and its summary of changes must match the changelog. A release that moves the date updates the post, the blog index and the sidebar together.
+5. Review the release's announcement post, `website/blog/gtkx-2-0.md`. A post whose `date` is later than the build day (UTC) is left out of the build, the blog index, the sidebar and the RSS feed, so it goes live with the first deploy on or after its date, and a preview before that day doesn't show it. Its date must be the release day, its release-notes link must name the tag being published, and its summary of changes must match the changelog.
 6. Regenerate both API references, build the site, and serve the build:
 
    ```bash
