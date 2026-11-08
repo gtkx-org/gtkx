@@ -1,5 +1,5 @@
 ---
-description: "Scaffold the Notes project and replace the starter counter with an Adwaita window."
+description: "Replace the starter counter with an Adwaita window whose strings are ready for translation."
 ---
 
 # Create a Window
@@ -14,7 +14,7 @@ The project from [Check your setup](/v2/tutorial/#check-your-setup) has these fi
 - `src/index.tsx` creates a React root without a DOM container and renders `<App />` into it. It stays the same throughout the tutorial.
 - `src/app.tsx` holds the counter. This chapter replaces it.
 
-`npm run dev` runs the app from `src/index.tsx` and applies your saves to the open window. [Project structure](/v2/guide/getting-started#project-structure) describes the other files.
+[Project structure](/v2/guide/getting-started#project-structure) describes the other files.
 
 The scaffold's starter test, `tests/app.test.tsx`, looks for the counter's Increment button and imports a default export that the new `src/app.tsx` doesn't have, so `npm run typecheck` would fail. Delete it; [Test the App](/v2/tutorial/testing) writes the app's tests.
 
