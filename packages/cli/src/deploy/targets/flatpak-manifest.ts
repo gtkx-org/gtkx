@@ -1,5 +1,5 @@
 import type { DeployPayload, DeploySettings } from "../types.js";
-import { optional } from "../nfpm/optional.js";
+import { optional, when } from "../nfpm/optional.js";
 import { flatpakPrebuiltModule } from "./flatpak-prebuilt.js";
 import { flatpakSourceModule } from "./flatpak-source.js";
 import { nodeExtensionFor } from "./flatpak-sources.js";
@@ -125,6 +125,7 @@ const renderFlatpakManifest = (payload: DeployPayload): FlatpakManifest => {
         command: settings.binaryName,
         "finish-args": finishArgsFor(settings),
         cleanup: cleanupFor(settings),
+        ...when(!isSourceMode(settings), { "separate-locales": false }),
         modules: modulesFor(payload),
     };
 };

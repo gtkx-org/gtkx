@@ -38,7 +38,13 @@ type FlatpakModule = {
     "build-commands": string[];
 };
 
-type FlatpakManifest = { modules: FlatpakModule[]; "finish-args": string[]; cleanup: string[] };
+type FlatpakManifest = {
+    modules: FlatpakModule[];
+    "finish-args": string[];
+    cleanup: string[];
+    "separate-locales"?: boolean;
+};
+
 type NfpmContent = { dst: string; file_info?: { mode: number } };
 type NfpmConfig = { contents: NfpmContent[]; depends: string[] };
 type DeployProbe = { project: CliProject; status: number | null; output: string };

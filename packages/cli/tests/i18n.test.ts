@@ -554,15 +554,15 @@ const createI18nProject = (linguas = "it\n", po: string | null = IT_PO): CliProj
         files: projectFiles(linguas, po),
     });
 
-const runBuiltApp = (project: CliProject): AppRun => {
+const runBuiltApp = (project: CliProject, locale = "it_IT.UTF-8"): AppRun => {
     const result = spawnSync(process.execPath, [join(project.root, BUNDLE)], {
         cwd: tmpdir(),
         encoding: "utf8",
         env: {
             ...process.env,
-            LANG: "it_IT.UTF-8",
+            LANG: locale,
             LANGUAGE: "it",
-            LC_ALL: "it_IT.UTF-8",
+            LC_ALL: locale,
         },
         timeout: RUN_TIMEOUT,
     });
@@ -698,6 +698,13 @@ const expectBuiltCatalog = (project: CliProject): void => {
     );
 
     expect(result.status).toBe(0);
+    const unsupported = runBuiltApp(project, "xx_YY.UTF-8");
+
+    expect(unsupported.stdout).toBe(
+        "Hello|Welcome, Ada!|Good morning, Ada!|Many files|2 standard files|Open|Hello|Lazy message",
+    );
+
+    expect(unsupported.status).toBe(0);
 };
 
 const expectGeneratedTypes = (project: CliProject): void => {
