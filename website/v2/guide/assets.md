@@ -47,7 +47,7 @@ Import the application's own `.gschema.xml` without a query. GTKX compiles and b
 
 ### Types
 
-The scaffold's `src/gtkx-env.d.ts` types the queries above and stylesheet imports. It types only what GTKX supports, so an asset imported without a query fails `tsc`, and so does another Vite query such as `?worker`. `gtkx build` also rejects an image, media or font file imported without a query.
+The scaffold's `src/gtkx-env.d.ts` types the queries above and stylesheet imports. It types only what GTKX supports, so an asset imported without a query fails `tsc`, and so does another Vite query. `gtkx dev`, `gtkx build` and Vitest also reject an image, media or font file imported without a query, and Vite's `?worker` and `?sharedworker` imports, because Node.js has no global `Worker`; start a worker from `node:worker_threads` as [Workers](/v2/guide/workers#moving-work-to-a-worker) shows.
 
 ### Development restarts
 
