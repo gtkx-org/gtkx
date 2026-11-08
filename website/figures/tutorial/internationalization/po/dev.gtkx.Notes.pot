@@ -1,0 +1,252 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the dev.gtkx.Notes package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: dev.gtkx.Notes\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-11-07 20:51+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+
+#: src/components/about.tsx:8 src/components/notes-screen.tsx:106
+#: src/components/shortcuts.tsx:22 src/components/window.tsx:52
+#: src/components/window.tsx:112
+msgid "Notes"
+msgstr ""
+
+#: src/components/about.tsx:14
+msgid "GTKX Contributors"
+msgstr ""
+
+#: src/components/about.tsx:15
+msgid "Markdown notes kept as plain files, built with GTKX."
+msgstr ""
+
+#: src/components/main-menu.tsx:9
+msgid "Main Menu"
+msgstr ""
+
+#: src/components/main-menu.tsx:15 src/components/notes-screen.tsx:135
+msgid "New Note"
+msgstr ""
+
+#: src/components/main-menu.tsx:21 src/components/preferences.tsx:113
+#: src/components/shortcuts.tsx:13
+msgid "Preferences"
+msgstr ""
+
+#: src/components/main-menu.tsx:25
+msgid "Keyboard Shortcuts"
+msgstr ""
+
+#: src/components/main-menu.tsx:28
+msgid "About Notes"
+msgstr ""
+
+#: src/components/note-menu.tsx:8
+msgid "Preview (Ctrl+Shift+P)"
+msgstr ""
+
+#: src/components/note-menu.tsx:16
+msgid "Note Menu"
+msgstr ""
+
+#: src/components/note-menu.tsx:22
+msgid "Rename…"
+msgstr ""
+
+#: src/components/note-menu.tsx:24
+msgid "Move to Trash"
+msgstr ""
+
+#: src/components/note-screen.tsx:40
+msgid "Note Not Found"
+msgstr ""
+
+#: src/components/notes-screen.tsx:44
+msgid "Filter by Tag"
+msgstr ""
+
+#: src/components/notes-screen.tsx:46
+msgid "All Notes"
+msgstr ""
+
+#: src/components/notes-screen.tsx:100
+msgid "{{count}} note"
+msgid_plural "{{count}} notes"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/components/notes-screen.tsx:130
+msgid "No Notes"
+msgstr ""
+
+#: src/components/notes-screen.tsx:131
+msgid "Notes are Markdown files in your notes folder"
+msgstr ""
+
+#: src/components/notes-screen.tsx:166
+msgid "Search Notes"
+msgstr ""
+
+#: src/components/notes-screen.tsx:167 src/components/shortcuts.tsx:24
+msgid "Search notes"
+msgstr ""
+
+#: src/components/notes-screen.tsx:183
+msgid "No Results Found"
+msgstr ""
+
+#: src/components/preferences.tsx:60
+msgid "Choose a Notes Folder"
+msgstr ""
+
+#: src/components/preferences.tsx:65
+msgid "Notes Folder"
+msgstr ""
+
+#: src/components/preferences.tsx:74
+msgid "Use the Default Folder"
+msgstr ""
+
+#: src/components/preferences.tsx:82
+msgid "Choose Folder"
+msgstr ""
+
+#: src/components/preferences.tsx:115 src/components/shortcuts.tsx:10
+msgid "General"
+msgstr ""
+
+#: src/components/preferences.tsx:118
+msgid "Appearance"
+msgstr ""
+
+#: src/components/preferences.tsx:120
+msgid "Style"
+msgstr ""
+
+#: src/components/preferences.tsx:131
+msgid "Storage"
+msgstr ""
+
+#: src/components/rename-dialog.tsx:23
+msgid "Rename Note"
+msgstr ""
+
+#: src/components/rename-dialog.tsx:27
+msgid "Cancel"
+msgstr ""
+
+#: src/components/rename-dialog.tsx:30
+msgid "Rename"
+msgstr ""
+
+#: src/components/rename-dialog.tsx:44
+msgid "Note name"
+msgstr ""
+
+#: src/components/shortcuts.tsx:11
+msgid "New note"
+msgstr ""
+
+#: src/components/shortcuts.tsx:17
+msgid "Keyboard shortcuts"
+msgstr ""
+
+#: src/components/shortcuts.tsx:20
+msgid "Quit"
+msgstr ""
+
+#: src/components/shortcuts.tsx:28
+msgid "Rename note"
+msgstr ""
+
+#: src/components/shortcuts.tsx:32
+msgid "Show preview"
+msgstr ""
+
+#: src/components/window-actions.tsx:23
+msgid "Untitled"
+msgstr ""
+
+#: src/components/window-actions.tsx:37
+msgid "“{{name}}” moved to Trash"
+msgstr ""
+
+#: src/components/window-actions.tsx:38
+msgid "Undo"
+msgstr ""
+
+#: src/components/window.tsx:44
+msgid "No Note Selected"
+msgstr ""
+
+#: src/components/window.tsx:57
+msgid "New Note (Ctrl+N)"
+msgstr ""
+
+#: src/editor/note-editor.tsx:56
+msgid "Note text"
+msgstr ""
+
+#: src/notes/notes-provider.tsx:57
+msgid "Couldn’t save “{{name}}”"
+msgstr ""
+
+#: src/preview/markdown-preview.tsx:190
+msgid "Preview"
+msgstr ""
+
+#: src/settings.tsx:16
+msgid "Follow System"
+msgstr ""
+
+#: src/settings.tsx:19
+msgid "Light"
+msgstr ""
+
+#: src/settings.tsx:20
+msgid "Dark"
+msgstr ""
+
+#: data/dev.gtkx.Notes.gschema.xml:6
+msgid "Notes folder"
+msgstr ""
+
+#: data/dev.gtkx.Notes.gschema.xml:7
+msgid "Folder that holds the notes, or empty for Notes in the Documents folder"
+msgstr ""
+
+#: data/dev.gtkx.Notes.gschema.xml:16
+msgid "Color scheme"
+msgstr ""
+
+#: data/dev.gtkx.Notes.gschema.xml:17
+msgid "Whether the app follows the system style or forces light or dark"
+msgstr ""
+
+#: data/dev.gtkx.Notes.gschema.xml:21
+msgid "Show the preview"
+msgstr ""
+
+#: data/dev.gtkx.Notes.gschema.xml:22
+msgid "Whether notes open as rendered Markdown instead of in the editor"
+msgstr ""
+
+#: data/dev.gtkx.Notes.gschema.xml:26
+msgid "Window width"
+msgstr ""
+
+#: data/dev.gtkx.Notes.gschema.xml:30
+msgid "Window height"
+msgstr ""

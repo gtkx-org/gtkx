@@ -5,7 +5,7 @@ description: "Which GTKX releases gtkx.dev documents, where each one lives, and 
 
 # Documentation versions
 
-Every page under the guide, the tutorial and the API reference belongs to one GTKX release. The version selector in the header switches between them and keeps you on the same page whenever that page exists in the other version.
+Every page under the guide, the tutorial and the API reference belongs to one GTKX release. The version menu beside the logo switches between them and keeps you on the same page whenever that page exists in the other version. Search covers the version you are reading.
 
 <VersionsTable />
 

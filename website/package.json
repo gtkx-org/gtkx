@@ -15,6 +15,17 @@
         "preview": "vitepress preview"
     },
     "devDependencies": {
+        "@gtkx/cli": "workspace:*",
+        "@gtkx/components": "workspace:*",
+        "@gtkx/css": "workspace:*",
+        "@gtkx/i18n": "workspace:*",
+        "@gtkx/navigation": "workspace:*",
+        "@gtkx/storybook": "workspace:*",
+        "@gtkx/testing": "workspace:*",
+        "@react-navigation/core": "^7.24.0",
+        "@types/mdast": "^4.0.4",
+        "mdast-util-from-markdown": "^2.1.0",
+        "minisearch": "^7.2.0",
         "shiki": "^4.6.0",
         "typedoc": "^0.28.20",
         "typedoc-plugin-markdown": "^4.14.1",
@@ -23,7 +34,9 @@
         "typescript": "catalog:",
         "vite": "catalog:",
         "vitepress": "^2.0.0-alpha.21",
+        "vitepress-plugin-group-icons": "^1.8.1",
         "vue": "^3.5.44",
-        "vue-tsc": "^3.3.14"
+        "vue-tsc": "^3.3.14",
+        "yaml": "catalog:"
     }
 }

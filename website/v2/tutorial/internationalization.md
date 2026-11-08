@@ -1,361 +1,110 @@
 ---
-description: "Translate the interface and package metadata with GTKX's gettext integration."
+description: "Extract the app's messages into a gettext template and add a French translation."
 ---
 
 # Translate the App
 
-[Package the App](/v2/tutorial/packaging) made Tasks installable. Add a French catalog for its interface and desktop metadata.
+Extract the messages marked since the first chapter into a gettext template, add a French translation, and check it in a test.
 
-`@gtkx/i18n` connects react-i18next to GNU gettext. Components use the upstream [translation hook](https://react.i18next.com/latest/usetranslation-hook); GTKX extracts messages, generates their types, and loads the compiled catalog through GLib.
+GTK apps are translated with [GNU gettext](https://www.gnu.org/software/gettext/manual/gettext.html): a template lists the messages, and translators fill in one [PO file](https://www.gnu.org/software/gettext/manual/html_node/PO-Files.html) per language. `@gtkx/i18n` keeps i18next's `t()` in the components and lets gettext look up each translation, so the catalogs follow the format GNOME translators already work with. [Internationalization](/v2/guide/internationalization) covers it in full.
 
-## Add the catalog
+## Extract the messages
 
-Install the integration:
-
-```bash
-npm install @gtkx/i18n@beta
-```
-
-GTKX requires GNU gettext 0.25 or newer for extraction and compilation. Its CLI reports missing build tools and installation instructions.
-
-Create `po/LINGUAS` with the locales to ship:
+Every visible string has gone through `t()` since [Create a Window](/v2/tutorial/your-first-window), which also installed `@gtkx/i18n`. GTKX starts managing translations once such a project has a `po` folder whose `LINGUAS` file lists the locales, one per line:
 
 ```text [po/LINGUAS]
 fr
 ```
 
-The application ID, `com.gtkx.tutorial`, is the gettext domain. Keep it unchanged so the app, catalogs, and package metadata agree.
+Then run codegen. It calls the gettext tools that the [tutorial's requirements](/v2/tutorial/) list:
 
-## Mark the interface text
-
-Translate the window title and new-task tooltip in `src/components/window.tsx`:
-
-```diff [src/components/window.tsx]
-@@ -0,0 +1 @@
-+import { useTranslation } from "@gtkx/i18n";
-@@ -35,0 +37 @@
-+    const { t } = useTranslation();
-@@ -63 +65 @@
--                title="Tasks"
-+                title={t("Tasks")}
-@@ -102 +104 @@
--                                                tooltipText="New Task (Ctrl+N)"
-+                                                tooltipText={t("New Task (Ctrl+N)")}
+```sh
+npm run codegen
 ```
 
-Update `src/components/search-button.tsx`:
+GTKX writes the template `po/dev.gtkx.Notes.pot`, named after the application ID, with every `t()` message and the summary and description of each settings key. It creates `po/fr.po` from the template with `msginit`, and lists the files it read in `po/POTFILES.in`. Each entry gives the source text as `msgid`, an empty `msgstr` for the translation, and a `#:` comment with the lines it comes from:
 
-```tsx [src/components/search-button.tsx]
-import { useTranslation } from "@gtkx/i18n";
-import { GtkButton } from "@gtkx/jsx/gtk";
-import { useStore } from "../store/index.js";
-
-export const SearchButton = () => {
-    const { t } = useTranslation();
-    const searchMode = useStore((state) => state.searchMode);
-    const setSearchMode = useStore((state) => state.setSearchMode);
-
-    return (
-        <GtkButton
-            iconName="system-search-symbolic"
-            tooltipText={t("Search (Ctrl+F)")}
-            onClicked={() => setSearchMode(!searchMode)}
-        />
-    );
-};
+```po [po/dev.gtkx.Notes.pot]
+#: src/components/main-menu.tsx:15 src/components/notes-screen.tsx:135
+msgid "New Note"
+msgstr ""
 ```
 
-Translate the search entry in `src/components/task-list.tsx`:
+The same text in two places is one message, translated once. See [Create a catalog](/v2/guide/internationalization#create-a-catalog) and [Translate settings schemas](/v2/guide/internationalization#translate-settings-schemas).
 
-```diff [src/components/task-list.tsx]
-@@ -0,0 +1 @@
-+import { useTranslation } from "@gtkx/i18n";
-@@ -12,0 +14 @@
-+    const { t } = useTranslation();
-@@ -35 +37 @@
--                    placeholderText="Search tasks…"
-+                    placeholderText={t("Search tasks…")}
-```
+## Add a translation
 
-Outside components, import `t` directly. Translate the starter task in `src/store/seed.ts`:
-
-```diff [src/store/seed.ts]
-@@ -0,0 +1 @@
-+import { t } from "@gtkx/i18n";
-@@ -41 +42 @@
--        title: "Water the plants",
-+        title: t("Water the plants"),
-```
-
-Translate the search result in `src/store/selectors.ts`:
-
-```diff [src/store/selectors.ts]
-@@ -0,0 +1 @@
-+import { t } from "@gtkx/i18n";
-@@ -115 +116 @@
--    if (query) return { icon: "system-search-symbolic", title: "No Results", description: `No tasks match “${query}”` };
-+    if (query) return { icon: "system-search-symbolic", title: "No Results", description: t("No tasks match “{{query}}”", { query }) };
-```
-
-Translate the formatters in `src/format.ts`, keeping the existing date helpers:
-
-```diff [src/format.ts]
-@@ -0,0 +1 @@
-+import { t } from "@gtkx/i18n";
-@@ -13,4 +14,10 @@
--    if (days === 0) return `Today at ${time}`;
--    if (days === 1) return `Tomorrow at ${time}`;
--    if (days === -1) return `Yesterday at ${time}`;
--    if (days < 0) return `${-days} days ago`;
-+    if (days === 0) return t("Today at {{time}}", { time });
-+    if (days === 1) return t("Tomorrow at {{time}}", { time });
-+    if (days === -1) return t("Yesterday at {{time}}", { time });
-+    if (days < 0) {
-+        return t("{{count}} day ago", {
-+            count: -days,
-+            defaultValue_one: "{{count}} day ago",
-+            defaultValue_other: "{{count}} days ago",
-+        });
-+    }
-@@ -22 +29 @@
--    if (!iso) return "Never";
-+    if (!iso) return t("Never");
-```
-
-Gettext counts must be non-negative safe integers. An overdue date has a negative `days` value, so pass `-days` as the count. `toLocaleDateString` and `toLocaleString` format dates using the process locale.
-
-These edits provide the messages exercised in this chapter. After completing its checks, apply the same approach to the remaining authored labels, dialogs, notifications, and starter content; the [finished source](https://github.com/gtkx-org/gtkx/tree/main/tutorial/src) shows each location. Keep user-entered names, action names, settings keys, and other identifiers unchanged. Starter content is translated on first creation; changing locale does not rewrite saved tasks.
-
-Use literal message keys and retain the names `t` and `useTranslation`: GTKX's extractor rejects aliases and dynamic keys. Codegen generates the message and interpolation types, so there is no separate list of keys to maintain.
-
-## Translate the messages
-
-Refresh the source and deployment messages without building packages:
-
-```bash
-npm run deploy -- --target appimage,deb,rpm --print-manifests
-```
-
-GTKX creates `po/fr.po`, synchronizes it with the source template, and includes the translatable metadata from `gtkx.config.ts`. Replace the initial French catalog with this complete file. Later extraction keeps these translations and adds new messages:
+Fill in each `msgstr` in `po/fr.po`, and replace the generated header comments and `Last-Translator` with your own. Placeholders such as <span v-pre>`{{name}}`</span> stay as they are; i18next fills them in after gettext returns the translation:
 
 ```po [po/fr.po]
-msgid ""
-msgstr ""
-"Project-Id-Version: gtkx-tutorial 1.0.0\n"
-"PO-Revision-Date: 2026-09-26 00:00+0000\n"
-"Last-Translator: GTKX contributors\n"
-"Language-Team: French\n"
-"Language: fr\n"
-"MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=UTF-8\n"
-"Content-Transfer-Encoding: 8bit\n"
+#: src/components/window-actions.tsx:37
+msgid "“{{name}}” moved to Trash"
+msgstr "« {{name}} » a été mise à la corbeille"
+```
+
+The [finished app's catalog](https://github.com/gtkx-org/gtkx/blob/main/tutorial/po/fr.po) has every French message. When you change a message later, run codegen again: it updates the template and merges the change into `fr.po`. `npm run dev` updates only the template as you save, and leaves the PO files to codegen and builds.
+
+## Plurals
+
+The note count under the sidebar title is a plural message. `t()` takes the singular as its key, the number as `count`, and both English forms as `defaultValue_one` and `defaultValue_other`:
+
+```tsx [src/components/notes-screen.tsx]
+t("{{count}} note", {
+    count: notes.size,
+    defaultValue_one: "{{count}} note",
+    defaultValue_other: "{{count}} notes",
+});
+```
+
+Its catalog entry has both source forms and one translation per plural form of the language. The `Plural-Forms` header, which `msginit` filled in for French, picks the form from the count. Its [rule](https://www.gnu.org/software/gettext/manual/html_node/Plural-forms.html) gives French the singular for 0 and 1, where English uses the plural for 0:
+
+```po [po/fr.po]
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 
-msgid "Tasks"
-msgstr "Tâches"
-
-msgid "New Task (Ctrl+N)"
-msgstr "Nouvelle tâche (Ctrl+N)"
-
-msgid "Search (Ctrl+F)"
-msgstr "Rechercher (Ctrl+F)"
-
-msgid "Search tasks…"
-msgstr "Rechercher des tâches…"
-
-msgid "Water the plants"
-msgstr "Arroser les plantes"
-
-msgid "No tasks match “{{query}}”"
-msgstr "Aucune tâche ne correspond à « {{query}} »"
-
-msgid "Today at {{time}}"
-msgstr "Aujourd’hui à {{time}}"
-
-msgid "Tomorrow at {{time}}"
-msgstr "Demain à {{time}}"
-
-msgid "Yesterday at {{time}}"
-msgstr "Hier à {{time}}"
-
-msgid "Never"
-msgstr "Jamais"
-
-msgid "{{count}} day ago"
-msgid_plural "{{count}} days ago"
-msgstr[0] "Il y a {{count}} jour"
-msgstr[1] "Il y a {{count}} jours"
-
-msgid "Task Manager"
-msgstr "Gestionnaire de tâches"
-
-msgid "Manage your tasks and to-dos"
-msgstr "Gérez vos tâches et listes de choses à faire"
-
-msgid "Tasks lets you organize to-dos into lists, set reminders, and track completed work. Built with GTKX, React, and Adwaita."
-msgstr "Tâches vous permet d’organiser vos tâches en listes, de définir des rappels et de suivre le travail accompli. L’application utilise GTKX, React et Adwaita."
-
-msgid "Task;Tasks;Todo;To-do;Checklist;"
-msgstr "Tâche;Tâches;À faire;À-faire;Liste de contrôle;"
-
-msgid "Task"
-msgstr "Tâche"
-
-msgid "Todo"
-msgstr "À faire"
-
-msgid "To-do"
-msgstr "À-faire"
-
-msgid "Checklist"
-msgstr "Liste de contrôle"
+#: src/components/notes-screen.tsx:100
+msgid "{{count}} note"
+msgid_plural "{{count}} notes"
+msgstr[0] "{{count}} note"
+msgstr[1] "{{count}} notes"
 ```
 
-Translate the remaining entries as you mark more interface text. An empty translation falls back to English. The [gettext manual](https://www.gnu.org/software/gettext/manual/html_node/PO-Files.html) describes the PO format.
+See [Plurals and context](/v2/guide/internationalization#plurals-and-context).
 
-`gtkx codegen`, `gtkx dev`, and `gtkx build` refresh the source catalog. Deployment also extracts metadata and stages the compiled catalog with the app. Commit `LINGUAS`, the PO and POT files, and `POTFILES.in`; compiled MO files and `dist/locale` are build outputs.
+## Test the translation
 
-## Run it in French
+The tests from [Test the App](/v2/tutorial/testing) still render the English source text: the Vitest plugin compiles no catalogs, and the main configuration sets an English locale. gettext reads the locale once, when the process starts, so the French checks run in their own Vitest configuration with a French environment for its workers. `localeDir` points the plugin at the catalogs that `gtkx build` compiles into `dist/locale`:
 
-Use a new data directory so the seed task is translated on first creation:
+<<< @/figures/tutorial/internationalization/vitest.i18n.config.ts [vitest.i18n.config.ts]
 
-```bash
-LC_ALL=fr_FR.UTF-8 LANG=fr_FR.UTF-8 LANGUAGE=fr \
-XDG_DATA_HOME="$(mktemp -d)" npm run dev
-```
+It runs the files ending in `.i18n.tsx`, which the main configuration's `tests/**/*.test.{ts,tsx}` pattern skips, and reuses the setup file, so each test starts from the same two fixture notes. The tests find the New Note button by its French tooltip and the search entry by its placeholder, delete notes until the count reads "0 note", and check the toast that names a trashed note:
 
-Check the **Tâches** window title, **Nouvelle tâche (Ctrl+N)** tooltip, and **Arroser les plantes** task. Search for `introuvable` to see the translated empty state.
+<<< @/figures/tutorial/internationalization/tests/localization.i18n.tsx [tests/localization.i18n.tsx]
 
-The locale is process-wide. Restart after changing the locale environment; calling i18next's language-switching API cannot replace the process locale used by GLib.
+Add a script that builds and runs them, and make `npm test` run both suites:
 
-## Test the compiled catalog
-
-Keep the English tests from [Test the App](/v2/tutorial/testing). Create `vitest.i18n.config.ts` for a separate French process:
-
-```ts [vitest.i18n.config.ts]
-import gtkx from "@gtkx/cli/vitest-plugin";
-import { resolve } from "node:path";
-import { defineConfig } from "vitest/config";
-
-export default defineConfig({
-    plugins: [gtkx({ localeDir: resolve(import.meta.dirname, "dist/locale") })],
-    test: {
-        include: ["tests/**/*.i18n.tsx"],
-        setupFiles: ["./tests/setup.ts"],
-        bail: 1,
-        env: {
-            LANG: "fr_FR.UTF-8",
-            LANGUAGE: "fr",
-            LC_ALL: "fr_FR.UTF-8",
-        },
-    },
-});
-```
-
-Create `tests/localization.i18n.tsx`:
-
-```tsx [tests/localization.i18n.tsx]
-import * as Gtk from "@gtkx/gi/gtk";
-import { rootElement } from "@gtkx/react";
-import { render, screen, userEvent } from "@gtkx/testing";
-import { describe, expect, it } from "vitest";
-import { App } from "../src/app.js";
-import { useStore } from "../src/store/index.js";
-
-describe("Tasks in French", () => {
-    it("renders translated controls and starter content", async () => {
-        await render(<App />, { container: rootElement });
-
-        expect(
-            await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Nouvelle tâche (Ctrl+N)" }),
-        ).toBeDefined();
-
-        expect(
-            await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Arroser les plantes/ }),
-        ).toBeDefined();
-    });
-
-    it("uses French interpolation and plural forms", async () => {
-        const due = new Date();
-        due.setDate(due.getDate() - 2);
-        const tasks = useStore.getState().tasks.map((task) =>
-            task.id === "t2" ? { ...task, due: due.toISOString() } : task,
-        );
-        useStore.setState({ tasks });
-
-        await render(<App />, { container: rootElement });
-
-        expect(await screen.findByText("Il y a 2 jours")).toHaveTextContent("Il y a 2 jours");
-
-        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Rechercher (Ctrl+F)" }));
-        const search = await screen.findByPlaceholderText("Rechercher des tâches…");
-        await userEvent.type(search, "introuvable");
-
-        expect(await screen.findByText("Aucune tâche ne correspond à « introuvable »")).toHaveTextContent(
-            "Aucune tâche ne correspond à « introuvable »",
-        );
-    });
-
-    it("rejects dragging while the translated task list is filtered", async () => {
-        await render(<App />, { container: rootElement });
-
-        await userEvent.click(await screen.findByText("Open"));
-        const source = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Arroser les plantes/ });
-        const target = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Welcome to Tasks/ });
-
-        await expect(userEvent.dragAndDrop(source, target, "t2")).rejects.toThrow();
-    });
-});
-```
-
-The tests mount the real app, exercise translated controls and empty results, and reject an unavailable drag after filtering. They use the setup file from the testing chapter, including its isolated data directory. The queries match the partial translation above; update their labels as you translate the rest of the interface.
-
-Replace the `scripts` field in `package.json` with this block; keep the remaining package fields:
-
-```json [package.json] merge
+```json{3,4} [package.json]
 {
     "scripts": {
-        "dev": "gtkx dev",
-        "build": "gtkx build",
-        "codegen": "gtkx codegen",
         "test": "vitest run && npm run test:i18n",
-        "test:i18n": "gtkx build && vitest run --config vitest.i18n.config.ts",
-        "typecheck": "gtkx codegen && tsc",
-        "start": "node dist/bundle.mjs",
-        "deploy": "gtkx deploy"
+        "test:i18n": "gtkx build && vitest run --config vitest.i18n.config.ts"
     }
 }
 ```
 
-```bash
-npm test
+See [Test translations](/v2/guide/internationalization#test-translations).
+
+## Run it
+
+The French locale must be installed: `locale -a` lists it, and on Fedora it comes with `glibc-langpack-fr`. Start the app in French:
+
+```sh
+LANG=fr_FR.UTF-8 LANGUAGE=fr npm run dev
 ```
 
-The build compiles `dist/locale/fr/LC_MESSAGES/com.gtkx.tutorial.mo` before the French worker loads it.
+The sidebar, menus, dialogs and toasts are in French, and the note count follows French plural rules. Saving `po/fr.po` restarts the app, since gettext keeps the catalogs it loaded for the life of the process. See [Develop and build](/v2/guide/internationalization#develop-and-build).
 
-## Ship the translations
-
-Rebuild the packages from the previous chapter:
-
-```bash
-npm run deploy -- --target appimage,deb,rpm
-```
-
-Reinstall the deb or rpm if using it, then launch Tasks in French:
-
-```bash
-LC_ALL=fr_FR.UTF-8 LANG=fr_FR.UTF-8 LANGUAGE=fr gtkx-tutorial
-```
-
-For the x64 AppImage:
-
-```bash
-LC_ALL=fr_FR.UTF-8 LANG=fr_FR.UTF-8 LANGUAGE=fr \
-./build/out/Tasks-1.0.0-x86_64.AppImage
-```
-
-The generated `gtkx-i18n.json` locates catalogs relative to the application bundle, including after the package is moved to another installation prefix. Translated metadata, including the application name, is written into the desktop entry and AppStream file. Optional screenshots and release notes use the same PO catalog when present in the deploy configuration.
-
-## Next
-
-[Prepare for Flathub](/v2/tutorial/flatpak) builds the localized Flatpak and prepares its source submission.
+<figure class="result">
+    <img class="result-light" src="/figures/tutorial-internationalization-light.png" width="720" height="480" loading="lazy" alt="The Notes window in French: the sidebar subtitle reads 5 notes, the search entry says Rechercher dans les notes, the main menu lists Nouvelle note, Préférences, Raccourcis clavier and À propos de Notes, and the empty pane reads Aucune note sélectionnée." />
+    <img class="result-dark" src="/figures/tutorial-internationalization-dark.png" width="720" height="480" loading="lazy" alt="The Notes window in French with the dark style: the sidebar subtitle reads 5 notes, the search entry says Rechercher dans les notes, the main menu lists Nouvelle note, Préférences, Raccourcis clavier and À propos de Notes, and the empty pane reads Aucune note sélectionnée." />
+    <figcaption>Captured with <a href="#add-a-translation"><code>po/fr.po</code></a> above, with the main menu open.</figcaption>
+</figure>

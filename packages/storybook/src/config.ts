@@ -1,3 +1,8 @@
+/**
+ * Configuration for the native Storybook explorer.
+ *
+ * @packageDocumentation
+ */
 /** Story discovery and preview configuration for the native explorer. */
 type StorybookConfig = {
     /**

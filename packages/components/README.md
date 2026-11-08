@@ -1,6 +1,6 @@
 # @gtkx/components
 
-Collection views, selection controls, tabs, and toasts for GTKX.
+GTK collection views, selection controls, and toasts for React.
 
 Use `ListView`, `GridView`, and `ColumnView` with React data and render functions, or `DropDown` and `ComboRow` for selection controls. `ToastProvider` and `useToast` manage notifications.
 
@@ -12,6 +12,6 @@ npm install @gtkx/components@beta
 
 [Guide](https://gtkx.dev/v2/guide/components) · [API reference](https://gtkx.dev/v2/reference/@gtkx/components/) · [GTKX](https://gtkx.dev)
 
-GTKX requires Linux, Node.js, and the [native prerequisites](https://gtkx.dev/v2/guide/getting-started).
+GTKX requires Linux, Node.js, and the [native prerequisites](https://gtkx.dev/v2/guide/getting-started#what-you-need).
 
 [MPL-2.0](https://github.com/gtkx-org/gtkx/blob/main/LICENSE).

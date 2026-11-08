@@ -1,368 +1,110 @@
 ---
-description: "Connect window actions, menus, shortcuts, and dialogs to the task navigator."
+description: "Create notes and open dialogs from menus and keyboard shortcuts with GIO actions."
 ---
 
 # Add Menus and Shortcuts
 
-[Edit Tasks](/v2/tutorial/the-task-editor) added the editor route. Connect the New Task button, menu item, and keyboard shortcut to a shared handler. Add About and Keyboard Shortcuts dialogs alongside it.
-
-## Reach navigation from window commands
-
-The window's actions sit outside `NavigationContainer`, so they need a container ref. Add it in `src/navigation.ts`:
-
-```diff [src/navigation.ts]
-@@ -1 +1 @@
--import { createSplitViewNavigator, useNavigationState } from "@gtkx/navigation";
-+import { createNavigationContainerRef, createSplitViewNavigator, useNavigationState } from "@gtkx/navigation";
-```
-
-```diff [src/navigation.ts]
-@@ -10,0 +11,2 @@
-+
-+export const navigationRef = createNavigationContainerRef<RootParamList>();
-```
-
-Add these helpers at the end of the same file. They reuse the existing `isSelection` helper and route parameters:
-
-```diff [src/navigation.ts]
-@@ -29,0 +30,17 @@
-+
-+export const currentSelection = (): Selection => {
-+    const routes = navigationRef.isReady() ? navigationRef.getRootState()?.routes : undefined;
-+    const params = routes?.find((route) => route.name === "Tasks")?.params;
-+    return isSelection(params) ? params : ALL_TASKS;
-+};
-+
-+export const openTaskId = (): string | null => {
-+    const route = navigationRef.isReady() ? navigationRef.getCurrentRoute() : undefined;
-+    return route?.name === "Task" ? route.params.id : null;
-+};
-+
-+export const openTask = (selection: Selection, id: string): void => {
-+    if (!navigationRef.isReady()) return;
-+    navigationRef.navigate("Tasks", selection);
-+    navigationRef.navigate("Task", { id });
-+};
-```
-
-`currentSelection` returns All Tasks when there is no selected content page. `openTask` first selects the list, then opens its editor, leaving the list underneath the Back button. The ref becomes usable once the container is ready.
-
-In `src/components/window.tsx`, add `navigationRef` to the navigation import and pass it to the container:
-
-```diff [src/components/window.tsx]
-@@ -8 +8 @@
--import { ALL_TASKS, Split } from "../navigation.js";
-+import { ALL_TASKS, navigationRef, Split } from "../navigation.js";
-```
-
-```diff [src/components/window.tsx]
-@@ -27 +27 @@
--            <NavigationContainer>
-+            <NavigationContainer ref={navigationRef}>
-```
-
-Screens keep using `useNavigation`. The container ref is for this application's handlers outside the navigation tree; the [navigation guide](/v2/guide/navigation) covers the shared API.
-
-## Track the open dialog
-
-Add this type to `src/types.ts`:
-
-```diff [src/types.ts]
-@@ -25,0 +26,2 @@
-+
-+export type DialogKind = "none" | "about" | "shortcuts";
-```
-
-In `src/store/ui.ts`, add `DialogKind` to the existing type import, then extend the slice:
-
-```diff [src/store/ui.ts]
-@@ -2 +2 @@
--import type { Filter } from "../types.js";
-+import type { DialogKind, Filter } from "../types.js";
-@@ -5,0 +6,2 @@
-+    dialog: DialogKind;
-+    showDialog: (dialog: DialogKind) => void;
-@@ -15,0 +18,2 @@
-+    dialog: "none",
-+    showDialog: (dialog) => set({ dialog }),
-```
-
-Keep these transient fields out of the store's existing `partialize` function.
-
-## Define the window actions
-
-Create `src/components/window-actions.tsx`:
-
-```tsx [src/components/window-actions.tsx]
-import { GSimpleAction } from "@gtkx/jsx/gio";
-import { currentSelection, openTask } from "../navigation.js";
-import { useStore } from "../store/index.js";
-import { addListId } from "../store/selectors.js";
-
-export const WindowActions = () => {
-    const showDialog = useStore((state) => state.showDialog);
-
-    const newTask = (): void => {
-        const { lists, addTask } = useStore.getState();
-        const selection = currentSelection();
-        const id = addTask(addListId(selection, lists), "New Task");
-        if (id) openTask(selection, id);
-    };
-
-    return (
-        <>
-            <GSimpleAction name="new" onActivate={newTask} />
-            <GSimpleAction name="shortcuts" onActivate={() => showDialog("shortcuts")} />
-            <GSimpleAction name="about" onActivate={() => showDialog("about")} />
-        </>
-    );
-};
-```
-
-Mounting these elements in the window's `actions` prop exposes `win.new`, `win.shortcuts`, and `win.about`. The same prop on the application exposes `app.*` actions. A class that builds its own action group adds a table of actions with `addActionEntries` instead; see [Adding actions](/v2/guide/subclassing#adding-actions). For the native action model, see [Gio actions](https://docs.gtk.org/gio/class.SimpleAction.html).
-
-## Add the menu and accelerator
-
-Create `src/components/main-menu.tsx`:
-
-```tsx [src/components/main-menu.tsx]
-import { GMenu } from "@gtkx/jsx/gio";
-import { GtkMenuButton } from "@gtkx/jsx/gtk";
-
-export const MainMenu = () => (
-    <GtkMenuButton
-        primary
-        iconName="open-menu-symbolic"
-        tooltipText="Main Menu"
-        menuModel={
-            <GMenu
-                items={[
-                    { section: [{ label: "New Task", action: "win.new" }] },
-                    { section: [{ label: "Keyboard Shortcuts", action: "win.shortcuts" }] },
-                    { section: [{ label: "About Tasks", action: "win.about" }] },
-                ]}
-            />
-        }
-    />
-);
-```
-
-`GMenu.items` describes the menu declaratively. Its action names point to the window actions above; `primary` lets F10 open this menu.
-
-In `src/app.tsx`, add `actionAccels` to the existing application:
-
-```diff [src/app.tsx]
-@@ -6 +6,6 @@
--        <AdwApplication>
-+        <AdwApplication
-+            actionAccels={[
-+                { detailedActionName: "win.new", accels: ["<Control>n"] },
-+                { detailedActionName: "win.shortcuts", accels: ["<Control>question"] },
-+            ]}
-+        >
-```
-
-The menu displays the application's registered accelerator beside New Task. GTK's [accelerator syntax](https://docs.gtk.org/gtk4/func.accelerator_parse.html) is shared by these bindings and the shortcuts below.
-
-Update `src/components/window.tsx`. Import the button and the two new components:
-
-```diff [src/components/window.tsx]
-@@ -0,0 +1,3 @@
-+import { GtkButton } from "@gtkx/jsx/gtk";
-+import { MainMenu } from "./main-menu.js";
-+import { WindowActions } from "./window-actions.js";
-@@ -26 +29,7 @@
--        <AdwApplicationWindow title="Tasks" widthRequest={360} heightRequest={294} onCloseRequest={() => quit()}>
-+        <AdwApplicationWindow
-+            actions={<WindowActions />}
-+            title="Tasks"
-+            widthRequest={360}
-+            heightRequest={294}
-+            onCloseRequest={() => quit()}
-+        >
-```
-
-Add `actions={<WindowActions />}` to `AdwApplicationWindow`. In the Tasks screen's existing options, replace `headerStart` and add `headerEnd`:
-
-```diff [src/components/window.tsx]
-@@ -52 +52,11 @@
--                            headerStart: <SearchButton />,
-+                            headerStart: (
-+                                <>
-+                                    <GtkButton
-+                                        iconName="list-add-symbolic"
-+                                        tooltipText="New Task (Ctrl+N)"
-+                                        actionName="win.new"
-+                                    />
-+                                    <SearchButton />
-+                                </>
-+                            ),
-+                            headerEnd: <MainMenu />,
-```
-
-The button's `actionName` reaches the same handler as the menu and Ctrl+N.
-
-## Mount the dialogs {#mounting-dialogs}
-
-Create `src/components/about.tsx`:
-
-```tsx [src/components/about.tsx]
-import * as Gtk from "@gtkx/gi/gtk";
-import { AdwAboutDialog } from "@gtkx/jsx/adw";
-import { applicationId } from "virtual:gtkx-config";
-
-export const About = ({ onClose }: { onClose: () => void }) => {
-    return (
-        <AdwAboutDialog
-            onClosed={onClose}
-            applicationName="Tasks"
-            applicationIcon={applicationId}
-            version="1.0.0"
-            developerName="GTKX"
-            website="https://gtkx.dev"
-            issueUrl="https://github.com/gtkx-org/gtkx/issues"
-            copyright="© 2026 GTKX Contributors"
-            licenseType={Gtk.License.MPL_2_0}
-            developers={["GTKX Contributors"]}
-            comments="A Linux task manager built with GTKX to showcase React and Adwaita."
-        />
-    );
-};
-```
-
-`applicationId` comes from the generated project configuration, so the dialog and application shell use the same identity. The scaffold's `applicationIcon` configuration makes its icon available during development and in builds; [Package the App](/v2/tutorial/packaging) installs it with the application.
-
-Create `src/components/shortcuts.tsx`:
-
-```tsx [src/components/shortcuts.tsx]
-import { AdwShortcutsDialog, AdwShortcutsItem, AdwShortcutsSection } from "@gtkx/jsx/adw";
-
-export const Shortcuts = ({ onClose }: { onClose: () => void }) => (
-    <AdwShortcutsDialog onClosed={onClose}>
-        <AdwShortcutsSection title="General">
-            <AdwShortcutsItem title="New task" accelerator="<Control>n" />
-            <AdwShortcutsItem title="Search tasks" accelerator="<Control>f" />
-            <AdwShortcutsItem title="Keyboard shortcuts" accelerator="<Control>question" />
-        </AdwShortcutsSection>
-        <AdwShortcutsSection title="Tasks">
-            <AdwShortcutsItem title="Delete task" accelerator="Delete" />
-            <AdwShortcutsItem title="Go back" accelerator="Escape" />
-        </AdwShortcutsSection>
-    </AdwShortcutsDialog>
-);
-```
-
-The items describe shortcuts; they do not register them. Navigation already provides Back through Escape and Alt+Left. Search and Delete are connected below.
-
-Create `src/components/dialogs.tsx`:
-
-```tsx [src/components/dialogs.tsx]
-import { useStore } from "../store/index.js";
-import { About } from "./about.js";
-import { Shortcuts } from "./shortcuts.js";
-
-export const Dialogs = () => {
-    const dialog = useStore((state) => state.dialog);
-    const showDialog = useStore((state) => state.showDialog);
-    const close = () => showDialog("none");
-
-    switch (dialog) {
-        case "about":
-            return <About onClose={close} />;
-        case "shortcuts":
-            return <Shortcuts onClose={close} />;
-        case "none":
-            return null;
-    }
-};
-```
-
-Import `Dialogs` in `src/components/window.tsx` and add `<Dialogs />` after `NavigationContainer`, inside `AdwApplicationWindow`.
-
-GTKX's dialog components present when mounted and dismiss when unmounted. `onClosed` clears the application state after a native close or Escape. The dialog stays associated with its parent window through the [portal mechanism](/v2/guide/modals-and-portals).
-
-## Add Search and Delete shortcuts
-
-Create `src/components/app-shortcuts.tsx`:
-
-```tsx [src/components/app-shortcuts.tsx]
-import * as Gtk from "@gtkx/gi/gtk";
-import {
-    GtkCallbackAction,
-    GtkShortcut,
-    GtkShortcutController,
-    GtkShortcutTrigger,
-} from "@gtkx/jsx/gtk";
-import { openTaskId } from "../navigation.js";
-import { useStore } from "../store/index.js";
-
-const shortcut = (accelerator: string, run: () => boolean) => (
-    <GtkShortcut
-        trigger={<GtkShortcutTrigger accelerator={accelerator} />}
-        action={<GtkCallbackAction callback={run} />}
-    />
-);
-
-export const AppShortcuts = () => {
-    const toggleSearch = (): boolean => {
-        const { searchMode, setSearchMode } = useStore.getState();
-        setSearchMode(!searchMode);
-        return true;
-    };
-
-    const deleteOpenTask = (): boolean => {
-        const id = openTaskId();
-        if (id === null) return false;
-        useStore.getState().moveToTrash(id);
-        return true;
-    };
-
-    return (
-        <GtkShortcutController
-            scope={Gtk.ShortcutScope.GLOBAL}
-            shortcuts={
-                <>
-                    {shortcut("<Control>f", toggleSearch)}
-                    {shortcut("Delete", deleteOpenTask)}
-                </>
-            }
-        />
-    );
-};
-```
-
-`controllers` attaches the shortcut controller to the window. Its GLOBAL scope lets descendants use the shortcuts; returning `false` leaves an unhandled key available to the focused widget. Delete only acts when a Task route is open.
-
-In `src/components/window.tsx`, import `AppShortcuts` and add `controllers={<AppShortcuts />}` to `AdwApplicationWindow`.
-
-Update the editor button's tooltip in `src/components/task-buttons.tsx`:
-
-```diff [src/components/task-buttons.tsx]
-@@ -19 +19 @@
--            <GtkButton iconName="user-trash-symbolic" tooltipText="Delete" onClicked={() => moveToTrash(task.id)} />
-+            <GtkButton iconName="user-trash-symbolic" tooltipText="Delete (Delete)" onClicked={() => moveToTrash(task.id)} />
-```
-
-Finish the window wiring:
-
-```diff [src/components/window.tsx]
-@@ -0,0 +1,2 @@
-+import { AppShortcuts } from "./app-shortcuts.js";
-+import { Dialogs } from "./dialogs.js";
-@@ -29,0 +32 @@
-+            controllers={<AppShortcuts />}
-@@ -74,0 +78 @@
-+            <Dialogs />
-```
+Add New Note, Keyboard Shortcuts and About as GIO actions, move the preview toggle onto one, and run them from header bar buttons, a main menu and keyboard shortcuts.
+
+## Window actions
+
+A command that a menu item, a button and a key all run is a GIO action: a named command that each of them activates by its name. Declaring it once keeps them in step, so disabling the action greys out its menu item and button and stops its key. `src/components/window-actions.tsx` declares the window's actions as `GSimpleAction` elements:
+
+<<< @/figures/tutorial/actions-menus-shortcuts/src/components/window-actions.tsx [src/components/window-actions.tsx]
+
+- The window takes these elements in its `actions` prop, and each becomes an action named `win.` followed by its `name`, such as `win.new-note`. See [Declaring actions](/v2/guide/actions#declaring-actions).
+- New Note is `enabled` once the folder has loaded. Until then `notes` is `null`, and everything that runs the action shows it as unavailable.
+- Preview is a stateful action. Its state is a boolean `GLib.Variant` made from the window's `preview` state, and `onChangeState` stores the value it is asked to change to. Activating a boolean action that has no `onActivate` requests the opposite state, so the action toggles without one. See [Parameters and state](/v2/guide/actions#parameters-and-state).
+- Keyboard Shortcuts and About pass the dialog to show to `onShowDialog`. [Mount the dialogs](#mount-the-dialogs) renders it.
+- `useNoteCommands` holds the note commands that actions run, so far New Note. A command that fails shows its error in a toast. `useMarkup: false` shows the message as plain text, since an error message can contain characters such as `<` and `&` that markup would misread.
+
+New Note writes an empty `Untitled.md` and opens it. `createNote`, in `src/notes/files.ts`, tries `Untitled`, then `Untitled 2`, `Untitled 3` and so on:
+
+<<< @/figures/tutorial/actions-menus-shortcuts/src/notes/files.ts{70-91,93} [src/notes/files.ts]
+
+- The `wx` [flag](https://nodejs.org/api/fs.html#file-system-flags) makes `writeFile` fail with `EEXIST` when the file already exists instead of replacing it, so a new note never overwrites another, even one that another program created a moment before. Checking for the file and then writing it would leave a gap for that to happen.
+- `isTaken` recognizes that error and moves on to the next name. Any other error, such as a folder the app can't write to, ends the loop and reaches the toast.
+
+The provider's `create` adds the note to the list at once and tells the saver about the file:
+
+<<< @/figures/tutorial/actions-menus-shortcuts/src/notes/note-saver.ts{45-48} [src/notes/note-saver.ts]
+
+<<< @/figures/tutorial/actions-menus-shortcuts/src/notes/notes-provider.tsx{5,14,90-99,108-110} [src/notes/notes-provider.tsx]
+
+- Writing the file fires the folder watcher from [Watch the folder](/v2/tutorial/saving-and-watching#watch-the-folder). `remember` records the text as the app's own write, so the watcher skips the event, as it skips the saver's own saves.
+- `create` returns the name it used, which can differ from the one it was given.
+
+An action runs outside any screen, so it has no screen's `navigation` prop to open the note with. `src/navigation.ts` creates a navigation container ref, which the window passes to `NavigationContainer` below, and `openNote` navigates through it:
+
+<<< @/figures/tutorial/actions-menus-shortcuts/src/navigation.ts{1-5,14-15,29-33} [src/navigation.ts]
+
+See React Navigation's [Navigation ref](https://reactnavigation.org/docs/navigation-ref).
+
+## Menus
+
+The main menu sits at the end of the sidebar's header bar. `GMenu` describes it as data, and each item names the action it runs:
+
+<<< @/figures/tutorial/actions-menus-shortcuts/src/components/main-menu.tsx [src/components/main-menu.tsx]
+
+- `section` groups items between separators. Keyboard Shortcuts and About Notes go in the last group, and Quit stays out of the menu, as the [GNOME HIG](https://developer.gnome.org/hig/patterns/controls/menus.html) asks of a primary menu.
+- `primary` makes F10 open the menu.
+- An item whose action is disabled is greyed out, so New Note is unavailable while the folder loads. See [Menus](/v2/guide/actions#menus).
+
+The window moves from `src/app.tsx` into `src/components/window.tsx`, and its sidebar header gains a New Note button, the note count and the main menu:
+
+<<< @/figures/tutorial/actions-menus-shortcuts/src/components/window.tsx{26,44-52,59-65,68,81-82,92-98,103-106} [src/components/window.tsx]
+
+- `WindowActions` calls `useNotes` and `useToast`, so it must render inside `NotesProvider` and `ToastProvider`. It is a prop of the window, so the providers now wrap the window instead of sitting inside it. `Window` creates the toast overlay's ref for `ToastProvider`, and `NotesWindow` renders the overlay with it.
+- `NavigationContainer` takes `navigationRef`, which `openNote` navigates through.
+- The Notes screen's options fill its header bar: `headerTitle` replaces the plain title with `NotesTitle`, `headerStart` adds the New Note button, and `headerEnd` holds the main menu. See [Headers](/v2/guide/navigation#headers).
+- Both header buttons run actions through `actionName`, and follow them: the New Note button is unavailable while the folder loads, and the toggle button shows the preview action's state. The toggle no longer sets `preview` with `active` and `onNotifyActive`. Clicking it activates `win.preview`, which toggles the state as Ctrl+Shift+P does. See [Buttons](/v2/guide/actions#buttons).
+- The tooltips name each button's key, since a header bar button has nowhere else to show it.
+- `NotesWindow` keeps the `preview` state, which `WindowActions` and `NoteNavigation` share, and the `dialog` state for [Mount the dialogs](#mount-the-dialogs).
+
+`NotesTitle`, in `src/components/notes-screen.tsx`, shows the note count under the title, and the empty folder's status page gets a New Note button:
+
+<<< @/figures/tutorial/actions-menus-shortcuts/src/components/notes-screen.tsx{5,8,94-108,133-140,217} [src/components/notes-screen.tsx]
+
+- [`AdwWindowTitle`](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/class.WindowTitle.html) shows a title with a subtitle under it. The subtitle stays empty while the folder loads.
+- `t()` receives the singular and the plural source strings in `defaultValue_one` and `defaultValue_other`, and `count` picks one. [Translate the App](/v2/tutorial/internationalization) translates both. See [Plurals and context](/v2/guide/internationalization#plurals-and-context).
+- The `pill` and `suggested-action` [style classes](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/style-classes.html#pill) give the status page's button its rounded, accent-colored look.
+
+## Keyboard shortcuts
+
+`actionAccels` on the application element binds keys to actions by their prefixed names. The application element declares `quit` in its own `actions` prop, so its name is `app.quit`. `src/app.tsx` now holds only the application element:
+
+<<< @/figures/tutorial/actions-menus-shortcuts/src/app.tsx{1-2,4,8-23} [src/app.tsx]
+
+- Ctrl+N, Ctrl+? and Ctrl+Q are the [standard GNOME keys](https://developer.gnome.org/hig/reference/keyboard.html) for New, Keyboard Shortcuts and Quit. `<Control>question` is GTK's name for Ctrl+?.
+- A key for a `win.` action works in every window that has the action. Menus read the same table and show each key beside its item. See [Keyboard accelerators](/v2/guide/actions#keyboard-accelerators).
+- `quit()` from `@gtkx/react` ends the app, as closing the window does.
+
+`src/components/shortcuts.tsx` lists the keys in an `AdwShortcutsDialog`:
+
+<<< @/figures/tutorial/actions-menus-shortcuts/src/components/shortcuts.tsx [src/components/shortcuts.tsx]
+
+- An item with an `actionName` shows that action's keys from `actionAccels`, so changing a key in `src/app.tsx` updates the dialog too.
+- Ctrl+F belongs to no action: the `FocusShortcut` controller from [Focus search with Ctrl+F](/v2/tutorial/search-in-a-worker#focus-search-with-ctrl-f) handles it. Its item names the keys with `accelerator`.
+- The items describe shortcuts and don't register them. See [The shortcuts dialog](/v2/guide/actions#the-shortcuts-dialog).
+
+## Mount the dialogs
+
+Which dialog is open is React state. `NotesWindow` keeps a `dialog` value that the Keyboard Shortcuts and About actions set, and `src/components/dialogs.tsx` renders the matching dialog:
+
+<<< @/figures/tutorial/actions-menus-shortcuts/src/components/dialogs.tsx [src/components/dialogs.tsx]
+
+<<< @/figures/tutorial/actions-menus-shortcuts/src/components/about.tsx [src/components/about.tsx]
+
+- A dialog presents itself over the window when it mounts and closes when it unmounts. Its close button and Escape call `onClosed`, which sets `dialog` back to `none`. Without `onClosed` the dialog would stay open. See [Dialogs](/v2/guide/modals-and-portals#dialogs).
+- `Dialog` is a union keyed by `kind`, so a dialog can carry data: [Rename, Trash, and Undo](/v2/tutorial/trash-and-toasts) adds one that carries the name of the note to rename.
+- The about dialog's name, description and credits go through `t()`; the developer name and copyright stay as written. [`AdwAboutDialog`](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/class.AboutDialog.html) lists its other properties, and [About dialog metadata](/v2/guide/modals-and-portals#about-dialog-metadata) covers its credit and legal sections.
 
 ## Run it
 
-- Press Ctrl+N from the list and from an editor. Each new task opens above its list.
-- Press F10 on the task list. New Task shows Ctrl+N in the menu.
-- Open Keyboard Shortcuts with Ctrl+Shift+/ on a US keyboard, then dismiss it with Escape.
-- Press Escape in an editor to return to the list. In a narrow window, Back from the list returns to the sidebar.
-- Open a task, press Tab to leave the title field, and press Delete. The task moves to Trash; the next chapter closes its editor and offers Undo. In the title or notes field, Delete edits the text instead.
+Press Ctrl+N. An Untitled note opens in the editor, and the sidebar title counts one more note. Open the main menu: New Note and Keyboard Shortcuts show their keys. Ctrl+Shift+P switches to the preview and back, and the eye button follows. Ctrl+? opens the shortcuts dialog, and Ctrl+Q quits.
 
-## Next
-
-[Add Undo and Delete Confirmation](/v2/tutorial/trash-and-toasts) adds recoverable deletion and the New List dialog.
+<figure class="result">
+    <img class="result-light" src="/figures/tutorial-actions-menus-shortcuts-light.png" width="720" height="480" loading="lazy" alt="The Notes window with an empty Untitled note open and listed first in the sidebar, the sidebar title reading 6 notes, and the main menu open with New Note (Ctrl+N), Keyboard Shortcuts (Ctrl+?) and About Notes." />
+    <img class="result-dark" src="/figures/tutorial-actions-menus-shortcuts-dark.png" width="720" height="480" loading="lazy" alt="The Notes window with an empty Untitled note open and listed first in the sidebar, the sidebar title reading 6 notes, and the main menu open with New Note (Ctrl+N), Keyboard Shortcuts (Ctrl+?) and About Notes." />
+    <figcaption>Captured from <a href="#menus"><code>src/components/window.tsx</code></a> above, after Ctrl+N and with the main menu open.</figcaption>
+</figure>

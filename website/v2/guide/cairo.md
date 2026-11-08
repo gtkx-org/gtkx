@@ -5,7 +5,7 @@ description: "Use GTKX Cairo values in drawing callbacks and render images offsc
 
 # Cairo
 
-`@gtkx/cairo` provides the drawing objects used by GTKX's native bindings. Install it alongside the rest of your app:
+`@gtkx/cairo` provides the drawing objects used by GTKX's native bindings. Projects created with `create-gtkx` already depend on it; otherwise, install it:
 
 ```bash
 npm install @gtkx/cairo@beta
@@ -17,23 +17,15 @@ This guide covers the GTKX integration. For drawing techniques, use the [Cairo m
 
 Add a `GtkDrawingArea` inside your application's JSX tree. Its `drawFunc` receives a managed Cairo context and the widget's current dimensions:
 
-```tsx
-import { GtkDrawingArea } from "@gtkx/jsx/gtk";
+<<< @/figures/guide/cairo-circle.tsx [src/components/circle.tsx]
 
-const Circle = () => (
-    <GtkDrawingArea
-        contentWidth={200}
-        contentHeight={120}
-        drawFunc={(_area, cr, width, height) => {
-            cr.setSourceRgb(0.2, 0.4, 0.9);
-            cr.arc(width / 2, height / 2, Math.min(width, height) / 3, 0, 2 * Math.PI);
-            cr.fill();
-        }}
-    />
-);
-```
+<figure class="result">
+    <img class="result-light" src="/figures/guide-cairo-circle-light.png" width="360" height="260" loading="lazy" alt="A window titled Cairo filled by a drawing area with a blue circle at its center." />
+    <img class="result-dark" src="/figures/guide-cairo-circle-dark.png" width="360" height="260" loading="lazy" alt="A window titled Cairo filled by a drawing area with a blue circle at its center." />
+    <figcaption>Captured from the sample above. The area fills the window, so the circle follows the callback's <code>width</code> and <code>height</code> rather than the requested 200 × 120.</figcaption>
+</figure>
 
-Draw only inside this callback: do not update widget properties or React state from it. Keep the context local to the callback. GTKX releases it when the callback returns, so the callback does not need to release it. Releasing it there anyway is harmless; any drawing through the context after that throws.
+Draw only inside this callback: do not update widget properties or React state from it. Keep the context local to the callback: GTKX releases it when the callback returns, and any later call on it throws.
 
 Changing `drawFunc` queues a repaint, including when a render supplies a new callback. If drawing data changes without replacing the callback, call `queueDraw()` on the area obtained through its `ref`. Use the callback's dimensions when drawing; `contentWidth` and `contentHeight` request a size, which can differ from the allocated space.
 
@@ -83,7 +75,13 @@ Values returned by native libraries use their concrete wrapper classes. Check `s
 An `ImageSurface` lets you draw without a widget. Create a context for it, then save the result:
 
 ```ts
-import { Context, Format, ImageSurface, Status, statusToString } from "@gtkx/cairo";
+import {
+    Context,
+    Format,
+    ImageSurface,
+    Status,
+    statusToString,
+} from "@gtkx/cairo";
 
 const writeSwatch = (path: string): void => {
     const surface = new ImageSurface(Format.ARGB32, 256, 256);
@@ -108,10 +106,6 @@ Once released, every call on the context throws. Releasing it again does nothing
 
 ## Handle errors
 
-Creating an image with an invalid size or loading a missing PNG throws. Queries that cannot return a value also throw: for example, reading gradient stops from a solid pattern or requesting rectangles for a circular clip. Reading pixels from a finished surface throws too.
+Creating an image with an invalid size or loading a missing PNG throws. Queries that cannot return a value also throw: for example, reading gradient stops from a solid pattern or requesting rectangles for a circular clip.
 
 Drawing operations retain Cairo's status model. Check `cr.status()` after drawing; operations that return a `Status`, such as `writeToPng`, need their return value checked directly. Use `statusToString` when presenting an error.
-
-## Next
-
-Continue with [OpenGL](/v2/guide/opengl) to draw with the GPU inside a widget.

@@ -1,3 +1,8 @@
+/**
+ * Starts and controls the native Storybook explorer.
+ *
+ * @packageDocumentation
+ */
 import { createRoot } from "@gtkx/react";
 import { createElement } from "react";
 import type { StorySource } from "./catalog.js";

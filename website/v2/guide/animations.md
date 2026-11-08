@@ -28,25 +28,26 @@ export const FadeIn = () => {
 };
 ```
 
-Wrap generated elements, non-widget objects such as `GtkAdjustment`, or your own components. A module-scoped wrapper keeps its component identity between renders, and production builds retain only the elements the app uses.
+Wrap generated elements, non-widget objects such as `GtkAdjustment`, or your own components. There is no `animated.div`-style element map as in `@react-spring/web`; pass `animated` the element you import.
 
-For writable GObject props, each frame updates the native object through its `ref` without rerendering the component. This includes `opacity`, margins, size requests, and adjustment values. Construct-only props remain static, and TypeScript rejects springs passed to them. Labels and text children also accept animated values:
+For writable GObject props, each frame updates the native object through its `ref` without re-rendering the component. This includes `opacity`, margins, size requests, and adjustment values. Construct-only props remain static, and TypeScript rejects springs passed to them. A label's text children also accept animated values, alone or next to static text:
 
 ```tsx
 const { count } = useSpring({ from: { count: 0 }, to: { count: 100 } });
 
-<AnimatedLabel label={count.to((value) => `${Math.round(value)}%`)} />;
+<AnimatedLabel>
+    {count.to((value) => value.toFixed(0))}
+    {" items"}
+</AnimatedLabel>;
 ```
 
 GTKX truncates whole-number properties, such as margins, toward zero and clamps values to the native property range. An opacity spring cannot exceed 1, and margins cannot be negative. To slide a widget using a margin, animate from a positive margin to zero.
 
-A custom component that forwards its `ref` to the native object receives the same updates. Otherwise, the wrapper rerenders the component with the current values.
-
-Props that are not GObject properties, such as `accessible*`, animate by re-rendering the component on each frame. `style` is handled specially: animated declarations update the shared stylesheet imperatively, without re-rendering the component.
+A custom component that forwards its `ref` to the native object receives the same updates. Otherwise, and for props that are not GObject properties, such as `accessible*`, the wrapper re-renders the component with the current values on each frame.
 
 ## Animated styles
 
-GTK4 has no inline styles, so the [`style` prop](/v2/guide/css) serializes its object into a rule in GTKX's shared `Gtk.CssProvider`. A spring can drive the whole object or one declaration, and updates made during the same animation turn are applied with one provider reload:
+The [`style` prop](/v2/guide/css#style-one-widget) accepts springs too. GTKX writes animated declarations into its shared `Gtk.CssProvider` without re-rendering the component, and reloads the provider once for all the updates of one frame. A spring can drive the whole object or one declaration:
 
 ```tsx
 import { animated, useSpring } from "@gtkx/animated";
@@ -54,15 +55,14 @@ import { GtkLabel } from "@gtkx/jsx/gtk";
 
 const AnimatedLabel = animated(GtkLabel);
 
+const overdueColor = (value: number) => ({
+    color: `mix(var(--window-fg-color), var(--error-color), ${value})`,
+});
+
 export const Deadline = ({ isOverdue }: { isOverdue: boolean }) => {
     const { level } = useSpring({ level: isOverdue ? 1 : 0 });
 
-    return (
-        <AnimatedLabel
-            label="Due today"
-            style={level.to((value) => ({ color: `mix(var(--window-fg-color), var(--error-color), ${value})` }))}
-        />
-    );
+    return <AnimatedLabel label="Due today" style={level.to(overdueColor)} />;
 };
 ```
 
@@ -72,12 +72,15 @@ The spring carries a number and the interpolation builds the declaration around 
 const styles = useSpring({ from: { color: "red" }, to: { color: "blue" } });
 
 <AnimatedLabel style={styles} label="Due today" />;
-<AnimatedLabel style={{ color: styles.color, paddingTop: 4 }} label="Due today" />;
+<AnimatedLabel
+    style={{ color: styles.color, paddingTop: 4 }}
+    label="Due today"
+/>;
 ```
 
 Nested blocks work too, so <span v-pre>`style={{ "&:hover": { color: styles.color } }}`</span> is animated without a React render. Only `style` is read this way; a spring nested inside another object-valued prop is not tracked.
 
-A provider reload invalidates styling across the display. Prefer a native property for effects it can express, or a CSS `transition` or `@keyframes` for a fixed state change. Use animated `style` for dynamic CSS values, and profile large trees with many animations. For custom drawing, use `GtkDrawingArea` and call `queueDraw()` as values change.
+A provider reload invalidates styling across the display. Prefer a native property for effects it can express, or a CSS `transition` or `@keyframes` for a fixed state change. Use animated `style` for dynamic CSS values, and profile large trees with many animations. For custom drawing, call `queueDraw()` on a [`GtkDrawingArea`](/v2/guide/cairo#draw-in-a-widget) as values change.
 
 ## Moving widgets
 
@@ -91,7 +94,8 @@ import { GtkButton, GtkFixed, GtkFixedLayoutChild } from "@gtkx/jsx/gtk";
 
 const AnimatedFixedLayoutChild = animated(GtkFixedLayoutChild);
 
-const translate = (x: number): Gsk.Transform | null => Gsk.Transform.new().translate(new Graphene.Point({ x, y: 0 }));
+const translate = (x: number): Gsk.Transform | null =>
+    Gsk.Transform.new().translate(new Graphene.Point({ x, y: 0 }));
 
 export const Slide = ({ isOpen }: { isOpen: boolean }) => {
     const { x } = useSpring({ x: isOpen ? 240 : 0 });
@@ -110,7 +114,7 @@ Elsewhere, animate the margins, the size requests, a `Gtk.Paned`'s `position`, o
 
 ## React Spring APIs
 
-`@gtkx/animated` re-exports React Spring's platform-neutral APIs. Use the [React Spring documentation](https://www.react-spring.dev) to choose and configure hooks, transitions, and controllers, then pass their animated values to GTKX props as shown above. Browser hooks that depend on the DOM have no GTK counterpart and are not exported.
+`@gtkx/animated` re-exports React Spring's platform-neutral APIs, so import hooks such as `useSpring` and `useTransition` from it rather than from `@react-spring/web`. DOM hooks such as [`useScroll`](https://www.react-spring.dev/docs/utilities/use-scroll) and [`useInView`](https://www.react-spring.dev/docs/utilities/use-in-view) have no GTK counterpart and are not exported.
 
 ## The frame clock
 
@@ -120,13 +124,9 @@ Frames advance during the update phase of a mapped window's GTK frame clock, bef
 
 GTK exposes two settings with different effects:
 
-- `gtk-enable-animations` disables motion across the toolkit. When false, GTKX springs jump to their targets while still running their lifecycle callbacks, and a `loop` stops after its current pass. GTKX applies each change of this setting to React Spring's `Globals.skipAnimation`, so an in-app preference can set `skipAnimation` itself; the next change of the setting overrides it.
+- `gtk-enable-animations` disables motion across the toolkit. When false, GTKX springs jump to their targets while still running their lifecycle callbacks, and a `loop` stops after its current pass. GTKX applies each change of this setting to React Spring's [`Globals.skipAnimation`](https://www.react-spring.dev/docs/advanced/globals), so an in-app preference can set `skipAnimation` itself; the next change of the setting overrides it.
 - `gtk-interface-reduced-motion`, available in GTK 4.22 and later, asks applications to reduce motion. It also drives GTK's `prefers-reduced-motion` media query. Springs keep running; the component chooses an alternative, such as a fade instead of a slide.
 
 `useReducedMotion()` returns `true` when either preference calls for less motion, `false` otherwise, and `null` before a display is open. It updates when the settings change.
 
 `@gtkx/testing` disables animations by default, so springs reach their targets on the first frame. Assert the result with `findBy*` or `waitFor`. Pass `areAnimationsEnabled: true` to `render` when the test needs to exercise motion.
-
-## Next
-
-Continue with [Cairo](/v2/guide/cairo) to draw 2D graphics inside a widget.

@@ -1,67 +1,37 @@
 ---
-description: "Collapse the sidebar and task list into one pane on narrow windows."
+description: "Collapse the split view on narrow windows and keep the window usable at phone size."
 ---
 
 # Adapt the Layout
 
-The [sidebar and task list](/v2/tutorial/lists-and-the-sidebar) fit beside each other in a wide window. At the minimum width of 360 logical pixels, they need to share one pane. Give the split view navigator a breakpoint condition so it collapses the panes and handles moving between them.
+Show the note list and the open note one at a time in narrow windows, size the sidebar, and keep the window usable at phone size.
 
-## Collapse below a breakpoint
+## Collapse on narrow windows
 
-In `src/components/window.tsx`, pass `collapseCondition` to `Split.Navigator`:
+[Edit a Note](/v2/tutorial/the-note-editor) opens the window at 720 by 480, wide enough for the note list and the note side by side. On a phone, or in a window tiled to a third of a screen, there is no room for both. Add these props to `Split.Navigator` in `src/app.tsx`:
 
-```diff [src/components/window.tsx]
-@@ -16,0 +17 @@
-+                    collapseCondition="max-width: 500sp"
-```
+<<< @/figures/tutorial/an-adaptive-layout/src/app.tsx{40-43} [src/app.tsx]
 
-The panes collapse while the condition holds and return side by side when the window grows again. The navigator measures the condition against its own size, which here is the whole window. libadwaita applies it while it lays out the window, as it does for an `AdwBreakpoint`, so the navigator changes layout before GTK moves keyboard focus. The window's `widthRequest` and `heightRequest` set the smallest size the collapsed layout must fit.
+`collapseCondition` takes a libadwaita [breakpoint condition](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/type_func.BreakpointCondition.parse.html). While the navigator is 500sp wide or narrower, the split view collapses: the note list fills the window, and selecting a note opens it in its place, with a back button in its header bar that returns to the list. Widen the window past 500sp and the panes sit side by side again, with the open note still selected.
 
-The condition uses the [`Adw.BreakpointCondition` syntax](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/type_func.BreakpointCondition.parse.html). It is parsed at runtime, so TypeScript cannot catch a malformed condition string.
+An sp is a pixel at the default text size and grows with the Large Text setting ([`AdwLengthUnit`](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/enum.LengthUnit.html)), so readers with larger text get the one-pane layout in wider windows. The condition is measured against the navigator rather than the window; [Split view navigator](/v2/guide/navigation#split-view-navigator) explains why it beats setting `collapsed` from a window breakpoint.
 
-Use `sp` for the threshold so it grows with the text scale. At the default text size, `500sp` equals `500px`; with the standard Large Text setting it equals `625px`. See [Adwaita's length units](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/enum.LengthUnit.html).
+## Size the sidebar
 
-Here `px` means logical window coordinates, not physical display pixels. GTK maps window coordinates to device pixels using the [display scale](https://docs.gtk.org/gtk4/method.Widget.get_scale_factor.html). A threshold in `px` follows display scaling but does not grow with the text scale.
+The other props bound the sidebar while the panes sit side by side. `sidebarWidthFraction` asks for 30% of the width, and `minSidebarWidth` and `maxSidebarWidth` keep it between 220 and 320, in sp like the condition. At the default size the sidebar gets 220; in a maximized window it stops at 320 and the note takes the rest. libadwaita's defaults (25%, between 180 and 280) leave less room for note names, which the rows cut off with an ellipsis.
 
-Keep the selected page in navigation state. The navigator handles the back button, keyboard navigation, and swipe gestures without a separate selected-pane field.
+The minimum and the condition go together: in the narrowest side-by-side layout, the note pane still gets about 280 beside the sidebar's 220.
 
-## Fill the empty content pane
+## Fit a phone screen
 
-In a collapsed window, going back from the task list returns to the sidebar and empties the content stack. Widening the window then leaves an empty content pane. Use `contentPlaceholder` to explain what to do next.
-
-Above `Window`, add `NothingSelected`:
-
-```diff [src/components/window.tsx]
-@@ -1 +1 @@
--import { AdwApplicationWindow } from "@gtkx/jsx/adw";
-+import { AdwApplicationWindow, AdwStatusPage } from "@gtkx/jsx/adw";
-@@ -7,0 +8,8 @@
-+
-+const NothingSelected = () => (
-+    <AdwStatusPage
-+        iconName="view-list-symbolic"
-+        title="Nothing Selected"
-+        description="Pick a list or a smart view in the sidebar"
-+    />
-+);
-```
-
-Pass it to the navigator:
-
-```diff [src/components/window.tsx]
-@@ -28,0 +29 @@
-+                    contentPlaceholder={<NothingSelected />}
-```
-
-When the content stack is empty, `useSelection` returns `null`. The sidebar's `lists.findIndex` then returns `-1`, which clears `selectedIndex`. GTKX suppresses the resulting `row-selected` signal when applying that prop, so clearing the highlight does not navigate again.
+[Create a Window](/v2/tutorial/your-first-window) set `widthRequest` and `heightRequest` to 360 by 294, the smallest size the GNOME HIG asks phone-friendly apps to support. That size now matters: a breakpoint takes away the navigator's own minimum size, so the window's size request is the only floor (see [`AdwBreakpointBin`](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/class.BreakpointBin.html#minimum-size)). At 360 the split view is collapsed, and each pane fits the width on its own.
 
 ## Run it
 
-1. Narrow the window past the `500sp` threshold. The task list appears alone with a back arrow because `initialRouteName="Tasks"` opens it at startup.
-2. Go back to the sidebar. Select a list, then try the back arrow, <kbd>Escape</kbd>, <kbd>Alt</kbd> + <kbd>Left</kbd>, or a touchpad back gesture.
-3. Return to the sidebar and widen the window. No row is selected, and the content pane shows **Nothing Selected**. Select a list to restore its tasks.
-4. Enable Large Text in the desktop accessibility settings and resize again. The panes should collapse at a wider window size. Restore your preferred text size afterward.
+Narrow the window until the sidebar and the note no longer sit side by side, then open Website relaunch. The note fills the window, and the back button in its header bar returns to the list.
 
-## Next
-
-[Filter and Search Tasks](/v2/tutorial/smart-views-and-search) adds All Tasks, Today, Important, and Trash.
+<figure class="result">
+    <img class="result-light" src="/figures/tutorial-an-adaptive-layout-light.png" width="360" height="480" loading="lazy" alt="The Notes window at 360 pixels wide, collapsed to one pane: Website relaunch open in the editor under a header bar with a back button." />
+    <img class="result-dark" src="/figures/tutorial-an-adaptive-layout-dark.png" width="360" height="480" loading="lazy" alt="The Notes window at 360 pixels wide, collapsed to one pane: Website relaunch open in the editor under a header bar with a back button." />
+    <figcaption>Captured from <a href="#collapse-on-narrow-windows"><code>src/app.tsx</code></a> above, with the window at 360 by 480 after opening Website relaunch.</figcaption>
+</figure>

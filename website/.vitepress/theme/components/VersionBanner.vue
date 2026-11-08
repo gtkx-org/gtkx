@@ -12,45 +12,52 @@ const notice = computed(() => {
         return undefined;
     }
 
-    const lead =
-        active.status === "prerelease"
-            ? `These docs follow main and may include changes after GTKX ${active.label}.`
-            : `GTKX ${active.label} is no longer the current release.`;
+    const samePage = isSamePage(currentVersion);
 
     return {
-        lead,
+        lead: active.status === "prerelease" ? "Prerelease docs" : "Older release",
         href: link(currentVersion),
-        text: isSamePage(currentVersion)
-            ? `Read this page for GTKX ${currentVersion.label}`
-            : `Read the GTKX ${currentVersion.label} documentation`,
+        text: currentVersion.label,
+        label: samePage ? `Read this page for ${currentVersion.label}` : `Read the ${currentVersion.label} docs`,
     };
 });
 </script>
 
 <template>
     <aside v-if="notice" class="version-banner" role="note">
+        <span class="dot" aria-hidden="true"></span>
         <p>
-            {{ notice.lead }}
-            <a :href="notice.href">{{ notice.text }}</a
-            >, or see <a href="/versions">all documentation versions</a>.
+            {{ notice.lead }} · <a :href="notice.href" :aria-label="notice.label">{{ notice.text }}</a> ·
+            <a href="/versions">All versions</a>
         </p>
     </aside>
 </template>
 
 <style scoped>
 .version-banner {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
     margin: 0 0 24px;
-    border: 1px solid var(--vp-c-warning-1, var(--vp-c-divider));
     border-radius: 8px;
-    padding: 12px 16px;
-    background: var(--vp-c-warning-soft, var(--vp-c-bg-soft));
+    padding: 6px 12px;
+    background: var(--vp-c-bg-alt);
+}
+
+.dot {
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--yellow-500);
+    transform: translateY(-1px);
 }
 
 .version-banner p {
     margin: 0;
-    font-size: 14px;
-    line-height: 1.6;
-    color: var(--vp-c-text-1);
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--vp-c-text-2);
 }
 
 .version-banner a {
@@ -58,5 +65,13 @@ const notice = computed(() => {
     color: var(--vp-c-brand-1);
     text-decoration: underline;
     text-underline-offset: 2px;
+}
+
+@media (max-width: 639px) {
+    .version-banner {
+        margin: -16px 0 16px;
+        padding: 0;
+        background: none;
+    }
 }
 </style>

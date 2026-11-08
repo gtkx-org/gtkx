@@ -1,134 +1,97 @@
 ---
-description: "Give Tasks an icon, desktop metadata, and installable packages."
+description: "Describe Notes for launchers and software centers, give it an icon, and build deb, rpm and AppImage packages."
 ---
 
 # Package the App
 
-The app now has a [test suite](/v2/tutorial/testing). Use `gtkx deploy` to package it with an icon, desktop entry, settings schema, and Node.js runtime.
+Describe Notes for launchers and software centers, give it an icon, and build packages that install it like any other desktop app.
 
-## Name the release
+A Linux desktop learns about an installed app from two files: a [desktop entry](https://specifications.freedesktop.org/desktop-entry-spec/latest/), which launchers read for the app's name, icon and command, and [AppStream metadata](https://www.freedesktop.org/software/appstream/docs/chap-Metadata.html), which software centers read for its description, screenshots and releases. `gtkx deploy` generates both from `gtkx.config.ts` and `package.json`, validates them, and packages them with the build. [Deploying](/v2/guide/deploying) covers every target and option.
 
-Merge these fields into `package.json`, keeping its existing dependencies and scripts:
+## Application metadata
 
-```json [package.json] merge
+The scaffold's `deploy` block holds placeholders. Replace it with Notes' own metadata:
+
+<<< @/figures/tutorial/packaging/gtkx.config.ts{9-10,12-14,16-45} [gtkx.config.ts]
+
+`name`, `genericName`, `summary`, `keywords` and `categories` go into the desktop entry; the categories come from the freedesktop [category registry](https://specifications.freedesktop.org/menu-spec/latest/category-registry.html). The description paragraphs, `urls`, `screenshots`, `releases` and the `branding` colors are for software centers. List each new version in `releases`, newest first, with its notes. Without the list, GTKX writes a single release for the current version, dated the day of the build.
+
+`isDbusActivatable` makes the launcher start Notes through the session bus instead of running its command, and GTKX installs the D-Bus service file this needs. `targets` lists the formats `npm run deploy` builds. The RPM package already requires GtkSourceView's shared library, which RPM resolves to whichever package ships it. A Debian package can depend only on package names, so `depends.deb` names the one that ships the library. Without it, the `.deb` installs on a system that lacks GtkSourceView and Notes fails to start; see [Runtime and library requirements](/v2/guide/deploying#runtime-and-library-requirements).
+
+GTKX takes the version, license and homepage from `package.json`, and the developer from `author`, which the scaffold set to your Git `user.name`. Set the others there:
+
+```json [package.json]
 {
-    "name": "gtkx-tutorial",
     "version": "1.0.0",
     "license": "MPL-2.0",
-    "description": "Tasks app from the GTKX tutorial",
-    "author": "GTKX <hello@gtkx.dev>",
     "homepage": "https://gtkx.dev"
 }
 ```
 
-Refresh the lockfile after updating the package metadata:
+Notes runs as a single instance: opening it from the launcher while it runs activates the running instance instead of starting a second one. Present the window there, or the launcher appears to do nothing, as [The application element](/v2/guide/application-lifecycle#the-application-element) explains:
 
-```bash
-npm install --package-lock-only
-```
+<<< @/figures/tutorial/packaging/src/app.tsx{10-12} [src/app.tsx]
 
-Save the tutorial's [LICENSE](https://github.com/gtkx-org/gtkx/blob/main/tutorial/LICENSE) in the project root. Keep the updated lockfile; the later Flatpak source build uses it to install dependencies offline.
+Notes is translated, so its metadata needs French text too. The next `npm run deploy` adds the name, summary, description, keywords, screenshot captions and release notes to the template and to `po/fr.po`. Translate them as in [Translate the App](/v2/tutorial/internationalization#add-a-translation), and the packages carry them in both the desktop entry and the AppStream metadata; see [Translate package metadata](/v2/guide/internationalization#translate-package-metadata).
 
-## Add the application icons
+## Icons and screenshots
 
-Copy the tutorial's [full-color icon](https://github.com/gtkx-org/gtkx/blob/main/tutorial/data/icons/hicolor/scalable/apps/com.gtkx.tutorial.svg) and [symbolic icon](https://github.com/gtkx-org/gtkx/blob/main/tutorial/data/icons/hicolor/symbolic/apps/com.gtkx.tutorial-symbolic.svg) into these paths:
+`applicationIcon: "data/icons"` points at an icon theme directory. GTKX adds it to the icon theme under `npm run dev` and installs it with every package, so the desktop finds the icon by the application ID. Replace the scaffold's placeholder with the Notes icon and add its symbolic variant, both from the finished app's [`data/icons`](https://github.com/gtkx-org/gtkx/tree/main/tutorial/data/icons); the GNOME HIG describes both kinds of [app icon](https://developer.gnome.org/hig/guidelines/app-icons.html):
 
 ```text
-data/icons/hicolor/scalable/apps/com.gtkx.tutorial.svg
-data/icons/hicolor/symbolic/apps/com.gtkx.tutorial-symbolic.svg
+data/icons/hicolor/scalable/apps/dev.gtkx.Notes.svg
+data/icons/hicolor/symbolic/apps/dev.gtkx.Notes-symbolic.svg
 ```
 
-The configuration keeps `applicationIcon: "data/icons"`. GTKX copies this icon tree into the build and installed packages. The filenames match the application ID already used by the window and About dialog.
+The About dialog shows the icon and the version. `virtual:gtkx-config` is a module GTKX generates from `gtkx.config.ts`, and its `applicationId` names the icon; the version is read from `package.json`:
 
-For your own artwork, follow the [GNOME app icon guidelines](https://developer.gnome.org/hig/guidelines/app-icons.html).
+<<< @/figures/tutorial/packaging/src/components/about.tsx{4-5,11-12} [src/components/about.tsx]
 
-## Describe the app
+`screenshots` lists the PNGs in [`assets/`](https://github.com/gtkx-org/gtkx/tree/main/tutorial/assets). Software centers download each one over the network, so the metadata gives its URL: the file's path under `screenshotBaseUrl`. Without `screenshotBaseUrl`, GTKX builds the URL from the project's GitHub or GitLab remote and default branch; Notes points at the copies in the GTKX repository. Push the screenshots before you publish a package.
 
-Replace `gtkx.config.ts` with the complete configuration below:
+## Build the packages
 
-```ts [gtkx.config.ts]
-import { defineConfig } from "@gtkx/config";
-
-export default defineConfig({
-    applicationId: "com.gtkx.tutorial",
-    applicationIcon: "data/icons",
-    deploy: {
-        name: "Tasks",
-        genericName: "Task Manager",
-        binaryName: "gtkx-tutorial",
-        summary: "Manage your tasks and to-dos",
-        description: [
-            "Tasks lets you organize to-dos into lists, set reminders, and track completed work. Built with GTKX, React, and Adwaita.",
-        ],
-        categories: ["Office", "ProjectManagement"],
-        keywords: ["Task", "Tasks", "Todo", "To-do", "Checklist"],
-        isDbusActivatable: true,
-        desktopEntry: { "X-GNOME-UsesNotifications": "true" },
-        targets: ["flatpak", "deb", "rpm", "appimage"],
-    },
-});
-```
-
-GTKX derives the version, license, author, and homepage from `package.json`. It uses this configuration to generate the desktop entry and AppStream metadata.
-
-The notification entry lists Tasks in the desktop's notification settings. D-Bus activation lets notification actions reach the app when it is closed. These settings complete the [reminder](/v2/tutorial/reminders) workflow.
-
-The [finished configuration](https://github.com/gtkx-org/gtkx/blob/main/tutorial/gtkx.config.ts) also includes screenshots and release notes. Add those when preparing your own release; the [configuration reference](/v2/reference/@gtkx/config/index/type-aliases/Config) describes the available options.
-
-## Build and preview
-
-The dev server can stay open while you build. Stop it before you start the bundle:
-
-```bash
-npm run build
-node dist/bundle.mjs
-```
-
-Both runs use the same application ID, so a bundle started while the development app is open only brings that window to the front and exits.
-
-Keep the whole `dist/` directory together. The bundle loads its native addon, compiled settings, and other assets from that directory. Running it directly still requires a compatible Node.js version, native libraries, and CPU architecture; the package command below supplies Node.js.
-
-Preview the deployment files before packaging:
+Preview the metadata first. The command builds the app, validates the desktop entry and AppStream metadata, writes them to `build/<arch>/metadata/` and the package manifests to `build/<arch>/targets/`, and stops before creating packages:
 
 ```bash
 npm run deploy -- --print-manifests
 ```
 
-GTKX builds the app, validates its metadata, and writes the install tree and target manifests under `build/<arch>/`. Open the generated desktop entry and metainfo in `build/<arch>/metadata/` and check the name, icon, description, and application ID. The command stops before creating packages.
+An excerpt of the generated desktop entry shows where the values went. The command, `gtkx-notes`, is the `name` in `package.json`:
 
-## Create packages
-
-Build the AppImage, deb, and rpm packages:
-
-```bash
-npm run deploy -- --target appimage,deb,rpm
+```ini [build/x64/metadata/dev.gtkx.Notes.desktop]
+[Desktop Entry]
+Type=Application
+Name=Notes
+GenericName=Markdown Notes
+Comment=Write Markdown notes kept as plain files
+Exec=gtkx-notes
+Icon=dev.gtkx.Notes
+Categories=Utility;TextEditor;
+Keywords=Notes;Markdown;Notebook;Writing;
+DBusActivatable=true
 ```
 
-The artifacts appear in `build/out/`. GTKX downloads and verifies the required packaging tools and Node.js runtime, then caches them. It also includes the app's license and notices for bundled dependencies. The [deploying guide](/v2/guide/deploying) explains target dependencies and cross-architecture builds.
-
-Choose the package appropriate for your machine. For an x64 build, use one of:
+`npm run deploy` builds each target in `targets` into `build/out`. The Flatpak can't reach the notes folder until [Prepare for Flathub](/v2/tutorial/flatpak) grants it, so build the other formats now:
 
 ```bash
-sudo apt install ./build/out/gtkx-tutorial_1.0.0-1_amd64.deb
+npm run deploy -- --target deb,rpm,appimage
 ```
 
-```bash
-sudo dnf install ./build/out/gtkx-tutorial-1.0.0-1.x86_64.rpm
-```
-
-Or run the AppImage:
-
-```bash
-chmod +x build/out/Tasks-1.0.0-x86_64.AppImage
-./build/out/Tasks-1.0.0-x86_64.AppImage
-```
-
-If deployment reports missing tools, follow its installation instructions or select fewer targets. Packaging a deb or rpm does not require running the corresponding distribution.
+The first run downloads the Node.js runtime that the packages bundle and the packaging tools. The command reports any missing system tool with an installation hint; see [Build tools](/v2/guide/deploying#build-tools).
 
 ## Run it
 
-For an installed package, find **Tasks** in the application launcher and confirm its icon appears. Open it, add a task, quit, and reopen it to check persistence. Check that Tasks appears in the desktop's notification settings.
+Install the package for your distribution, on Fedora with `sudo dnf install ./build/out/*.rpm` and on Debian or Ubuntu with `sudo apt install ./build/out/*.deb`. Notes appears in the launcher with its icon. The package is named `gtkx-notes`, which is also what you remove later. The AppImage runs without installing:
 
-## Next
+```bash
+./build/out/Notes-*.AppImage
+```
 
-[Translate the App](/v2/tutorial/internationalization) adds a French catalog to the interface and package metadata. The last chapter builds the Flatpak.
+Open the main menu and choose **About Notes**.
+
+<figure class="result">
+    <img class="result-light" src="/figures/tutorial-packaging-light.png" width="720" height="480" loading="lazy" alt="The Notes window with the About dialog open: the yellow Notes icon with a Markdown heading mark, the name Notes, the developer GTKX, the version 1.0.0, and Details and Report an Issue rows." />
+    <img class="result-dark" src="/figures/tutorial-packaging-dark.png" width="720" height="480" loading="lazy" alt="The Notes window with the About dialog open in the dark style: the yellow Notes icon with a Markdown heading mark, the name Notes, the developer GTKX, the version 1.0.0, and Details and Report an Issue rows." />
+    <figcaption>Captured from <a href="#icons-and-screenshots"><code>src/components/about.tsx</code></a> above, after choosing About Notes.</figcaption>
+</figure>

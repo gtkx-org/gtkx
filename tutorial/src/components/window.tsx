@@ -1,104 +1,61 @@
-import type * as Adw from "@gtkx/gi/adw";
-import type { RefObject } from "react";
 import { ToastProvider } from "@gtkx/components";
+import * as Adw from "@gtkx/gi/adw";
 import { useTranslation } from "@gtkx/i18n";
 import { AdwApplicationWindow, AdwStatusPage, AdwToastOverlay } from "@gtkx/jsx/adw";
 import { GtkButton } from "@gtkx/jsx/gtk";
 import { NavigationContainer } from "@gtkx/navigation";
 import { quit, useBindSetting, useSetting } from "@gtkx/react";
-import { useEffect, useRef, useState } from "react";
-import schema from "../../data/com.gtkx.tutorial.gschema.xml";
-import { useReminders } from "../hooks/use-reminders.js";
-import { ALL_TASKS, navigationRef, openPendingTask, Split } from "../navigation.js";
-import { ReminderNotification } from "../notifications.js";
-import { useStore } from "../store/index.js";
-import { selectionTitle } from "../store/selectors.js";
-import { applyColorScheme } from "../theme.js";
-import { AppShortcuts } from "./app-shortcuts.js";
-import { Dialogs } from "./dialogs.js";
+import { type RefObject, useEffect, useRef, useState } from "react";
+import { navigationRef, openNoteName, Split } from "../navigation.js";
+import { defaultFolder } from "../notes/files.js";
+import { NotesProvider } from "../notes/notes-provider.js";
+import { COLOR_SCHEMES, schema, useAppSettings } from "../settings.js";
+import { type Dialog, Dialogs } from "./dialogs.js";
 import { MainMenu } from "./main-menu.js";
-import { SearchButton } from "./search-button.js";
-import { useAppSettings } from "./settings.js";
-import { Sidebar } from "./sidebar.js";
-import { TaskButtons } from "./task-buttons.js";
-import { TaskScreen } from "./task-screen.js";
-import { TaskTitle } from "./task-title.js";
-import { TasksScreen } from "./tasks-screen.js";
-import { WindowActions } from "./window-actions.js";
+import { NoteMenu, PreviewToggle } from "./note-menu.js";
+import { NoteScreen } from "./note-screen.js";
+import { NotesScreen, NotesTitle } from "./notes-screen.js";
+import { useNoteCommands, WindowActions } from "./window-actions.js";
 
-const NothingSelected = () => {
+const NoteNavigation = ({ onOpenNameChange }: { onOpenNameChange: (name: string | null) => void }) => {
     const { t } = useTranslation();
 
     return (
-        <AdwStatusPage
-            iconName="view-list-symbolic"
-            title={t("Nothing Selected")}
-            description={t("Pick a list or a smart view in the sidebar")}
-        />
-    );
-};
-
-const NewListButton = () => {
-    const { t } = useTranslation();
-    const showDialog = useStore((state) => state.showDialog);
-
-    return (
-        <GtkButton
-            iconName="list-add-symbolic"
-            tooltipText={t("New List")}
-            onClicked={() => {
-                showDialog("new-list");
-            }}
-        />
-    );
-};
-
-const NewTaskButtons = () => {
-    const { t } = useTranslation();
-
-    return (
-        <>
-            <GtkButton iconName="list-add-symbolic" tooltipText={t("New Task (Ctrl+N)")} actionName="win.new" />
-            <SearchButton />
-        </>
-    );
-};
-
-const TaskNavigation = () => {
-    const { t } = useTranslation();
-    const lists = useStore((state) => state.lists);
-
-    return (
-        <NavigationContainer ref={navigationRef} onReady={openPendingTask}>
+        <NavigationContainer ref={navigationRef} onStateChange={() => onOpenNameChange(openNoteName())}>
             <Split.Navigator
-                initialRouteName="Tasks"
                 collapseCondition="max-width: 500sp"
-                sidebarWidthFraction={0.25}
+                sidebarWidthFraction={0.3}
                 minSidebarWidth={220}
-                maxSidebarWidth={300}
-                contentPlaceholder={<NothingSelected />}
+                maxSidebarWidth={320}
+                contentPlaceholder={<AdwStatusPage iconName="document-edit-symbolic" title={t("No Note Selected")} />}
             >
                 <Split.Screen
-                    name="Lists"
-                    component={Sidebar}
-                    options={{ title: t("Tasks"), headerStart: <NewListButton /> }}
-                />
-                <Split.Screen
-                    name="Tasks"
-                    component={TasksScreen}
-                    initialParams={ALL_TASKS}
-                    options={({ route }) => ({
-                        title: selectionTitle(route.params, lists),
-                        headerStart: <NewTaskButtons />,
+                    name="Notes"
+                    component={NotesScreen}
+                    options={{
+                        title: t("Notes"),
+                        headerTitle: <NotesTitle />,
+                        headerStart: (
+                            <GtkButton
+                                iconName="document-new-symbolic"
+                                tooltipText={t("New Note (Ctrl+N)")}
+                                actionName="win.new-note"
+                            />
+                        ),
                         headerEnd: <MainMenu />,
-                    })}
+                    }}
                 />
                 <Split.Screen
-                    name="Task"
-                    component={TaskScreen}
+                    name="Note"
+                    component={NoteScreen}
                     options={({ route }) => ({
-                        headerTitle: <TaskTitle id={route.params.id} />,
-                        headerEnd: <TaskButtons id={route.params.id} />,
+                        title: route.params.name,
+                        headerEnd: (
+                            <>
+                                <NoteMenu />
+                                <PreviewToggle />
+                            </>
+                        ),
                     })}
                 />
             </Split.Navigator>
@@ -106,51 +63,61 @@ const TaskNavigation = () => {
     );
 };
 
-const WindowContent = ({ toastOverlayRef }: { toastOverlayRef: RefObject<Adw.ToastOverlay | null> }) => {
+const NotesWindow = ({ toastOverlayRef }: { toastOverlayRef: RefObject<Adw.ToastOverlay | null> }) => {
     const { t } = useTranslation();
-
     const settings = useAppSettings();
-    const [colorScheme] = useSetting(settings, schema, "color-scheme");
+    const { renameNote, showError } = useNoteCommands();
     const [window, setWindow] = useState<Adw.ApplicationWindow | null>(null);
+    const [dialog, setDialog] = useState<Dialog>({ kind: "none" });
+    const [openName, setOpenName] = useState<string | null>(null);
 
     useBindSetting({ settings, schema, key: "window-width", object: window, property: "defaultWidth" });
     useBindSetting({ settings, schema, key: "window-height", object: window, property: "defaultHeight" });
 
-    useEffect(() => {
-        applyColorScheme(colorScheme);
-    }, [colorScheme]);
-
     return (
         <AdwApplicationWindow
             ref={setWindow}
-            title={t("Tasks")}
+            title={t("Notes")}
             widthRequest={360}
             heightRequest={294}
             onCloseRequest={() => quit()}
-            actions={<WindowActions />}
-            controllers={<AppShortcuts />}
+            actions={<WindowActions openName={openName} onShowDialog={setDialog} />}
         >
             <AdwToastOverlay ref={toastOverlayRef}>
-                <TaskNavigation />
+                <NoteNavigation onOpenNameChange={setOpenName} />
             </AdwToastOverlay>
-            <Dialogs />
+            <Dialogs
+                dialog={dialog}
+                onClose={() => setDialog({ kind: "none" })}
+                onRename={(from, to) => void renameNote(from, to)}
+                onError={showError}
+            />
         </AdwApplicationWindow>
     );
 };
 
 const Window = () => {
-    const tasks = useStore((state) => state.tasks);
     const settings = useAppSettings();
-    const [reminderMinutes] = useSetting(settings, schema, "reminder-minutes");
-    const reminders = useReminders(tasks, reminderMinutes);
+    const [folderSetting] = useSetting(settings, schema, "folder");
+    const [colorScheme] = useSetting(settings, schema, "color-scheme");
     const toastOverlayRef = useRef<Adw.ToastOverlay | null>(null);
+    const folder = folderSetting === "" ? defaultFolder() : folderSetting;
+
+    useEffect(() => {
+        Adw.StyleManager.getDefault().setColorScheme(COLOR_SCHEMES[colorScheme].value);
+    }, [colorScheme]);
+
+    useEffect(() => {
+        if (openNoteName() !== null) {
+            navigationRef.goBack();
+        }
+    }, [folder]);
 
     return (
         <ToastProvider overlayRef={toastOverlayRef}>
-            {reminders.map((reminder) => (
-                <ReminderNotification key={`${reminder.id}:${reminder.due}`} {...reminder} />
-            ))}
-            <WindowContent toastOverlayRef={toastOverlayRef} />
+            <NotesProvider folder={folder}>
+                <NotesWindow toastOverlayRef={toastOverlayRef} />
+            </NotesProvider>
         </ToastProvider>
     );
 };

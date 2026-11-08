@@ -9,6 +9,7 @@ const contributingItems: DocumentationItem[] = [
     { text: "Architecture", path: "contributing/architecture" },
     { text: "Code Generation", path: "contributing/code-generation" },
     { text: "Native Runtime", path: "contributing/native-runtime" },
+    { text: "Native Ownership Boundaries", path: "contributing/native-ownership" },
     { text: "React Renderer", path: "contributing/react-renderer" },
     { text: "Testing", path: "contributing/testing" },
     { text: "Development Principles", path: "contributing/principles" },

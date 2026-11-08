@@ -1,11 +1,11 @@
 ---
 title: "Components"
-description: "Render lists, tables, dropdowns, grid cells, tabs, menu widgets, and toast notifications from React state."
+description: "Render lists, tables, dropdowns, grid cells, stack pages, tabs, menu widgets, and toast notifications from React state."
 ---
 
 # Components
 
-`@gtkx/components` renders native collections from data and render functions, managing their GTK models and factories. It also provides managed tabs and toast helpers.
+`@gtkx/components` renders native collections from data and render functions, managing their GTK models and factories, and shares toasts through a provider. This page also covers the JSX elements these components sit beside: `GtkListBox`, tabs, grid cells, stack pages and widgets in menus.
 
 `@gtkx/components` is a separate install:
 
@@ -21,26 +21,21 @@ See the [component reference](/v2/reference/@gtkx/components/) for props. Hooks 
 
 `ListView<T, S>` wraps `Gtk.ListView`. Pass `items` as `{ id, value }` pairs plus a `renderItem`. Selection is controlled: update `selectedIds` from `onSelectionChanged` to retain the selection. Like a React input's `onChange`, `onSelectionChanged` reports what the user or the widget changes, not the `selectedIds` you pass in. It also reports the remaining selection when an item named by `selectedIds` is not in the list.
 
-```tsx
-import { ListView } from "@gtkx/components";
-import * as Gtk from "@gtkx/gi/gtk";
-import { GtkLabel } from "@gtkx/jsx/gtk";
+<<< @/figures/guide/components-list-view.tsx [src/task-list.tsx]
 
-<ListView<Task>
-    items={tasks.map((task) => ({ id: task.id, value: task }))}
-    selectionMode={Gtk.SelectionMode.MULTIPLE}
-    selectedIds={selectedIds}
-    onSelectionChanged={setSelectedIds}
-    estimatedItemHeight={56}
-    renderItem={({ item }) => <GtkLabel halign={Gtk.Align.START}>{item.title}</GtkLabel>}
-/>
-```
+<figure class="result">
+    <img class="result-light" src="/figures/guide-components-list-view-light.png" width="360" height="260" loading="lazy" alt="A window titled ListView with four task rows; Buy oat milk and Book the dentist are selected." />
+    <img class="result-dark" src="/figures/guide-components-list-view-dark.png" width="360" height="260" loading="lazy" alt="A window titled ListView with four task rows; Buy oat milk and Book the dentist are selected." />
+    <figcaption>Captured from the <a href="#listview"><code>ListView</code> sample</a> above, with two tasks selected.</figcaption>
+</figure>
+
+The tutorial's [note list](/v2/tutorial/the-note-editor#select-the-open-note) derives `selectedIds` from the current route.
 
 Nesting `ListItem.children` turns the same component into an acyclic tree, with `expandedIds` and `onExpandedChange` driving expansion the same way. Keep item IDs stable and unique across the collection, including nested items, since selection and expansion name rows by ID. Section IDs must be unique among sections.
 
 IDs also give rows their identity. When items are inserted, removed or reordered, GTK keeps every row whose ID stays among the same siblings bound, so its component state survives, and only new rows mount. A row that moves keeps its state in a flat list, grid, table or section; a tree row that moves among its siblings remounts, because GTK rebuilds its tree node. A reorder that moves more than about a thousand rows at once updates rows in place instead, and the rows that move there remount. An ID repeated among siblings pairs rows by their order.
 
-When every item is known to be a leaf, pass `isFlat` to `ListView` or `ColumnView`. This skips tree discovery when synchronizing large collections; do not use it when any item has children.
+When every item is known to be a leaf, pass `isFlat` to `ListView` or `ColumnView`. This skips tree discovery when synchronizing large collections. Leave it out when any item has children: those items would render as plain rows that never expand.
 
 To group rows under headers, pass `sections` in place of `items`: each `ListSection` carries its own `data` array of items, and `renderHeader` draws the header above each group. `ColumnView` and `DropDown` accept the same pair.
 
@@ -49,35 +44,29 @@ A row's content is not the row a screen reader announces: GTK names a list row o
 ```tsx
 <ListView<Task>
     items={tasks.map((task) => ({ id: task.id, value: task }))}
-    rowProps={({ item }) => ({ accessibleLabel: item.title, isSelectable: !item.isArchived })}
+    rowProps={({ item }) => ({
+        accessibleLabel: item.title,
+        isSelectable: !item.isArchived,
+    })}
     renderItem={({ item }) => <TaskRow task={item} />}
 />
 ```
 
 ### GridView
 
-`GridView<T>` renders a grid with the same `items`, `renderItem`, controlled selection, and size estimates as `ListView`. Use `minColumns` and `maxColumns` to size the grid, and `singleClickActivate` and `onActivate` for activation.
+`GridView<T>` renders a grid with the same `items`, `renderItem`, controlled selection, and size estimates as `ListView`. A grid is always flat: it takes no `sections` and ignores `children`. Use `minColumns` and `maxColumns` to size the grid, and `singleClickActivate` and `onActivate` for activation.
 
 ### ColumnView
 
 `ColumnView<T, S>` renders a multi-column table. Columns come from the `columns` prop, each one requiring `id`, `title`, and `renderCell`. Sorting is controlled: `onSortChanged` reports the header click, and the caller sorts `items` before passing them in.
 
-```tsx
-import { ColumnView, type ColumnViewColumn } from "@gtkx/components";
-import { GtkLabel } from "@gtkx/jsx/gtk";
+<<< @/figures/guide/components-column-view.tsx [src/employee-table.tsx]
 
-const columns: ColumnViewColumn<Employee>[] = [
-    { id: "name", title: "Name", isSortable: true, renderCell: ({ item }) => <GtkLabel>{item.name}</GtkLabel> },
-];
-
-<ColumnView
-    sortColumn={sortColumn}
-    sortOrder={sortOrder}
-    onSortChanged={handleSortChange}
-    items={sortedEmployees.map((emp) => ({ id: emp.id, value: emp }))}
-    columns={columns}
-/>
-```
+<figure class="result">
+    <img class="result-light" src="/figures/guide-components-column-view-light.png" width="360" height="260" loading="lazy" alt="A window titled ColumnView with a table of four employees in Name and Team columns, sorted by name in ascending order." />
+    <img class="result-dark" src="/figures/guide-components-column-view-dark.png" width="360" height="260" loading="lazy" alt="A window titled ColumnView with a table of four employees in Name and Team columns, sorted by name in ascending order." />
+    <figcaption>Captured from the <a href="#columnview"><code>ColumnView</code> sample</a> above, sorted by the Name column.</figcaption>
+</figure>
 
 `ColumnView` also supports trees through `ListItem.children`, `expandedIds`, and `onExpandedChange`. The first visible column draws the expander and indentation; the other columns stay aligned at each depth. Hiding that column with `visible: false` moves the expander to the next visible column. Set `hasExpander` on a column to draw them there instead, such as the subject column of a message list whose status icons come first.
 
@@ -99,7 +88,9 @@ import { DropDown } from "@gtkx/components";
 
 The callback receives `null` when the model becomes empty.
 
-`ComboRow<T, S>` from `@gtkx/components` takes the same collection props and renders an `Adw.ComboRow` inside a preferences group. See the tutorial's [preferences chapter](/v2/tutorial/preferences-and-theming) for an example.
+GTK names a drop-down after its selected item: its template labels the drop-down by the item shown on its button, and that relation outranks `accessibleLabel`. To give it a fixed name, pass a visible label in `accessibleLabelledBy`.
+
+`ComboRow<T, S>` from `@gtkx/components` takes the same collection props and renders an `Adw.ComboRow`, the drop-down as a row for a preferences group. See the tutorial's [preferences chapter](/v2/tutorial/preferences-and-theming) for an example.
 
 ### Native models
 
@@ -115,7 +106,9 @@ import { GtkInscription, GtkListView, GtkNoSelection } from "@gtkx/jsx/gtk";
     factory={
         <ListItemFactory<Gtk.StringObject>
             rowProps={({ item }) => ({ accessibleLabel: item.getString() })}
-            renderItem={({ item }) => <GtkInscription text={item.getString()} />}
+            renderItem={({ item }) => (
+                <GtkInscription text={item.getString()} />
+            )}
         />
     }
 />
@@ -125,36 +118,23 @@ import { GtkInscription, GtkListView, GtkNoSelection } from "@gtkx/jsx/gtk";
 
 `GtkListBox` takes JSX rows directly, making it suitable for short lists such as a sidebar or settings group. Its `selectedIndex` prop controls the selected row:
 
-```tsx
-import { AdwActionRow } from "@gtkx/jsx/adw";
-import { GtkListBox } from "@gtkx/jsx/gtk";
+<<< @/figures/guide/components-list-box.tsx [src/sidebar.tsx]
 
-<GtkListBox
-    cssClasses={["navigation-sidebar"]}
-    selectedIndex={views.findIndex((view) => view.id === activeId)}
-    onRowSelected={(row) => {
-        if (!row) return;
-        const view = views[row.getIndex()];
-        if (view) setActiveId(view.id);
-    }}
->
-    {views.map((view) => (
-        <AdwActionRow key={view.id} title={view.title} />
-    ))}
-</GtkListBox>
-```
+<figure class="result">
+    <img class="result-light" src="/figures/guide-components-list-box-light.png" width="360" height="260" loading="lazy" alt="A window titled GtkListBox with a sidebar of four views; Today is selected." />
+    <img class="result-dark" src="/figures/guide-components-list-box-dark.png" width="360" height="260" loading="lazy" alt="A window titled GtkListBox with a sidebar of four views; Today is selected." />
+    <figcaption>Captured from the <a href="#gtklistbox"><code>GtkListBox</code> sample</a> above, with Today selected.</figcaption>
+</figure>
 
 Leave `selectedIndex` out for native selection, or set it to keep selection under application control. Use `-1` or `null` to clear it. If the desired row has not mounted yet, GTKX keeps the current selection and applies the index once that row exists.
 
 GTKX suppresses `onRowSelected` while applying its own selection updates and while a commit adds or removes rows, so removing the selected row from your state doesn't call it with `null`. Other native selection changes still reach the handler, including changes made through native methods. Update the controlled value in that handler to keep the new selection; otherwise GTKX restores the requested row.
 
-The tutorial's [sidebar](/v2/tutorial/lists-and-the-sidebar#keeping-gtk4-and-the-route-in-agreement) controls selection from the current route.
-
-## Tabs across windows
+## Tabs
 
 Ordinary `AdwTabView` children work for tabs that share their parent's React lifetime. For tabs the user opens, closes, reorders and drags between windows, use the [tab view navigator](/v2/guide/navigation#tab-view-navigator) from `@gtkx/navigation`, which keeps the open tabs in navigation state and follows native transfers.
 
-A JSX tab stays open while React renders it. To let the user close tabs with their close buttons, Ctrl+W or the overview, handle `onClosePage`: remove the page from the state that renders it and confirm the close. Without a handler, the close does nothing and GTKX warns in development; see [Closing](/v2/guide/modals-and-portals#closing).
+A JSX tab stays open while React renders it. To let the user close tabs with their close buttons or the tab overview, handle `onClosePage`: remove the page from the state that renders it and confirm the close. Without a handler, the close does nothing and GTKX warns in development; see [Closing](/v2/guide/modals-and-portals#closing).
 
 ```tsx
 import { AdwTabPage, AdwTabView } from "@gtkx/jsx/adw";
@@ -167,7 +147,9 @@ const Documents = () => {
     return (
         <AdwTabView
             onClosePage={(page, view) => {
-                setTitles((current) => current.filter((title) => title !== page.getTitle()));
+                setTitles((current) =>
+                    current.filter((title) => title !== page.getTitle()),
+                );
                 view.closePageFinish(page, true);
                 return true;
             }}
@@ -197,7 +179,10 @@ import { AdwTabBar } from "@gtkx/jsx/adw";
 
 <AdwTabBar
     view={view}
-    extraDropTarget={{ actions: Gdk.DragAction.COPY, types: [GObject.typeFromName("gchararray")] }}
+    extraDropTarget={{
+        actions: Gdk.DragAction.COPY,
+        types: [GObject.typeFromName("gchararray")],
+    }}
     onExtraDragDrop={(page, value) => {
         const title = value.getString();
         if (title === null) return false;
@@ -213,23 +198,51 @@ Here `renameTab` updates the state the page's `title` prop comes from. Removing 
 
 GTK places a widget in a `GtkGrid` through the layout manager's child object, which GtkBuilder writes as a `<layout>` element and C code sets with `gtk_grid_attach`. Wrap each child of the grid in `GtkGridLayoutChild` and give it the cell's `column` and `row`, plus `columnSpan` or `rowSpan` to cover several cells:
 
-```tsx
-import { GtkButton, GtkGrid, GtkGridLayoutChild, GtkLabel } from "@gtkx/jsx/gtk";
+<<< @/figures/guide/components-grid.tsx [src/name-grid.tsx]
 
-<GtkGrid columnSpacing={6} rowSpacing={6}>
-    <GtkGridLayoutChild column={0} row={0}>
-        <GtkLabel label="Name" />
-    </GtkGridLayoutChild>
-    <GtkGridLayoutChild column={1} row={0}>
-        <GtkButton label="Edit" />
-    </GtkGridLayoutChild>
-    <GtkGridLayoutChild column={0} row={1} columnSpan={2}>
-        <GtkButton label="Save" />
-    </GtkGridLayoutChild>
-</GtkGrid>
-```
+<figure class="result">
+    <img class="result-light" src="/figures/guide-components-grid-light.png" width="360" height="260" loading="lazy" alt="A window titled GtkGrid with a Name label and an Edit button in the first row and a Save button spanning both columns in the second." />
+    <img class="result-dark" src="/figures/guide-components-grid-dark.png" width="360" height="260" loading="lazy" alt="A window titled GtkGrid with a Name label and an Edit button in the first row and a Save button spanning both columns in the second." />
+    <figcaption>Captured from the <a href="#grid-cells">grid sample</a> above.</figcaption>
+</figure>
 
 The grid creates the layout child for the widget, and changing `column` or `row` moves it. A child without the wrapper sits in the first cell. Other layout managers' child objects work the same way, such as `GtkFixedLayoutChild` for a widget's `transform` inside a `GtkFixed`, which [Animations](/v2/guide/animations#moving-widgets) animates.
+
+## Stack pages
+
+`GtkStack`, `AdwViewStack` and `GtkNotebook` keep a page object for each child, which holds the child's name, title and icon, or its tab label. Wrap each child in the matching page element, `GtkStackPage`, `AdwViewStackPage` or `GtkNotebookPage`, and set those properties on it. The container creates the page object when the child is added, as a grid does for its layout children:
+
+```tsx
+import * as Gtk from "@gtkx/gi/gtk";
+import {
+    GtkBox,
+    GtkLabel,
+    GtkStack,
+    GtkStackPage,
+    GtkStackSwitcher,
+} from "@gtkx/jsx/gtk";
+import { useState } from "react";
+
+export const Editor = () => {
+    const [stack, setStack] = useState<Gtk.Stack | null>(null);
+
+    return (
+        <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <GtkStackSwitcher stack={stack} halign={Gtk.Align.CENTER} />
+            <GtkStack ref={setStack} vexpand>
+                <GtkStackPage name="source" title="Source">
+                    <GtkLabel>Markdown source</GtkLabel>
+                </GtkStackPage>
+                <GtkStackPage name="preview" title="Preview">
+                    <GtkLabel>Rendered preview</GtkLabel>
+                </GtkStackPage>
+            </GtkStack>
+        </GtkBox>
+    );
+};
+```
+
+The switcher shows a button for each page `title`. To switch pages from state instead, set `visibleChildName` to a page's `name`, as the tutorial's [Markdown preview](/v2/tutorial/the-markdown-preview#switch-between-editor-and-preview) does. For a few peer sections with a view switcher in the header bar, the [tab navigator](/v2/guide/navigation#tab-navigator) renders the `AdwViewStack` for you.
 
 ## Widgets in menus
 
@@ -245,7 +258,15 @@ import { GtkMenuButton } from "@gtkx/jsx/gtk";
         <GMenu
             items={[
                 { section: [{ custom: "theme" }] },
-                { section: [{ label: "Preferences", action: "win.preferences", accel: "<Control>comma" }] },
+                {
+                    section: [
+                        {
+                            label: "Preferences",
+                            action: "win.preferences",
+                            accel: "<Control>comma",
+                        },
+                    ],
+                },
             ]}
         />
     }
@@ -253,7 +274,7 @@ import { GtkMenuButton } from "@gtkx/jsx/gtk";
 />
 ```
 
-The widget stays in its item when the model or its items change. An ID with no matching item leaves its widget out of the menu. Menu items also take GTK's other [menu attributes](https://docs.gtk.org/gtk4/class.PopoverMenu.html#menu-models) in camelCase, such as `hiddenWhen` and `accel`.
+The widget stays in its item when the model or its items change. An ID with no matching item leaves its widget out of the menu. [Menus](/v2/guide/actions#menus) covers the other item attributes, such as `hiddenWhen` and `accel`.
 
 ## Toasts
 
@@ -272,7 +293,9 @@ const NotifyButton = () => {
     return (
         <GtkButton
             label="Show notification"
-            onClicked={() => toast.show({ title: "Task saved", useMarkup: false })}
+            onClicked={() =>
+                toast.show({ title: "Task saved", useMarkup: false })
+            }
         />
     );
 };
@@ -292,10 +315,6 @@ export const Notifications = () => {
 
 Render `Notifications` inside an application window. Clicking the button shows a toast over the content. Use `useMarkup: false` for titles that should display literally, including user text.
 
-`show()` returns the native toast. Pass `buttonLabel` and `onButtonClicked` to add an action, and `onDismissed` when cleanup depends on its dismissal. Call `toast.dismiss()` on the returned toast to close it, or `useToast().dismissAll()` to clear the overlay.
+`show()` returns the native `Adw.Toast`. Pass `buttonLabel` and `onButtonClicked` to add an action, and `onDismissed` when cleanup depends on its dismissal. Call `dismiss()` on the returned toast to close it, or the controller's `dismissAll()` to clear the overlay.
 
-`useToast()` requires a provider. Show toasts from events or effects after the overlay mounts; calling `show()` while its ref is empty creates a toast without displaying it. The [Trash and Toasts tutorial](/v2/tutorial/trash-and-toasts) adds an Undo action to a delete operation.
-
-## Next
-
-Continue with [Modals and Portals](/v2/guide/modals-and-portals) for the mounting model behind these components: `createPortal`, the `rootElement` container, and extra windows. The tutorial demonstrates dialogs in its [Menus, Accelerators, and Shortcuts](/v2/tutorial/actions-menus-shortcuts#mounting-dialogs) chapter.
+`useToast()` requires a provider. Show toasts from events or effects after the overlay mounts; calling `show()` while its ref is empty creates a toast without displaying it. [Rename, Trash, and Undo](/v2/tutorial/trash-and-toasts#undo-from-a-toast) adds an Undo button to a trash operation.

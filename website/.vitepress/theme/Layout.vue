@@ -1,18 +1,33 @@
 <script setup lang="ts">
-import { useRoute } from "vitepress";
 import DefaultTheme from "vitepress/theme-without-fonts";
 import { computed, defineAsyncComponent } from "vue";
+import TutorialPager from "./components/TutorialPager.vue";
+import TutorialProgress from "./components/TutorialProgress.vue";
 import VersionBanner from "./components/VersionBanner.vue";
+import { useTutorialPosition } from "./composables/use-tutorial-position";
 
 const Landing = defineAsyncComponent(() => import("./landing/Landing.vue"));
 const { Layout } = DefaultTheme;
-const route = useRoute();
-const isHome = computed(() => route.path === "/" || route.path === "/index.html");
+const tutorial = useTutorialPosition();
+
+const tutorialStyle = computed(() => {
+    const current = tutorial.value;
+
+    if (current?.chapter === undefined) {
+        return undefined;
+    }
+
+    return {
+        "--tutorial-position": JSON.stringify(`Chapter ${current.chapter} of ${current.total}`),
+        "--tutorial-position-short": JSON.stringify(`${current.chapter}/${current.total}`),
+    };
+});
 </script>
 
 <template>
-    <Landing v-if="isHome" />
-    <Layout v-else>
-        <template #doc-before><VersionBanner /></template>
+    <Layout :class="{ 'numbered-tutorial': tutorial }" :style="tutorialStyle">
+        <template #home-hero-before><Landing /></template>
+        <template #doc-before><VersionBanner /><TutorialProgress /></template>
+        <template #doc-after><TutorialPager /></template>
     </Layout>
 </template>

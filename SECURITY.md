@@ -2,7 +2,7 @@
 
 Until 1 December 2026, security updates apply to the latest 1.x release. Report issues affecting 2.0 through the same private channel; security fixes for 2.0 will be included before its stable release.
 
-From 1 December 2026, security updates apply to the latest 2.x release. Support for 1.x ends on that date. Upgrade using the [2.0 migration guide](https://gtkx.dev/v2/guide/upgrading-to-2).
+From 1 December 2026, security updates apply to the latest 2.x release. Support for 1.x ends on that date. [Releases](https://gtkx.dev/releases) lists the supported lines. Upgrade using the [2.0 migration guide](https://gtkx.dev/v2/guide/upgrading-to-2).
 
 Report vulnerabilities privately through [GitHub's private vulnerability reporting](https://github.com/gtkx-org/gtkx/security/advisories/new). If you don't have a GitHub account, email eugeniodepalo@gmail.com instead. Include the impact, affected versions, and reproduction steps; do not open a public issue.
 

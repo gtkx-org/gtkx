@@ -1,0 +1,47 @@
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "outDir": "${configDir}/out-tsc",
+        "tsBuildInfoFile": "${configDir}/tsconfig.tsbuildinfo",
+        "emitDeclarationOnly": true
+    },
+    "files": ["${configDir}/node_modules/.gtkx/env.d.ts"],
+    "include": [
+        "${configDir}/**/*.tsx",
+        "${configDir}/setup.ts",
+        "${configDir}/guide/**/*.ts",
+        "${configDir}/tutorial/**/*.ts",
+        "${configDir}/tutorial/*/.storybook/*.ts",
+        "${configDir}/tutorial/*/package.json"
+    ],
+    "exclude": ["${configDir}/node_modules", "${configDir}/out-tsc"],
+    "references": [
+        {
+            "path": "../../packages/cli/tsconfig.lib.json"
+        },
+        {
+            "path": "../../packages/components/tsconfig.lib.json"
+        },
+        {
+            "path": "../../packages/config/tsconfig.lib.json"
+        },
+        {
+            "path": "../../packages/css/tsconfig.lib.json"
+        },
+        {
+            "path": "../../packages/i18n/tsconfig.lib.json"
+        },
+        {
+            "path": "../../packages/navigation/tsconfig.lib.json"
+        },
+        {
+            "path": "../../packages/react/tsconfig.lib.json"
+        },
+        {
+            "path": "../../packages/storybook/tsconfig.lib.json"
+        },
+        {
+            "path": "../../packages/testing/tsconfig.lib.json"
+        }
+    ]
+}

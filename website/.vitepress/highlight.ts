@@ -50,7 +50,13 @@ const THEME: ThemeRegistrationRaw = {
 };
 
 const highlight = async ([id, snippet]: [string, Snippet]): Promise<[string, { code: string; html: string }]> => {
-    const html = await codeToHtml(snippet.code.replace(/\n$/, ""), { lang: snippet.lang, theme: THEME });
+    const code = snippet.code.replace(/\n$/, "");
+    const markStart = snippet.mark ? code.indexOf(snippet.mark) : -1;
+    const decorations =
+        snippet.mark && markStart >= 0
+            ? [{ start: markStart, end: markStart + snippet.mark.length, properties: { class: "mark" } }]
+            : [];
+    const html = await codeToHtml(code, { lang: snippet.lang, theme: THEME, decorations });
 
     return [id, { code: snippet.code, html }];
 };

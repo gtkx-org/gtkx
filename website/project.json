@@ -31,6 +31,9 @@
                 {
                     "dependentTasksOutputFiles": "**/*.{md,js,d.ts,json}",
                     "transitive": true
+                },
+                {
+                    "runtime": "node -e \"import('./website/.vitepress/blog.ts').then((blog) => console.log(blog.unpublishedBlogFiles('website').join(' ')))\""
                 }
             ],
             "outputs": ["{projectRoot}/.vitepress/dist"],
@@ -87,6 +90,14 @@
                 "cwd": "{projectRoot}"
             }
         },
+        "figures": {
+            "cache": false,
+            "dependsOn": ["^build", "gtkx:bindings"],
+            "command": "vitest run",
+            "options": {
+                "cwd": "{projectRoot}/figures"
+            }
+        },
         "dev": {
             "cache": false,
             "continuous": true,
@@ -103,7 +114,7 @@
         "typecheck": {
             "command": "vue-tsc --noEmit -p tsconfig.json",
             "cache": true,
-            "dependsOn": [],
+            "dependsOn": ["typecheck-figures"],
             "inputs": [
                 "{projectRoot}/**/*.{ts,vue,json}",
                 "{projectRoot}/.vitepress/**/*.{ts,vue,json}",
@@ -115,6 +126,26 @@
             ],
             "options": {
                 "cwd": "website"
+            }
+        },
+        "codegen-figures": {
+            "command": "gtkx codegen",
+            "cache": true,
+            "dependsOn": ["^build"],
+            "inputs": ["{projectRoot}/figures/**/*", "^production"],
+            "outputs": ["{projectRoot}/figures/node_modules/.gtkx"],
+            "options": {
+                "cwd": "{projectRoot}/figures"
+            }
+        },
+        "typecheck-figures": {
+            "command": "tsc --build figures/tsconfig.json",
+            "cache": true,
+            "dependsOn": ["^build", "gtkx:bindings", "codegen-figures"],
+            "inputs": ["{projectRoot}/figures/**/*", "sharedGlobals", "^production"],
+            "outputs": ["{projectRoot}/figures/out-tsc", "{projectRoot}/figures/tsconfig.tsbuildinfo"],
+            "options": {
+                "cwd": "{projectRoot}"
             }
         }
     }

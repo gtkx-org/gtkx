@@ -20,23 +20,27 @@ Generated @gtkx/jsx elements
         ↓
 Generated @gtkx/gi methods
         ↓
-@gtkx/runtime → @gtkx/native → Native libraries
+@gtkx/runtime
+        ↓
+@gtkx/native
+        ↓
+Native libraries
 ```
 
 The [renderer](https://github.com/gtkx-org/gtkx/tree/main/packages/react) translates React commits into native operations. Generated methods supply signatures to the [runtime](https://github.com/gtkx-org/gtkx/tree/main/packages/runtime), which converts values and calls the [native bridge](https://github.com/gtkx-org/gtkx/tree/main/packages/native).
 
-GI bindings also work without React: function calls and GObject subclasses can use runtime directly. Component libraries normally use JSX and GI APIs without depending on native pointer representation.
+GI bindings also work without React: generated functions and classes call the runtime themselves, and GObject subclasses register through `registerClass` from `@gtkx/runtime` (see [Subclassing](/v2/guide/subclassing)). Component libraries build on JSX and GI APIs and do not depend on how native pointers are represented.
 
 ## Generation and execution
 
-GTKX reads GObject Introspection Repository (GIR) files during code generation, before the application runs.
+GTKX reads [GObject Introspection](https://gi.readthedocs.io/en/latest/) Repository (GIR) files during code generation, before the application runs.
 
 ```text
-GIR libraries + element configuration
-                  ↓
-            @gtkx/codegen
-                  ↓
-  @gtkx/gi + @gtkx/jsx + project reference
+ GIR libraries + element configuration
+                   ↓
+             @gtkx/codegen
+                   ↓
+@gtkx/gi + @gtkx/jsx + project reference
 ```
 
 During generation, `@gtkx/codegen` reads the configured GIR libraries and their transitive dependencies. It determines JavaScript names, TypeScript types, callable signatures, transfer rules, and the metadata needed by the renderer. It emits two linked package stores, `@gtkx/gi` and `@gtkx/jsx`, plus a project reference when enabled.
@@ -62,7 +66,7 @@ React's component tree and the native object tree have different shapes. Functio
 
 ## One owning event-loop thread
 
-The native addon acquires GLib's default main context on the Node thread that initializes it. It integrates that context with libuv using prepare, timer, and file-descriptor polling handles. Node remains the outer event loop, allowing Node I/O, timers, promises, React scheduling, and GLib sources to make progress in the same application process.
+The native addon acquires GLib's default [main context](https://docs.gtk.org/glib/main-loop.html) on the Node thread that initializes it. It integrates that context with [libuv](https://docs.libuv.org/en/v1.x/) using prepare, timer, and file-descriptor polling handles. Node remains the outer event loop, allowing Node I/O, timers, promises, React scheduling, and GLib sources to make progress in the same application process.
 
 Application startup is adapted to that arrangement. The generated GIO application override invokes GLib's local command-line handling to register and activate an application without entering a blocking `g_application_run()` loop. The application keeps the Node loop alive while active, and its teardown releases that hold. React's application component waits for activation before rendering its children.
 
@@ -87,7 +91,7 @@ A controlled prop and a native widget property represent the same application st
 | Observable problem                                                           | Start reading                                                                                                                         |
 | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | A generated method has an incorrect type, argument order, or return shape.   | `packages/codegen/src/gir`, `analysis`, and `store/gi`.                                                                               |
-| A correctly described call produces an invalid value or loses native memory. | `packages/runtime/src/fn.ts`, then `packages/native/src/ffi/codec` and `handle.rs`.                                                   |
+| A correctly described call produces an invalid value or loses native memory. | `packages/runtime/src/fn.ts`, then `packages/native/src/ffi/codec` and `packages/native/src/handle.rs`.                               |
 | A JSX prop is missing or has the wrong type.                                 | `packages/codegen/src/store/jsx` and `packages/config/src/builtin-elements.ts`.                                                       |
 | A prop type is correct but the widget receives the wrong update.             | `packages/react/src/reconciler/apply-props.ts` and the registered element behaviors.                                                  |
 | A child appears in the wrong place, disappears, or fails to reorder.         | `packages/react/src/reconciler/child-routing.ts` and `placement.ts`.                                                                  |

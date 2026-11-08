@@ -1,6 +1,8 @@
 ---
 title: "GTKX 1.0: The React framework for Linux"
 description: "GTKX 1.0 brings React and TypeScript to native Linux apps, with generated bindings, Fast Refresh, and integration tests."
+label: "GTKX 1.0"
+date: 2026-08-04
 image: /tasks-screenshot.png
 ---
 

@@ -1,137 +1,58 @@
 ---
-description: "Build the Tasks application shell with an Adwaita window and header bar."
+description: "Replace the starter counter with an Adwaita window whose strings are ready for translation."
 ---
 
 # Create a Window
 
-You have a project that runs. Replace its contents with the first piece of Tasks: an application, a window, and a header bar. If you skipped ahead, start at [the introduction](/v2/tutorial/) and come back once `npm create gtkx@beta` has finished.
+Replace the starter counter with the Notes window: an Adwaita window with a header bar and an empty state. Its strings go through `t()` from the start, so translating the app later needs no changes to the components.
 
-## What the scaffolder made
+## The project
 
-`gtkx.config.ts` configures the application and generated bindings. `src/index.tsx` mounts the component tree, and `src/app.tsx` contains the counter you will replace. `src/gtkx-env.d.ts` types asset imports and `import.meta.env`, and `tsconfig.json` resolves the generated bindings and declarations.
+The project from [Check your setup](/v2/tutorial/#check-your-setup) has these files to start from:
 
-`gtkx.config.ts`:
+- `gtkx.config.ts` holds the application ID, `dev.gtkx.Notes`, and the packaging metadata. GTKX reads it for codegen, development and builds.
+- `src/index.tsx` creates a React root without a DOM container and renders `<App />` into it. It stays the same throughout the tutorial.
+- `src/app.tsx` holds the counter. This chapter replaces it.
 
-```ts [gtkx.config.ts]
-import { defineConfig } from "@gtkx/config";
+[Project structure](/v2/guide/getting-started#project-structure) describes the other files.
 
-export default defineConfig({
-    applicationId: "com.gtkx.tutorial",
-    applicationIcon: "data/icons",
-    deploy: {
-        name: "Tasks",
-        summary: "A Linux application built with GTKX",
-        description: [
-            "Tasks is built with GTKX. Replace this paragraph with a description of what your application does.",
-        ],
-        categories: ["Utility"],
-    },
-});
+The scaffold's starter test, `tests/app.test.tsx`, looks for the counter's Increment button and imports a default export that the new `src/app.tsx` doesn't have, so `npm run typecheck` would fail. Delete it; [Test the App](/v2/tutorial/testing) writes the app's tests.
+
+```bash
+rm tests/app.test.tsx
 ```
 
-GTKX generates Adwaita and GTK4 bindings by default. The `libraries` option lists additional native libraries; see [Configuration and Codegen](/v2/guide/configuration-and-codegen). The `deploy` block holds the package metadata that [Package the App](/v2/tutorial/packaging) completes.
+## Mark strings for translation
 
-Keep the application ID you chose in the introduction, and use it wherever later examples show `com.gtkx.tutorial`.
+Install `@gtkx/i18n`:
 
-## The entry point
-
-`src/index.tsx` stays as it is for the rest of the tutorial.
-
-`src/index.tsx`:
-
-```tsx [src/index.tsx]
-import { createRoot } from "@gtkx/react";
-import { App } from "./app.js";
-
-createRoot().render(<App />);
+```bash
+npm install @gtkx/i18n@beta
 ```
 
-`createRoot()` creates the React root for the native application. GTKX creates and updates GObject instances from the JSX tree. With no argument, the root accepts the application element shown below.
+`useTranslation()` from `@gtkx/i18n` returns `t`, which looks up the translation of its source string and falls back to the string itself. Until [Translate the App](/v2/tutorial/internationalization) adds catalogs, every `t("…")` shows its source text. Pass `t` a string literal, as every chapter does, so that GTKX can extract the message; [Keep messages extractable](/v2/guide/internationalization#keep-messages-extractable) lists the forms it reads.
 
-## The application and its window
+## The application window
 
-Replace `src/app.tsx` with the following. Also remove the scaffolder's `tests/app.test.tsx`, which tests the counter and imports its default export. [Add Tasks](/v2/tutorial/the-task-store#test-the-entry-row) adds the first tests for Tasks.
+Replace `src/app.tsx`:
 
-`src/app.tsx`:
+<<< @/figures/tutorial/your-first-window/src/app.tsx [src/app.tsx]
 
-```tsx
-import { AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
-import { quit } from "@gtkx/react";
+Elements come from `@gtkx/jsx/<namespace>`, one module per library, and take the native class's properties and signals as camelCase props; [JSX Elements](/v2/guide/jsx-elements) has the rules.
 
-export function App() {
-    return (
-        <AdwApplication>
-            <AdwApplicationWindow
-                title="Tasks"
-                widthRequest={360}
-                heightRequest={294}
-                onCloseRequest={() => quit()}
-            />
-        </AdwApplication>
-    );
-}
-```
-
-Generated JSX elements use their GObject type names: `AdwApplicationWindow`, `GtkListBox`, and so on. The available elements come from your project's configured GIR libraries. Use the [generated element reference](/v2/guide/configuration-and-codegen#generating-element-reference-docs) for their props and signals.
-
-GObject properties become camelCase props, such as `widthRequest`. Signals become handlers such as `onCloseRequest`; here, closing the window calls `quit()` to unmount the application and quit it.
-
-After `quit()`, the process exits once nothing else keeps Node's event loop busy, as with any Node program. A request still in flight or an interval still running keeps the process alive without a window, so abort requests and clear timers when the component that started them unmounts, and avoid timers at module level. `gtkx dev` warns, naming the kinds of pending work, when the process is still running a few seconds after the application quits; see [Async Operations](/v2/guide/async-operations#ending-work-on-unmount).
-
-`AdwApplication` takes its application ID from `gtkx.config.ts` and starts the application when it mounts. Rendering `AdwApplicationWindow` opens the window; removing it from the tree closes it.
-
-The minimum width leaves room to test the narrow layout in [Adapt the Layout](/v2/tutorial/an-adaptive-layout).
-
-## Giving the window a header bar
-
-`AdwApplicationWindow` leaves its content area free for your layout. Add `AdwToolbarView` with an `AdwHeaderBar` to show the title and window controls above the content.
-
-`src/app.tsx`:
-
-```tsx [src/app.tsx]
-import {
-    AdwApplication,
-    AdwApplicationWindow,
-    AdwHeaderBar,
-    AdwStatusPage,
-    AdwToolbarView,
-} from "@gtkx/jsx/adw";
-import { quit } from "@gtkx/react";
-
-export function App() {
-    return (
-        <AdwApplication>
-            <AdwApplicationWindow
-                title="Tasks"
-                widthRequest={360}
-                heightRequest={294}
-                onCloseRequest={() => quit()}
-            >
-                <AdwToolbarView top={<AdwHeaderBar />}>
-                    <AdwStatusPage
-                        iconName="checkbox-checked-symbolic"
-                        title="No Tasks Yet"
-                        description="Your tasks will show up here."
-                    />
-                </AdwToolbarView>
-            </AdwApplicationWindow>
-        </AdwApplication>
-    );
-}
-```
-
-`top` is a JSX slot for the header bar. The status page goes in `children`, the toolbar view's content slot. GTKX uses named slots where a native container has several places for children; see [the JSX prop model](/v2/guide/configuration-and-codegen#the-jsx-prop-model).
-
-The header bar picks up the window title. `AdwStatusPage` supplies the empty state until the next chapter adds tasks.
+- `AdwApplication` creates the application with the ID from `gtkx.config.ts` and renders its children once it activates. [The application element](/v2/guide/application-lifecycle#the-application-element) explains when the app ends.
+- `AdwApplicationWindow` is the main window. `widthRequest` and `heightRequest` set the smallest size it shrinks to, 360 by 294, the size the [GNOME HIG](https://developer.gnome.org/hig/guidelines/adaptive.html) asks phone-friendly apps to support. `quit()` from `@gtkx/react` unmounts the app and quits when the window closes.
+- `AdwToolbarView` places bars around its content. Its `top` slot holds an `AdwHeaderBar`, which shows the window title and the close button.
+- `AdwStatusPage` is the empty state, a [placeholder page](https://developer.gnome.org/hig/patterns/feedback/placeholders.html) with a symbolic icon, a title and a description. [List the Notes](/v2/tutorial/the-notes-folder) shows it only while the folder has no notes.
 
 ## Run it
 
-Save `src/app.tsx`. The window now shows a **Tasks** header and a checkbox icon above **No Tasks Yet**. Resize it to check the minimum width of 360 logical pixels.
+Save `src/app.tsx`. Its imports changed, so `gtkx dev` restarts the app instead of refreshing it, and the window shows the empty state.
 
-Change the status page title to `Nothing Here Yet` and save. Fast Refresh updates the text in the open window.
+<figure class="result">
+    <img class="result-light" src="/figures/tutorial-your-first-window-light.png" width="360" height="343" loading="lazy" alt="The Notes window: a header bar titled Notes above a status page with a new-document icon, the title No Notes, and the description Notes are Markdown files in your notes folder." />
+    <img class="result-dark" src="/figures/tutorial-your-first-window-dark.png" width="360" height="343" loading="lazy" alt="The Notes window: a header bar titled Notes above a status page with a new-document icon, the title No Notes, and the description Notes are Markdown files in your notes folder." />
+    <figcaption>Captured from <a href="#the-application-window"><code>src/app.tsx</code></a> above.</figcaption>
+</figure>
 
-Set the title back to `No Tasks Yet` before moving on.
-
-## Next
-
-Continue to [Display Tasks](/v2/tutorial/a-list-of-tasks).
+Run `npm run typecheck`. It passes once the starter test is gone.

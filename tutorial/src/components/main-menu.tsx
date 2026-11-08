@@ -10,14 +10,14 @@ const MainMenu = () => (
         menuModel={
             <GMenu
                 items={[
-                    { section: [{ label: t("New Task"), action: "win.new" }] },
+                    { section: [{ label: t("New Note"), action: "win.new-note" }] },
                     {
                         section: [
                             { label: t("Preferences"), action: "win.preferences" },
                             { label: t("Keyboard Shortcuts"), action: "win.shortcuts" },
+                            { label: t("About Notes"), action: "win.about" },
                         ],
                     },
-                    { section: [{ label: t("About Tasks"), action: "win.about" }] },
                 ]}
             />
         }

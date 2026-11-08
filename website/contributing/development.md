@@ -9,15 +9,13 @@ Build the workspace and run an example while making changes. CI verifies the cha
 
 ## Prerequisites
 
-Use Linux with Node.js 26.7 or later. The repository's `package.json` pins pnpm through its `packageManager` field. If your runtimes are managed by mise, run the commands below through `mise exec --`, for example `mise exec -- pnpm install`.
+Use Linux with Node.js 26.7 or later. The root `package.json` pins pnpm through its `packageManager` field. If [mise](https://mise.jdx.dev/) manages your runtimes, run the commands below through `mise exec --`, for example `mise exec -- pnpm install`.
 
-The CI agent image pins Node.js in `.github/ci/Dockerfile`. Publishing and fallback workflows read `engines.node` from the root `package.json` to select a compatible version.
+Workspace `tsc` commands use the native TypeScript 7 compiler through the `@typescript/native` dependency alias. The `typescript` catalog entry aliases the TypeScript 6 compatibility package so code generation, Vue tooling, and batched semantic tests keep the stable compiler API. `pnpm exec tsc --version` reports the native compiler and `pnpm exec tsc6 --version` the compatibility compiler. Application templates and the tutorial declare their own TypeScript dependency.
 
-Workspace `tsc` commands use the native TypeScript 7 compiler through the `@typescript/native` dependency alias. The `typescript` catalog entry aliases the TypeScript 6 compatibility package so code generation, Vue tooling, and batched semantic tests retain the stable compiler API. Use `pnpm exec tsc --version` to check the native compiler and `pnpm exec tsc6 --version` for the compatibility compiler. Application templates and the tutorial declare their own TypeScript dependency.
+Install Rust through [rustup](https://rustup.rs/) so `rust-toolchain.toml` selects the pinned compiler and Clippy. Native formatting and sanitizers use a separate nightly; [Change native code](#change-native-code) shows how to install it.
 
-Install Rust through rustup so `rust-toolchain.toml` selects the pinned compiler and Clippy. Native formatting and sanitizers use a separate nightly; its installation command is under [Change native code](#change-native-code).
-
-The CI environment also supplies Go, ShellCheck, and the pinned Rust advisory checker. The workflow lint target downloads its pinned actionlint and yq versions through `go run`; the advisory audit refreshes the RustSec database on every run.
+The root `lint` target also needs Go and ShellCheck: its workflow check runs pinned actionlint and yq versions through `go run`, and actionlint checks workflow scripts with ShellCheck.
 
 The full workspace needs more system libraries than a minimal application:
 
@@ -73,27 +71,29 @@ pnpm nx show projects
 pnpm nx show project @gtkx/react
 ```
 
-Use `pnpm format` to apply Oxfmt to handwritten JavaScript, TypeScript, Vue, styles, configuration, and Markdown files. CI checks the same files as part of linting. To format only files changed from `main`, run `pnpm nx format:write --base=origin/main`; Nx detects the root `.oxfmtrc.json` configuration.
+Use `pnpm format` to apply [Oxfmt](https://oxc.rs/docs/guide/usage/formatter) to handwritten JavaScript, TypeScript, Vue, styles, configuration, and Markdown files. CI checks the same files as part of linting. To format only files changed from `main`, run `pnpm nx format:write --base=origin/main`; Nx detects the root `.oxfmtrc.json` configuration.
 
 The formatter preserves import and package manifest ordering. Generated outputs, test fixtures, changelogs, and generated agent instructions are excluded. Embedded code formatting is disabled so tutorial code fences and their patches remain unchanged. Rust formatting uses the pinned nightly rustfmt described below.
 
 ## CI environment
 
-CI uses Nx's affected graph to select checks. Pull requests compare against their merge base, pushes against the last successful run on `main`, and merge queues against the previous merge-group commit. Native sanitizers are a required dependency of the `e2e` target. A manual CI run checks the complete workspace. Focused package targets remain available for reproducing failures; see [Testing](/contributing/testing#ci-verification-and-failure-reproduction).
+[Testing](/contributing/testing#ci-verification-and-failure-reproduction) describes which targets CI runs, the `Verify workspace` check, and how to reproduce a failure. This section covers the environment those checks run in.
 
-The `verify` job coordinates build, test, typecheck, lint, and React and native integration tasks through Nx Cloud. Managed Nx Agents distribute tasks according to the affected workspace size. The coordinator and agents use the same Ubuntu 26.04 image built from `.github/ci/Dockerfile`; Nx runs directly inside that environment. Vitest workers use their tool defaults. The job also checks current Rust advisories and reports its result as `Verify workspace`. Configure branch protection to require this check.
+CI uses the Nx [affected graph](https://nx.dev/docs/features/ci-features/affected) to select projects. Pull requests compare against their merge base, pushes against the last successful run on `main`, and merge queues against the previous merge-group commit.
+
+With an Nx Cloud token on a trusted checkout, the `verify` job distributes tasks to [Nx Agents](https://nx.dev/docs/features/ci-features/distribute-task-execution), with more agents for larger change sets. The GitHub coordinator and the agents use the same Ubuntu 26.04 image built from `.github/ci/Dockerfile`, which also pins Node.js; Nx runs directly inside that image.
 
 The `image` job creates the versioned GHCR image from `.nx/workflows/agents.yaml` if it does not exist, then resolves its digest for the coordinator. Published image tags are never overwritten. Bump the image version in `agents.yaml` whenever the Dockerfile, its Node or Go pins, the root package manager pin, or either Rust toolchain changes. Bump it also when refreshing distribution packages. Agent initialization restores dependency downloads and Rust build artifacts, then installs workspace dependencies.
 
 Custom managed images require the Nx Cloud dedicated compute add-on. The first publication creates a private GHCR package: make the `gtkx-ci` package public in its package settings, then rerun CI so Nx Agents can pull it. Image publication uses the repository's GitHub token and runs only for trusted checkouts with an Nx token. No separate registry credential is required.
 
-Fork pull requests and runs without an Nx token use the same Nx task graph directly on one Ubuntu 26.04 runner. The shared `.github/actions/setup-ci` action installs that fallback environment and restores package and Rust caches. Nx schedules independent tasks in parallel and uses remote caching when an access token is available. Runtime and native environment fingerprints are included in cache inputs so system library and toolchain changes invalidate the relevant tasks.
+Fork pull requests and runs without an Nx token use the same Nx task graph directly on one Ubuntu 26.04 runner. The shared `.github/actions/setup-ci` action installs that fallback environment, selects Node.js from `engines.node` in the root `package.json`, and restores package and Rust caches. The publishing workflow selects Node.js the same way. Nx schedules independent tasks in parallel and uses remote caching when an access token is available. Runtime and native environment fingerprints are included in cache inputs so system library and toolchain changes invalidate the relevant tasks.
 
 Typed Oxlint and scoped ESLint checks depend on built package declarations. Their cache inputs include dependent declarations and the lockfile; the shared compiler-version input also invalidates tasks when the native TypeScript compiler changes.
 
 Nx's standard TypeScript, Oxlint, ESLint, and Vitest plugins infer package targets. Other project commands run directly and declare their dependencies and cache outputs in `project.json`.
 
-The native sanitizer task runs as a dependency of the `e2e` target. The Rust advisory audit refreshes advisories on every run. When Nx Cloud is enabled, CI records the audit, requests fixes for failures, and closes the run after checks finish, including after failures. Publication, Pages deployment, and release management remain in their own GitHub Actions workflows.
+When Nx Cloud is enabled, CI records the Rust advisory audit, requests fixes for failures, and closes the run after checks finish, including after failures. Publication, Pages deployment, and release management remain in their own GitHub Actions workflows.
 
 ## Generated bindings
 
@@ -111,7 +111,7 @@ For only the root bindings, TypeScript declarations, and widget reference:
 pnpm nx run gtkx:codegen
 ```
 
-The `bindings` target runs the compiled generator with `gtkx.config.base.ts`. Its dependencies are limited to the generator, config, utilities, runtime, and native bridge; renderer metadata lives in the config package so React does not need to build first. Packages that consume generated bindings depend on this target explicitly. The public `codegen` target runs the built CLI and also refreshes `.gtkx/reference`.
+The `bindings` target runs the compiled generator with `gtkx.config.base.ts`. It depends only on the generator's build; renderer metadata lives in the config package so React does not need to build first. Packages that consume generated bindings depend on this target explicitly. The public `codegen` target runs the built CLI and also refreshes `.gtkx/reference`.
 
 `pnpm codegen` bypasses Nx task-result caching so explicit regeneration also refreshes the generated blocks in `AGENTS.md` and `CLAUDE.md`. These files can contain developer-owned instructions and are never restored from a shared cache. Dependency builds use cached binding and reference outputs during ordinary CI tasks.
 
@@ -163,25 +163,16 @@ The build invokes `napi build` in release mode and produces the platform-specifi
 
 ## Work on the website
 
-Run the site through Nx from the repository root:
+Start the site from the repository root:
 
 ```bash
 pnpm nx run @gtkx/website:dev
 ```
 
-This target generates the API references before starting VitePress. For a production build and local preview:
-
-```bash
-pnpm nx run @gtkx/website:build
-pnpm nx run @gtkx/website:preview
-```
-
-The preview target depends on the build target. Prose changes usually belong in Markdown, while navigation, versioning, and theme behavior live in `website/.vitepress`. The Contributing section is shared at `/contributing/` and describes repository development. Guide, Tutorial, and API Reference pages follow the prefixes declared in `website/versions.json`; GTKX 2's application documentation currently lives under `/v2/`.
-
-The working-tree API pages are generated from public source entrypoints after building the packages. Change the exported API documentation at its source and regenerate the reference. See [Maintaining Documentation](/contributing/documentation) for page registration, version manifests, and promotion.
+`@gtkx/website:preview` builds the site and serves the production output. Prose lives in Markdown; navigation, versioning, and theme behavior live in `website/.vitepress`. The Contributing section is shared at `/contributing/`, while Guide, Tutorial, and API Reference pages follow the prefixes declared in `website/versions.json`. [Maintaining Documentation](/contributing/documentation) covers style, generated API pages, page registration, version manifests, and promotion.
 
 ## Prepare a change for review
 
-Add coverage in the suite that owns the behavior, then rely on CI's `Verify workspace` check. [Testing](/contributing/testing) describes coverage ownership and how to reproduce a failing target. A manual dispatch of the normal CI workflow runs the complete workspace graph.
+Add coverage in the suite that owns the behavior, then rely on CI's `Verify workspace` check; [Testing](/contributing/testing) describes coverage ownership and how to reproduce a failing target.
 
-Changes to public APIs, application behavior, or developer workflows use an Nx version plan created by `pnpm plan`. Documentation, repository tests, and private implementation changes do not need release notes. `@gtkx/native` is private implementation even though it is published; describe any application-facing fixes without listing its internal APIs. The [contribution guide](https://github.com/gtkx-org/gtkx/blob/main/CONTRIBUTING.md) covers submission and version plans; [Publishing Releases](/contributing/releases) is for maintainers.
+Changes to public APIs, application behavior, or developer workflows need an Nx version plan from `pnpm plan`. The [contribution guide](https://github.com/gtkx-org/gtkx/blob/main/CONTRIBUTING.md#add-a-version-plan) explains which changes need one and how to write it. [Publishing Releases](/contributing/releases) is for maintainers.

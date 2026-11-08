@@ -1,48 +1,42 @@
+import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { t } from "@gtkx/i18n";
 import { rootElement } from "@gtkx/react";
 import { render, screen, userEvent } from "@gtkx/testing";
+import { rmSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import schema from "../data/dev.gtkx.Notes.gschema.xml";
 import { App } from "../src/app.js";
-import { useStore } from "../src/store/index.js";
 
-describe("Tasks in French", () => {
-    it("renders translated controls and starter content", async () => {
+const notesFolder = (): string => Gio.Settings.new(schema.id).getString("folder");
+
+describe("Notes in French", () => {
+    it("renders translated controls", async () => {
         await render(<App />, { container: rootElement });
 
-        expect(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Nouvelle tâche (Ctrl+N)" })).toBeDefined();
-
-        expect(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Arroser les plantes/ })).toBeDefined();
+        expect(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Nouvelle note (Ctrl+N)" })).toBeDefined();
+        expect(await screen.findByPlaceholderText("Rechercher dans les notes")).toBeDefined();
     });
 
-    it("uses French interpolation and plural forms", async () => {
-        const due = new Date();
-        due.setDate(due.getDate() - 2);
-        const tasks = useStore
-            .getState()
-            .tasks.map((task) => (task.id === "t2" ? { ...task, due: due.toISOString() } : task));
-        useStore.setState({ tasks });
-
+    it("uses French plural forms", async () => {
         await render(<App />, { container: rootElement });
 
-        expect(await screen.findByText("Il y a 2 jours")).toHaveTextContent("Il y a 2 jours");
+        expect(await screen.findByText("2 notes")).toBeDefined();
 
-        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Rechercher (Ctrl+F)" }));
-        const search = await screen.findByPlaceholderText("Rechercher des tâches…");
-        await userEvent.type(search, "introuvable");
+        rmSync(join(notesFolder(), "Groceries.md"));
+        expect(await screen.findByText("1 note")).toBeDefined();
 
-        expect(await screen.findByText("Aucune tâche ne correspond à « introuvable »")).toHaveTextContent(
-            "Aucune tâche ne correspond à « introuvable »",
-        );
+        rmSync(join(notesFolder(), "Reading list.md"));
+        expect(await screen.findByText("0 note")).toBeDefined();
     });
 
-    it("rejects a plural count gettext cannot represent", () => {
-        expect(() =>
-            t("{{count}} day ago", {
-                count: 1.5,
-                defaultValue_one: "{{count}} day ago",
-                defaultValue_other: "{{count}} days ago",
-            }),
-        ).toThrow();
+    it("interpolates values into translated messages", async () => {
+        await render(<App />, { container: rootElement });
+
+        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Groceries" }));
+        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Menu de la note" }));
+        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.MENU_ITEM, { name: "Mettre à la corbeille" }));
+
+        expect(await screen.findByText("« Groceries » a été mise à la corbeille")).toBeDefined();
     });
 });

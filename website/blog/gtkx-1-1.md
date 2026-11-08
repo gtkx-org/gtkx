@@ -1,6 +1,8 @@
 ---
 title: "GTKX 1.1: Introducing gtkx deploy"
 description: "GTKX 1.1 introduces gtkx deploy for Flatpak, Debian, RPM, and AppImage packages."
+label: "GTKX 1.1"
+date: 2026-08-11
 image: /tasks-screenshot.png
 ---
 
