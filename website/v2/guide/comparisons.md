@@ -5,13 +5,15 @@ description: "How GTKX compares with GJS, node-gtk, React Native, and gtk4-rs an
 
 # Comparisons
 
-Several projects build GTK and Adwaita apps, or apps with React. This page describes how each one differs from GTKX in design and scope.
+Several projects build GTK and Adwaita apps, or apps with React. This page describes how each one differs from GTKX in design and scope, and when it is the better fit.
 
 ## GJS
 
 [GJS](https://gjs.guide) is GNOME's JavaScript runtime. It embeds Firefox's SpiderMonkey engine, and GNOME Shell and many GNOME apps are written with it. Your JavaScript runs inside GLib's main loop, in a runtime that implements neither the Node.js APIs nor most Web APIs. npm packages that depend on those APIs, and tools that run on Node.js such as Vitest, don't work with a GJS app.
 
 GTKX reverses that arrangement: Node.js owns the process, and GLib's main loop runs inside it (see [Why Node.js](/v2/guide/why-gtkx#why-node-js)). The app is an ordinary Node.js program, so it can use npm packages, Vite and Vitest. GTKX's GObject APIs follow GJS's names and conventions, so knowledge of GJS carries over.
+
+GJS is the better fit for [GNOME Shell extensions](https://gjs.guide/extensions/), which run inside GNOME Shell's own GJS, and for apps that should use the runtime GNOME already provides: a GJS app's Flatpak takes GJS from the GNOME runtime, while a GTKX package includes Node.js.
 
 ## node-gtk
 
@@ -21,7 +23,7 @@ GTKX renders declarative React components, and its native addon is written in Ru
 
 ## React Native
 
-[React Native](https://reactnative.dev) builds native apps with React. Its core targets Android and iOS, and separately maintained [out-of-tree platforms](https://reactnative.dev/docs/out-of-tree-platforms) add others such as macOS and Windows; none of them renders GTK or Adwaita. Its components abstract over the differences between platforms so that one codebase can run on each.
+[React Native](https://reactnative.dev) builds native apps with React. Its core targets Android and iOS, and separately maintained [out-of-tree platforms](https://reactnative.dev/docs/out-of-tree-platforms) add others such as macOS and Windows; none of them renders GTK or Adwaita. Its components abstract over the differences between platforms, which makes it the better fit when one codebase must run on several of them.
 
 GTKX targets one platform and exposes all of it: every GTK and Adwaita widget and API the installed libraries provide, under its native name. Readers who know React Native will recognize [navigation](/v2/guide/navigation), which maps React Navigation to Adwaita page stacks, tabs, drawers and split views.
 
