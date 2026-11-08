@@ -50,7 +50,7 @@ The `useState` initializer creates one `SearchIndex` when the screen mounts, and
 
 `src/components/notes-screen.tsx` puts a `GtkSearchEntry` above the list:
 
-<<< @/figures/tutorial/search-in-a-worker/src/components/notes-screen.tsx{46-60,68-72,89-91,96-117} [src/components/notes-screen.tsx]
+<<< @/figures/tutorial/search-in-a-worker/src/components/notes-screen.tsx{6-15,17,21,46-61,68-72,89-91,94-108,110-143} [src/components/notes-screen.tsx]
 
 - The entry emits [`search-changed`](https://docs.gtk.org/gtk4/signal.SearchEntry.search-changed.html) once typing pauses for 150 milliseconds rather than on every key, so `query` and the worker see one query per pause. `onSearchChanged` stores the entry's text, trimmed before it reaches the hook.
 - Escape emits [`stop-search`](https://docs.gtk.org/gtk4/signal.SearchEntry.stop-search.html), and `onStopSearch` empties the query. The `text` prop then clears the entry; GTKX writes it only when it differs from the entry's text, so typing never fights it ([The JSX prop model](/v2/guide/jsx-elements#the-jsx-prop-model)).

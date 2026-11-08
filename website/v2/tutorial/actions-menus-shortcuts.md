@@ -20,7 +20,7 @@ A command that a menu item, a button and a key all run is a GIO action: a named 
 
 New Note writes an empty `Untitled.md` and opens it. `createNote`, in `src/notes/files.ts`, tries `Untitled`, then `Untitled 2`, `Untitled 3` and so on:
 
-<<< @/figures/tutorial/actions-menus-shortcuts/src/notes/files.ts{70-90,93} [src/notes/files.ts]
+<<< @/figures/tutorial/actions-menus-shortcuts/src/notes/files.ts{70-91,93} [src/notes/files.ts]
 
 - The `wx` [flag](https://nodejs.org/api/fs.html#file-system-flags) makes `writeFile` fail with `EEXIST` when the file already exists instead of replacing it, so a new note never overwrites another, even one that another program created a moment before. Checking for the file and then writing it would leave a gap for that to happen.
 - `isTaken` recognizes that error and moves on to the next name. Any other error, such as a folder the app can't write to, ends the loop and reaches the toast.
@@ -29,14 +29,14 @@ The provider's `create` adds the note to the list at once and tells the saver ab
 
 <<< @/figures/tutorial/actions-menus-shortcuts/src/notes/note-saver.ts{45-48} [src/notes/note-saver.ts]
 
-<<< @/figures/tutorial/actions-menus-shortcuts/src/notes/notes-provider.tsx{5,14,90-98,108} [src/notes/notes-provider.tsx]
+<<< @/figures/tutorial/actions-menus-shortcuts/src/notes/notes-provider.tsx{5,14,90-99,108-110} [src/notes/notes-provider.tsx]
 
 - Writing the file fires the folder watcher from [Watch the folder](/v2/tutorial/saving-and-watching#watch-the-folder). `remember` records the text as the app's own write, so the watcher skips the event, as it skips the saver's own saves.
 - `create` returns the name it used, which can differ from the one it was given.
 
 An action runs outside any screen, so it has no screen's `navigation` prop to open the note with. `src/navigation.ts` creates a navigation container ref, which the window passes to `NavigationContainer` below, and `openNote` navigates through it:
 
-<<< @/figures/tutorial/actions-menus-shortcuts/src/navigation.ts{2,14,29-31,33} [src/navigation.ts]
+<<< @/figures/tutorial/actions-menus-shortcuts/src/navigation.ts{1-5,14-15,29-33} [src/navigation.ts]
 
 See React Navigation's [Navigation ref](https://reactnavigation.org/docs/navigation-ref).
 
@@ -63,7 +63,7 @@ The window moves from `src/app.tsx` into `src/components/window.tsx`, and its si
 
 `NotesTitle`, in `src/components/notes-screen.tsx`, shows the note count under the title, and the empty folder's status page gets a New Note button:
 
-<<< @/figures/tutorial/actions-menus-shortcuts/src/components/notes-screen.tsx{5,8,94-107,133-140,217} [src/components/notes-screen.tsx]
+<<< @/figures/tutorial/actions-menus-shortcuts/src/components/notes-screen.tsx{5,8,94-108,133-140,217} [src/components/notes-screen.tsx]
 
 - [`AdwWindowTitle`](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/class.WindowTitle.html) shows a title with a subtitle under it. The subtitle stays empty while the folder loads.
 - `t()` receives the singular and the plural source strings in `defaultValue_one` and `defaultValue_other`, and `count` picks one. [Translate the App](/v2/tutorial/internationalization) translates both. See [Plurals and context](/v2/guide/internationalization#plurals-and-context).
@@ -73,7 +73,7 @@ The window moves from `src/app.tsx` into `src/components/window.tsx`, and its si
 
 `actionAccels` on the application element binds keys to actions by their prefixed names, and the application's own `quit` action becomes `app.quit`. `src/app.tsx` now holds only the application element:
 
-<<< @/figures/tutorial/actions-menus-shortcuts/src/app.tsx [src/app.tsx]
+<<< @/figures/tutorial/actions-menus-shortcuts/src/app.tsx{1-2,4,8-23} [src/app.tsx]
 
 - Ctrl+N, Ctrl+? and Ctrl+Q are the [standard GNOME keys](https://developer.gnome.org/hig/reference/keyboard.html) for New, Keyboard Shortcuts and Quit. `<Control>question` is GTK's name for Ctrl+?.
 - A key for a `win.` action works in every window that has the action. Menus read the same table and show each key beside its item. See [Keyboard accelerators](/v2/guide/actions#keyboard-accelerators).

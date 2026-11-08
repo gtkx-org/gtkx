@@ -34,7 +34,7 @@ A module that imports the schema is enough for GTKX to compile it and type its k
 
 The window reads the folder and color scheme, and saves its size:
 
-<<< @/figures/tutorial/preferences-and-theming/src/components/window.tsx{2,11-12,16,66,88-90,94-107,111,117,121,127,134-136,138-150,154} [src/components/window.tsx]
+<<< @/figures/tutorial/preferences-and-theming/src/components/window.tsx{2,11-12,16,66,76,88-90,93-107,111,117,121,127,134-136,138-150,154} [src/components/window.tsx]
 
 - `Window` reads `folder` and `color-scheme` with `useSetting`, which re-renders when a key changes. See [Reading and writing a key](/v2/guide/native-state#reading-and-writing-a-key).
 - The first effect applies the color scheme with [`Adw.StyleManager`](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/property.StyleManager.color-scheme.html). Every Adwaita widget follows it, and so do media queries in the app's own styles. See [Follow appearance preferences](/v2/guide/css#follow-appearance-preferences).
@@ -45,7 +45,7 @@ The window reads the folder and color scheme, and saves its size:
 
 `NotesProvider` now receives a folder that can change. It switches to the new folder in place, so the window and the Preferences dialog stay open:
 
-<<< @/figures/tutorial/preferences-and-theming/src/notes/notes-provider.tsx{53-62,64-68} [src/notes/notes-provider.tsx]
+<<< @/figures/tutorial/preferences-and-theming/src/notes/notes-provider.tsx{53-68} [src/notes/notes-provider.tsx]
 
 - The saver writes to the folder it was created with, so `NotesProvider` keeps the folder of its current saver. When the `folder` prop differs, it creates a saver for the new folder and clears the list during the render, as React's [Adjusting some state when a prop changes](https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes) shows.
 - The effect depends on `folder` and `saver`, so its cleanup stops watching the old folder and writes the old saver's pending edits to the old folder. The effect then reads and watches the new folder.
@@ -83,7 +83,7 @@ The `Dialog` union gains a `preferences` kind, and `Dialogs` passes the window's
 - Once a folder is chosen, a second button sets the key back to empty, which returns to the default folder.
 - The row's subtitle shows the folder in use. `displayFolder`, a new function in `src/notes/files.ts`, writes the home folder as `~`:
 
-<<< @/figures/tutorial/preferences-and-theming/src/notes/files.ts{24-28,148} [src/notes/files.ts]
+<<< @/figures/tutorial/preferences-and-theming/src/notes/files.ts{24-29,148} [src/notes/files.ts]
 
 ## Run it
 

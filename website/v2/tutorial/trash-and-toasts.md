@@ -19,18 +19,18 @@ F2 renames the open note, and the shortcuts dialog lists the key:
 
 <<< @/figures/tutorial/trash-and-toasts/src/app.tsx{11} [src/app.tsx]
 
-<<< @/figures/tutorial/trash-and-toasts/src/components/shortcuts.tsx{24-27} [src/components/shortcuts.tsx]
+<<< @/figures/tutorial/trash-and-toasts/src/components/shortcuts.tsx{23-26} [src/components/shortcuts.tsx]
 
 Both actions need the open note's name and are disabled while no note is open. `useOpenNoteName` from [Select the open note](/v2/tutorial/the-note-editor#select-the-open-note) can't provide it: a hook reads navigation state only inside `NavigationContainer`, and the window that declares the actions sits outside it. `src/navigation.ts` gains functions that read the route through the container ref instead:
 
-<<< @/figures/tutorial/trash-and-toasts/src/navigation.ts{26-38,48,51} [src/navigation.ts]
+<<< @/figures/tutorial/trash-and-toasts/src/navigation.ts{22-39,47-54} [src/navigation.ts]
 
 - `openNoteName` returns the open note's name, or `null` while the list shows or before the container is ready. See the container's [ref methods](https://reactnavigation.org/docs/navigation-container/#methods-on-the-ref).
 - `closeNoteIfOpen` goes back to the list when the given note is open. [Move to the trash](#move-to-the-trash) uses it.
 
 Reading the ref doesn't re-render anything, so the window keeps the name in state:
 
-<<< @/figures/tutorial/trash-and-toasts/src/components/window.tsx{13,18,21,25,28,33-36,70-73,91-92,105,115,121} [src/components/window.tsx]
+<<< @/figures/tutorial/trash-and-toasts/src/components/window.tsx{9,13,18,21,23-29,33-36,70-73,91-92,105,113-116,121} [src/components/window.tsx]
 
 - [`onStateChange`](https://reactnavigation.org/docs/navigation-container/#onstatechange) runs after every navigation, and stores `openNoteName()` in `openName`. It doesn't run for the initial state, which is the list, so `openName` starts as `null`.
 - `WindowActions` receives `openName`, so opening and closing a note enables and disables both actions, and their menu items with them.
@@ -48,13 +48,13 @@ Rename shows `RenameDialog`, an `AdwAlertDialog` with an entry for the new name:
 
 The `Dialog` union gains a `rename` kind that carries the note's name, and `Dialogs` renders `RenameDialog` for it:
 
-<<< @/figures/tutorial/trash-and-toasts/src/components/dialogs.tsx{2,9,14,17,25-33} [src/components/dialogs.tsx]
+<<< @/figures/tutorial/trash-and-toasts/src/components/dialogs.tsx{2,5-9,14,17,25-33} [src/components/dialogs.tsx]
 
 ## Move to the trash
 
 `src/notes/files.ts` gains the file operations:
 
-<<< @/figures/tutorial/trash-and-toasts/src/notes/files.ts{1,4,8,79-115,142,147-148} [src/notes/files.ts]
+<<< @/figures/tutorial/trash-and-toasts/src/notes/files.ts{1,3-11,79-116,142,147-148} [src/notes/files.ts]
 
 - Node's [`rename`](https://nodejs.org/api/fs.html#fspromisesrenameoldpath-newpath) replaces a file that already has the new name, so `renameNote` checks for one first and fails instead. Unlike the `wx` flag in [Window actions](/v2/tutorial/actions-menus-shortcuts#window-actions), the check and the rename are separate steps: a file that another program creates between them is still replaced. Node has no rename that refuses to replace.
 - `trashNote` moves the file to the desktop trash with [`Gio.File.trashAsync`](https://docs.gtk.org/gio/method.File.trash_async.html), so a mistaken trash can also be undone from the Trash in Files. GTKX turns GIO's async and finish pair into one method that returns a promise and rejects on failure. See [Async Operations](/v2/guide/async-operations).
@@ -62,9 +62,9 @@ The `Dialog` union gains a `rename` kind that carries the note's name, and `Dial
 
 The provider's `rename` and `trash` run these operations and update the list. The saver gains two methods for them:
 
-<<< @/figures/tutorial/trash-and-toasts/src/notes/note-saver.ts{31-34,54-57} [src/notes/note-saver.ts]
+<<< @/figures/tutorial/trash-and-toasts/src/notes/note-saver.ts{31-35,54-58} [src/notes/note-saver.ts]
 
-<<< @/figures/tutorial/trash-and-toasts/src/notes/notes-provider.tsx{10-11,23-24,116-135,138} [src/notes/notes-provider.tsx]
+<<< @/figures/tutorial/trash-and-toasts/src/notes/notes-provider.tsx{5-12,23-24,116-136,138} [src/notes/notes-provider.tsx]
 
 - `settle` writes the note's pending save now and waits for it. Without it, a save still waiting out its delay from [Save and Watch Files](/v2/tutorial/saving-and-watching) would write the old name after the rename or trash and bring the file back.
 - `forget` drops what the saver knows about the old name: the text it last wrote and whether its saves are failing. Otherwise a note restored from the Trash in Files would match that text, and the watcher would skip it as the app's own write.
@@ -74,7 +74,7 @@ The provider's `rename` and `trash` run these operations and update the list. Th
 
 `useNoteCommands` gains the commands that the dialog and the actions run:
 
-<<< @/figures/tutorial/trash-and-toasts/src/components/window-actions.tsx{5,13,24-41,45-47,52,59,65,74-91,113} [src/components/window-actions.tsx]
+<<< @/figures/tutorial/trash-and-toasts/src/components/window-actions.tsx{5,13,24-42,45-47,52,59,65,74-91,113} [src/components/window-actions.tsx]
 
 - `renameNote` opens the note under its new name once the file is renamed. A failure, such as a name another program took after the dialog checked it, shows in a toast.
 - The `trashNote` command keeps the note's text, closes the note if it is open, so the editor can't save into a file that is gone, and moves the file to the trash.

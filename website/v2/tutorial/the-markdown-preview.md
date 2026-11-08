@@ -19,7 +19,7 @@ npm install -D @types/mdast
 
 The list's excerpt has been the first line that isn't a heading, as written, so Book club reads `Next up: *Piranesi*` with its asterisks. Removing the syntax with regular expressions would miss links, escapes and nested formatting, while the tree holds the text without it. `src/notes/note.ts` now takes the excerpt from the tree:
 
-<<< @/figures/tutorial/the-markdown-preview/src/notes/note.ts [src/notes/note.ts]
+<<< @/figures/tutorial/the-markdown-preview/src/notes/note.ts{1-3,11-47,53} [src/notes/note.ts]
 
 - `firstParagraph` walks the tree depth first and returns the first paragraph's text, including one inside a list item or a block quote. It skips headings, which usually repeat the note's name, and code blocks, which aren't paragraphs.
 - `plainText` joins a paragraph's inline nodes: emphasis and links give their children's text, inline code its code, an image its description, and a line break a space.
@@ -49,7 +49,7 @@ Inline formatting becomes [Pango markup](https://docs.gtk.org/Pango/pango_markup
 
 The note screen, `src/components/note-screen.tsx`, puts the editor and the preview in a [`GtkStack`](https://docs.gtk.org/gtk4/class.Stack.html), which shows one child at a time:
 
-<<< @/figures/tutorial/the-markdown-preview/src/components/note-screen.tsx{12-16,42-59} [src/components/note-screen.tsx]
+<<< @/figures/tutorial/the-markdown-preview/src/components/note-screen.tsx{1,4,8,10,12-16,22-31,42-59} [src/components/note-screen.tsx]
 
 - Each child sits in a [`GtkStackPage`](/v2/guide/components#stack-pages), the object the stack keeps for it, and `visibleChildName` shows the page with that `name`. The crossfade animates the switch.
 - Both pages stay mounted, so the editor keeps its cursor and undo history while the preview shows, and the preview follows every edit.
@@ -57,7 +57,7 @@ The note screen, `src/components/note-screen.tsx`, puts the editor and the previ
 
 The toggle button that sets `preview` belongs in the note's header bar, which the navigator builds from the screen's `options`, so the state lives in `src/app.tsx`:
 
-<<< @/figures/tutorial/the-markdown-preview/src/app.tsx{10,13,23,56-72} [src/app.tsx]
+<<< @/figures/tutorial/the-markdown-preview/src/app.tsx{10,13,23,56-63,65-72} [src/app.tsx]
 
 - `headerEnd` puts the button at the end of the content pane's header bar; [Headers](/v2/guide/navigation#headers) lists the other header options. `active` and `onNotifyActive` keep the button and the state in step, as in [The JSX prop model](/v2/guide/jsx-elements#the-jsx-prop-model).
 - The `Note` screen takes a function as its child instead of `component`, so it can pass `preview` along with the navigator's props; see React Navigation's [Passing additional data](https://reactnavigation.org/docs/hello-react-navigation#passing-additional-data).
@@ -67,7 +67,7 @@ The toggle button that sets `preview` belongs in the note's header bar, which th
 
 Website relaunch links to another note with `[kickoff](<Meeting notes.md>)`. A link like that should open the note in the app. `src/notes/files.ts` gains `linkedNoteName`, which turns a link into a note name:
 
-<<< @/figures/tutorial/the-markdown-preview/src/notes/files.ts{20-29,70-77} [src/notes/files.ts]
+<<< @/figures/tutorial/the-markdown-preview/src/notes/files.ts{20-30,70-77} [src/notes/files.ts]
 
 - [`GLib.Uri.peekScheme`](https://docs.gtk.org/glib/type_func.Uri.peek_scheme.html) returns `null` for a relative link, one without a scheme such as `https:`.
 - [`GLib.Uri.unescapeString`](https://docs.gtk.org/glib/type_func.Uri.unescape_string.html) decodes escapes such as `%20`, and returns `null` when the link escapes a `/`.

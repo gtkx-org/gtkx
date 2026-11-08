@@ -33,7 +33,7 @@ npm run docs:dev
 
 The preview renders the quote as dimmed text and the code block as a plain monospace label. Change `CodeBlock` and `QuoteBlock` in `src/preview/markdown-preview.tsx`, saving after each:
 
-<<< @/figures/tutorial/fast-refresh/src/preview/markdown-preview.tsx{73-103} [src/preview/markdown-preview.tsx]
+<<< @/figures/tutorial/fast-refresh/src/preview/markdown-preview.tsx{74-88,92-101} [src/preview/markdown-preview.tsx]
 
 - `CodeBlock` puts the label in a box with the [`card`](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/style-classes.html#boxed-lists-cards) style class, which gives it the rounded background of a boxed list. The margins keep the code clear of the card's edge, and `hexpand` stretches the label across the card.
 - `QuoteBlock` sets a vertical [`GtkSeparator`](https://docs.gtk.org/gtk4/class.Separator.html) beside the quote's blocks, as a bar. The module already imports `GtkSeparator` for thematic breaks.

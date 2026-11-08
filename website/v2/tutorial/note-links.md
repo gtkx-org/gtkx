@@ -35,11 +35,11 @@ As you keep typing, GtkSourceView calls `vfuncRefilter` with the same model, and
 
 `NoteScreen` passes the names of the other notes to the editor as `linkTargets`. `useMemo` builds the list again only when the notes or the open note change. `openLinkedNote` moves out of the component and calls `openNote` from [Window actions](/v2/tutorial/actions-menus-shortcuts#window-actions), so the screen no longer needs its `navigation` prop:
 
-<<< @/figures/tutorial/note-links/src/components/note-screen.tsx{7-8,15-23,25,31-34,54} [src/components/note-screen.tsx]
+<<< @/figures/tutorial/note-links/src/components/note-screen.tsx{7-8,13-20,22-23,25,31-34,54} [src/components/note-screen.tsx]
 
 `NoteEditor` keeps the `GtkSourceView` in state through its callback ref, as [Objects that JSX creates](/v2/guide/native-state#objects-that-jsx-creates) shows, and passes it to `useLinkCompletion`:
 
-<<< @/figures/tutorial/note-links/src/editor/note-editor.tsx{8-9,13-43,49-50,55} [src/editor/note-editor.tsx]
+<<< @/figures/tutorial/note-links/src/editor/note-editor.tsx{8-9,13-17,19-43,49-50,55} [src/editor/note-editor.tsx]
 
 - Once the view exists, the second effect adds a provider to the view's completion, and its cleanup removes the provider when the editor unmounts.
 - The provider reads the names through `latestTargets`, a ref that the first effect keeps current. A new list of notes reaches the provider without replacing it.

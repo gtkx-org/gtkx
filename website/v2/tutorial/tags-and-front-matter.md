@@ -16,7 +16,7 @@ npm install yaml
 
 `src/notes/note.ts` splits each file into its front matter and its body:
 
-<<< @/figures/tutorial/tags-and-front-matter/src/notes/note.ts{3,9-10,14-46,87,93-95} [src/notes/note.ts]
+<<< @/figures/tutorial/tags-and-front-matter/src/notes/note.ts{3,9-10,14-47,86-97} [src/notes/note.ts]
 
 - `FRONT_MATTER` matches only at the very start of the file: a `---` line, the YAML, and a closing `---` line. A file without the block has no tags, and its body is the whole text.
 - `parse` throws on YAML it can't read. `parseYaml` turns the error into `null`, so a note with a broken block still loads, with no tags.
@@ -27,7 +27,7 @@ npm install yaml
 
 `src/components/notes-screen.tsx` adds a drop-down of tags under the search entry:
 
-<<< @/figures/tutorial/tags-and-front-matter/src/components/notes-screen.tsx{1,23-52,100,121-124,133-140,149-156} [src/components/notes-screen.tsx]
+<<< @/figures/tutorial/tags-and-front-matter/src/components/notes-screen.tsx{1,23-53,100,121-122,124,133-135,140-156} [src/components/notes-screen.tsx]
 
 - `allTags` collects the tags of every note once, sorted alphabetically.
 - `TagFilter` renders a [`DropDown`](/v2/guide/components#dropdown) from `@gtkx/components`. Its items are "All Notes" followed by each tag. The values are strings, so the drop-down shows them as labels without a `renderItem`. Selection works by item ID, and "All Notes" takes the empty string, which no tag can be because `toTags` drops empty ones. The tooltip says what the drop-down is for, since it shows only the current choice.
@@ -45,7 +45,7 @@ The editor still gets `note.text`, so the front matter stays editable.
 
 `MarkdownPreview`, in `src/preview/markdown-preview.tsx`, shows the tags above the body:
 
-<<< @/figures/tutorial/tags-and-front-matter/src/preview/markdown-preview.tsx{159-169,173,179,198} [src/preview/markdown-preview.tsx]
+<<< @/figures/tutorial/tags-and-front-matter/src/preview/markdown-preview.tsx{159-170,173,179,198} [src/preview/markdown-preview.tsx]
 
 `Tags` renders a row of labels with libadwaita's `caption-heading` and `accent` [style classes](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/style-classes.html). The `tags` prop is optional and defaults to an empty list, which renders no row.
 

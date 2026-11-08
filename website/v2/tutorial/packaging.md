@@ -12,7 +12,7 @@ A Linux desktop learns about an installed app from two files: a [desktop entry](
 
 The scaffold's `deploy` block holds placeholders. Replace it with Notes' own metadata:
 
-<<< @/figures/tutorial/packaging/gtkx.config.ts{44-45} [gtkx.config.ts]
+<<< @/figures/tutorial/packaging/gtkx.config.ts{9-10,12-14,16-45} [gtkx.config.ts]
 
 `name`, `genericName`, `summary`, `keywords` and `categories` go into the desktop entry; the categories come from the freedesktop [category registry](https://specifications.freedesktop.org/menu-spec/latest/category-registry.html). The description paragraphs, `urls`, `screenshots`, `releases` and the `branding` colors are for software centers. List each new version in `releases`, newest first, with its notes. Without the list, GTKX writes a single release for the current version, dated the day of the build.
 

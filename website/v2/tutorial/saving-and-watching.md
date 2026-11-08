@@ -20,7 +20,7 @@ Writing the file on every keystroke would save once per character, and two write
 
 `files.ts` gains `writeNote`, and `readNote` returns `null` for a file that no longer exists, which is how the watcher learns that a note was deleted:
 
-<<< @/figures/tutorial/saving-and-watching/src/notes/files.ts{2,20-41,56-59} [src/notes/files.ts]
+<<< @/figures/tutorial/saving-and-watching/src/notes/files.ts{2,20-25,27-40,56-59} [src/notes/files.ts]
 
 The editor reports each change to its buffer:
 
@@ -30,13 +30,13 @@ The editor reports each change to its buffer:
 
 The note screen passes each change to the provider's `edit`:
 
-<<< @/figures/tutorial/saving-and-watching/src/components/note-screen.tsx{10,27} [src/components/note-screen.tsx]
+<<< @/figures/tutorial/saving-and-watching/src/components/note-screen.tsx{10,23-29} [src/components/note-screen.tsx]
 
 ## Watch the folder
 
 The provider owns the saver, edits the notes in memory, and watches the folder for changes made by other programs:
 
-<<< @/figures/tutorial/saving-and-watching/src/notes/notes-provider.tsx [src/notes/notes-provider.tsx]
+<<< @/figures/tutorial/saving-and-watching/src/notes/notes-provider.tsx{1-3,5-7,14,19-33,42-52,56-66,70-76,83-94,96-98} [src/notes/notes-provider.tsx]
 
 - `edit` schedules the save and updates the note at once, with the current time as its modification time. The list shows the new excerpt, and the edited note moves to the top.
 - `useState` with an initializer creates one saver when the provider mounts and keeps it across renders.
@@ -48,7 +48,7 @@ The provider owns the saver, edits the notes in memory, and watches the folder f
 
 A toast from `@gtkx/components` names a note that couldn't be saved; [Toasts](/v2/guide/components#toasts) covers the provider and `useToast`. The window shares an `AdwToastOverlay` through `ToastProvider`, outside `NotesProvider` so the provider can call `useToast`. The overlay wraps the navigator, so the toast shows over both panes:
 
-<<< @/figures/tutorial/saving-and-watching/src/app.tsx{1-2,8,12,21,33-35,59-61} [src/app.tsx]
+<<< @/figures/tutorial/saving-and-watching/src/app.tsx{1-2,8,12,21,33-61} [src/app.tsx]
 
 In the provider's `onError`:
 
