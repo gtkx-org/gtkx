@@ -175,6 +175,7 @@ html.dark {
 .vp-doc figure.result img {
     max-width: 100%;
     height: auto;
+    border-radius: 15px;
     filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.16));
 }
 
