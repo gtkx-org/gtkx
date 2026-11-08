@@ -81,7 +81,7 @@ import { CREATE_COMMAND, docsLink, REPO_URL } from "./content";
   margin: 0 auto;
   padding: 0 clamp(1rem, 4vw, 2.5rem);
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: clamp(2rem, 5vw, 4rem);
   align-items: center;
 }
@@ -152,7 +152,7 @@ import { CREATE_COMMAND, docsLink, REPO_URL } from "./content";
 }
 .shot__frame {
   position: relative;
-  width: 672px;
+  width: 100%;
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-lg);
 }
@@ -221,12 +221,14 @@ import { CREATE_COMMAND, docsLink, REPO_URL } from "./content";
 .shot__caption a:hover {
   color: var(--brand-hover);
 }
+@media (min-width: 1200px) {
+  .hero__grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  }
+}
 @media (max-width: 860px) {
   .shot {
     padding-bottom: 0;
-  }
-  .shot__frame {
-    width: 100%;
   }
   .shot__code {
     position: relative;
