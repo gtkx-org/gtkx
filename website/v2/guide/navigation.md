@@ -34,7 +34,12 @@ import { quit } from "@gtkx/react";
 
 export const App = () => (
     <AdwApplication>
-        <AdwApplicationWindow title="Notes" defaultWidth={800} defaultHeight={600} onCloseRequest={quit}>
+        <AdwApplicationWindow
+            title="Notes"
+            defaultWidth={800}
+            defaultHeight={600}
+            onCloseRequest={quit}
+        >
             <NavigationContainer>
                 <Notes />
             </NavigationContainer>
@@ -54,13 +59,19 @@ Pass a saved state to `initialState` and save each new one from `onStateChange`.
 ```tsx
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
-import { AdwApplication, AdwApplicationWindow, AdwSpinner } from "@gtkx/jsx/adw";
+import {
+    AdwApplication,
+    AdwApplicationWindow,
+    AdwSpinner,
+} from "@gtkx/jsx/adw";
 import { type InitialState, NavigationContainer } from "@gtkx/navigation";
 import { quit } from "@gtkx/react";
 import { useEffect, useState } from "react";
 
 const dataDir = GLib.buildFilenamev([GLib.getUserDataDir(), "notes"]);
-const stateFile = Gio.File.newForPath(GLib.buildFilenamev([dataDir, "navigation.json"]));
+const stateFile = Gio.File.newForPath(
+    GLib.buildFilenamev([dataDir, "navigation.json"]),
+);
 
 const loadState = async (): Promise<InitialState | undefined> => {
     try {
@@ -74,13 +85,23 @@ const loadState = async (): Promise<InitialState | undefined> => {
 const saveState = (state: object | undefined) => {
     GLib.mkdirWithParents(dataDir, 0o755);
     const bytes = new TextEncoder().encode(JSON.stringify(state));
-    stateFile.replaceContentsAsync(bytes, null, false, Gio.FileCreateFlags.NONE, null).catch((error: unknown) => {
-        console.error(error);
-    });
+    stateFile
+        .replaceContentsAsync(
+            bytes,
+            null,
+            false,
+            Gio.FileCreateFlags.NONE,
+            null,
+        )
+        .catch((error: unknown) => {
+            console.error(error);
+        });
 };
 
 export const App = () => {
-    const [restored, setRestored] = useState<{ state: InitialState | undefined }>();
+    const [restored, setRestored] = useState<{
+        state: InitialState | undefined;
+    }>();
 
     useEffect(() => {
         void loadState().then((state) => setRestored({ state }));
@@ -88,9 +109,17 @@ export const App = () => {
 
     return (
         <AdwApplication>
-            <AdwApplicationWindow title="Notes" defaultWidth={800} defaultHeight={600} onCloseRequest={quit}>
+            <AdwApplicationWindow
+                title="Notes"
+                defaultWidth={800}
+                defaultHeight={600}
+                onCloseRequest={quit}
+            >
                 {restored ? (
-                    <NavigationContainer initialState={restored.state} onStateChange={saveState}>
+                    <NavigationContainer
+                        initialState={restored.state}
+                        onStateChange={saveState}
+                    >
                         <Notes />
                     </NavigationContainer>
                 ) : (
@@ -111,7 +140,12 @@ A launch with a URI emits `open` before the window renders, so pass that state t
 ```tsx
 import * as Gio from "@gtkx/gi/gio";
 import { AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
-import { createNavigationContainerRef, getStateFromPath, type InitialState, NavigationContainer } from "@gtkx/navigation";
+import {
+    createNavigationContainerRef,
+    getStateFromPath,
+    type InitialState,
+    NavigationContainer,
+} from "@gtkx/navigation";
 import { quit } from "@gtkx/react";
 import { useState } from "react";
 
@@ -119,9 +153,13 @@ type NotesParams = { List: undefined; Note: { id: string } };
 
 const navigationRef = createNavigationContainerRef<NotesParams>();
 
-const linking = { initialRouteName: "List", screens: { List: "", Note: "note/:id" } } as const;
+const linking = {
+    initialRouteName: "List",
+    screens: { List: "", Note: "note/:id" },
+} as const;
 
-const stateFromUri = (uri: string) => getStateFromPath<NotesParams>(uri.replace(/^notes:\/\//, ""), linking);
+const stateFromUri = (uri: string) =>
+    getStateFromPath<NotesParams>(uri.replace(/^notes:\/\//, ""), linking);
 
 export const App = () => {
     const [initialState, setInitialState] = useState<InitialState>();
@@ -136,8 +174,16 @@ export const App = () => {
 
     return (
         <AdwApplication flags={Gio.ApplicationFlags.HANDLES_OPEN} onOpen={open}>
-            <AdwApplicationWindow title="Notes" defaultWidth={800} defaultHeight={600} onCloseRequest={quit}>
-                <NavigationContainer ref={navigationRef} initialState={initialState}>
+            <AdwApplicationWindow
+                title="Notes"
+                defaultWidth={800}
+                defaultHeight={600}
+                onCloseRequest={quit}
+            >
+                <NavigationContainer
+                    ref={navigationRef}
+                    initialState={initialState}
+                >
                     <Notes />
                 </NavigationContainer>
             </AdwApplicationWindow>
@@ -213,7 +259,10 @@ const Compose = () => {
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-            <GtkEntry placeholderText="Write something" onChanged={(entry) => setText(entry.text)} />
+            <GtkEntry
+                placeholderText="Write something"
+                onChanged={(entry) => setText(entry.text)}
+            />
             {pending && (
                 <AdwAlertDialog
                     heading="Discard draft?"
@@ -222,7 +271,11 @@ const Compose = () => {
                     closeResponse="keep"
                     responses={[
                         { id: "keep", label: "Keep Editing" },
-                        { id: "discard", label: "Discard", appearance: Adw.ResponseAppearance.DESTRUCTIVE },
+                        {
+                            id: "discard",
+                            label: "Discard",
+                            appearance: Adw.ResponseAppearance.DESTRUCTIVE,
+                        },
                     ]}
                     onResponse={(id) => {
                         if (id === "discard") {
@@ -303,7 +356,9 @@ import { GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { type DrawerContentProps, DrawerItemList } from "@gtkx/navigation";
 
 const Sidebar = (props: DrawerContentProps) => (
-    <AdwToolbarView top={<AdwHeaderBar titleWidget={<AdwWindowTitle title="Mail" />} />}>
+    <AdwToolbarView
+        top={<AdwHeaderBar titleWidget={<AdwWindowTitle title="Mail" />} />}
+    >
         <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER}>
             <DrawerItemList {...props} />
         </GtkScrolledWindow>
@@ -340,19 +395,30 @@ A content route that is not open yet is pushed above the current one, as in a st
 import { GtkLabel, GtkListBox, GtkListBoxRow } from "@gtkx/jsx/gtk";
 import type { SplitViewScreenProps } from "@gtkx/navigation";
 
-type SettingsParams = { Sections: undefined; Wifi: undefined; Proxy: undefined };
+type SettingsParams = {
+    Sections: undefined;
+    Wifi: undefined;
+    Proxy: undefined;
+};
 
 const sections = [
     { name: "Wifi", label: "Wi-Fi" },
     { name: "Proxy", label: "Proxy" },
 ] as const;
 
-const Sections = ({ navigation, route }: SplitViewScreenProps<SettingsParams, "Sections">) => (
+const Sections = ({
+    navigation,
+    route,
+}: SplitViewScreenProps<SettingsParams, "Sections">) => (
     <GtkListBox
         cssClasses={["navigation-sidebar"]}
         onRowActivated={(row) => {
             const section = sections[row.getIndex()];
-            if (section) navigation.reset({ index: 1, routes: [route, { name: section.name }] });
+            if (section)
+                navigation.reset({
+                    index: 1,
+                    routes: [route, { name: section.name }],
+                });
         }}
     >
         {sections.map((section) => (
@@ -392,11 +458,16 @@ export const App = () => (
 ```tsx
 import * as Adw from "@gtkx/gi/adw";
 import { AdwSidebar, AdwSidebarItem, AdwSidebarSection } from "@gtkx/jsx/adw";
-import { type SplitViewScreenProps, useSplitViewCollapsed } from "@gtkx/navigation";
+import {
+    type SplitViewScreenProps,
+    useSplitViewCollapsed,
+} from "@gtkx/navigation";
 
 const folders = ["Inbox", "Sent", "Archive"];
 
-const Folders = ({ navigation }: SplitViewScreenProps<MailParams, "Folders">) => {
+const Folders = ({
+    navigation,
+}: SplitViewScreenProps<MailParams, "Folders">) => {
     const isCollapsed = useSplitViewCollapsed();
 
     return (
@@ -430,28 +501,50 @@ Focus follows the selected content route even when the sidebar remains visible. 
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
-import { createTabViewNavigator, type TabViewScreenProps } from "@gtkx/navigation";
+import {
+    createTabViewNavigator,
+    type TabViewScreenProps,
+} from "@gtkx/navigation";
 
 type DocumentParams = { Document: { title: string } };
 
 const Tabs = createTabViewNavigator<DocumentParams>();
 
-const Document = ({ route, navigation }: TabViewScreenProps<DocumentParams, "Document">) => (
+const Document = ({
+    route,
+    navigation,
+}: TabViewScreenProps<DocumentParams, "Document">) => (
     <GtkBox orientation={Gtk.Orientation.VERTICAL}>
         <GtkLabel label={route.params.title} />
         <GtkButton
             label="Open related"
-            onClicked={() => navigation.openTab("Document", { title: "Related" }, { parent: route.key })}
+            onClicked={() =>
+                navigation.openTab(
+                    "Document",
+                    { title: "Related" },
+                    { parent: route.key },
+                )
+            }
         />
     </GtkBox>
 );
 
 export const Documents = () => (
     <Tabs.Navigator
-        overview={{ enableNewTab: true, onCreateTab: () => ({ name: "Document", params: { title: "Untitled" } }) }}
+        overview={{
+            enableNewTab: true,
+            onCreateTab: () => ({
+                name: "Document",
+                params: { title: "Untitled" },
+            }),
+        }}
         screenOptions={({ route }) => ({ title: route.params.title })}
     >
-        <Tabs.Screen name="Document" component={Document} initialParams={{ title: "Untitled" }} />
+        <Tabs.Screen
+            name="Document"
+            component={Document}
+            initialParams={{ title: "Untitled" }}
+        />
     </Tabs.Navigator>
 );
 ```
@@ -475,7 +568,11 @@ The overview's `open` follows the same rule as other [open-state props](/v2/guid
 ```tsx
 import { GMenu, GSimpleAction } from "@gtkx/jsx/gio";
 import { AdwApplicationWindow } from "@gtkx/jsx/adw";
-import { NavigationContainer, TabViewActions, useNavigationContainerRef } from "@gtkx/navigation";
+import {
+    NavigationContainer,
+    TabViewActions,
+    useNavigationContainerRef,
+} from "@gtkx/navigation";
 import { useRef } from "react";
 
 export const DocumentWindow = () => {
@@ -487,14 +584,28 @@ export const DocumentWindow = () => {
             actions={
                 <GSimpleAction
                     name="close-others"
-                    onActivate={() => navigation.dispatch(TabViewActions.closeOtherTabs(menuTab.current ?? undefined))}
+                    onActivate={() =>
+                        navigation.dispatch(
+                            TabViewActions.closeOtherTabs(
+                                menuTab.current ?? undefined,
+                            ),
+                        )
+                    }
                 />
             }
         >
             <NavigationContainer ref={navigation}>
                 <Tabs.Navigator
                     renderMenu={(ref) => (
-                        <GMenu ref={ref} items={[{ label: "Close Other Tabs", action: "win.close-others" }]} />
+                        <GMenu
+                            ref={ref}
+                            items={[
+                                {
+                                    label: "Close Other Tabs",
+                                    action: "win.close-others",
+                                },
+                            ]}
+                        />
                     )}
                     onSetupMenu={(route) => {
                         menuTab.current = route?.key ?? null;
@@ -527,21 +638,32 @@ import type { NavigatorScreenParams } from "@gtkx/navigation";
 import { createDrawerNavigator, createStackNavigator } from "@gtkx/navigation";
 
 type NotesParams = { List: undefined; Note: { id: string } };
-type AppParams = { Notes: NavigatorScreenParams<NotesParams>; Settings: undefined };
+type AppParams = {
+    Notes: NavigatorScreenParams<NotesParams>;
+    Settings: undefined;
+};
 
 const Drawer = createDrawerNavigator<AppParams>();
 const Stack = createStackNavigator<NotesParams>();
 
 const NotesStack = () => (
     <Stack.Navigator>
-        <Stack.Screen name="List" component={List} options={{ title: "Notes" }} />
+        <Stack.Screen
+            name="List"
+            component={List}
+            options={{ title: "Notes" }}
+        />
         <Stack.Screen name="Note" component={Note} />
     </Stack.Navigator>
 );
 
 export const App = () => (
     <Drawer.Navigator>
-        <Drawer.Screen name="Notes" component={NotesStack} options={{ headerShown: false }} />
+        <Drawer.Screen
+            name="Notes"
+            component={NotesStack}
+            options={{ headerShown: false }}
+        />
         <Drawer.Screen name="Settings" component={Settings} />
     </Drawer.Navigator>
 );
@@ -558,7 +680,9 @@ import { DrawerActions } from "@gtkx/navigation";
         headerStart: (
             <GtkButton
                 iconName="sidebar-show-symbolic"
-                onClicked={() => navigation.dispatch(DrawerActions.toggleDrawer())}
+                onClicked={() =>
+                    navigation.dispatch(DrawerActions.toggleDrawer())
+                }
             />
         ),
     })}
@@ -615,10 +739,16 @@ it("opens a note and comes back", async () => {
         </NavigationContainer>,
     );
 
-    await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Open note 42" }));
+    await userEvent.click(
+        await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
+            name: "Open note 42",
+        }),
+    );
     await screen.findByText("Showing note 42");
 
-    await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Back" }));
+    await userEvent.click(
+        screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Back" }),
+    );
     expect(screen.queryByText("Showing note 42")).toBeNull();
 });
 ```

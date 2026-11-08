@@ -81,12 +81,19 @@ export const watchCounter = (onValue: (value: number | null) => void) => {
                     "com.example.Counter",
                 );
                 if (current !== generation) return;
-                const handler = created.connect("g-signal", (_sender, signalName, parameters) => {
-                    if (signalName === "Changed") onValue(parameters.deepUnpack<"(u)">()[0]);
-                });
-                disconnect = () => GObject.signalHandlerDisconnect(created, handler);
+                const handler = created.connect(
+                    "g-signal",
+                    (_sender, signalName, parameters) => {
+                        if (signalName === "Changed")
+                            onValue(parameters.deepUnpack<"(u)">()[0]);
+                    },
+                );
+                disconnect = () =>
+                    GObject.signalHandlerDisconnect(created, handler);
                 proxy = created;
-                onValue(created.getCachedProperty("Value")?.unpack<"u">() ?? null);
+                onValue(
+                    created.getCachedProperty("Value")?.unpack<"u">() ?? null,
+                );
             } catch (error) {
                 if (current === generation) console.error(error);
             }
@@ -100,7 +107,12 @@ export const watchCounter = (onValue: (value: number | null) => void) => {
     return {
         increment: async (step: number) => {
             if (!proxy) return;
-            const reply = await proxy.call("Increment", new Variant("(u)", [step]), Gio.DBusCallFlags.NONE, -1);
+            const reply = await proxy.call(
+                "Increment",
+                new Variant("(u)", [step]),
+                Gio.DBusCallFlags.NONE,
+                -1,
+            );
             onValue(reply.deepUnpack<"(u)">()[0]);
         },
         stop: () => {
@@ -134,9 +146,15 @@ const COUNTER_XML = `<node>
   </interface>
 </node>`;
 
-export const exportCounter = (connection: Gio.DBusConnection, objectPath: string): (() => void) => {
-    const info = Gio.DBusNodeInfo.newForXml(COUNTER_XML).lookupInterface("com.example.Counter");
-    if (!info) throw new Error("The interface description has no com.example.Counter");
+export const exportCounter = (
+    connection: Gio.DBusConnection,
+    objectPath: string,
+): (() => void) => {
+    const info = Gio.DBusNodeInfo.newForXml(COUNTER_XML).lookupInterface(
+        "com.example.Counter",
+    );
+    if (!info)
+        throw new Error("The interface description has no com.example.Counter");
     let value = 0;
 
     const registration = connection.registerObjectWithClosures2(
@@ -151,18 +169,33 @@ export const exportCounter = (connection: Gio.DBusConnection, objectPath: string
             parameters: Variant,
             invocation: Gio.DBusMethodInvocation,
         ) => {
-            if (!(invocation instanceof Gio.DBusMethodInvocation)) throw new TypeError("Expected a D-Bus method invocation");
+            if (!(invocation instanceof Gio.DBusMethodInvocation))
+                throw new TypeError("Expected a D-Bus method invocation");
             if (method !== "Increment") {
-                invocation.returnDbusError("org.freedesktop.DBus.Error.UnknownMethod", `Unknown method ${method}`);
+                invocation.returnDbusError(
+                    "org.freedesktop.DBus.Error.UnknownMethod",
+                    `Unknown method ${method}`,
+                );
                 return;
             }
             const [step] = parameters.deepUnpack<"(u)">();
             value += step;
-            connection.emitSignal(null, objectPath, interfaceName, "Changed", new Variant("(u)", [value]));
+            connection.emitSignal(
+                null,
+                objectPath,
+                interfaceName,
+                "Changed",
+                new Variant("(u)", [value]),
+            );
             invocation.returnValue(new Variant("(u)", [value]));
         },
-        (_connection: Gio.DBusConnection, _sender: string, _path: string, _interfaceName: string, property: string) =>
-            property === "Value" ? new Variant("u", value) : null,
+        (
+            _connection: Gio.DBusConnection,
+            _sender: string,
+            _path: string,
+            _interfaceName: string,
+            property: string,
+        ) => (property === "Value" ? new Variant("u", value) : null),
         null,
     );
 

@@ -19,7 +19,13 @@ import { useProperty } from "@gtkx/react";
 export const ThemeIcon = () => {
     const dark = useProperty(Adw.StyleManager.getDefault(), "dark");
 
-    return <GtkImage iconName={dark ? "weather-clear-night-symbolic" : "weather-clear-symbolic"} />;
+    return (
+        <GtkImage
+            iconName={
+                dark ? "weather-clear-night-symbolic" : "weather-clear-symbolic"
+            }
+        />
+    );
 };
 ```
 
@@ -64,11 +70,26 @@ export const PasteButton = ({ onPaste }: { onPaste: () => void }) => {
     const clipboard = Gdk.Display.getDefault()?.getClipboard() ?? null;
     const [hasText, setHasText] = useState(false);
 
-    useSignal(clipboard, "changed", () => setHasText(clipboard?.getFormats().containMimeType("text/plain") ?? false), {
-        isImmediate: true,
-    });
+    useSignal(
+        clipboard,
+        "changed",
+        () =>
+            setHasText(
+                clipboard?.getFormats().containMimeType("text/plain") ?? false,
+            ),
+        {
+            isImmediate: true,
+        },
+    );
 
-    return <GtkButton iconName="edit-paste-symbolic" tooltipText="Paste" sensitive={hasText} onClicked={onPaste} />;
+    return (
+        <GtkButton
+            iconName="edit-paste-symbolic"
+            tooltipText="Paste"
+            sensitive={hasText}
+            onClicked={onPaste}
+        />
+    );
 };
 ```
 
@@ -150,8 +171,13 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
 
     return (
         <>
-            {createPortal(<GSettings ref={setSettings} schemaId={schema.id} />, rootElement)}
-            {settings !== null && <SettingsContext value={settings}>{children}</SettingsContext>}
+            {createPortal(
+                <GSettings ref={setSettings} schemaId={schema.id} />,
+                rootElement,
+            )}
+            {settings !== null && (
+                <SettingsContext value={settings}>{children}</SettingsContext>
+            )}
         </>
     );
 };
@@ -176,9 +202,19 @@ import schema from "../../data/com.example.Notes.gschema.xml";
 import { useAppSettings } from "../settings.js";
 
 export const DarkStyleRow = () => {
-    const [scheme, setScheme] = useSetting(useAppSettings(), schema, "color-scheme");
+    const [scheme, setScheme] = useSetting(
+        useAppSettings(),
+        schema,
+        "color-scheme",
+    );
 
-    return <AdwSwitchRow title="Dark Style" active={scheme === "dark"} onNotifyActive={(active) => setScheme(active ? "dark" : "default")} />;
+    return (
+        <AdwSwitchRow
+            title="Dark Style"
+            active={scheme === "dark"}
+            onNotifyActive={(active) => setScheme(active ? "dark" : "default")}
+        />
+    );
 };
 ```
 
@@ -199,9 +235,21 @@ import { useAppSettings } from "../settings.js";
 export const Window = () => {
     const settings = useAppSettings();
     const [window, setWindow] = useState<Adw.ApplicationWindow | null>(null);
-    useBindSetting({ settings, schema, key: "window-width", object: window, property: "defaultWidth" });
+    useBindSetting({
+        settings,
+        schema,
+        key: "window-width",
+        object: window,
+        property: "defaultWidth",
+    });
 
-    return <AdwApplicationWindow ref={setWindow} title="Notes" onCloseRequest={quit} />;
+    return (
+        <AdwApplicationWindow
+            ref={setWindow}
+            title="Notes"
+            onCloseRequest={quit}
+        />
+    );
 };
 ```
 
@@ -215,25 +263,40 @@ Schema imports type only the schemas the project ships. To read a schema install
 import type * as Gio from "@gtkx/gi/gio";
 import { AdwActionRow } from "@gtkx/jsx/adw";
 import { GSettings } from "@gtkx/jsx/gio";
-import { createPortal, rootElement, type SettingsSchema, useSetting } from "@gtkx/react";
+import {
+    createPortal,
+    rootElement,
+    type SettingsSchema,
+    useSetting,
+} from "@gtkx/react";
 import { useState } from "react";
 
 const desktopInterface = {
     id: "org.gnome.desktop.interface",
     path: null,
     keys: { "monospace-font-name": "s", "color-scheme": "enum" },
-    values: { "color-scheme": { default: 0, "prefer-dark": 1, "prefer-light": 2 } },
+    values: {
+        "color-scheme": { default: 0, "prefer-dark": 1, "prefer-light": 2 },
+    },
 } as const satisfies SettingsSchema;
 
 const AppearanceRows = ({ settings }: { settings: Gio.Settings }) => {
-    const [font] = useSetting(settings, desktopInterface, "monospace-font-name");
+    const [font] = useSetting(
+        settings,
+        desktopInterface,
+        "monospace-font-name",
+    );
     const [scheme] = useSetting(settings, desktopInterface, "color-scheme");
-    const prefersDark = scheme === desktopInterface.values["color-scheme"]["prefer-dark"];
+    const prefersDark =
+        scheme === desktopInterface.values["color-scheme"]["prefer-dark"];
 
     return (
         <>
             <AdwActionRow title="Monospace font" subtitle={font} />
-            <AdwActionRow title="Dark style" subtitle={prefersDark ? "Preferred" : "Not preferred"} />
+            <AdwActionRow
+                title="Dark style"
+                subtitle={prefersDark ? "Preferred" : "Not preferred"}
+            />
         </>
     );
 };
@@ -243,7 +306,10 @@ export const SystemAppearance = () => {
 
     return (
         <>
-            {createPortal(<GSettings ref={setSettings} schemaId={desktopInterface.id} />, rootElement)}
+            {createPortal(
+                <GSettings ref={setSettings} schemaId={desktopInterface.id} />,
+                rootElement,
+            )}
             {settings !== null && <AppearanceRows settings={settings} />}
         </>
     );
