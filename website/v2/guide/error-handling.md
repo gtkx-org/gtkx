@@ -27,9 +27,9 @@ const parseKeyFile = (contents: string) => {
 };
 ```
 
-Checking a domain narrows the value to an error with `domain` and `code`. Check `error instanceof GLib.Error` when you need its native methods, such as `matches` or `copy`. As in GJS, `matches` accepts a generated domain in place of its quark, as in `error.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED)`. The generated reference describes each library's domains and codes.
+Checking a domain narrows the value to an error with `domain` and `code`. Check `error instanceof GLib.Error` when you need its native methods, such as `matches` or `copy`. As in GJS, `matches` accepts a generated domain in place of its quark, as in `error.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED)`. Editor completion lists a domain's codes from the generated bindings, and the library's documentation, such as GLib's [`GKeyFileError`](https://docs.gtk.org/glib/error.KeyFileError.html), says when each one occurs.
 
-To report a failure through GLib, such as from a virtual function or with `Gio.Task.returnError()`, create an error as in GJS. The domain may be a generated domain or its quark, here and in `GLib.Error.newLiteral()`:
+To report a failure to native code, create an error as in GJS. Throw it from a virtual function that reports errors through `GError` (see [Reporting a vfunc error](/v2/guide/subclassing#reporting-a-vfunc-error)), or pass it to a function such as `Gio.Task.returnError()`. The domain may be a generated domain or its quark, here and in `GLib.Error.newLiteral()`:
 
 ```ts
 import * as Gio from "@gtkx/gi/gio";
@@ -49,7 +49,7 @@ GLib's [`G_DEBUG`](https://docs.gtk.org/glib/running.html) environment variable 
 
 ## Uncaught exceptions
 
-GTKX keeps Node's contract for exceptions no JavaScript code catches. A function that native code calls, such as a signal handler, a draw function or a `GLib.timeoutAdd` callback, has no JavaScript caller to catch what it throws, so its exception becomes an uncaught exception. So does a render error no [error boundary](#react-error-boundaries) catches, and a promise rejection nothing handles. Node prints the error with its stack and ends the process with exit status 1, which closes the application and loses unsaved work. GJS logs such exceptions and keeps running; GTKX does not, so catch errors inside callbacks the application should survive, and show the failure through application state.
+GTKX keeps Node's contract for exceptions no JavaScript code catches. A function that native code calls, such as a signal handler, a draw function or a `GLib.timeoutAdd` callback, has no JavaScript caller to catch what it throws, so its exception becomes an uncaught exception. So does a render error no [error boundary](#react-error-boundaries) catches, and a promise rejection nothing handles. Node prints the error with its stack and ends the process with exit status 1, which closes the application and loses unsaved work. GJS logs such exceptions and keeps running; GTKX does not, so catch errors inside callbacks the application should survive, and show the failure through application state. A callback that reports errors through `GError`, such as some virtual functions, is different: GTKX hands the thrown error to its native caller.
 
 Use Node's [`uncaughtExceptionMonitor`](https://nodejs.org/api/process.html#event-uncaughtexceptionmonitor) to report crashes without changing that exit. An application that registers its own `uncaughtException` listener replaces the exit and keeps running, as any Node program does, although Node advises against resuming normal work after an uncaught exception.
 
@@ -59,10 +59,10 @@ Use Node's [`uncaughtExceptionMonitor`](https://nodejs.org/api/process.html#even
 
 A panic in the GTKX native addon while it handles a binding call throws an ordinary `Error` from that call. It has no native domain or code.
 
-A panic while native code calls back into JavaScript, or on another thread, cannot reach the `try`/`catch` that started the work. GTKX reports it through Node's uncaught-exception channel. Use Node's [`uncaughtExceptionMonitor`](https://nodejs.org/api/process.html#event-uncaughtexceptionmonitor) for synchronous crash reporting while preserving its default process exit. Native state may already be invalid; do not resume normal application work after a panic. An unhandled panic fails the test suite as well; see [Testing](/v2/guide/testing).
+A panic while native code calls back into JavaScript, or on another thread, cannot reach the `try`/`catch` that started the work. GTKX reports it as an [uncaught exception](#uncaught-exceptions), which ends the process unless the application handles it. Native state may already be invalid, so do not resume normal application work after a panic. An unhandled panic fails the test suite as well; see [Testing](/v2/guide/testing).
 
 ## React error boundaries
 
 An error boundary can replace a failed descendant's rendered UI with a fallback. Use it around a recoverable part of the interface, and render the fallback with GTKX elements. React's [error boundary documentation](https://react.dev/reference/react/Component#catching-rendering-errors-with-an-error-boundary) describes the component contract.
 
-Boundaries do not catch ordinary event-handler failures or arbitrary rejected promises. Catch those failures in the signal handler or around the awaited operation, then update application state to show an error. A boundary also cannot recover from an addon panic that leaves the process unsafe to continue.
+Boundaries do not catch ordinary event-handler failures or arbitrary rejected promises. Catch those failures in the signal handler or around the awaited operation, then update application state to show an error.
