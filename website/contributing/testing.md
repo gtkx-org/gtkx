@@ -5,11 +5,11 @@ description: "Run GTKX tests, reproduce CI failures, and check native bindings w
 
 # Testing
 
-Tests exercise public behavior through real implementations. Package integration suites cover each package's public behavior; `packages/e2e` contains React and generated native binding coverage. Use mocks only for slow operations or isolation that real behavior cannot provide. The [application testing guide](/v2/guide/testing) explains native rendering, queries, input and assertions.
+Each package's suite covers its public behavior; `packages/e2e` holds the React and generated native binding suites. [Development Principles](/contributing/principles#test-behavior-at-the-right-level) sets the testing policy, and the [application testing guide](/v2/guide/testing) explains rendering, queries, input and assertions.
 
 ## Coverage ownership
 
-The JavaScript suites use Vitest. Classify tests by the interface they exercise: tests that call framework code directly, including rendering with `@gtkx/testing`, are integration tests; E2E tests drive an application through its user interface. Unit tests cover an individual unit. The `packages/e2e` directory and Nx `e2e` target names predate this distinction; their React and generated-binding coverage exercises the stack through code.
+The JavaScript suites use Vitest. The `packages/e2e` directory and Nx `e2e` target names predate the principles' test levels: their React and generated-binding suites call code directly, so they are integration tests.
 
 | Package     | Essential contract                                                                              |
 | ----------- | ----------------------------------------------------------------------------------------------- |
@@ -34,15 +34,15 @@ The JavaScript suites use Vitest. Classify tests by the interface they exercise:
 | utils       | GTKX-owned utility behavior through focused unit tests.                                         |
 | vitest      | Real fixture runs, worker preloads, isolation and teardown.                                     |
 
-Prefer one clear scenario for each distinct contract. Consolidate historical bug cases into that coverage instead of growing a separate regression suite. Upstream libraries own their generic algorithms; GTKX tests cover how it integrates with them. Test counts and file counts are not coverage goals.
+Prefer one clear scenario for each distinct contract. Consolidate historical bug cases into that coverage instead of growing a separate regression suite. Upstream libraries own their generic algorithms; GTKX tests cover how GTKX integrates with them. Test counts and file counts are not coverage goals.
 
-The current React suite covers the shared child adapter used by `GtkDragIcon`, but does not retain a dedicated native drag-session case.
+The React suite covers the `GtkDragSource` `icon` prop but has no case for a live drag session.
 
 ## CI verification and failure reproduction
 
-Rely on the normal CI workflow for verification. CI distributes affected `build`, `test`, `typecheck`, `lint` and `test-asan` targets through Nx Agents, then runs affected `e2e` targets on the GitHub coordinator with Nx caching. The coordinator container allows nested namespaces and mounts needed by WebKit's Bubblewrap sandbox; managed agent templates do not expose these container permissions. A manual CI dispatch runs all projects. CI also runs the current Rust advisory audit. The `verify` GitHub job reports the combined result as `Verify workspace`. Configure branch protection to require this check.
+Rely on the normal CI workflow for verification. CI distributes affected `build`, `test`, `typecheck`, `lint` and `test-asan` targets through Nx Agents, then runs affected `e2e` targets on the GitHub coordinator with Nx caching. The coordinator container allows nested namespaces and mounts needed by WebKit's Bubblewrap sandbox; managed agent templates do not expose these container permissions. A manual CI dispatch runs all projects. CI also runs the current Rust advisory audit. The `verify` GitHub job reports the combined result as `Verify workspace`, the only check the `main` branch ruleset requires.
 
-Package `test` targets run integration and unit tests. The `@gtkx/e2e:e2e` target runs React and depends on `@gtkx/native:test-asan`, which runs the sanitized native suite once. Native tests have no ordinary unsanitized test target. Nx prepares prerequisite builds and generated bindings and caches each suite.
+Package `test` targets run integration and unit tests. The `@gtkx/e2e:e2e` target runs the React suite and depends on `@gtkx/native:test-asan`, which runs the sanitized native suite once. Native tests have no ordinary unsanitized test target. Nx prepares prerequisite builds and generated bindings and caches each suite.
 
 When diagnosing a CI failure, reproduce the owning target and optionally pass a Vitest file filter through Nx:
 
@@ -50,7 +50,7 @@ When diagnosing a CI failure, reproduce the owning target and optionally pass a 
 pnpm exec nx run @gtkx/components:test -- tests/drop-down.test.tsx
 ```
 
-Vitest uses its default worker concurrency. Local Nx runs use the default task concurrency; Nx Cloud schedules distributed tasks on the agents. The repository does not override these limits.
+Nx and Vitest run with their default concurrency; Nx Cloud schedules distributed tasks on the agents.
 
 ## Native fixtures and sanitizers
 
@@ -77,7 +77,7 @@ The fixture preparation target downloads and builds the pinned upstream source a
 pnpm nx run @gtkx/e2e:_test:fixtures
 ```
 
-The first run needs network access and includes the upstream Cairo cases. Outputs live under `build/native-tests`; Nx caches compilation and generated bindings. Preserve the pinned revision when reproducing a failure.
+The first run needs network access and builds the upstream fixtures with their Cairo cases enabled. Outputs live under `build/native-tests`; Nx caches compilation and generated bindings. Preserve the pinned revision when reproducing a failure.
 
 Both the Rust addon and upstream C libraries are instrumented. Before the suite starts, an isolated TypeScript canary deliberately leaves an allocation unowned; the shared per-test hook must reject it.
 
@@ -89,11 +89,11 @@ Review leak suppressions narrowly. Some upstream signal emitters leak their orig
 
 ## Native UI integration
 
-`@gtkx/vitest` gives each test worker a private Wayland compositor, runtime directory and D-Bus session. Worker teardown releases these resources during normal shutdown. Subsequent Vitest, dev or Storybook startup, or `gtkx cleanup`, reclaims stale sessions left by interrupted runs. Package suites merge the shared source-resolution configuration, which resolves workspace TypeScript and inlines GTKX dependencies.
+`@gtkx/vitest` gives each test worker a private Wayland compositor, runtime directory and D-Bus session. Worker teardown releases these resources during normal shutdown. Subsequent Vitest, dev or Storybook startup, or [`gtkx cleanup`](/v2/guide/cli#gtkx-cleanup), reclaims stale sessions left by interrupted runs. Package suites merge the shared source-resolution configuration, which resolves workspace TypeScript and inlines GTKX dependencies.
 
-Importing `@gtkx/testing` installs matchers and rendering cleanup when the runner exposes global `expect` and `afterEach` hooks, as the workspace configuration does. `render` is asynchronous. Use `screen` and `within` to query accessible widget state, `userEvent` for interactions, and `waitFor` for asynchronous outcomes. Keep native assertions focused on externally observable state.
+Importing `@gtkx/testing` registers its matchers and per-test cleanup through Vitest's global hooks, which `@gtkx/vitest` enables.
 
-Application examples and the React integration suite use `@gtkx/cli/vitest-plugin` when they need application transformations such as settings schemas, assets or custom elements. The Storybook example keeps its own consuming-application tests. The tutorial application is outside the workspace and runs its application tests from its own directory.
+Package suites use `@gtkx/vitest` directly. The React integration suite and the Storybook example, the only example with tests, use `@gtkx/cli/vitest-plugin`, which adds application transformations such as settings schemas, assets and custom elements. The tutorial application is outside the workspace and runs its tests from its own directory.
 
 ## Consumer and packaging checks
 
@@ -103,8 +103,8 @@ The `tutorial/` application consumes registry packages outside the workspace. Ru
 
 ## Other checks
 
-CI builds, typechecking and static analysis complement tests. Lint includes formatting, unused-code checks, workflow checks, rustfmt and Clippy. The root Vitest suite covers release tooling and native artifact restoration. CI also checks current Rust advisories.
+CI builds, typechecking and static analysis complement tests. Lint includes formatting, unused-code checks, workflow checks, rustfmt and Clippy. The root Vitest suite covers release tooling, native artifact restoration and the CI environment hash.
 
 CI builds the website for documentation changes. Inspect affected pages when changing layout or navigation. For a visible widget or application change, run the affected example and inspect its live widget tree, interactions and screenshots.
 
-To diagnose a failure, reproduce it with the owning suite's configuration. Check prerequisites first when no test starts: native build, GIR discovery, fixture compilation, generated bindings, compositor and session bus. `screen.debug()` and `screen.logRoles()` help explain UI assertions. The live application also exposes inspection through [MCP](/v2/guide/mcp).
+To diagnose a failure, reproduce it with the owning suite's configuration. Check prerequisites first when no test starts: native build, GIR discovery, fixture compilation, generated bindings, compositor and session bus. The testing guide's [debugging helpers](/v2/guide/testing#assertions-and-debugging) explain UI assertions. The live application also exposes inspection through [MCP](/v2/guide/mcp).
