@@ -33,7 +33,7 @@ gtkx dev [entry] [options] [-- application arguments]
 
 ## `gtkx build`
 
-Bundles the app for production into `dist/bundle.mjs`. See [Production build output](/v2/guide/assets#production-build-output).
+Bundles the app for production into `dist/bundle.mjs`. See [Production build output](/v2/guide/deploying#production-build-output).
 
 ```bash
 gtkx build [entry] [options]

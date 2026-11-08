@@ -101,21 +101,38 @@ npm run deploy -- --target rpm
 
 The finished package is under `build/out`. Install it on a compatible system and open the application from
 the desktop launcher to check the packaged build. Even `--help` needs a display, so run command-line smoke tests
-in a desktop session or a virtual display; see [Command-line apps](/v2/guide/application-lifecycle#command-line-apps). To package an existing production build:
+in a desktop session or a virtual display; see [Command-line apps](/v2/guide/application-lifecycle#command-line-apps).
+
+Each deployment replaces its managed output directory. Choose an empty directory or an earlier GTKX deploy
+directory below the project root, outside `dist/`; symlinked output paths and unrelated files are rejected.
+
+### Production build output
+
+`gtkx build` writes the production build to `dist/`. To package an existing build:
 
 ```bash
 gtkx build
 gtkx deploy --skip-build
 ```
 
-[`--skip-build`](/v2/guide/cli#gtkx-deploy) always reads `dist/`, regardless of the deployment's `--out` directory. Keep
-`dist/gtkx-schemas.json` beside the bundle: it records the build's entry, configuration, imported schemas, and
-dependency notices. Deployment rejects a build of another entry, such as a helper built without `--out`, a
-different production configuration, or an older metadata format; rebuild to update it. Changes to the `deploy`
-block alone do not need a rebuild.
+[`--skip-build`](/v2/guide/cli#gtkx-deploy) always reads `dist/`; the deployment's `--out` option selects the package
+directory, not the build directory. Keep `dist/gtkx-schemas.json` beside the bundle: it records the build's entry,
+configuration, imported schemas, and dependency notices. Deployment rejects a build of another entry, such as a
+helper built without `--out`, a different production configuration, or an older metadata format; rebuild to update
+it. Changes to the `deploy` block alone do not need a rebuild.
 
-Each deployment replaces its managed output directory. Choose an empty directory or an earlier GTKX deploy
-directory below the project root, outside `dist/`; symlinked output paths and unrelated files are rejected.
+Use [`gtkx build --out`](/v2/guide/cli#gtkx-build) for another independently runnable build, such as a
+[helper command](#helper-commands):
+
+```bash
+gtkx build src/helper.ts --out dist-helper
+```
+
+Choose a directory below the project root that is empty or contains an earlier GTKX build, and add it to
+`.gitignore`, which scaffolded projects set up only for `dist/` and `build/`. GTKX rejects unrelated files,
+symlinked paths, output nested inside another build, and output inside the deploy output directory (`build/` unless
+`deploy.outDir` says otherwise), which every deployment replaces. Generated bundles contain their JavaScript
+dependencies; unresolved package imports fail the build.
 
 ### Architectures
 
@@ -274,7 +291,7 @@ export const App = () => {
 
 An application can ship a command-line helper beside it, such as a `tally-report` command that prints the
 application's data without opening a window. Build the helper into its own directory, as in
-[Production build output](/v2/guide/assets#production-build-output), before every deployment, since
+[Production build output](#production-build-output), before every deployment, since
 `gtkx deploy` rebuilds only `dist/`:
 
 ```bash

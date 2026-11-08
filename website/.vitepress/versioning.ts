@@ -53,6 +53,7 @@ const guideGroups: DocumentationGroup[] = [
             { text: "Modals and Portals", path: "guide/modals-and-portals" },
             { text: "Components", path: "guide/components" },
             { text: "CSS", path: "guide/css" },
+            { text: "Assets", path: "guide/assets" },
             { text: "Navigation", path: "guide/navigation" },
             { text: "Forms", path: "guide/forms" },
             { text: "Actions and Shortcuts", path: "guide/actions" },
@@ -95,7 +96,6 @@ const guideGroups: DocumentationGroup[] = [
     {
         text: "Shipping and Upgrading",
         items: [
-            { text: "Assets and Build Output", path: "guide/assets" },
             { text: "Deploying", path: "guide/deploying" },
             { text: "Updating GTKX", path: "guide/updating" },
             { text: "Upgrading to 2.0", path: "guide/upgrading-to-2" },

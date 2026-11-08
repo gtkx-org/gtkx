@@ -5,7 +5,7 @@ description: "Configure a GTKX project and generate its bindings."
 
 # Configuration and Codegen
 
-`gtkx.config.ts` identifies your application and selects the libraries GTKX generates bindings for. GTKX 2 includes Adwaita and GTK by default. For resource imports, see [Assets and Build Output](/v2/guide/assets); for native type wrappers, see [Native Values](/v2/guide/native-values).
+`gtkx.config.ts` identifies your application and selects the libraries GTKX generates bindings for. GTKX 2 includes Adwaita and GTK by default. For resource imports, see [Assets](/v2/guide/assets); for native type wrappers, see [Native Values](/v2/guide/native-values).
 
 ## The config file
 

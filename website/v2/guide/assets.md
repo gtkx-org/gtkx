@@ -1,9 +1,9 @@
 ---
-title: "Assets and Build Output"
+title: "Assets"
 description: "Bundle images, icons, fonts, and settings schemas with a GTKX application."
 ---
 
-# Assets and Build Output
+# Assets
 
 Import application assets from source files so GTKX can include them in development and production builds.
 
@@ -59,12 +59,4 @@ A schema installed on the system, such as `org.gnome.desktop.interface`, is desc
 
 ## Production build output
 
-`gtkx build` writes to `dist/`. Use [`--out`](/v2/guide/cli#gtkx-build) for another independently runnable build:
-
-```bash
-gtkx build src/helper.ts --out dist-helper
-```
-
-Choose a directory below the project root that is empty or contains an earlier GTKX build, and add it to `.gitignore`, which scaffolded projects set up only for `dist/` and `build/`. GTKX rejects unrelated files, symlinked paths, output nested inside another build, and output inside the deploy output directory (`build/` unless `deploy.outDir` says otherwise), which every deployment replaces. Generated bundles contain their JavaScript dependencies; unresolved package imports fail the build.
-
-[`gtkx deploy --skip-build`](/v2/guide/cli#gtkx-deploy) packages `dist/`. Its `--out` option selects the deployment artifact directory, not the application build directory. See [Deploying](/v2/guide/deploying), and [Helper commands](/v2/guide/deploying#helper-commands) to package a helper build beside the application.
+This section moved to [Production build output](/v2/guide/deploying#production-build-output) in Deploying.
