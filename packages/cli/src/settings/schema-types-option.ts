@@ -5,7 +5,7 @@ import { parseSync } from "vite";
 import { readSource } from "../internal/source-imports.js";
 
 const OPTION = "allowArbitraryExtensions";
-const UPGRADE_GUIDE_URL = "https://gtkx.dev/v2/guide/upgrading-to-2";
+const UPGRADE_GUIDE_URL = "https://gtkx.dev/v2/guide/upgrading-to-2#type-settings-schema-imports";
 const warnedConfigs: Set<string> = new Set();
 
 const propertyName = (key: ESTree.PropertyKey): string | null => {

@@ -143,13 +143,13 @@ Write the schema in a `.gschema.xml` file, usually `data/<application ID>.gschem
 </schemalist>
 ```
 
-Import the file without a query wherever a hook needs it. GTKX compiles and bundles the schema. The import's default export describes the file's first schema, and every schema in the file is also a named export (`com_example_Notes` here). The hooks use that description to check key names and value types:
+Import the file without a query wherever a hook needs it. GTKX compiles and bundles the schema, and codegen writes its types beside it as `com.example.Notes.gschema.d.xml.ts`, which TypeScript reads with `allowArbitraryExtensions`; the scaffold's `tsconfig.json` enables it, and its `.gitignore` leaves out `*.d.xml.ts`. The import's default export describes the file's first schema, and every schema in the file is also a named export (`com_example_Notes` here). The hooks use that description to check key names and value types:
 
 ```ts
 import schema from "../data/com.example.Notes.gschema.xml";
 ```
 
-GTKX installs and types schemas by file name, so imported schema files that share a name must be identical, including [copies in workspace packages](/v2/guide/workspaces#workspace-sources); otherwise GTKX stops with an error naming both.
+GTKX installs schemas by file name, so imported schema files that share a name must be identical, including [copies in workspace packages](/v2/guide/workspaces#workspace-sources); otherwise GTKX stops with an error naming both.
 
 A schema without a `path` attribute is relocatable: give `GSettings` a `path` too, and each path keeps its own values.
 
