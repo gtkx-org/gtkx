@@ -9,9 +9,17 @@ import { resolveUserEventSignals } from "./user-event-signals.ts";
 
 /** Object form of the `reactCompiler` config key, forwarded to `babel-plugin-react-compiler`. */
 type ReactCompilerOptions = {
-    /** Which functions the React Compiler processes. */
+    /**
+     * Which functions the React Compiler processes.
+     *
+     * @defaultValue `"infer"`, the React Compiler's own default
+     */
     compilationMode?: "all" | "annotation" | "infer" | "syntax" | undefined;
-    /** Which React Compiler diagnostics fail the build. */
+    /**
+     * Which React Compiler diagnostics fail the build.
+     *
+     * @defaultValue `"none"`, the React Compiler's own default
+     */
     panicThreshold?: "all_errors" | "critical_errors" | "none" | undefined;
 };
 
@@ -31,38 +39,86 @@ type Config = {
     /**
      * Additional GIR libraries to bind, such as `WebKit-6.0`.
      * Adwaita and GTK are included implicitly and must not be listed.
+     *
+     * @defaultValue None: GTKX binds `Adw-1`, `Gtk-4.0` and the libraries they depend on
      */
     libraries?: string[] | undefined;
-    /** Additional GIR search directories. Relative paths are resolved from the project root. */
+    /**
+     * Additional GIR search directories, searched before the system ones. Relative paths are resolved from the
+     * project root.
+     *
+     * @defaultValue None: GTKX searches `/usr/share/gir-1.0` and the GIR directories pkg-config reports for
+     * `gobject-introspection-1.0`
+     */
     girPath?: string[] | undefined;
     /**
      * GApplication identifier, such as `com.example.Tasks`. Required to run, build or deploy the project as an
      * application; a package that is not an application, such as a component library, leaves it out.
+     *
+     * @defaultValue None: the project loads as a package, with `isApplication` set to `false`
      */
     applicationId?: string | undefined;
-    /** Whether to enable the React Compiler, or options passed to it. Enabled by default. */
+    /**
+     * Whether to enable the React Compiler, or options passed to it. `false` disables it.
+     *
+     * @defaultValue `true`
+     * @example
+     * ```ts
+     * reactCompiler: { compilationMode: "annotation" },
+     * ```
+     */
     reactCompiler?: boolean | ReactCompilerOptions | undefined;
     /**
      * Whether GTKX generates project bindings. Set to `false` to reuse an installed binding store.
-     * Defaults to `true`.
+     *
+     * @defaultValue `true`
      */
     codegen?: boolean | undefined;
     /**
      * Additional signals to suppress during React property updates, keyed by GLib type name.
      * Entries extend the built-in signal lists.
+     *
+     * @defaultValue `{}`: only the built-in lists
      */
     userEventSignals?: Record<string, string[]> | undefined;
-    /** Custom element behaviors and overrides for generated components, props, and documentation. */
+    /**
+     * Custom element behaviors and overrides for generated components, props, and documentation.
+     *
+     * @defaultValue `{}`: no custom behaviors or overrides
+     */
     elements?: ElementsOptions | undefined;
-    /** Path to an icon theme directory or a single application icon file, relative to the project root. */
+    /**
+     * Path to an icon theme directory or a single SVG, PNG or XPM application icon file, relative to the project
+     * root. Deployment requires an icon.
+     *
+     * @defaultValue The one `<applicationId>.svg`, `.png` or `.xpm` file in the project root, if exactly one
+     * exists
+     */
     applicationIcon?: string | undefined;
-    /** Application metadata, bundled runtime settings, and packaging options used by `gtkx deploy`. */
+    /**
+     * Application metadata, bundled runtime settings, and packaging options used by `gtkx deploy`.
+     *
+     * @defaultValue `{}`: metadata comes from `package.json` and packaging builds a Flatpak
+     */
     deploy?: DeployOptions | undefined;
-    /** Controls the project instructions and reference files generated for coding agents. */
+    /**
+     * Controls the project instructions and reference files generated for coding agents.
+     *
+     * @defaultValue `{}`: an application gets both, a package neither
+     */
     agents?: AgentsOptions | undefined;
-    /** Default tool selection and access mode for the project's MCP server. Command-line flags take precedence. */
+    /**
+     * Default tool selection and access mode for the project's MCP server. The `gtkx mcp` flags `--tools` and
+     * `--read-only` take precedence.
+     *
+     * @defaultValue `{}`: every tool, app interactions included
+     */
     mcp?: McpOptions | undefined;
-    /** Controls warnings for deprecated configuration and behavior. */
+    /**
+     * Controls warnings for deprecated configuration and behavior.
+     *
+     * @defaultValue `{}`: every deprecation warning is shown
+     */
     deprecations?: DeprecationsOptions | undefined;
 };
 /** A {@link Config} whose `applicationId` is known, as loaded for an application. */
@@ -84,32 +140,66 @@ type ElementPropsExport = {
     export: string;
     /**
      * How the exported props are combined: `intersection` is inherited; `factory` applies only to this type.
-     * Defaults to `intersection`.
+     *
+     * @defaultValue `"intersection"`
      */
     composition?: "factory" | "intersection" | undefined;
-    /** Props that can only be set when the element is created; changing them afterward throws. */
+    /**
+     * Props that can only be set when the element is created; changing them afterward throws.
+     *
+     * @defaultValue `[]`
+     */
     constructOnly?: string[] | undefined;
 };
 
 /** Overrides for one GLib type in `elements.config`, keyed by its registered type name. */
 type ElementConfigOptions = {
-    /** Component export that wraps the generated element. */
+    /**
+     * Component export that wraps the generated element.
+     *
+     * @defaultValue None: no wrapper `component`
+     */
     component?: ModuleExport | undefined;
-    /** Additional props type to combine with the generated element props. */
+    /**
+     * Additional props type to combine with the generated element props.
+     *
+     * @defaultValue None: no extra `props` type
+     */
     props?: ElementPropsExport | undefined;
-    /** Whether the parent container creates this element's GObject instead of the element constructing its own. */
+    /**
+     * Whether the parent container creates this element's GObject instead of the element constructing its own.
+     * Subtypes inherit the setting.
+     *
+     * @defaultValue `false`
+     */
     isLazy?: boolean | undefined;
-    /** Accepted child GLib type names to show in the generated element documentation. */
+    /**
+     * Accepted child GLib type names to show in the generated element documentation.
+     *
+     * @defaultValue `[]`
+     */
     acceptedChildTypes?: string[] | undefined;
-    /** GObject properties to leave out of generated props, such as properties managed by an element behavior. */
+    /**
+     * GObject properties to leave out of generated props, such as properties managed by an element behavior.
+     *
+     * @defaultValue `[]`: every GObject property becomes a prop
+     */
     omittedProps?: string[] | undefined;
 };
 
 /** The `elements` options: custom element behaviors and per-type overrides for generated elements. */
 type ElementsOptions = {
-    /** Path, relative to the project root, of the module exporting the element behavior map. */
+    /**
+     * Path, relative to the project root, of the module exporting the element behavior map.
+     *
+     * @defaultValue None: only the behaviors built into `@gtkx/react` apply
+     */
     behaviors?: string | undefined;
-    /** Element configuration overrides keyed by GLib type name, such as `GtkWidget`. */
+    /**
+     * Element configuration overrides keyed by GLib type name, such as `GtkWidget`.
+     *
+     * @defaultValue `{}`
+     */
     config?: Record<string, ElementConfigOptions> | undefined;
 };
 
@@ -118,13 +208,16 @@ type AgentsOptions = {
     /**
      * Whether codegen maintains the GTKX rules in `AGENTS.md` and creates a missing `CLAUDE.md` import.
      * `false` removes rules written earlier, deleting `AGENTS.md` and the `CLAUDE.md` import when nothing else
-     * remains. Defaults to `true` for an application and `false` for a package without an `applicationId`.
+     * remains.
+     *
+     * @defaultValue `true` for an application, `false` for a package without an `applicationId`
      */
     rules?: boolean | undefined;
     /**
      * Whether codegen writes the generated element reference to `.gtkx/reference` and points the rules at it.
-     * `false` removes a reference generated earlier. Defaults to `true` for an application and `false` for a
-     * package without an `applicationId`.
+     * `false` removes a reference generated earlier.
+     *
+     * @defaultValue `true` for an application, `false` for a package without an `applicationId`
      */
     reference?: boolean | undefined;
 };
@@ -134,18 +227,31 @@ type McpOptions = {
     /**
      * Tool name patterns applied in order: `*` matches any text and a leading `!` excludes matches.
      * Omitted, empty, or exclusion-only lists start with all tools; other lists start with none.
+     * `gtkx mcp --tools` overrides it.
+     *
+     * @defaultValue `[]`: every tool
+     * @example
+     * ```ts
+     * tools: ["gtkx_*", "!gtkx_take_screenshot"],
+     * ```
      */
     tools?: string[] | undefined;
     /**
      * Whether the MCP server exposes only inspection and reference tools, excluding app interactions.
-     * Defaults to `false`.
+     * `gtkx mcp --read-only` overrides it.
+     *
+     * @defaultValue `false`
      */
     readOnly?: boolean | undefined;
 };
 
 /** The `deprecations` options: which deprecation warnings stay silent. */
 type DeprecationsOptions = {
-    /** Deprecation identifiers whose warnings are suppressed. There are currently no accepted identifiers. */
+    /**
+     * Deprecation identifiers whose warnings are suppressed. There are currently no accepted identifiers.
+     *
+     * @defaultValue `[]`
+     */
     silence?: never[] | undefined;
 };
 

@@ -61,9 +61,17 @@ const minimumLibraryVersionsSchema = z.record(girLibrary(LIBRARY_ID_ERROR), mini
 
 /** Package relations of one kind, such as dependencies, in Debian and RPM dependency syntax. */
 type DeployPackageRelationOptions = {
-    /** Package relations expressed in Debian dependency syntax. */
+    /**
+     * Package relations expressed in Debian dependency syntax.
+     *
+     * @defaultValue `[]`
+     */
     deb?: string[] | undefined;
-    /** Package relations expressed in RPM dependency syntax. */
+    /**
+     * Package relations expressed in RPM dependency syntax.
+     *
+     * @defaultValue `[]`
+     */
     rpm?: string[] | undefined;
 };
 
@@ -74,7 +82,11 @@ const relationsSchema = z.strictObject({
 
 /** Package relations of a kind only Debian packages have, in Debian dependency syntax. */
 type DeployDebPackageRelationOptions = {
-    /** Package relations expressed in Debian dependency syntax. RPM has no equivalent relation. */
+    /**
+     * Package relations expressed in Debian dependency syntax. RPM has no equivalent relation.
+     *
+     * @defaultValue `[]`
+     */
     deb?: string[] | undefined;
 };
 
@@ -84,11 +96,24 @@ const debRelationsSchema = z.strictObject({
 
 /** The `deploy.developer` options: who develops and maintains the application. */
 type DeployDeveloperOptions = {
-    /** Reverse-DNS developer identifier, derived from the application ID when omitted. */
+    /**
+     * Reverse-DNS developer identifier.
+     *
+     * @defaultValue The application ID without its last segment, such as `com.example` for `com.example.Tasks`;
+     * none when the application ID has only two segments
+     */
     id?: string | undefined;
-    /** Developer or organization name. Defaults to the author in package.json. */
+    /**
+     * Developer or organization name. Deployment fails when neither this nor the `package.json` author is set.
+     *
+     * @defaultValue The `author` name in `package.json`
+     */
     name?: string | undefined;
-    /** Maintainer email address. Defaults to the author's email in package.json. */
+    /**
+     * Maintainer email address.
+     *
+     * @defaultValue The `author` email in `package.json`, if it has one
+     */
     email?: string | undefined;
 };
 
@@ -100,13 +125,29 @@ const developerSchema = z.strictObject({
 
 /** One software-center screenshot in `deploy.screenshots`. Either `url` or `file` must be set. */
 type DeployScreenshotOptions = {
-    /** Absolute URL of a PNG or JPEG screenshot. Takes precedence over `file`. */
+    /**
+     * Absolute URL of a PNG or JPEG screenshot. Takes precedence over `file`.
+     *
+     * @defaultValue None; each entry sets `url` or `file`
+     */
     url?: string | undefined;
-    /** Screenshot path relative to the project root, resolved against `screenshotBaseUrl`. */
+    /**
+     * Screenshot path relative to the project root, resolved against `screenshotBaseUrl`.
+     *
+     * @defaultValue None; each entry sets `url` or `file`
+     */
     file?: string | undefined;
-    /** Caption displayed with the screenshot in software centers. */
+    /**
+     * Caption displayed with the screenshot in software centers.
+     *
+     * @defaultValue None: the screenshot has no `caption`
+     */
     caption?: string | undefined;
-    /** Marks the primary screenshot. Only the first entry set to `true` is used. */
+    /**
+     * Marks the primary screenshot. Only the first entry set to `true` is used.
+     *
+     * @defaultValue `false`; when no entry sets it, no screenshot is marked primary
+     */
     isDefault?: boolean | undefined;
 };
 
@@ -127,13 +168,29 @@ type DeployReleaseOptions = {
     version: string;
     /** Release date in `YYYY-MM-DD` format. */
     date: string;
-    /** AppStream release classification. */
+    /**
+     * AppStream release classification.
+     *
+     * @defaultValue None: the release has no `type` attribute, which AppStream reads as `stable`
+     */
     type?: "development" | "snapshot" | "stable" | undefined;
-    /** AppStream update urgency. */
+    /**
+     * AppStream update urgency.
+     *
+     * @defaultValue None: the release has no `urgency` attribute
+     */
     urgency?: "critical" | "high" | "low" | "medium" | undefined;
-    /** Release notes, with each entry rendered as a paragraph. */
+    /**
+     * Release notes, with each entry rendered as a paragraph.
+     *
+     * @defaultValue `[]`
+     */
     notes?: string[] | undefined;
-    /** Absolute URL containing further details about the release. */
+    /**
+     * Absolute URL containing further details about the release.
+     *
+     * @defaultValue None: the release has no `url` element
+     */
     url?: string | undefined;
 };
 
@@ -152,7 +209,11 @@ type DeployFileAssociationOptions = {
     extension: string;
     /** MIME type registered for the file extension. */
     mimeType: string;
-    /** Human-readable description of the file type. */
+    /**
+     * Human-readable description of the file type.
+     *
+     * @defaultValue None: the MIME type has no `comment`
+     */
     description?: string | undefined;
 };
 
@@ -169,9 +230,15 @@ type DeployDesktopActionOptions = {
     /**
      * Arguments appended to the launch command when the action is chosen. Launchers activate the `app.<id>`
      * application action of a D-Bus-activatable application instead of running this command.
+     *
+     * @defaultValue `[]`
      */
     args?: string[] | undefined;
-    /** Icon theme name used for the action. */
+    /**
+     * Icon theme name used for the action.
+     *
+     * @defaultValue None: the action has no `Icon` key
+     */
     icon?: string | undefined;
 };
 
@@ -201,7 +268,11 @@ const brandingSchema = z.strictObject({
 type DeployExtraFileOptions = {
     /** Source file or directory path, resolved relative to the project root. */
     source: string;
-    /** Octal file mode, applied to every file of a directory source. Setuid and setgid bits are rejected. */
+    /**
+     * Octal file mode, applied to every file of a directory source. Setuid and setgid bits are rejected.
+     *
+     * @defaultValue `"0755"` for a file whose source is executable, `"0644"` otherwise
+     */
     mode?: string | undefined;
 };
 
@@ -236,15 +307,35 @@ const nodeFlagsSchema = z.array(
  * is expected to be, whether its binary is stripped, and whether the launcher enables the compile cache.
  */
 type DeployNodeOptions = {
-    /** Runtime source: an official download, the running Node.js executable, or `path`. Defaults to `download`. */
+    /**
+     * Runtime source: an official download, the running Node.js executable, or `path`.
+     *
+     * @defaultValue `"download"`
+     */
     source?: "download" | "host" | "path" | undefined;
-    /** Expected Node.js version. Downloaded runtimes default to exactly 26.8.2 when omitted. */
+    /**
+     * Expected Node.js version. Only a downloaded runtime uses it.
+     *
+     * @defaultValue `"26.8.2"` for a downloaded runtime
+     */
     version?: string | undefined;
-    /** Node.js executable path relative to the project root, required when `source` is `path`. */
+    /**
+     * Node.js executable path relative to the project root, required when `source` is `path`.
+     *
+     * @defaultValue None; required when `source` is `"path"`
+     */
     path?: string | undefined;
-    /** Strip the runtime when its architecture matches the host and `strip` is available. Defaults to `true`. */
+    /**
+     * Strip the runtime when its architecture matches the host and `strip` is available.
+     *
+     * @defaultValue `true`
+     */
     shouldStrip?: boolean | undefined;
-    /** Enable Node.js compile caching in the generated launcher. Defaults to `true`. */
+    /**
+     * Enable Node.js compile caching in the generated launcher.
+     *
+     * @defaultValue `true`
+     */
     shouldUseCompileCache?: boolean | undefined;
 };
 
@@ -261,13 +352,29 @@ const nodeRuntimeSchema = z.strictObject({
  * shell script file, not inline shell; the package carries the file's content.
  */
 type DeployScriptsOptions = {
-    /** Path to a shell script, relative to the project root, run before installing a Debian or RPM package. */
+    /**
+     * Path to a shell script, relative to the project root, run before installing a Debian or RPM package.
+     *
+     * @defaultValue None: `gtkx deploy` adds no script for this step
+     */
     preInstall?: string | undefined;
-    /** Path to a shell script, relative to the project root, run after installing a Debian or RPM package. */
+    /**
+     * Path to a shell script, relative to the project root, run after installing a Debian or RPM package.
+     *
+     * @defaultValue None: `gtkx deploy` adds no script for this step
+     */
     postInstall?: string | undefined;
-    /** Path to a shell script, relative to the project root, run before removing a Debian or RPM package. */
+    /**
+     * Path to a shell script, relative to the project root, run before removing a Debian or RPM package.
+     *
+     * @defaultValue None: `gtkx deploy` adds no script for this step
+     */
     preRemove?: string | undefined;
-    /** Path to a shell script, relative to the project root, run after removing a Debian or RPM package. */
+    /**
+     * Path to a shell script, relative to the project root, run after removing a Debian or RPM package.
+     *
+     * @defaultValue None: `gtkx deploy` adds no script for this step
+     */
     postRemove?: string | undefined;
 };
 
@@ -280,7 +387,11 @@ const scriptsSchema = z.strictObject({
 
 /** The `deploy.tools` options: executables `gtkx deploy` runs instead of the ones it downloads. */
 type DeployToolsOptions = {
-    /** nFPM executable name or path relative to the project root. Defaults to a verified pinned download. */
+    /**
+     * nFPM executable name or path relative to the project root.
+     *
+     * @defaultValue A pinned nFPM release that `gtkx deploy` downloads and verifies against its `sha256`
+     */
     nfpm?: string | undefined;
 };
 
@@ -290,15 +401,36 @@ const toolsSchema = z.strictObject({
 
 /** The `deploy.deb` options: Debian package metadata and compression. */
 type DeployDebOptions = {
-    /** Debian package name. Defaults to `deploy.binaryName`. */
+    /**
+     * Debian package name.
+     *
+     * @defaultValue `deploy.binaryName`
+     */
     packageName?: string | undefined;
-    /** Debian archive section, derived from the application categories when omitted. */
+    /**
+     * Debian archive section.
+     *
+     * @defaultValue Derived from `deploy.categories`, such as `devel` for `Development`, or `misc` when no
+     * category matches
+     */
     section?: string | undefined;
-    /** Debian package priority. Defaults to `optional`. */
+    /**
+     * Debian package priority.
+     *
+     * @defaultValue `"optional"`
+     */
     priority?: string | undefined;
-    /** Compression used for the Debian package payload. */
+    /**
+     * Compression used for the Debian package payload.
+     *
+     * @defaultValue nFPM's default, `gzip`
+     */
     compression?: "gzip" | "none" | "xz" | "zstd" | undefined;
-    /** Additional Debian control fields, keyed by field name. */
+    /**
+     * Additional Debian control fields, keyed by field name.
+     *
+     * @defaultValue `{}`
+     */
     fields?: Record<string, string> | undefined;
 };
 
@@ -312,13 +444,29 @@ const debSchema = z.strictObject({
 
 /** The `deploy.rpm` options: RPM package metadata and compression. */
 type DeployRpmOptions = {
-    /** RPM package name. Defaults to `deploy.binaryName`. */
+    /**
+     * RPM package name.
+     *
+     * @defaultValue `deploy.binaryName`
+     */
     packageName?: string | undefined;
-    /** RPM package group, derived from the application categories when omitted. */
+    /**
+     * RPM package group.
+     *
+     * @defaultValue Derived from `deploy.categories`, or `Applications/System` when no category matches
+     */
     group?: string | undefined;
-    /** Compression used for the RPM package payload. */
+    /**
+     * Compression used for the RPM package payload.
+     *
+     * @defaultValue nFPM's default, `gzip`
+     */
     compression?: "gzip" | "lzma" | "xz" | "zstd" | undefined;
-    /** Installation prefixes that the RPM package allows users to relocate. */
+    /**
+     * Installation prefixes that the RPM package allows users to relocate.
+     *
+     * @defaultValue `[]`: the package is not relocatable
+     */
     prefixes?: string[] | undefined;
 };
 
@@ -331,13 +479,31 @@ const rpmSchema = z.strictObject({
 
 /** The `deploy.appimage` options: AppImage file name, compression, update information and runtime. */
 type DeployAppImageOptions = {
-    /** Output file name, derived from the application name, version, and architecture when omitted. */
+    /**
+     * Output file name.
+     *
+     * @defaultValue `<name>-<version>-<arch>.AppImage`, with spaces in the display name replaced by underscores,
+     * such as `My_App-1.2.0-x86_64.AppImage`
+     */
     fileName?: string | undefined;
-    /** Compression explicitly requested from appimagetool. */
+    /**
+     * Compression explicitly requested from appimagetool.
+     *
+     * @defaultValue None: appimagetool's own default, as GTKX passes no `--comp`
+     */
     compression?: "zstd" | undefined;
-    /** AppImage update information string embedded in the executable. */
+    /**
+     * AppImage update information string embedded in the executable.
+     *
+     * @defaultValue None: the AppImage embeds no update information, as GTKX passes no `-u`
+     */
     updateInformation?: string | undefined;
-    /** Custom AppImage runtime file path, resolved relative to the project root. */
+    /**
+     * Custom AppImage runtime file path, resolved relative to the project root.
+     *
+     * @defaultValue A pinned `type2-runtime` release that `gtkx deploy` downloads and verifies against its
+     * `sha256`
+     */
     runtimeFile?: string | undefined;
 };
 
@@ -350,11 +516,23 @@ const appimageSchema = z.strictObject({
 
 /** The `deploy.flatpak.source` options: the Git revision a source-mode Flatpak builds. */
 type DeployFlatpakSourceOptions = {
-    /** Public HTTP or HTTPS Git repository URL. Defaults to the project's Git remote. */
+    /**
+     * Public HTTP or HTTPS Git repository URL.
+     *
+     * @defaultValue The URL of the project's `origin` Git remote
+     */
     url?: string | undefined;
-    /** Git tag to build, pinned to its commit when `commit` is omitted. */
+    /**
+     * Git tag to build, pinned to its commit when `commit` is omitted.
+     *
+     * @defaultValue The tag that points at `HEAD`, if any, when `commit` is also omitted
+     */
     tag?: string | undefined;
-    /** Git commit to build. Defaults to the configured tag's commit or the current HEAD. */
+    /**
+     * Git commit to build.
+     *
+     * @defaultValue The commit of `tag`, or the current `HEAD` without one
+     */
     commit?: string | undefined;
 };
 
@@ -366,45 +544,132 @@ const flatpakSourceSchema = z.strictObject({
 
 /** The `deploy.flatpak` options: runtime, sandbox permissions, build and distribution of the Flatpak. */
 type DeployFlatpakOptions = {
-    /** Package local build output or build from a pinned Git source inside the SDK. Defaults to `prebuilt`. */
+    /**
+     * Package local build output or build from a pinned Git source inside the SDK.
+     *
+     * @defaultValue `"prebuilt"`
+     */
     mode?: "prebuilt" | "source" | undefined;
-    /** Flatpak runtime ID. Defaults to `org.gnome.Platform`. */
+    /**
+     * Flatpak runtime ID.
+     *
+     * @defaultValue `"org.gnome.Platform"`
+     */
     runtime?: string | undefined;
-    /** Flatpak runtime branch. Defaults to `51`. */
+    /**
+     * Flatpak runtime branch.
+     *
+     * @defaultValue `"51"`
+     */
     runtimeVersion?: string | undefined;
-    /** Build SDK ID. Defaults to `org.gnome.Sdk`. */
+    /**
+     * Build SDK ID.
+     *
+     * @defaultValue `"org.gnome.Sdk"`
+     */
     sdk?: string | undefined;
-    /** Node.js SDK extension used in source mode. Defaults to `org.freedesktop.Sdk.Extension.node26`. */
+    /**
+     * Node.js SDK extension used in source mode.
+     *
+     * @defaultValue `"org.freedesktop.Sdk.Extension.node26"`
+     */
     nodeExtension?: string | undefined;
-    /** Additional SDK extension IDs included in the build environment. */
+    /**
+     * Additional SDK extension IDs included in the build environment.
+     *
+     * @defaultValue `[]`
+     */
     sdkExtensions?: string[] | undefined;
-    /** Optional Flatpak base application ID. */
+    /**
+     * Optional Flatpak base application ID.
+     *
+     * @defaultValue None: the manifest has no `base`
+     */
     base?: string | undefined;
-    /** Branch of the base application. */
+    /**
+     * Branch of the base application.
+     *
+     * @defaultValue None: the manifest has no `base-version`
+     */
     baseVersion?: string | undefined;
-    /** Exported application branch. Defaults to `stable`. */
+    /**
+     * Exported application branch.
+     *
+     * @defaultValue `"stable"`
+     */
     branch?: string | undefined;
-    /** Sandbox permissions added to display, IPC, and GPU defaults. Negations remove matching defaults. */
+    /**
+     * Sandbox permissions added to the defaults. A negation such as `--nosocket=fallback-x11` removes the
+     * matching default.
+     *
+     * @defaultValue `[]`, on top of `--share=ipc`, `--socket=wayland`, `--socket=fallback-x11` and
+     * `--device=dri`
+     * @example
+     * ```ts
+     * finishArgs: ["--share=network", "--filesystem=xdg-documents"],
+     * ```
+     */
     finishArgs?: string[] | undefined;
-    /** Patterns added to header, pkg-config, and static-library cleanup defaults. An empty array disables cleanup. */
+    /**
+     * Patterns added to the cleanup defaults. An empty array disables cleanup.
+     *
+     * @defaultValue `[]`, on top of `/include`, `/share/pkgconfig`, `*.la` and `*.a`
+     */
     cleanup?: string[] | undefined;
-    /** Additional shell commands appended to the application's Flatpak build commands. */
+    /**
+     * Additional shell commands appended to the application's Flatpak build commands.
+     *
+     * @defaultValue `[]`
+     */
     buildCommands?: string[] | undefined;
-    /** Additional Flatpak manifest modules built before the application module. */
+    /**
+     * Additional Flatpak manifest modules built before the application module.
+     *
+     * @defaultValue `[]`
+     */
     modules?: unknown[] | undefined;
-    /** Git repository and revision used for source builds. */
+    /**
+     * Git repository and revision used for source builds.
+     *
+     * @defaultValue `{}`: the `origin` remote at the tagged or current commit
+     */
     source?: DeployFlatpakSourceOptions | undefined;
-    /** Package manager used for offline source builds, detected from the project's lockfiles when omitted. */
+    /**
+     * Package manager used for offline source builds.
+     *
+     * @defaultValue Detected from the first lockfile found: `pnpm-lock.yaml`, `yarn.lock`, then
+     * `package-lock.json`
+     */
     packageManager?: "npm" | "pnpm" | "yarn" | undefined;
-    /** Lockfile path relative to the project root. Defaults to the selected package manager's standard lockfile. */
+    /**
+     * Lockfile path relative to the project root.
+     *
+     * @defaultValue The package manager's standard lockfile, such as `pnpm-lock.yaml`
+     */
     lockfile?: string | undefined;
-    /** Runtime repository URL embedded in the bundle. Defaults to Flathub's `.flatpakrepo` URL. */
+    /**
+     * Runtime repository URL embedded in the bundle.
+     *
+     * @defaultValue `"https://dl.flathub.org/repo/flathub.flatpakrepo"`
+     */
     runtimeRepo?: string | undefined;
-    /** Emit a `.flatpak` bundle in addition to the local repository. Defaults to `true`. */
+    /**
+     * Emit a `.flatpak` bundle in addition to the local repository.
+     *
+     * @defaultValue `true`
+     */
     shouldEmitBundle?: boolean | undefined;
-    /** Install the built application into the current user's Flatpak installation. Defaults to `false`. */
+    /**
+     * Install the built application into the current user's Flatpak installation.
+     *
+     * @defaultValue `false`
+     */
     shouldInstall?: boolean | undefined;
-    /** Allow flatpak-builder to use rofiles-fuse. Set to `false` where FUSE is unavailable. */
+    /**
+     * Allow flatpak-builder to use rofiles-fuse. Set to `false` where FUSE is unavailable.
+     *
+     * @defaultValue `true`
+     */
     shouldUseRofilesFuse?: boolean | undefined;
 };
 
@@ -435,13 +700,29 @@ const flatpakSchema = z.strictObject({
 type DeployDebSigningOptions = {
     /** PGP private key file used to sign the Debian package. */
     keyFile: string;
-    /** PGP signing key ID. */
+    /**
+     * PGP signing key ID.
+     *
+     * @defaultValue nFPM's choice: the first subkey of `keyFile` that can sign
+     */
     keyId?: string | undefined;
-    /** Debian package signing method. */
+    /**
+     * Debian package signing method.
+     *
+     * @defaultValue nFPM's default, `"debsign"`
+     */
     method?: "debsign" | "dpkg-sig" | undefined;
-    /** Debian signature role. */
+    /**
+     * Debian signature role.
+     *
+     * @defaultValue nFPM's default, `"origin"`
+     */
     type?: "archive" | "maint" | "origin" | undefined;
-    /** Name and email address recorded as the signer. */
+    /**
+     * Name and email address recorded as the signer.
+     *
+     * @defaultValue None: GTKX passes no `signer` to nFPM
+     */
     signer?: string | undefined;
 };
 
@@ -457,7 +738,11 @@ const debSigningSchema = z.strictObject({
 type DeployRpmSigningOptions = {
     /** PGP private key file used to sign the RPM package. */
     keyFile: string;
-    /** PGP signing key ID. */
+    /**
+     * PGP signing key ID.
+     *
+     * @defaultValue nFPM's choice: the first subkey of `keyFile` that can sign
+     */
     keyId?: string | undefined;
 };
 
@@ -473,7 +758,11 @@ type DeployFlatpakSigningOptions = {
      * `flatpak install --bundle` verifies the signature.
      */
     gpgKeyId: string;
-    /** GPG home directory containing the signing key. */
+    /**
+     * GPG home directory containing the signing key, passed to GPG as given.
+     *
+     * @defaultValue GPG's default, `$GNUPGHOME` or `~/.gnupg`
+     */
     gpgHomeDir?: string | undefined;
 };
 
@@ -494,13 +783,29 @@ const appimageSigningSchema = z.strictObject({
 
 /** The `deploy.signing` options: how each package format is signed. Formats without an entry stay unsigned. */
 type DeploySigningOptions = {
-    /** AppImage signing options. */
+    /**
+     * AppImage signing options.
+     *
+     * @defaultValue None: `gtkx deploy` leaves this format unsigned
+     */
     appimage?: DeployAppImageSigningOptions | undefined;
-    /** Debian package signing options. */
+    /**
+     * Debian package signing options.
+     *
+     * @defaultValue None: `gtkx deploy` leaves this format unsigned
+     */
     deb?: DeployDebSigningOptions | undefined;
-    /** Flatpak bundle signing options. */
+    /**
+     * Flatpak bundle signing options.
+     *
+     * @defaultValue None: `gtkx deploy` leaves this format unsigned
+     */
     flatpak?: DeployFlatpakSigningOptions | undefined;
-    /** RPM package signing options. */
+    /**
+     * RPM package signing options.
+     *
+     * @defaultValue None: `gtkx deploy` leaves this format unsigned
+     */
     rpm?: DeployRpmSigningOptions | undefined;
 };
 
@@ -513,19 +818,47 @@ const signingSchema = z.strictObject({
 
 /** The `deploy.relations` options: package relationships besides dependencies, for Debian and RPM. */
 type DeployRelationsOptions = {
-    /** Recommended packages that extend the application's functionality. */
+    /**
+     * Recommended packages that extend the application's functionality.
+     *
+     * @defaultValue `{}`
+     */
     recommends?: DeployPackageRelationOptions | undefined;
-    /** Suggested companion packages. */
+    /**
+     * Suggested companion packages.
+     *
+     * @defaultValue `{}`
+     */
     suggests?: DeployPackageRelationOptions | undefined;
-    /** Package names or capabilities supplied by this package. */
+    /**
+     * Package names or capabilities supplied by this package.
+     *
+     * @defaultValue `{}`
+     */
     provides?: DeployPackageRelationOptions | undefined;
-    /** Packages that cannot be installed alongside this package. */
+    /**
+     * Packages that cannot be installed alongside this package.
+     *
+     * @defaultValue `{}`
+     */
     conflicts?: DeployPackageRelationOptions | undefined;
-    /** Packages whose files this package may replace. */
+    /**
+     * Packages whose files this package may replace.
+     *
+     * @defaultValue `{}`
+     */
     replaces?: DeployPackageRelationOptions | undefined;
-    /** Debian packages made incompatible by installing this package. Debian packages only. */
+    /**
+     * Debian packages made incompatible by installing this package. Debian packages only.
+     *
+     * @defaultValue `{}`
+     */
     breaks?: DeployDebPackageRelationOptions | undefined;
-    /** Debian dependencies required before unpacking this package. Debian packages only. */
+    /**
+     * Debian dependencies required before unpacking this package. Debian packages only.
+     *
+     * @defaultValue `{}`
+     */
     preDepends?: DeployDebPackageRelationOptions | undefined;
 };
 
@@ -541,47 +874,146 @@ const extraRelationsSchema = z.strictObject({
 
 /** The `deploy` options: application metadata, bundled runtime settings, and packaging options for `gtkx deploy`. */
 type DeployOptions = {
-    /** Package formats to build. Defaults to `["flatpak"]`; overridden by `gtkx deploy --target`. */
+    /**
+     * Package formats to build. `gtkx deploy --target` overrides it.
+     *
+     * @defaultValue `["flatpak"]`
+     */
     targets?: ("appimage" | "deb" | "flatpak" | "rpm")[] | undefined;
-    /** Target CPU architectures. Defaults to the host architecture; overridden by `gtkx deploy --arch`. */
+    /**
+     * Target CPU architectures. `gtkx deploy --arch` overrides it.
+     *
+     * @defaultValue The host architecture, `arm64` or `x64`
+     */
     architectures?: ("arm64" | "x64")[] | undefined;
-    /** Deployment directory relative to the project root. Defaults to `build`, with packages in its `out` directory. */
+    /**
+     * Deployment directory relative to the project root, with packages in its `out` directory. `gtkx deploy
+     * --out` overrides it.
+     *
+     * @defaultValue `"build"`
+     */
     outDir?: string | undefined;
-    /** Display name, derived from package.json's name or the application ID when omitted. */
+    /**
+     * Display name.
+     *
+     * @defaultValue The `package.json` name without its scope, title-cased with spaces for hyphens and
+     * underscores, such as `Tasks App` for `@example/tasks-app`; or the last segment of the application ID
+     */
     name?: string | undefined;
-    /** Generic application description shown by desktop launchers, such as `Text Editor`. */
+    /**
+     * Generic application description shown by desktop launchers, such as `Text Editor`.
+     *
+     * @defaultValue None: the desktop entry has no `GenericName` key
+     */
     genericName?: string | undefined;
-    /** Launcher command name, derived from package.json's name or the application ID when omitted. */
+    /**
+     * Launcher command name, also used as the package name. A configured value is normalized the same way as the
+     * default.
+     *
+     * @defaultValue The `package.json` name without its scope, lowercased with hyphens for other characters; or
+     * the last segment of the application ID
+     */
     binaryName?: string | undefined;
-    /** Application version. Defaults to the version in package.json. */
+    /**
+     * Application version. Deployment fails when neither this nor the `package.json` version is set.
+     *
+     * @defaultValue The `version` in `package.json`
+     */
     version?: string | undefined;
-    /** Debian packaging revision and RPM release. Defaults to `1`. */
+    /**
+     * Debian packaging revision and RPM release.
+     *
+     * @defaultValue `"1"`
+     */
     release?: string | undefined;
-    /** Non-negative Debian and RPM version epoch, omitted from package metadata unless configured. */
+    /**
+     * Non-negative Debian and RPM version epoch.
+     *
+     * @defaultValue None: package metadata has no `epoch`
+     */
     epoch?: number | undefined;
-    /** Single-line summary without a trailing period. Defaults to the first line of package.json's description. */
+    /**
+     * Single-line summary without a trailing period. Deployment fails when neither this nor the `package.json`
+     * description is set.
+     *
+     * @defaultValue The first line of the `description` in `package.json`
+     */
     summary?: string | undefined;
-    /** Long description as paragraphs. Defaults to the summary when omitted or empty. */
+    /**
+     * Long description as paragraphs.
+     *
+     * @defaultValue `deploy.summary` as the only paragraph, also when the array is empty
+     */
     description?: string[] | undefined;
-    /** Search keywords included in the desktop entry and AppStream metadata. */
+    /**
+     * Search keywords included in the desktop entry and AppStream metadata.
+     *
+     * @defaultValue `[]`
+     */
     keywords?: string[] | undefined;
-    /** Freedesktop application categories used by launchers, software centers, and package metadata. */
+    /**
+     * Freedesktop application categories used by launchers, software centers, and package metadata.
+     *
+     * @defaultValue `[]`
+     * @example
+     * ```ts
+     * categories: ["Office", "ProjectManagement"],
+     * ```
+     */
     categories?: string[] | undefined;
-    /** Supported MIME types, combined with types from file associations and URL protocols. */
+    /**
+     * Supported MIME types, combined with types from file associations and URL protocols.
+     *
+     * @defaultValue `[]`
+     */
     mimeTypes?: string[] | undefined;
-    /** Developer identity and package maintainer details. */
+    /**
+     * Developer identity and package maintainer details.
+     *
+     * @defaultValue `{}`: the details come from the `author` in `package.json`
+     */
     developer?: DeployDeveloperOptions | undefined;
-    /** Application license as an SPDX expression. Defaults to the license in package.json. */
+    /**
+     * Application license as an SPDX expression. Deployment fails when neither this nor the `package.json`
+     * license is set.
+     *
+     * @defaultValue The `license` in `package.json`
+     */
     license?: string | undefined;
-    /** License file path relative to the project root, detected from common LICENSE or COPYING names when omitted. */
+    /**
+     * License file path relative to the project root, installed with the application.
+     *
+     * @defaultValue The first of `LICENSE`, `LICENSE.md`, `LICENSE.txt`, `COPYING` and `COPYING.md` in the
+     * project root; none when no such file exists
+     */
     licenseFile?: string | undefined;
-    /** SPDX license expression for the AppStream metadata. Defaults to `CC0-1.0`. */
+    /**
+     * SPDX license expression for the AppStream metadata.
+     *
+     * @defaultValue `"CC0-1.0"`
+     */
     metadataLicense?: string | undefined;
-    /** Copyright notice. Defaults to the build year and developer name. */
+    /**
+     * Copyright notice.
+     *
+     * @defaultValue `Copyright © <year> <developer name>`, with the year of the build date
+     */
     copyright?: string | undefined;
-    /** Application homepage URL. Defaults to the homepage in package.json. */
+    /**
+     * Application homepage URL.
+     *
+     * @defaultValue The `homepage` in `package.json`, if set
+     */
     homepage?: string | undefined;
-    /** Additional AppStream links keyed by their purpose, such as `bugtracker` or `help`. */
+    /**
+     * Additional AppStream links keyed by their purpose, such as `bugtracker` or `help`.
+     *
+     * @defaultValue `{}`
+     * @example
+     * ```ts
+     * urls: { bugtracker: "https://github.com/example/tasks/issues" },
+     * ```
+     */
     urls?:
         | Partial<
               Record<
@@ -590,39 +1022,108 @@ type DeployOptions = {
               >
           >
         | undefined;
-    /** Screenshots for software centers. Each entry requires a `url` or `file`. */
+    /**
+     * Screenshots for software centers. Each entry requires a `url` or `file`.
+     *
+     * @defaultValue `[]`
+     */
     screenshots?: DeployScreenshotOptions[] | undefined;
-    /** Base URL for screenshot files, inferred from a GitHub or GitLab remote when omitted. */
+    /**
+     * Base URL for screenshot files.
+     *
+     * @defaultValue The raw file URL of the project's GitHub or GitLab `origin` remote on its default branch;
+     * deployment fails without one when a screenshot sets `file`
+     */
     screenshotBaseUrl?: string | undefined;
-    /** Primary branding colors included in AppStream metadata. */
+    /**
+     * Primary branding colors included in AppStream metadata.
+     *
+     * @defaultValue None: the metadata has no `branding` element
+     */
     branding?: DeployBrandingOptions | undefined;
-    /** OARS 1.1 content-rating attributes mapped to their intensities. */
+    /**
+     * OARS 1.1 content-rating attributes mapped to their intensities.
+     *
+     * @defaultValue `{}`: an empty OARS 1.1 rating, which declares no objectionable content
+     * @example
+     * ```ts
+     * contentRating: { "social-chat": "intense" },
+     * ```
+     */
     contentRating?: Record<string, "intense" | "mild" | "moderate" | "none"> | undefined;
-    /** AppStream release history, sorted newest first. Defaults to the application version and build date. */
+    /**
+     * AppStream release history, sorted newest first.
+     *
+     * @defaultValue One release for the application version, dated on the build day or by `SOURCE_DATE_EPOCH`
+     */
     releases?: DeployReleaseOptions[] | undefined;
-    /** Application arguments included in the desktop entry's launch command. */
+    /**
+     * Application arguments included in the desktop entry's launch command.
+     *
+     * @defaultValue `[]`
+     */
     execArgs?: string[] | undefined;
-    /** Environment variables exported by the generated launcher. Keys must be POSIX environment names. */
+    /**
+     * Environment variables exported by the generated launcher. Keys must be POSIX environment names.
+     *
+     * @defaultValue `{}`
+     * @example
+     * ```ts
+     * launcherEnv: { GSK_RENDERER: "ngl" },
+     * ```
+     */
     launcherEnv?: Record<string, string> | undefined;
-    /** Node.js flags placed before the application bundle in the generated launcher. */
+    /**
+     * Node.js flags placed before the application bundle in the generated launcher.
+     *
+     * @defaultValue `[]`
+     * @example
+     * ```ts
+     * nodeFlags: ["--max-old-space-size=4096"],
+     * ```
+     */
     nodeFlags?: string[] | undefined;
-    /** File extensions and MIME types registered for the application. */
+    /**
+     * File extensions and MIME types registered for the application.
+     *
+     * @defaultValue `[]`
+     */
     fileAssociations?: DeployFileAssociationOptions[] | undefined;
-    /** URL schemes handled by the application, registered as `x-scheme-handler` MIME types. */
+    /**
+     * URL schemes handled by the application, registered as `x-scheme-handler` MIME types.
+     *
+     * @defaultValue `[]`
+     */
     protocols?: string[] | undefined;
     /**
      * Desktop launcher actions keyed by action ID. With `isDbusActivatable`, the application must register an
      * `app.<id>` action for each one.
+     *
+     * @defaultValue `{}`
+     * @example
+     * ```ts
+     * desktopActions: { today: { name: "Today", args: ["tasks://today"] } },
+     * ```
      */
     desktopActions?: Record<string, DeployDesktopActionOptions> | undefined;
     /**
-     * Additional desktop entry keys, overriding non-reserved generated values.
-     * `DBusActivatable` and `Version` are rejected; use `deploy.isDbusActivatable` for D-Bus activation.
+     * Additional desktop entry keys, overriding non-reserved generated values. `DBusActivatable` and `Version`
+     * are rejected; use `deploy.isDbusActivatable` for D-Bus activation.
+     *
+     * @defaultValue `{}`
      */
     desktopEntry?: Record<string, string> | undefined;
-    /** Additional XML fragments appended to the AppStream component. */
+    /**
+     * Additional XML fragments appended to the AppStream component.
+     *
+     * @defaultValue `[]`
+     */
     metainfoExtra?: string[] | undefined;
-    /** Enable D-Bus activation in the desktop entry and generate a session bus service file. Defaults to `false`. */
+    /**
+     * Enable D-Bus activation in the desktop entry and generate a session bus service file.
+     *
+     * @defaultValue `false`
+     */
     isDbusActivatable?: boolean | undefined;
     /**
      * Extra files keyed by destination inside the install prefix, without a leading slash or a `..` segment.
@@ -631,29 +1132,83 @@ type DeployOptions = {
      * destination; without a mode, each file is executable when its source is. Scripts installed this way, such
      * as a helper command's launcher, can run the bundled Node.js runtime at `lib/<binaryName>/node` in every
      * prebuilt target and in source Flatpaks.
+     *
+     * @defaultValue `{}`
+     * @example
+     * ```ts
+     * extraFiles: { "share/tasks/templates": "data/templates" },
+     * ```
      */
     extraFiles?: Record<string, string | DeployExtraFileOptions> | undefined;
-    /** Minimum runtime library versions keyed by GIR library ID, used when deriving package dependencies. */
+    /**
+     * Minimum runtime library versions keyed by GIR library ID, used when deriving package dependencies.
+     *
+     * @defaultValue `{}`: library dependencies carry no version constraint
+     * @example
+     * ```ts
+     * minimumLibraryVersions: { "Adw-1": "1.8", "Gtk-4.0": "4.20" },
+     * ```
+     */
     minimumLibraryVersions?: Record<string, string> | undefined;
-    /** Additional Debian and RPM dependencies merged with automatically detected dependencies. */
+    /**
+     * Additional Debian and RPM dependencies merged with automatically detected dependencies.
+     *
+     * @defaultValue None: only the detected dependencies, such as `libgtk-4-1` on Debian
+     */
     depends?: DeployPackageRelationOptions | undefined;
-    /** Additional package relationships for Debian and RPM. */
+    /**
+     * Additional package relationships for Debian and RPM.
+     *
+     * @defaultValue `{}`: no relations besides `depends`
+     */
     relations?: DeployRelationsOptions | undefined;
-    /** Installation and removal scripts for Debian and RPM packages. */
+    /**
+     * Installation and removal scripts for Debian and RPM packages.
+     *
+     * @defaultValue `{}`: no maintainer scripts
+     */
     scripts?: DeployScriptsOptions | undefined;
-    /** Node.js runtime bundled with prebuilt packages and launcher compile-cache settings. */
+    /**
+     * Node.js runtime bundled with prebuilt packages and launcher compile-cache settings.
+     *
+     * @defaultValue `{}`: a downloaded Node.js `26.8.2`, stripped, with the compile cache on
+     */
     node?: DeployNodeOptions | undefined;
-    /** Overrides for executables used to build packages. */
+    /**
+     * Overrides for executables used to build packages.
+     *
+     * @defaultValue `{}`: `gtkx deploy` downloads the pinned tools it needs
+     */
     tools?: DeployToolsOptions | undefined;
-    /** Per-format package signing options. */
+    /**
+     * Per-format package signing options.
+     *
+     * @defaultValue `{}`: every package is unsigned
+     */
     signing?: DeploySigningOptions | undefined;
-    /** AppImage packaging options. */
+    /**
+     * AppImage packaging options.
+     *
+     * @defaultValue `{}`
+     */
     appimage?: DeployAppImageOptions | undefined;
-    /** Debian package metadata and compression options. */
+    /**
+     * Debian package metadata and compression options.
+     *
+     * @defaultValue `{}`
+     */
     deb?: DeployDebOptions | undefined;
-    /** Flatpak runtime, sandbox, build, and distribution options. */
+    /**
+     * Flatpak runtime, sandbox, build, and distribution options.
+     *
+     * @defaultValue `{}`
+     */
     flatpak?: DeployFlatpakOptions | undefined;
-    /** RPM package metadata and compression options. */
+    /**
+     * RPM package metadata and compression options.
+     *
+     * @defaultValue `{}`
+     */
     rpm?: DeployRpmOptions | undefined;
 };
 
