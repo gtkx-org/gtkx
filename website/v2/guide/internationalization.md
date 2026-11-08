@@ -7,7 +7,7 @@ description: "Translate GTKX applications and package metadata with gettext cata
 
 `@gtkx/i18n` connects i18next and react-i18next to GNU gettext. Your application's production `applicationId` is its gettext domain, and the catalogs in `po/` translate both the application and its desktop metadata. GTKX manages `po/` only in projects that install `@gtkx/i18n`, so an existing gettext setup, such as a Meson project's, stays untouched until then.
 
-Install `@gtkx/i18n@beta` and GNU gettext 0.25 or later. On Fedora 44:
+Install `@gtkx/i18n@beta` and GNU gettext 0.23 or later. On Fedora 44:
 
 ```bash
 npm install @gtkx/i18n@beta
