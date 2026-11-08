@@ -69,6 +69,10 @@ describe("gtkx deploy (manifests only)", () => {
         expect(manifest.cleanup).toEqual([...DEFAULT_CLEANUP, "/man"]);
     });
 
+    it("keeps the translations inside the prebuilt Flatpak bundle", () => {
+        expect(flatpakManifest(state.project)["separate-locales"]).toBe(false);
+    });
+
     it("names the toolkit packages with no minimum version of their own", () => {
         const depends = packagedDepends(state.project, NFPM_PATH);
         expect(depends).toEqual(expect.arrayContaining(["libgtk-4-1", "libadwaita-1-0"]));
