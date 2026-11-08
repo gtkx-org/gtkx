@@ -1,7 +1,9 @@
 import * as Adw from "@gtkx/gi/adw";
 import * as Gio from "@gtkx/gi/gio";
+import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwApplication, AdwApplicationWindow, AdwHeaderBar, AdwToolbarView } from "@gtkx/jsx/adw";
+import { GSimpleAction } from "@gtkx/jsx/gio";
 import { GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { NavigationContainer } from "@gtkx/navigation";
 import { rootElement } from "@gtkx/react";
@@ -12,6 +14,8 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
+import { MainMenu } from "./guide/actions-main-menu.js";
+import { Shortcuts } from "./guide/actions-shortcuts.js";
 import { EmployeeTable } from "./guide/components-column-view.js";
 import { Circle } from "./guide/cairo-circle.js";
 import { NameGrid } from "./guide/components-grid.js";
@@ -90,6 +94,35 @@ function NavigationWindow({
         <AdwApplication>
             <AdwApplicationWindow title={title} defaultWidth={width} defaultHeight={height}>
                 <NavigationContainer>{children}</NavigationContainer>
+            </AdwApplicationWindow>
+        </AdwApplication>
+    );
+}
+
+function ActionsWindow({ width, height, children }: { width: number; height: number; children?: ReactNode }) {
+    return (
+        <AdwApplication
+            actionAccels={[
+                { detailedActionName: "win.new", accels: ["<Control>n"] },
+                { detailedActionName: "win.shortcuts", accels: ["<Control>question"] },
+                { detailedActionName: "app.quit", accels: ["<Control>q"] },
+            ]}
+            actions={<GSimpleAction name="quit" />}
+        >
+            <AdwApplicationWindow
+                title="Notes"
+                defaultWidth={width}
+                defaultHeight={height}
+                actions={
+                    <>
+                        <GSimpleAction name="new" />
+                        <GSimpleAction name="preview" state={GLib.Variant.newBoolean(true)} />
+                        <GSimpleAction name="shortcuts" />
+                        <GSimpleAction name="about" />
+                    </>
+                }
+            >
+                <AdwToolbarView top={<AdwHeaderBar end={<MainMenu />} />}>{children}</AdwToolbarView>
             </AdwApplicationWindow>
         </AdwApplication>
     );
@@ -392,6 +425,27 @@ const figures: [name: string, element: ReactNode, options?: FigureOptions][] = [
         <SampleWindow title="Notes" width={480} height={600}>
             <About onClose={() => {}} />
         </SampleWindow>,
+    ],
+    [
+        "guide-actions-main-menu",
+        <ActionsWindow width={440} height={300} />,
+        {
+            prepare: async () => {
+                await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Main Menu" }));
+                await screen.findByRole(Gtk.AccessibleRole.MENU_ITEM, { name: "About Notes" });
+            },
+        },
+    ],
+    [
+        "guide-actions-shortcuts",
+        <ActionsWindow width={480} height={520}>
+            <Shortcuts onClose={() => {}} />
+        </ActionsWindow>,
+        {
+            prepare: async () => {
+                await screen.findByText("Search notes");
+            },
+        },
     ],
     [
         "guide-navigation-stack",

@@ -107,38 +107,17 @@ export const NoteTab = ({ onPin, onClose }: { onPin: () => void; onClose: () => 
 
 `GMenu` describes a menu as data. Pass it as the `menuModel` of a `GtkMenuButton`, or of a `GtkPopoverMenu` for a context menu, and point each item at an action:
 
-```tsx [src/components/main-menu.tsx]
-import { GMenu } from "@gtkx/jsx/gio";
-import { GtkMenuButton } from "@gtkx/jsx/gtk";
+<<< @/figures/guide/actions-main-menu.tsx [src/components/main-menu.tsx]
 
-export const MainMenu = () => (
-    <GtkMenuButton
-        primary
-        iconName="open-menu-symbolic"
-        tooltipText="Main Menu"
-        menuModel={
-            <GMenu
-                items={[
-                    {
-                        section: [
-                            { label: "New Note", action: "win.new" },
-                            { label: "Show Preview", action: "win.preview" },
-                        ],
-                    },
-                    {
-                        section: [
-                            { label: "Keyboard Shortcuts", action: "win.shortcuts" },
-                            { label: "About Notes", action: "win.about" },
-                        ],
-                    },
-                ]}
-            />
-        }
-    />
-);
-```
+<figure class="result">
+    <img class="result-light" src="/figures/guide-actions-main-menu-light.png" width="440" height="300" loading="lazy" alt="A window titled Notes with its main menu open below the menu button: New Note with Ctrl+N, a checked Show Preview, a separator, Keyboard Shortcuts with Ctrl+?, and About Notes." />
+    <img class="result-dark" src="/figures/guide-actions-main-menu-dark.png" width="440" height="300" loading="lazy" alt="A window titled Notes with its main menu open below the menu button: New Note with Ctrl+N, a checked Show Preview, a separator, Keyboard Shortcuts with Ctrl+?, and About Notes." />
+    <figcaption>Captured from the sample above, in a window that declares its actions and their accelerators. The check mark is the state of <code>win.preview</code>.</figcaption>
+</figure>
 
-`section` groups items between separators, and `submenu` opens a nested menu. An item for an action with a parameter names its target in the action string, as in `win.open('todo.md')`. The menu rebuilds when `items` changes. An item whose action is disabled is greyed out; `hiddenWhen: "action-disabled"` hides it instead. `primary` makes F10 open the main menu, as the [GNOME HIG](https://developer.gnome.org/hig/patterns/controls/menus.html) expects.
+`section` groups items between separators, and `submenu` opens a nested menu. An item for an action with a parameter names its target in the action string, as in `win.open('todo.md')`. The menu rebuilds when `items` changes. Items also take GTK's other [menu attributes](https://docs.gtk.org/gtk4/class.PopoverMenu.html#menu-models) in camelCase, such as `icon`, and [Widgets in menus](/v2/guide/components#widgets-in-menus) puts a widget in place of an item.
+
+An item whose action is disabled is greyed out; `hiddenWhen: "action-disabled"` hides it instead. `primary` makes F10 open the main menu, as the [GNOME HIG](https://developer.gnome.org/hig/patterns/controls/menus.html) expects.
 
 ## Buttons
 
@@ -218,20 +197,13 @@ Add it as `controllers={<SearchShortcut onToggleSearch={toggleSearch} />}` on th
 
 `AdwShortcutsDialog` lists the app's shortcuts. Give an item the `actionName` of an action with an accelerator, and it shows the keys from `actionAccels`; give it an `accelerator` for keys that no action owns:
 
-```tsx [src/components/shortcuts.tsx]
-import { AdwShortcutsDialog, AdwShortcutsItem, AdwShortcutsSection } from "@gtkx/jsx/adw";
+<<< @/figures/guide/actions-shortcuts.tsx [src/components/shortcuts.tsx]
 
-export const Shortcuts = ({ onClose }: { onClose: () => void }) => (
-    <AdwShortcutsDialog onClosed={onClose}>
-        <AdwShortcutsSection title="General">
-            <AdwShortcutsItem title="New note" actionName="win.new" />
-            <AdwShortcutsItem title="Search notes" accelerator="<Control>f" />
-            <AdwShortcutsItem title="Keyboard shortcuts" actionName="win.shortcuts" />
-            <AdwShortcutsItem title="Quit" actionName="app.quit" />
-        </AdwShortcutsSection>
-    </AdwShortcutsDialog>
-);
-```
+<figure class="result">
+    <img class="result-light" src="/figures/guide-actions-shortcuts-light.png" width="480" height="520" loading="lazy" alt="A shortcuts dialog over a window titled Notes, with a search entry and a General group listing New note Ctrl N, Search notes Ctrl F, Keyboard shortcuts Ctrl ?, and Quit Ctrl Q." />
+    <img class="result-dark" src="/figures/guide-actions-shortcuts-dark.png" width="480" height="520" loading="lazy" alt="A shortcuts dialog over a window titled Notes, with a search entry and a General group listing New note Ctrl N, Search notes Ctrl F, Keyboard shortcuts Ctrl ?, and Quit Ctrl Q." />
+    <figcaption>Captured from the sample above, in an app with the accelerators from <a href="#keyboard-accelerators">Keyboard accelerators</a>.</figcaption>
+</figure>
 
 The items describe shortcuts; they do not register them. Render the dialog from state that a `win.shortcuts` action sets, and clear that state in `onClosed`, as [Dialogs](/v2/guide/modals-and-portals#dialogs) shows.
 
@@ -242,6 +214,7 @@ A [registered class](/v2/guide/subclassing) that builds its own action group, su
 ```ts
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
+import { registerClass } from "@gtkx/runtime";
 
 class ChartBase extends Gtk.Widget {
     declare private chartActions: Gio.SimpleActionGroup;
@@ -272,6 +245,8 @@ class ChartBase extends Gtk.Widget {
         this.queueDraw();
     }
 }
+
+export const Chart = registerClass(ChartBase, { typeName: "ExampleChart" });
 ```
 
 A menu item with the action `chart.zoom-in` then activates the first entry. Each entry, typed as `Gio.ActionEntryObj`, takes GJS's fields in camelCase:
