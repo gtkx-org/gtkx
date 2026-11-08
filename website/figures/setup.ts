@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll } from "vitest";
@@ -15,6 +15,9 @@ for (const [name, directory] of [
     mkdirSync(path);
     process.env[name] = path;
 }
+
+mkdirSync(join(home, "config", "gtk-4.0"));
+writeFileSync(join(home, "config", "gtk-4.0", "settings.ini"), "[Settings]\ngtk-decoration-layout=appmenu:close\n");
 
 afterAll(() => {
     rmSync(home, { recursive: true, force: true });
