@@ -59,6 +59,8 @@ export const SearchPane = () => {
 - Child slots that no property backs are props named after their GtkBuilder child type, such as `start` and `end` on a header bar or `top` and `bottom` on a toolbar view.
 - Refs expose the corresponding GI instance for imperative APIs.
 
+A `text` prop on an editable widget, such as `GtkEntry`, or on a text buffer is written only when it differs from the widget's current text.
+
 Handlers don't report what GTKX writes for you. Writing a prop doesn't call that property's `onNotifyX` handler, and signal handlers such as `onChanged`, `onRowSelected` or `onClosePage` stay quiet while a commit changes props or children.
 
 Properties the widget changes in reaction still notify. When adding or removing children changes a property, such as the selected page after the selected tab is removed, its `onNotifyX` handler runs once the commit and its layout effects have finished, with the value at that point. The handler doesn't run when:
