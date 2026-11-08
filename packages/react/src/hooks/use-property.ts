@@ -1,4 +1,4 @@
-import type { ReadableProperties } from "@gtkx/runtime/internal";
+import type { ReadableProperties, WritableProperties } from "@gtkx/runtime/internal";
 import * as GObject from "@gtkx/gi/gobject";
 import { kebabCase } from "@gtkx/utils";
 import { getPropertyName } from "../reconciler/metadata.js";
@@ -7,6 +7,12 @@ import { useObjectValue } from "./use-object-value.js";
 /** Every property `T` declares that is also readable off the instance, in camelCase. */
 type PropertyName<T extends Pick<GObject.Object, "__properties__" | "__type__">> = Extract<
     keyof NoInfer<ReadableProperties<T>>,
+    string
+>;
+
+/** Every property `T` declares that is also writable on the instance, in camelCase. */
+type WritablePropertyName<T extends Pick<GObject.Object, "__properties__" | "__type__">> = Extract<
+    keyof NoInfer<WritableProperties<T>>,
     string
 >;
 
@@ -43,4 +49,4 @@ function useProperty<T extends Pick<GObject.Object, "__properties__" | "__type__
     );
 }
 
-export { useProperty };
+export { useProperty, type WritablePropertyName };
