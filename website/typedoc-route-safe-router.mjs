@@ -43,6 +43,16 @@ class RouteSafeRouter extends MemberRouter {
         return getPublicName(this.publicModuleNames[reflection.parent?.name ?? ""], reflection.name);
     }
 
+    getModuleDirectory(reflection) {
+        const { parent } = reflection;
+
+        if (parent?.kind !== ReflectionKind.Module || parent.parent?.kind !== ReflectionKind.Module) {
+            return super.getModuleDirectory(reflection);
+        }
+
+        return `${this.getModuleDirectory(parent)}/${this.getReflectionAlias(reflection)}`;
+    }
+
     getReflectionAlias(reflection) {
         const alias = this.moduleAliases.get(reflection) ?? super.getReflectionAlias(reflection);
         const names = this.publicModuleNames[reflection.parent?.name ?? ""];
