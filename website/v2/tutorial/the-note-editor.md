@@ -48,7 +48,7 @@ A split view navigator keeps its first screen in the sidebar and shows the other
 
 The window renders the navigator inside a `NavigationContainer`, within the notes provider so both screens read the same notes:
 
-<<< @/figures/tutorial/the-note-editor/src/app.tsx{22-23,29-51} [src/app.tsx]
+<<< @/figures/tutorial/the-note-editor/src/app.tsx{5,7,9,11,22-23,29-51} [src/app.tsx]
 
 - `NavigationContainer` holds the navigation state; [NavigationContainer](/v2/guide/navigation#navigationcontainer) covers what else it accepts.
 - `contentPlaceholder` fills the content pane until a note opens.
@@ -59,7 +59,7 @@ The window renders the navigator inside a `NavigationContainer`, within the note
 
 The list now selects a row, and the selection follows the route:
 
-<<< @/figures/tutorial/the-note-editor/src/components/notes-screen.tsx{35-40,52,65-71} [src/components/notes-screen.tsx]
+<<< @/figures/tutorial/the-note-editor/src/components/notes-screen.tsx{7-8,35-37,40,52,65-71} [src/components/notes-screen.tsx]
 
 - `selectedIds` holds the open note's name, so the highlighted row matches the content pane however the note was opened.
 - `onSelectionChanged` reports the row the user picks, and `navigate` opens that note. Instead of keeping the selection in state, the handler changes the route, and the route selects the row. In a split view, `navigate` replaces the open note rather than stacking another page above it; see [Split view navigator](/v2/guide/navigation#split-view-navigator).
