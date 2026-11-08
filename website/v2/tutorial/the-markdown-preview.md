@@ -51,7 +51,7 @@ The note screen, `src/components/note-screen.tsx`, puts the editor and the previ
 
 <<< @/figures/tutorial/the-markdown-preview/src/components/note-screen.tsx{12-16,42-59} [src/components/note-screen.tsx]
 
-- Each child sits in a `GtkStackPage`, the object the stack keeps for it, and `visibleChildName` shows the page with that `name`. The crossfade animates the switch.
+- Each child sits in a [`GtkStackPage`](/v2/guide/components#stack-pages), the object the stack keeps for it, and `visibleChildName` shows the page with that `name`. The crossfade animates the switch.
 - Both pages stay mounted, so the editor keeps its cursor and undo history while the preview shows, and the preview follows every edit.
 - `preview` arrives as a prop, next to the navigator's `route` and `navigation`.
 

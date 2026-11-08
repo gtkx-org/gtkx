@@ -5,7 +5,7 @@ description: "Migrate a GTKX 1.x application to GTKX 2, including configuration,
 
 # Upgrading to 2.0
 
-GTKX 2.0 makes the behaviors previewed in 1.6 unconditional and removes their compatibility APIs. [Prepare on 1.6](/guide/upgrading-to-2#prepare-on-1-6), then move every `@gtkx/*` package to the same 2.0 version and work through this checklist. Do not install `@gtkx/gi` or `@gtkx/jsx`; codegen creates them for the project. Security updates for 1.x end on 1 December 2026, as the [security policy](https://github.com/gtkx-org/gtkx/security/policy) states.
+GTKX 2.0 makes the behaviors previewed in 1.6 unconditional and removes their compatibility APIs. [Prepare on 1.6](/guide/upgrading-to-2#prepare-on-1-6), then move every `@gtkx/*` package to the same 2.0 version and work through this checklist. The [changelog](https://github.com/gtkx-org/gtkx/releases) lists each 2.0 prerelease's changes. Do not install `@gtkx/gi` or `@gtkx/jsx`; codegen creates them for the project. Security updates for 1.x end on 1 December 2026, as the [security policy](https://github.com/gtkx-org/gtkx/security/policy) states.
 
 Upgrade to Node.js 26.7 or newer and set `"type": "module"` in `package.json`; GTKX packages are ESM-only and explicitly reject `require()`. Localized projects also need GNU gettext 0.23 or newer; see [Internationalization](/v2/guide/internationalization).
 
@@ -70,7 +70,7 @@ The `"*"` wildcard is gone, and explicitly listing `Adw-1` or `Gtk-4.0` is rejec
 - Promisified methods omit a leading success boolean from multi-value finish results when failure already rejects. `loadContentsAsync` resolves to `[Uint8Array, string | null]`.
 - Inout records and boxed values mutate the object passed in instead of repeating it in the return value.
 - Assets use relative `?resource`, `?icon`, `?font`, or `?url` imports. Settings schemas use query-free relative imports.
-- Changes to runtime imports, re-exports, or imported resources and icons restart development apps and reset their state. Edits to component bodies still use Fast Refresh.
+- Development apps restart and reset their state when a module starts or stops importing or re-exporting a module, or when an imported resource or icon changes. Adding a name to an existing import, editing type-only imports and editing component bodies still use Fast Refresh; [The app restarts instead of refreshing](/v2/guide/troubleshooting#the-app-restarts-instead-of-refreshing) lists every cause.
 - Generated classes register with their own definitions, so production builds retain only reached bindings. Import a class if `GObject.typeFromName` must find it.
 - An application ends when its first render shows no window and nothing holds it. An app that rendered `null` until saved data loaded, as React Navigation's state persistence example does, now quits at once and `gtkx dev` prints `Application quit`. Render the window first and show a placeholder inside it; see [When the app ends](/v2/guide/application-lifecycle#when-the-app-ends).
 - Constructing an object with a key that is not one of its properties throws a `TypeError`, as in GJS, instead of skipping the key: `new Gio.Notification({ title: "Done" })` fails with "No property title on GNotification". Pass such values to the type's constructor function or setters, as in `Gio.Notification.new("Done")`.

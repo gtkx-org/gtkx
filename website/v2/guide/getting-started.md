@@ -5,7 +5,7 @@ description: "Install the prerequisites, create a GTKX app, and run the developm
 
 # Getting Started
 
-Create a Linux desktop app with React and TypeScript, then edit it while its window stays open. This guide uses the GTKX 2.0 beta.
+Create a Linux desktop app with React and TypeScript, then edit it while its window stays open. This guide uses the [GTKX 2.0 beta](/releases#prereleases).
 
 ## What you need
 
