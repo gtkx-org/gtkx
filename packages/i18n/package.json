@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/i18n",
-    "version": "2.0.0-beta.12",
+    "version": "2.0.0-beta.13",
     "description": "Gettext localization for GTK apps through react-i18next.",
     "keywords": [
         "gtkx",

@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/storybook",
-    "version": "2.0.0-beta.12",
+    "version": "2.0.0-beta.13",
     "description": "Native Adwaita explorer for Storybook stories of GTKX components.",
     "keywords": [
         "gtkx",

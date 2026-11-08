@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/forms",
-    "version": "2.0.0-beta.12",
+    "version": "2.0.0-beta.13",
     "description": "React Hook Form controls for GTK and Adwaita apps.",
     "keywords": [
         "gtkx",

@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/testing",
-    "version": "2.0.0-beta.12",
+    "version": "2.0.0-beta.13",
     "description": "Test GTKX apps against real GTK widgets.",
     "keywords": [
         "gtkx",
