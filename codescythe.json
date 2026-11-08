@@ -38,6 +38,7 @@
         "scripts/check-unused-code.ts",
         "packages/e2e/tests/helpers/native-fixtures.ts",
         "packages/e2e/tests/helpers/native-fixtures-compile.ts",
+        "scripts/release/changelog-renderer.ts",
         "scripts/release/prepare-release.ts",
         "packages/native/tools/prepublish.ts",
         "scripts/release/publish-package.ts",

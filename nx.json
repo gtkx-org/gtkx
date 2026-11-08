@@ -188,6 +188,9 @@
             "git": {
                 "commit": false,
                 "tag": false
+            },
+            "workspaceChangelog": {
+                "renderer": "{workspaceRoot}/scripts/release/changelog-renderer.ts"
             }
         }
     }
