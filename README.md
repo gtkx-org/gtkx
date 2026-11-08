@@ -114,7 +114,7 @@ Apps created with `create-gtkx` already depend on the packages they need to run 
 | **Bindings and internals**                |                                                                       |
 | [`@gtkx/codegen`](packages/codegen)       | Generate TypeScript and JSX bindings for GTK and GObject libraries.   |
 | [`@gtkx/runtime`](packages/runtime)       | Runtime for generated GTK and GObject Introspection bindings in GTKX. |
-| [`@gtkx/native`](packages/native)         | Native Node.js addon for GTKX calls into GTK and other C libraries.   |
+| [`@gtkx/native`](packages/native)         | Node.js addon that calls GTK and other C libraries for GTKX.          |
 | [`@gtkx/utils`](packages/utils)           | Shared Node.js utilities for GTKX, the React toolchain for GTK.       |
 
 ## Contribute

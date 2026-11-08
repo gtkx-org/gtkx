@@ -1,7 +1,7 @@
 {
     "name": "@gtkx/native",
     "version": "2.0.0-beta.12",
-    "description": "Native Node.js addon for GTKX calls into GTK and other C libraries.",
+    "description": "Node.js addon that calls GTK and other C libraries for GTKX.",
     "keywords": [
         "gtkx",
         "gtk",
