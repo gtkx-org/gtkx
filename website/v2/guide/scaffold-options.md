@@ -25,7 +25,7 @@ npm create gtkx@beta -- my-app --yes --application-id com.example.MyApp --displa
 | `-f`, `--overwrite`       | Refuses a directory that is not empty. See [Existing directories](#existing-directories).                                                                                     |
 | `--skip-install`          | Installs dependencies. With it, run your package manager's install command in the project afterward.                                                                          |
 
-The package name is the directory name when that is a valid npm package name. Otherwise the scaffold lowercases it, removes accents and replaces other characters with hyphens, so `Unit Converter` becomes `unit-converter` and `café` becomes `cafe`. `npm create gtkx@beta -- --help` prints every option.
+The package name is the directory name when that is a valid npm package name. Otherwise the scaffold lowercases it, removes accents and replaces other characters with hyphens, so `Unit Converter` becomes `unit-converter` and `café` becomes `cafe`. `--no-interactive` is the same as `--yes`, and `--typescript` and `--vitest` request the defaults explicitly. `npm create gtkx@beta -- --help` prints every option.
 
 The new project depends on the major versions this GTKX release supports, not the newest ones: React, `@types/react` and Vitest within the ranges GTKX declares as peers, the Vite range `@gtkx/cli` depends on, TypeScript 6, and the `@types/node` major of the oldest Node.js GTKX supports. When a later GTKX release supports a new major, run `gtkx upgrade` first, then move those packages with your package manager.
 
