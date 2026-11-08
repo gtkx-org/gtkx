@@ -289,3 +289,49 @@ html.dark .vp-doc figure.result .result-dark {
 .VPLastUpdated time {
     margin-inline-start: 0.25em;
 }
+
+.numbered-tutorial .VPSidebarItem.level-0 > .items > li {
+    counter-reset: tutorial-chapter -1;
+}
+
+.numbered-tutorial .VPSidebarItem.level-1 {
+    counter-increment: tutorial-chapter;
+}
+
+.numbered-tutorial .VPSidebarItem.level-1 > .item > .link {
+    display: grid;
+    grid-template-columns: 26px minmax(0, 1fr);
+    align-items: baseline;
+}
+
+.numbered-tutorial .VPSidebarItem.level-1 > .item > .link::before {
+    content: counter(tutorial-chapter, decimal-leading-zero);
+    font: 500 12px/1 var(--vp-font-family-mono);
+    font-variant-numeric: tabular-nums;
+    color: var(--vp-c-text-3);
+}
+
+.numbered-tutorial .VPSidebarItem.level-1:first-child > .item > .link::before {
+    content: "";
+}
+
+.numbered-tutorial .VPSidebarItem.level-1.is-active > .item > .link::before {
+    color: var(--vp-c-brand-1);
+}
+
+.numbered-tutorial .VPLocalNav .menu > .menu-text::after {
+    content: " · " var(--tutorial-position);
+    white-space: nowrap;
+    color: var(--vp-c-text-1);
+    font-weight: 600;
+}
+
+@media (max-width: 379px) {
+    .numbered-tutorial .VPLocalNav .menu > .menu-text::after {
+        content: " · " var(--tutorial-position-short);
+    }
+}
+
+.numbered-tutorial .VPDocFooter .prev-next {
+    display: none;
+}
