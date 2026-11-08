@@ -14,9 +14,9 @@ Writing the file on every keystroke would save once per character, and two write
 
 - `schedule` restarts the note's timer with the new text, so a burst of typing becomes one write, 400 milliseconds after the last change.
 - `#flush` queues each write behind the note's previous one, so saves of one note never overlap and the last text wins. Different notes save independently.
-- `#written` keeps the text last written to each note, and `isPending` tells whether a note has text not yet written. The folder watcher below uses both.
+- `#written` records the text of each note's latest write as soon as the write is queued, and `isPending` tells whether a note's text is still waiting for typing to pause. The folder watcher below uses both.
 - A failed write calls `onError` once. The saver stays quiet about that note until one of its saves succeeds, so a full disk doesn't report every keystroke.
-- `flushAll` starts every pending write at once, for when the folder closes.
+- `flushAll` starts every waiting write at once, for when the provider stops watching the folder.
 
 `files.ts` gains `writeNote`, and `readNote` returns `null` for a file that no longer exists, which is how the watcher learns that a note was deleted:
 
@@ -54,7 +54,7 @@ In the provider's `onError`:
 
 - `timeout: 0` keeps the toast until the user dismisses it ([`timeout`](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/property.Toast.timeout.html)), so the message isn't missed while typing.
 - `useMarkup: false` shows the title as written. Adwaita reads toast titles as Pango markup by default, and a note's name can contain `&` or `<`.
-- The saver keeps the callback it was created with, so the message uses `t` imported from `@gtkx/i18n`, which translates into the current language whenever it runs, rather than the `t` of one render. `{{name}}` inserts the note's name; see [Internationalization](/v2/guide/internationalization).
+- The saver keeps the callback it was created with, so the message uses `t` imported from `@gtkx/i18n`, which translates into the current language whenever it runs, rather than the `t` of one render. <span v-pre>`{{name}}`</span> inserts the note's name; see [Internationalization](/v2/guide/internationalization).
 
 ## Run it
 
