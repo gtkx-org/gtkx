@@ -12,7 +12,7 @@ import { CREATE_COMMAND, docsLink, REPO_URL } from "./content";
         <span class="glow" />
         <div class="hero__grid stack-md">
             <div class="hero__col">
-                <p class="overline hero__eyebrow">// React · Node · TypeScript · libadwaita · GTK4</p>
+                <p class="overline hero__eyebrow">// React · Node.js · TypeScript · libadwaita · GTK 4</p>
                 <h1 class="hero__title">The React framework for <span class="gtkx-gradient-text">Linux</span></h1>
                 <p class="hero__lede">
                     Build native Adwaita and GTK apps with the workflow of modern web development: React components,

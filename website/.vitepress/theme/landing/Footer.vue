@@ -41,7 +41,7 @@ const cols: { h: string; items: Link[] }[] = [
         items: [
             { t: "GNOME", href: "https://www.gnome.org" },
             { t: "libadwaita", href: "https://gnome.pages.gitlab.gnome.org/libadwaita/" },
-            { t: "GTK4", href: "https://www.gtk.org" },
+            { t: "GTK", href: "https://www.gtk.org" },
             { t: "GObject", href: "https://docs.gtk.org/gobject/" },
         ],
     },
