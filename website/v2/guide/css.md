@@ -5,7 +5,7 @@ description: "Apply widget styles and reusable classes in GTKX."
 
 # CSS
 
-GTKX provides a `style` prop for individual widgets and `@gtkx/css` for reusable styles. Use [Adwaita's style classes](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/style-classes.html) for standard widget styling. For custom rules, use [GTK's supported CSS properties](https://docs.gtk.org/gtk4/css-properties.html); layout stays in widget props.
+GTKX provides a `style` prop for individual widgets and `@gtkx/css` for reusable styles. Use [Adwaita's style classes](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/style-classes.html) for standard widget styling. For custom rules, use [GTK's supported CSS properties](https://docs.gtk.org/gtk4/css-properties.html); layout stays in widget props.
 
 ## Style one widget
 
@@ -14,7 +14,10 @@ The `style` prop accepts an object with camelCase property names:
 ```tsx
 import { GtkLabel } from "@gtkx/jsx/gtk";
 
-<GtkLabel label="Overdue" style={{ color: "var(--error-color)", fontWeight: 700 }} />;
+<GtkLabel
+    label="Overdue"
+    style={{ color: "var(--error-color)", fontWeight: 700 }}
+/>;
 ```
 
 Numeric lengths use pixels: `minHeight: 48` becomes `min-height: 48px`. Pass other units as strings. Setting `style` to `undefined` or `null` removes its declarations.
@@ -36,7 +39,7 @@ import { GtkButton } from "@gtkx/jsx/gtk";
 
 Keys starting with `--` set CSS custom properties, which the widget and its descendants read through `var()`. Overriding Adwaita's variables recolors a subtree:
 
-<<< @/figures/guide/css-accent.tsx
+<<< @/figures/guide/css-accent.tsx [src/accent-override.tsx]
 
 <figure class="result">
     <img class="result-light" src="/figures/guide-css-accent-light.png" width="360" height="260" loading="lazy" alt="A window titled CSS with a blue Publish button and a green Save button side by side." />
@@ -80,7 +83,10 @@ import { GtkButton } from "@gtkx/jsx/gtk";
 
 const action = css({ minWidth: 96 });
 
-<GtkButton label="Save" cssClasses={cx(action, canSave && "suggested-action")} />;
+<GtkButton
+    label="Save"
+    cssClasses={cx(action, canSave && "suggested-action")}
+/>;
 ```
 
 When several generated classes are combined, `cx` merges their declarations into one class. Later arguments win on conflicting declarations. As within one `css` call, nested selectors and `@media` blocks follow all plain declarations, so an earlier argument's `@media` rule still overrides a later argument's plain declaration while its query matches. Give the later class its own `@media` rule when it must win there too:
@@ -140,7 +146,7 @@ During `gtkx dev`, editing a stylesheet replaces the rules that file installed, 
 
 ### Load Adwaita's `style.css`
 
-A stylesheet imported with [`?resource`](/v2/guide/assets#resources) is bundled unchanged rather than installed. Use this for the `style.css` that [Adwaita loads](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/class.Application.html#automatic-resources) from the application's resource base path, as in a ported GNOME application:
+A stylesheet imported with [`?resource`](/v2/guide/assets#resources) is bundled unchanged rather than installed. Use this for the `style.css` that [Adwaita loads](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/class.Application.html#automatic-resources) from the application's resource base path, as in a ported GNOME application:
 
 ```ts
 import "../data/style.css?resource=/com/example/Tasks/style.css";
@@ -151,7 +157,7 @@ GTK resolves `url()` values in that file against its resource path, so `url("pap
 
 ## Follow appearance preferences
 
-Media queries in `css`, `injectGlobal` and imported `.css` files follow the color scheme resolved by [Adw.StyleManager](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/class.StyleManager.html), including an application override. It also follows the system's contrast preference and, on GTK 4.22 or later, reduced-motion preference.
+Media queries in `css`, `injectGlobal` and imported `.css` files follow the color scheme resolved by [Adw.StyleManager](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/class.StyleManager.html), including an application override. It also follows the system's contrast preference and, on GTK 4.22 or later, reduced-motion preference.
 
 Use theme variables in custom styles so their colors follow the active appearance. When a rule needs to change by preference, place its `@media` block inside `css`:
 
