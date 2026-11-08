@@ -129,7 +129,7 @@ A proxy created after its name vanished, or after `stop`, is discarded, and each
 
 `connection.registerObjectWithClosures2` exports an object at a path, given an interface description and three handlers. The method-call handler answers each call exactly once, through the `Gio.DBusMethodInvocation` it receives, with `returnValue` or `returnDbusError`, and may do so after asynchronous work. The property handlers read and write properties; pass `null` for one the interface does not need:
 
-```ts
+```ts [src/counter-service.ts]
 import * as Gio from "@gtkx/gi/gio";
 import { Variant } from "@gtkx/gi/glib";
 
@@ -205,12 +205,12 @@ export const exportCounter = (
 
 The method-call handler's parameters are annotated for the same reason as the watcher's. The `instanceof` check keeps `Gio.DBusMethodInvocation` in production builds, which would otherwise pass the invocation as a plain `GObject.Object`; see [Production bindings](/v2/guide/configuration-and-codegen#production-bindings).
 
-Export from an effect and return the cleanup. Render this component inside the application element:
+Export from an effect and return the cleanup. [`useApplication()`](/v2/guide/native-state#the-application) returns the application, so render this component inside the [application element](/v2/guide/application-lifecycle#the-application-element):
 
-```tsx
+```tsx [src/components/counter-service.tsx]
 import { useApplication } from "@gtkx/react";
 import { useEffect } from "react";
-import { exportCounter } from "./counter-service.js";
+import { exportCounter } from "../counter-service.js";
 
 export const CounterService = () => {
     const application = useApplication();
