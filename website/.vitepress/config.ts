@@ -257,11 +257,12 @@ const navigation = (version: DocumentationVersion): DefaultTheme.NavItem[] => [
     { text: "Examples", link: `https://github.com/gtkx-org/gtkx/tree/${version.examplesRef}/examples` },
     {
         text: "Project",
-        activeMatch: "^/(contributing/|blog/)",
+        activeMatch: "^/(contributing/|blog/|releases)",
         items: [
             { text: "Contributing", link: `/${CONTRIBUTING_ROOT}` },
             { text: "Blog", link: "/blog/" },
-            { text: "Releases", link: "https://github.com/gtkx-org/gtkx/releases" },
+            { text: "Releases", link: "/releases" },
+            { text: "Changelog", link: "https://github.com/gtkx-org/gtkx/releases" },
             { text: "Discussions", link: "https://github.com/gtkx-org/gtkx/discussions" },
             { text: "Sponsor", link: "https://opencollective.com/gtkx" },
         ],

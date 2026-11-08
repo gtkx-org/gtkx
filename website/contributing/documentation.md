@@ -125,7 +125,7 @@ Complete promotion on the prepared release branch before advancing `main`. That 
    pnpm --filter @gtkx/website promote-version --to /v1 --examples-ref v2.0.0
    ```
 
-4. Review release copy in the promoted `website/guide`, `website/tutorial`, contributor pages, landing components, root `README.md`, and `packages/*/README.md`. Replace beta installation commands and current-release status text with stable equivalents. Point 2.0 links at the new root paths and 1.x links at `/v1`; retain historical release names in dated posts and changelogs. Archived 1.x installation commands must remain pinned to 1.x. Keep the root README's link to `FUNDING.md`.
+4. Review release copy in the promoted `website/guide`, `website/tutorial`, contributor pages, landing components, the [Releases](/releases) page, root `README.md`, and `packages/*/README.md`. Replace beta installation commands and current-release status text with stable equivalents. Point 2.0 links at the new root paths and 1.x links at `/v1`; retain historical release names in dated posts and changelogs. Archived 1.x installation commands must remain pinned to 1.x. Keep the root README's link to `FUNDING.md`.
 5. Regenerate both API references and build the site:
 
    ```bash
