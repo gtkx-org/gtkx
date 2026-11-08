@@ -152,7 +152,7 @@ export const App = () => {
 
 `createStackNavigator` renders an `AdwNavigationView`. Define the route parameters to typecheck screens, `navigate` calls, and `route.params`:
 
-<<< @/figures/guide/navigation-stack.tsx
+<<< @/figures/guide/navigation-stack.tsx [src/notes.tsx]
 
 <figure class="result">
     <img class="result-light" src="/figures/guide-navigation-stack-light.png" width="360" height="260" loading="lazy" alt="A window whose header bar shows the title Notes above a centered Open note 42 button." />
@@ -260,7 +260,7 @@ Stack screens emit `transitionStart` and `transitionEnd` from their native page 
 
 `createTabNavigator` renders an `AdwViewStack`. The switcher occupies the header title by default; `tabBarPosition="bottom"` puts an `AdwViewSwitcherBar` below the content:
 
-<<< @/figures/guide/navigation-tabs.tsx
+<<< @/figures/guide/navigation-tabs.tsx [src/mail.tsx]
 
 <figure class="result">
     <img class="result-light" src="/figures/guide-navigation-tabs-light.png" width="360" height="440" loading="lazy" alt="A window titled Inbox showing an Inbox status page, with a switcher bar at the bottom holding an Inbox button with a badge of 3 and an Archived button." />
@@ -280,7 +280,7 @@ User selection emits `tabPress`, which a screen listener can prevent. Programmat
 
 `createDrawerNavigator` uses an `AdwOverlaySplitView`. Its sidebar lists the screens and marks the focused one; a button in the content header toggles the sidebar:
 
-<<< @/figures/guide/navigation-drawer.tsx
+<<< @/figures/guide/navigation-drawer.tsx [src/app.tsx]
 
 <figure class="result">
     <img class="result-light" src="/figures/guide-navigation-drawer-light.png" width="640" height="400" loading="lazy" alt="A window with a sidebar titled Mail listing Inbox, selected, and Preferences with their icons, beside a content pane whose header has a sidebar toggle and the title Inbox above a No New Mail status page." />
@@ -322,13 +322,15 @@ Activating a row emits `drawerItemPress`, which `preventDefault` cancels, before
 
 `createSplitViewNavigator` keeps its first screen in the sidebar and places the other screens in a content stack. Use it when the sidebar selects data, such as a folder whose messages appear beside it:
 
-<<< @/figures/guide/navigation-split-view.tsx
+<<< @/figures/guide/navigation-split-view.tsx [src/mail.tsx]
 
 <figure class="result">
-    <img class="result-light" src="/figures/guide-navigation-split-view-light.png" width="720" height="420" loading="lazy" alt="A window with a sidebar titled Mail holding an Inbox row, beside a content pane with an untitled header bar above a No Folder Selected status page reading Pick a folder to read what is in it." />
-    <img class="result-dark" src="/figures/guide-navigation-split-view-dark.png" width="720" height="420" loading="lazy" alt="A window with a sidebar titled Mail holding an Inbox row, beside a content pane with an untitled header bar above a No Folder Selected status page reading Pick a folder to read what is in it." />
-    <figcaption>Captured from the sample above. <code>contentPlaceholder</code> fills the content pane until a folder is selected.</figcaption>
+    <img class="result-light" src="/figures/guide-navigation-split-view-light.png" width="720" height="420" loading="lazy" alt="A window with a sidebar titled Mail holding a selected Inbox row, beside a content pane whose header bar is titled Inbox above a centered Open message 1 button." />
+    <img class="result-dark" src="/figures/guide-navigation-split-view-dark.png" width="720" height="420" loading="lazy" alt="A window with a sidebar titled Mail holding a selected Inbox row, beside a content pane whose header bar is titled Inbox above a centered Open message 1 button." />
+    <figcaption>Captured from the sample above. The navigator opens on the Inbox folder, which the sidebar selects first.</figcaption>
 </figure>
+
+`AdwSidebar` selects its first item on its own, and `activated` fires only when the user activates a row. The sample therefore names a content screen in `initialRouteName`, with `initialParams`, so the pane opens on the folder the sidebar shows as selected instead of on the placeholder.
 
 In a split view, `navigate` selects a content route: it updates that route and removes pages above it. Choosing another folder therefore replaces the selection instead of adding another folder page. Use `push` to keep multiple copies of a content page.
 
@@ -364,11 +366,11 @@ const Sections = ({ navigation, route }: SplitViewScreenProps<SettingsParams, "S
 
 The reset switches sections without a page transition.
 
-The sidebar stays pinned beneath the content routes. Going back from the first content page clears the selection and restores `contentPlaceholder`, which sits below an untitled header bar so the window keeps its controls. An `initialRouteName` naming a content screen opens that screen instead of starting with the placeholder.
+The sidebar stays pinned beneath the content routes. Going back from the first content page clears the selection and restores `contentPlaceholder`, which sits below an untitled header bar so the window keeps its controls.
 
 Content pages use the stack's headers, back controls and transition events. The first selection fills an empty pane and emits no page transition. The sidebar has its own header without a back button.
 
-`collapseCondition` collapses the panes while an [`Adw.BreakpointCondition`](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/type_func.BreakpointCondition.parse.html) holds, measured against the navigator's size. libadwaita applies it during layout, as it applies an `AdwBreakpoint` setter, so the panes change before GTK moves keyboard focus. Setting `collapsed` from a breakpoint's `onApply` and `onUnapply` handlers lands after GTK has moved focus, and widening the window can then select the focused sidebar row. Use `collapsed` when the layout depends on application state rather than size.
+`collapseCondition` collapses the panes while an [`Adw.BreakpointCondition`](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/type_func.BreakpointCondition.parse.html) holds, measured against the navigator's size. libadwaita applies it during layout, as it applies an `AdwBreakpoint` setter, so the panes change before GTK moves keyboard focus. Setting `collapsed` from a breakpoint's `onApply` and `onUnapply` handlers lands after GTK has moved focus, and widening the window can then select the focused sidebar row. Use `collapsed` when the layout depends on application state rather than size.
 
 As with window breakpoints, give the window a minimum size the collapsed layout fits:
 
@@ -385,7 +387,7 @@ export const App = () => (
 );
 ```
 
-`useSplitViewCollapsed()` tells the navigator's screens whether the panes are collapsed, whether `collapsed` or `collapseCondition` collapsed them. libadwaita's [`AdwSidebar`](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/class.Sidebar.html) switches to page mode with the breakpoint that collapses its split view, so a sidebar screen reads the hook instead of repeating the condition in a window breakpoint:
+`useSplitViewCollapsed()` tells the navigator's screens whether the panes are collapsed, whether `collapsed` or `collapseCondition` collapsed them. libadwaita's [`AdwSidebar`](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/class.Sidebar.html) switches to page mode with the breakpoint that collapses its split view, so a sidebar screen reads the hook instead of repeating the condition in a window breakpoint:
 
 ```tsx
 import * as Adw from "@gtkx/gi/adw";
@@ -594,7 +596,7 @@ declare module "@react-navigation/core" {
 }
 ```
 
-GTKX uses the interface declared by `@react-navigation/core`, so augment that module. Install it directly with `npm install @react-navigation/core@^7`: pnpm keeps transitive dependencies out of the project's `node_modules`, and TypeScript cannot augment a module it cannot resolve. The same pattern works with a static navigator. See React Navigation's [TypeScript guide](https://reactnavigation.org/docs/typescript/) for nested screens and inferred route parameters.
+GTKX uses the interface declared by `@react-navigation/core`, so augment that module. Install it directly with `npm install @react-navigation/core@^7`: pnpm keeps transitive dependencies out of the project's `node_modules`, and TypeScript cannot augment a module it cannot resolve. Until it resolves, `navigate` from `useNavigation()` rejects every route, typed as `never`. The same pattern works with a static navigator. See React Navigation's [TypeScript guide](https://reactnavigation.org/docs/typescript/) for nested screens and inferred route parameters.
 
 ## Testing
 

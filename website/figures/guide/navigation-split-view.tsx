@@ -23,7 +23,7 @@ const Folders = ({
     navigation,
 }: SplitViewScreenProps<MailParams, "Folders">) => (
     <AdwSidebar
-        onActivated={() => navigation.navigate("Messages", { folder: "inbox" })}
+        onActivated={() => navigation.navigate("Messages", { folder: "Inbox" })}
     >
         <AdwSidebarSection>
             <AdwSidebarItem title="Inbox" />
@@ -48,6 +48,7 @@ const Message = ({ route }: SplitViewScreenProps<MailParams, "Message">) => (
 
 export const Mail = () => (
     <Split.Navigator
+        initialRouteName="Messages"
         collapseCondition="max-width: 500sp"
         minSidebarWidth={220}
         maxSidebarWidth={300}
@@ -68,6 +69,7 @@ export const Mail = () => (
         <Split.Screen
             name="Messages"
             component={Messages}
+            initialParams={{ folder: "Inbox" }}
             options={({ route }) => ({ title: route.params.folder })}
         />
         <Split.Screen
