@@ -112,3 +112,7 @@
 ### ❤️ Thank You
 
 - Eugenio Depalo @eugeniodepalo
+
+## Earlier releases
+
+Release notes for 2.0.0-beta.10 and earlier are on [GitHub Releases](https://github.com/gtkx-org/gtkx/releases).
