@@ -8,7 +8,7 @@ description: "Build a Markdown notes app for Linux with React and Adwaita, then 
 
 Build **Notes**, a Markdown notes app that keeps each note as a plain file in a folder, from an empty directory, then test, translate, and package it as a Flatpak, deb, rpm, and AppImage. You will use npm packages, Node's file APIs and a worker thread, GtkSourceView (a library outside the default bindings), a GObject interface written in TypeScript, and Fast Refresh, Storybook and MCP, then prepare the app for Flathub.
 
-The tutorial assumes familiarity with [React](https://react.dev/learn) and [TypeScript](https://www.typescriptlang.org/docs/handbook/2/basic-types.html). It focuses on using GTKX with libadwaita and GTK4. You need Linux, the native development libraries, and Node.js 26.7 or later; [Getting Started](/v2/guide/getting-started) covers installation. Notes also needs GtkSourceView 5 with its GObject introspection data, and the gettext tools.
+The tutorial assumes familiarity with [React](https://react.dev/learn) and [TypeScript](https://www.typescriptlang.org/docs/handbook/2/basic-types.html). It focuses on using GTKX with libadwaita and GTK 4. You need Linux, the native development libraries, and Node.js 26.7 or later; [Getting Started](/v2/guide/getting-started) covers installation. Notes also needs GtkSourceView 5 with its GObject introspection data, and the gettext tools.
 
 This tutorial uses the GTKX 2.0 beta. Keep GTKX packages on the same version; [`gtkx upgrade`](/v2/guide/updating) moves them together. For the stable release, use the [1.6 tutorial](/tutorial/), which builds a task manager.
 

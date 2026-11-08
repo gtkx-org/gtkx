@@ -7,7 +7,7 @@
 
 <p align="center">
   The React framework for Linux<br />
-  Adwaita and GTK4 widgets, TypeScript, and Node.js.
+  Adwaita and GTK 4 widgets, TypeScript, and Node.js.
 </p>
 
 <p align="center">
