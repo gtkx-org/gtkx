@@ -30,7 +30,7 @@ export const FadeIn = () => {
 
 Wrap generated elements, non-widget objects such as `GtkAdjustment`, or your own components. There is no `animated.div`-style element map as in `@react-spring/web`; pass `animated` the element you import.
 
-For writable GObject props, each frame updates the native object through its `ref` without rerendering the component. This includes `opacity`, margins, size requests, and adjustment values. Construct-only props remain static, and TypeScript rejects springs passed to them. A label's text children also accept animated values, alone or next to static text:
+For writable GObject props, each frame updates the native object through its `ref` without re-rendering the component. This includes `opacity`, margins, size requests, and adjustment values. Construct-only props remain static, and TypeScript rejects springs passed to them. A label's text children also accept animated values, alone or next to static text:
 
 ```tsx
 const { count } = useSpring({ from: { count: 0 }, to: { count: 100 } });
@@ -43,9 +43,7 @@ const { count } = useSpring({ from: { count: 0 }, to: { count: 100 } });
 
 GTKX truncates whole-number properties, such as margins, toward zero and clamps values to the native property range. An opacity spring cannot exceed 1, and margins cannot be negative. To slide a widget using a margin, animate from a positive margin to zero.
 
-A custom component that forwards its `ref` to the native object receives the same updates. Otherwise, the wrapper rerenders the component with the current values.
-
-Props that are not GObject properties, such as `accessible*`, animate by re-rendering the component on each frame.
+A custom component that forwards its `ref` to the native object receives the same updates. Otherwise, and for props that are not GObject properties, such as `accessible*`, the wrapper re-renders the component with the current values on each frame.
 
 ## Animated styles
 
@@ -57,17 +55,14 @@ import { GtkLabel } from "@gtkx/jsx/gtk";
 
 const AnimatedLabel = animated(GtkLabel);
 
+const overdueColor = (value: number) => ({
+    color: `mix(var(--window-fg-color), var(--error-color), ${value})`,
+});
+
 export const Deadline = ({ isOverdue }: { isOverdue: boolean }) => {
     const { level } = useSpring({ level: isOverdue ? 1 : 0 });
 
-    return (
-        <AnimatedLabel
-            label="Due today"
-            style={level.to((value) => ({
-                color: `mix(var(--window-fg-color), var(--error-color), ${value})`,
-            }))}
-        />
-    );
+    return <AnimatedLabel label="Due today" style={level.to(overdueColor)} />;
 };
 ```
 
