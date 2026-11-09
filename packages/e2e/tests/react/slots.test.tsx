@@ -619,7 +619,6 @@ describe("render - ContainerProp", () => {
             ["AdwActionRow", AdwActionRow],
             ["AdwSwitchRow", AdwSwitchRow],
             ["AdwEntryRow", AdwEntryRow],
-            ["AdwExpanderRow", AdwExpanderRow],
             ["AdwButtonRow", AdwButtonRow],
         ])("rejects a default child of %s instead of replacing the row's own content", async (_name, Row) => {
             await expect(
@@ -717,7 +716,7 @@ describe("render - ContainerProp", () => {
         });
     });
 
-    describe("AdwExpanderRow (rows/suffix)", () => {
+    describe("AdwExpanderRow (children/suffix)", () => {
         it("creates ExpanderRow widget", async () => {
             const ref = createRef<Adw.ExpanderRow>();
             await render(<AdwExpanderRow ref={ref} title="Test" />);
@@ -754,7 +753,9 @@ describe("render - ContainerProp", () => {
             const rowRef = createRef<Adw.ActionRow>();
 
             await render(
-                <AdwExpanderRow expanded title="Settings" rows={<AdwActionRow ref={rowRef} title="Option 1" />} />,
+                <AdwExpanderRow expanded title="Settings">
+                    <AdwActionRow ref={rowRef} title="Option 1" />
+                </AdwExpanderRow>,
             );
 
             expect(rowRef.current).toContainElement(await screen.findByText("Option 1"));
@@ -762,16 +763,10 @@ describe("render - ContainerProp", () => {
 
         it("adds multiple rows", async () => {
             await render(
-                <AdwExpanderRow
-                    expanded
-                    title="Settings"
-                    rows={
-                        <>
-                            <AdwActionRow title="Option 1" />
-                            <AdwActionRow title="Option 2" />
-                        </>
-                    }
-                />,
+                <AdwExpanderRow expanded title="Settings">
+                    <AdwActionRow title="Option 1" />
+                    <AdwActionRow title="Option 2" />
+                </AdwExpanderRow>,
             );
 
             expect(await screen.findByText("Option 1")).toAppearBefore(await screen.findByText("Option 2"));
@@ -784,17 +779,10 @@ describe("render - ContainerProp", () => {
 
             function App({ shouldShowRow }: { shouldShowRow: boolean }) {
                 return (
-                    <AdwExpanderRow
-                        ref={expanderRef}
-                        expanded
-                        title="Settings"
-                        rows={
-                            <>
-                                <AdwActionRow ref={alwaysRef} title="Always" />
-                                {shouldShowRow && <AdwActionRow ref={conditionalRef} title="Conditional" />}
-                            </>
-                        }
-                    />
+                    <AdwExpanderRow ref={expanderRef} expanded title="Settings">
+                        <AdwActionRow ref={alwaysRef} title="Always" />
+                        {shouldShowRow && <AdwActionRow ref={conditionalRef} title="Conditional" />}
+                    </AdwExpanderRow>
                 );
             }
 
@@ -850,14 +838,11 @@ describe("render - ContainerProp", () => {
                             <GtkButton label="Action 2" />
                         </>
                     }
-                    rows={
-                        <>
-                            <AdwActionRow title="Row 1" />
-                            <AdwActionRow title="Row 2" />
-                            <AdwActionRow title="Row 3" />
-                        </>
-                    }
-                />,
+                >
+                    <AdwActionRow title="Row 1" />
+                    <AdwActionRow title="Row 2" />
+                    <AdwActionRow title="Row 3" />
+                </AdwExpanderRow>,
             );
 
             const expander = mountedRef(ref);

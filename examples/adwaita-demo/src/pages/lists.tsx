@@ -111,13 +111,18 @@ export const ListsPage = () => {
                             />
                         </AdwPreferencesGroup>
                         <AdwPreferencesGroup title="Expander Rows">
-                            <AdwExpanderRow title="Expander Row" rows={<NestedRows />} />
+                            <AdwExpanderRow title="Expander Row">
+                                <NestedRows />
+                            </AdwExpanderRow>
                             <AdwExpanderRow
                                 title="Expander Row With an Action"
                                 suffix={<CopyButton />}
-                                rows={<NestedRows />}
-                            />
-                            <AdwExpanderRow title="Toggleable Expander Row" showEnableSwitch rows={<NestedRows />} />
+                            >
+                                <NestedRows />
+                            </AdwExpanderRow>
+                            <AdwExpanderRow title="Toggleable Expander Row" showEnableSwitch>
+                                <NestedRows />
+                            </AdwExpanderRow>
                         </AdwPreferencesGroup>
                         <AdwPreferencesGroup title="Property Rows">
                             <AdwActionRow
