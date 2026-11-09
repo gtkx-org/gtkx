@@ -1111,11 +1111,7 @@ describe("render - ContainerProp", () => {
 
             function App({ hasTop }: { hasTop: boolean }) {
                 return (
-                    <AdwToolbarView
-                        ref={toolbarRef}
-                        top={hasTop && <AdwHeaderBar ref={topRef} />}
-                        bottom={false}
-                    >
+                    <AdwToolbarView ref={toolbarRef} top={hasTop && <AdwHeaderBar ref={topRef} />} bottom={false}>
                         <GtkLabel>Content</GtkLabel>
                     </AdwToolbarView>
                 );
