@@ -114,10 +114,7 @@ export const ListsPage = () => {
                             <AdwExpanderRow title="Expander Row">
                                 <NestedRows />
                             </AdwExpanderRow>
-                            <AdwExpanderRow
-                                title="Expander Row With an Action"
-                                suffix={<CopyButton />}
-                            >
+                            <AdwExpanderRow title="Expander Row With an Action" suffix={<CopyButton />}>
                                 <NestedRows />
                             </AdwExpanderRow>
                             <AdwExpanderRow title="Toggleable Expander Row" showEnableSwitch>
