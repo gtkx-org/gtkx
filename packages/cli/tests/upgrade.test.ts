@@ -12,6 +12,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { stdout, stderr } from "test-console";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { prerelease } from "semver";
 import { parse } from "yaml";
 import { createCommand } from "../dist/command.js";
 import { createProject } from "./project.js";
@@ -24,10 +25,16 @@ const SETTINGS_FILES = [".npmrc", ".yarnrc.yml", "pnpm-workspace.yaml"];
 
 const LOCKFILES: Record<string, string> = { npm: "package-lock.json", pnpm: "pnpm-lock.yaml", yarn: "yarn.lock" };
 
+const { version: CLI_VERSION } = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as {
+    version: string;
+};
+
+const CLI_DIST_TAG = prerelease(CLI_VERSION)?.[0] ?? "latest";
+
 const REGISTRY_DOCUMENT = {
     name: "@gtkx/cli",
-    "dist-tags": { latest: "1.6.0", beta: "2.0.0-beta.13" },
-    versions: ["1.6.0", "2.0.0-beta.11", "2.0.0-beta.12", "2.0.0-beta.13"],
+    "dist-tags": { latest: "1.6.0", [CLI_DIST_TAG]: CLI_VERSION },
+    versions: [...new Set(["1.6.0", "2.0.0-beta.11", "2.0.0-beta.12", "2.0.0-beta.13", CLI_VERSION])],
 };
 
 const invoke = async (args: string[]) => {
@@ -178,15 +185,15 @@ describe("gtkx upgrade", () => {
         const workspace = project.read("pnpm-workspace.yaml");
         expect(parse(workspace)).toEqual({
             packages: ["apps/*"],
-            catalog: { "@gtkx/react": "^2.0.0-beta.13", react: "^19.3.0" },
-            catalogs: { gtkx: { "@gtkx/cli": "~2.0.0-beta.13" } },
+            catalog: { "@gtkx/react": `^${CLI_VERSION}`, react: "^19.3.0" },
+            catalogs: { gtkx: { "@gtkx/cli": `~${CLI_VERSION}` } },
             minimumReleaseAgeExclude: ["@gtkx/*", "create-gtkx"],
         });
         expect(workspace).toContain("# GTKX packages move together");
         expect(project.read("apps/one/package.json")).toBe(
             manifest({ "@gtkx/react": "catalog:" }, { "@gtkx/cli": "catalog:gtkx" }),
         );
-        expect(project.read("apps/two/package.json")).toBe(manifest({ "@gtkx/css": "^2.0.0-beta.13" }));
+        expect(project.read("apps/two/package.json")).toBe(manifest({ "@gtkx/css": `^${CLI_VERSION}` }));
         expect(installs(project.commands())).toEqual([
             { name: "pnpm", cwd: project.root, args: ["install"] },
             { name: "pnpm", cwd: project.root, args: ["dedupe"] },
