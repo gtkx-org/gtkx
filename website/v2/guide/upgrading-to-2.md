@@ -278,7 +278,15 @@ Headless displays always run Sway, so the Vitest plugin no longer accepts a `com
 
 ## Rename slot props
 
-Child slots now use their GtkBuilder child type names. Rename `topBar` and `bottomBar` on `AdwToolbarView` to `top` and `bottom`, and `overlays` on `GtkOverlay` to `overlay`. The old names are no longer accepted.
+Child slots now use their GtkBuilder child type names. Rename `topBar` and `bottomBar` on `AdwToolbarView` to `top` and `bottom`, and `overlays` on `GtkOverlay` to `overlay`. `AdwExpanderRow` takes its nested rows as children instead of the `rows` prop:
+
+```tsx
+<AdwExpanderRow title="Advanced">
+    <AdwSwitchRow title="Sync" />
+</AdwExpanderRow>
+```
+
+The old names are no longer accepted.
 
 ## Verify the upgrade
 

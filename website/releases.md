@@ -22,7 +22,7 @@ A project that runs without deprecation warnings on the last minor release of a 
 | 2.x  | Beta; the stable release is due 1 December 2026 | `beta`       | Included before the stable release            |
 | 1.x  | Stable                                          | `latest`     | The latest 1.x release, until 1 December 2026 |
 
-From 1 December 2026, security updates go to the latest 2.x release and support for 1.x ends; [Upgrading to 2.0](/v2/guide/upgrading-to-2) covers the move. Only the latest release of a line receives security updates, and releases before 1.0 receive none. Report vulnerabilities as the [security policy](https://github.com/gtkx-org/gtkx/security/policy) describes, including those that affect a 2.0 beta.
+From 1 December 2026, security updates go to the latest 2.x release and support for 1.x ends; [Upgrading to 2.0](/v2/guide/upgrading-to-2) covers the move. From 3.0 on, the previous major line keeps receiving security updates for three months after the next major release ships. Only the latest release of a line receives security updates, and releases before 1.0 receive none. Report vulnerabilities as the [security policy](https://github.com/gtkx-org/gtkx/security/policy) describes, including those that affect a 2.0 beta.
 
 ## Prereleases
 

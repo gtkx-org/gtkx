@@ -1077,7 +1077,10 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
         behaviors: prefixSuffix,
     },
     AdwExpanderRow: {
-        behaviors: [...prefixSuffix, methodSlot<Adw.ExpanderRow, Gtk.Widget>("rows", Gtk.Widget, "addRow", "remove")],
+        behaviors: [
+            ...prefixSuffix,
+            methodSlot<Adw.ExpanderRow, Gtk.Widget>("children", Gtk.Widget, "addRow", "remove"),
+        ],
     },
     AdwNavigationSplitView: {
         behaviors: [contentSetterSlot<Adw.NavigationSplitView, Adw.NavigationPage>(Adw.NavigationPage)],
