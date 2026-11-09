@@ -546,25 +546,6 @@ describe("generated bindings", () => {
         expect(block).toContain("[GtkLabel](");
     });
 
-    it("marks deprecated slot props as deprecated", async () => {
-        using directory = createProject();
-        const outDir = join(directory.path, "reference");
-        writeDocs({
-            ...(await readBuiltinElementsForDocs()),
-            libraries: ["Adw-1"],
-            girPath: resolveGirPath(undefined, directory.path),
-            resolveFrom: directory.path,
-            outDir,
-        });
-        const block = (name: string) =>
-            readFileSync(join(outDir, "adw", "toolbar-view.md"), "utf8")
-                .split(`### \`${name}\``)[1]
-                ?.split("### ")[0];
-        expect(block("topBar")).toContain("deprecated");
-        expect(block("topBar")).toContain("`top`");
-        expect(block("top")).not.toContain("deprecated");
-    });
-
     it("marks configured construct-only props as construct-only", async () => {
         using directory = createProject();
         const outDir = join(directory.path, "reference");

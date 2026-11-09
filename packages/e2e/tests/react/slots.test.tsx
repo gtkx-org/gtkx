@@ -1105,41 +1105,13 @@ describe("render - ContainerProp", () => {
             expect(toolbar.getContent()).toBe(content);
         });
 
-        it("still places bars given through the deprecated topBar and bottomBar", async () => {
-            const toolbarRef = createRef<Adw.ToolbarView>();
-            const topRef = createRef<Adw.HeaderBar>();
-            const bottomRef = createRef<Gtk.Label>();
-
-            await render(
-                <AdwToolbarView
-                    ref={toolbarRef}
-                    topBar={<AdwHeaderBar ref={topRef} />}
-                    bottomBar={<GtkLabel ref={bottomRef}>Bottom</GtkLabel>}
-                >
-                    <GtkLabel>Content</GtkLabel>
-                </AdwToolbarView>,
-            );
-
-            const toolbar = mountedRef(toolbarRef);
-            expect(toolbar).toContainElement(topRef.current);
-            expect(toolbar).toContainElement(bottomRef.current);
-            expect(toolbar.getTopBarHeight()).toBeGreaterThan(0);
-            expect(toolbar.getBottomBarHeight()).toBeGreaterThan(0);
-        });
-
-        it("accepts top, bottom and the deprecated aliases while they hold no bar", async () => {
+        it("accepts top and bottom while they hold no bar", async () => {
             const toolbarRef = createRef<Adw.ToolbarView>();
             const topRef = createRef<Adw.HeaderBar>();
 
             function App({ hasTop }: { hasTop: boolean }) {
                 return (
-                    <AdwToolbarView
-                        ref={toolbarRef}
-                        top={hasTop && <AdwHeaderBar ref={topRef} />}
-                        bottom={false}
-                        topBar={false}
-                        bottomBar={[]}
-                    >
+                    <AdwToolbarView ref={toolbarRef} top={hasTop && <AdwHeaderBar ref={topRef} />} bottom={false}>
                         <GtkLabel>Content</GtkLabel>
                     </AdwToolbarView>
                 );
@@ -1151,11 +1123,11 @@ describe("render - ContainerProp", () => {
             expect(mountedRef(toolbarRef)).toContainElement(topRef.current);
         });
 
-        it("rejects a bar passed under a misspelled slot name", async () => {
+        it("rejects a bar passed under the removed topBar name", async () => {
             await expect(
                 render(
-                    // @ts-expect-error topBars is a typo of topBar
-                    <AdwToolbarView topBars={<AdwHeaderBar />}>
+                    // @ts-expect-error topBar was renamed to top in 2.0
+                    <AdwToolbarView topBar={<AdwHeaderBar />}>
                         <GtkLabel>Content</GtkLabel>
                     </AdwToolbarView>,
                 ),
@@ -1192,23 +1164,10 @@ describe("render - ContainerProp", () => {
     });
 
     describe("GtkOverlay (overlay)", () => {
-        it("still stacks widgets given through the deprecated overlays", async () => {
-            const overlayRef = createRef<Gtk.Overlay>();
-            const overlayChildRef = createRef<Gtk.Label>();
-
-            await render(
-                <GtkOverlay ref={overlayRef} overlays={<GtkLabel ref={overlayChildRef}>Over</GtkLabel>}>
-                    <GtkLabel>Main</GtkLabel>
-                </GtkOverlay>,
-            );
-
-            expect(mountedRef(overlayChildRef).getParent()).toBe(mountedRef(overlayRef));
-        });
-
-        it("accepts overlay and the deprecated overlays while they hold no widget", async () => {
+        it("accepts an overlay that holds no widget", async () => {
             await expect(
                 render(
-                    <GtkOverlay overlay={false} overlays={[]}>
+                    <GtkOverlay overlay={false}>
                         <GtkLabel>Main</GtkLabel>
                     </GtkOverlay>,
                 ),

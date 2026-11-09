@@ -375,8 +375,6 @@ type GtkShortcutTriggerElementProps = {
 type GtkOverlayProps = {
     /** Widgets stacked over the main child. */
     overlay?: ReactNode | null | undefined;
-    /** @deprecated Since 2.0. Use `overlay` instead. Removed in v3. */
-    overlays?: ReactNode | null | undefined;
 } & ChildrenProps;
 
 /** Props of a `Gtk.ConstraintLayout` element. */
@@ -546,10 +544,6 @@ type AdwToolbarViewProps = {
     top?: ReactNode | null | undefined;
     /** Widgets stacked below the content. */
     bottom?: ReactNode | null | undefined;
-    /** @deprecated Since 2.0. Use `top` instead. Removed in v3. */
-    topBar?: ReactNode | null | undefined;
-    /** @deprecated Since 2.0. Use `bottom` instead. Removed in v3. */
-    bottomBar?: ReactNode | null | undefined;
 } & ChildrenProps;
 
 /** Props of an element that hosts breakpoints, such as `Adw.Window` or `Adw.BreakpointBin`. */

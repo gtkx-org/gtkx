@@ -698,7 +698,7 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
         behaviors: [rowSlot<Gtk.FlowBox>()],
     },
     GtkOverlay: {
-        behaviors: [childSetterSlot<Gtk.Overlay>(), overlaySlot("overlay"), overlaySlot("overlays")],
+        behaviors: [childSetterSlot<Gtk.Overlay>(), overlaySlot("overlay")],
     },
     GtkShortcutController: {
         behaviors: [
@@ -1151,8 +1151,6 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
             contentSetterSlot<Adw.ToolbarView>(Gtk.Widget),
             methodSlot<Adw.ToolbarView, Gtk.Widget>("top", Gtk.Widget, "addTopBar", "remove"),
             methodSlot<Adw.ToolbarView, Gtk.Widget>("bottom", Gtk.Widget, "addBottomBar", "remove"),
-            methodSlot<Adw.ToolbarView, Gtk.Widget>("topBar", Gtk.Widget, "addTopBar", "remove"),
-            methodSlot<Adw.ToolbarView, Gtk.Widget>("bottomBar", Gtk.Widget, "addBottomBar", "remove"),
         ],
     },
     AdwHeaderBar: {

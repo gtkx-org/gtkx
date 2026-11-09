@@ -243,7 +243,7 @@ describe("default child adapters", () => {
         );
         const toolbarWarning = String(stderr.mock.calls[1]?.[0]);
         expect(toolbarWarning).toContain("<GtkBox>");
-        expect(toolbarWarning).toContain("topBar={<GtkSearchEntry />}");
+        expect(toolbarWarning).toContain("top={<GtkSearchEntry />}");
     });
 
     it("accepts a scrollable widget and replaces it without retaining the old child", async () => {

@@ -276,9 +276,9 @@ _Only affects test setups that chose a compositor other than the default, Sway._
 
 Headless displays always run Sway, so the Vitest plugin no longer accepts a `compositor` option and `@gtkx/vitest` no longer exports `CompositorId`. Delete the option and any `CompositorId` imports; tests need Sway, as described in the [testing setup](/v2/guide/testing#setup).
 
-## Rename deprecated slot props
+## Rename slot props
 
-Child slots now use their GtkBuilder child type names. Rename `topBar` and `bottomBar` on `AdwToolbarView` to `top` and `bottom`, and `overlays` on `GtkOverlay` to `overlay`. The old names still work in 2.0 and are removed in 3.0.
+Child slots now use their GtkBuilder child type names. Rename `topBar` and `bottomBar` on `AdwToolbarView` to `top` and `bottom`, and `overlays` on `GtkOverlay` to `overlay`. The old names are no longer accepted.
 
 ## Verify the upgrade
 
