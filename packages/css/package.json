@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/css",
-    "version": "2.0.0-beta.13",
+    "version": "2.0.0-beta.14",
     "description": "CSS-in-JS styling for GTK widgets in GTKX.",
     "keywords": [
         "gtkx",

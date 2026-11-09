@@ -1,3 +1,19 @@
+## 2.0.0-beta.14 (2026-11-09)
+
+### ⚠️  Breaking Changes
+
+- GSettings schema imports are now typed by a `<name>.gschema.d.xml.ts` that `gtkx codegen`, `gtkx dev` and `gtkx build` write beside each `.gschema.xml`, instead of wildcard declarations in `node_modules/.gtkx/env.d.ts`. An import with a wrong path now fails `tsc`, and schemas with the same file name in different directories get their own types. TypeScript reads these files only with `"allowArbitraryExtensions": true`, so add it to `compilerOptions` in `tsconfig.json` and add `*.d.xml.ts` to `.gitignore`; new projects get both, and codegen warns while a project with schemas lacks the option, linking to the upgrade guide section on it. ([#968](https://github.com/gtkx-org/gtkx/pull/968))
+- Slots use only their GtkBuilder child type names: `AdwToolbarView` no longer accepts `topBar` and `bottomBar` (use `top` and `bottom`), `GtkOverlay` no longer accepts `overlays` (use `overlay`), and `AdwExpanderRow` takes its nested rows as `children` instead of the `rows` prop. ([#1011](https://github.com/gtkx-org/gtkx/pull/1011))
+
+### 🩹 Fixes
+
+- The API reference names each entry module after its import path, such as `@gtkx/react/config`, and describes what it exports. The `@gtkx/config` reference lists the default of every `gtkx.config.ts` option and links the Configuration and Codegen guide, and the `animated` reference says which props skip a React render. ([#1011](https://github.com/gtkx-org/gtkx/pull/1011))
+- Every package description names GTK, so the packages show up when npm users search for "gtk", and the `@gtkx/native`, `@gtkx/mcp`, `@gtkx/storybook` and `@gtkx/utils` descriptions say what each package does. ([#1011](https://github.com/gtkx-org/gtkx/pull/1011))
+
+### ❤️ Thank You
+
+- Eugenio Depalo @eugeniodepalo
+
 ## 2.0.0-beta.13 (2026-11-08)
 
 ### ⚠️  Breaking Changes
