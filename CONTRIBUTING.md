@@ -16,7 +16,7 @@ Run `pnpm format` before committing. CI checks formatting as part of linting; [D
 
 Follow the [pull request template](.github/PULL_REQUEST_TEMPLATE.md) and add `Closes #N` only when the pull request resolves that issue. Include a screenshot for visible UI changes.
 
-Breaking removals require a warning in an earlier minor release. Renamed symbols use `@deprecated` with their introduction version; behavior changes need a CLI warning and an opt-in migration path. A removal-only major adds no unrelated features, and its migration guide changes with every deprecation.
+Breaking removals require a warning in an earlier minor release. Renamed symbols use `@deprecated` with their introduction version; behavior changes need a CLI warning and an opt-in migration path. A removal-only major adds no unrelated features and never introduces a deprecation, and its migration guide changes with every deprecation. Majors follow the schedule on [Releases](https://gtkx.dev/releases).
 
 ## Add a version plan
 
