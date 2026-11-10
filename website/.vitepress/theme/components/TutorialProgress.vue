@@ -17,9 +17,7 @@ const progress = computed(() => {
 
 <template>
     <p v-if="progress" class="tutorial-progress">
-        <span>
-            Chapter {{ progress.chapter }} <span class="total">of {{ progress.total }}</span>
-        </span>
+        <span> Chapter {{ progress.chapter }} <span class="total">of {{ progress.total }}</span> </span>
         <span class="bar" aria-hidden="true"><span class="fill" :style="{ width: progress.width }"></span></span>
     </p>
 </template>

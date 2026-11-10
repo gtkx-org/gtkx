@@ -14,17 +14,13 @@ const position = useTutorialPosition();
         <div class="slot">
             <a v-if="position.previous" class="link" :href="position.previous.link">
                 <span class="desc">{{ position.previous.label }}</span>
-                <span class="title"
-                    ><bdi>{{ position.previous.text }}</bdi></span
-                >
+                <span class="title"><bdi>{{ position.previous.text }}</bdi></span>
             </a>
         </div>
         <div class="slot">
             <a v-if="position.next" class="link next" :href="position.next.link">
                 <span class="desc">{{ position.next.label }}</span>
-                <span class="title"
-                    ><bdi>{{ position.next.text }}</bdi></span
-                >
+                <span class="title"><bdi>{{ position.next.text }}</bdi></span>
             </a>
         </div>
     </nav>
