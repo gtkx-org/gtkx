@@ -45,7 +45,15 @@ import { CREATE_COMMAND, docsLink, REPO_URL } from "./content";
                 <div class="shot">
                     <div class="shot__frame">
                         <img
-                            src="/notes-screenshot.png"
+                            class="shot__img shot__img--light"
+                            src="/notes-screenshot-light.png"
+                            width="960"
+                            height="640"
+                            alt="The Notes app from the GTKX tutorial: an Adwaita window with a list of notes next to a note rendered as Markdown."
+                        />
+                        <img
+                            class="shot__img shot__img--dark"
+                            src="/notes-screenshot-dark.png"
                             width="960"
                             height="640"
                             alt="The Notes app from the GTKX tutorial: an Adwaita window with a list of notes next to a note rendered as Markdown."
@@ -162,6 +170,13 @@ import { CREATE_COMMAND, docsLink, REPO_URL } from "./content";
   height: auto;
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
+}
+.shot__frame .shot__img--dark,
+html.dark .shot__frame .shot__img--light {
+  display: none;
+}
+html.dark .shot__frame .shot__img--dark {
+  display: block;
 }
 .shot__ring {
   position: absolute;

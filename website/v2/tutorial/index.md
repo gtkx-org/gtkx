@@ -4,7 +4,8 @@ description: "Build a Markdown notes app for Linux with React and Adwaita, then 
 
 # Build a Notes App with GTKX
 
-<img src="/notes-screenshot.png" width="960" height="640" loading="lazy" alt="The Notes app: an Adwaita window with a list of notes on the left and a note rendered as Markdown on the right." />
+<img class="result-light" src="/notes-screenshot-light.png" width="960" height="640" loading="lazy" alt="The Notes app: an Adwaita window with a list of notes on the left and a note rendered as Markdown on the right." />
+<img class="result-dark" src="/notes-screenshot-dark.png" width="960" height="640" loading="lazy" alt="The Notes app: an Adwaita window with a list of notes on the left and a note rendered as Markdown on the right." />
 
 Build **Notes**, a Markdown notes app that keeps each note as a plain file in a folder, from an empty directory, then test, translate, and package it as a Flatpak, deb, rpm, and AppImage. You will use npm packages, Node's file APIs and a worker thread, GtkSourceView (a library outside the default bindings), a GObject interface written in TypeScript, and Fast Refresh, Storybook and MCP, then prepare the app for Flathub.
 

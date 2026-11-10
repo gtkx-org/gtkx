@@ -15,8 +15,8 @@ const shots = [
         name: "notes-i18n-fr",
         chapter: "tutorial/internationalization",
         tab: "Translate the App",
-        caption: "The interface and the rendered note in French, in the dark style.",
-        alt: "Notes translated into French in the dark style, showing a French note rendered as Markdown.",
+        caption: "The interface and the rendered note in French.",
+        alt: "Notes translated into French, showing a French note rendered as Markdown.",
     },
 ];
 
@@ -80,7 +80,22 @@ const onKeydown = (event: KeyboardEvent): void => {
                 :aria-labelledby="`show-tab-${s.name}`"
             >
                 <a class="show__frame" :href="docsLink(s.chapter)">
-                    <img :src="`/${s.name}.png`" width="960" height="640" loading="lazy" :alt="s.alt" />
+                    <img
+                        class="show__img show__img--light"
+                        :src="`/${s.name}-light.png`"
+                        width="960"
+                        height="640"
+                        loading="lazy"
+                        :alt="s.alt"
+                    />
+                    <img
+                        class="show__img show__img--dark"
+                        :src="`/${s.name}-dark.png`"
+                        width="960"
+                        height="640"
+                        loading="lazy"
+                        :alt="s.alt"
+                    />
                 </a>
                 <figcaption>
                     {{ s.caption }}
@@ -155,6 +170,13 @@ const onKeydown = (event: KeyboardEvent): void => {
   display: block;
   width: 100%;
   height: auto;
+}
+.show__frame .show__img--dark,
+html.dark .show__frame .show__img--light {
+  display: none;
+}
+html.dark .show__frame .show__img--dark {
+  display: block;
 }
 .show__pane figcaption {
   margin: 0.9rem 0 0;

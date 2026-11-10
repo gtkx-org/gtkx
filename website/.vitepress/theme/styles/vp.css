@@ -187,12 +187,12 @@ html.dark {
     text-align: center;
 }
 
-.vp-doc figure.result .result-dark,
-html.dark .vp-doc figure.result .result-light {
+.vp-doc .result-dark,
+html.dark .vp-doc .result-light {
     display: none;
 }
 
-html.dark .vp-doc figure.result .result-dark {
+html.dark .vp-doc .result-dark {
     display: block;
 }
 
