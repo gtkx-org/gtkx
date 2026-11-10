@@ -82,7 +82,9 @@ const callerOutAllocation = (context: ModuleContext, parameter: GirParameter): C
     }
 
     if (type.kind === "class") {
-        return isAbstractClass(context, type.value, type.namespace.name) ? undefined : { ...name, strategy: "construct" };
+        return isAbstractClass(context, type.value, type.namespace.name)
+            ? undefined
+            : { ...name, strategy: "construct" };
     }
 
     return type.kind === "record" ? recordCallerOutAllocation(context, name, type) : undefined;
