@@ -13,7 +13,7 @@ Every GTKX package, `create-gtkx` included, is released under one version number
 - **Minor releases** ship when their changes are ready. They add features, deprecate APIs and introduce new behaviors as opt-ins.
 - **Patch releases** fix bugs.
 
-A project that runs without deprecation warnings on the last minor release of a line can move to the next major release without other changes.
+A project that runs without deprecation warnings on the last minor release of a line can move to the next major release without code changes, provided its system meets that release's minimum Node.js and GNOME versions.
 
 ## Supported versions
 

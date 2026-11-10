@@ -246,11 +246,10 @@ const findProjectFiles = (root: string, suffix: string): string[] =>
     );
 
 const typedSchemaFiles = (root: string, imports: SourceImport[]): string[] => {
-    const imported = uniqueSchemaFiles(findImportedSchemaFiles(imports).filter((path) => existsSync(path)));
+    const imported = findImportedSchemaFiles(imports).filter((path) => existsSync(path));
+    uniqueSchemaFiles(imported);
 
-    return sortStrings(
-        new Set([...findProjectFiles(root, SCHEMA_SUFFIX).map((path) => canonicalPath(path)), ...imported]),
-    );
+    return sortStrings(new Set([...findProjectFiles(root, SCHEMA_SUFFIX), ...imported]));
 };
 
 const removeStaleSchemaTypes = (root: string): void => {

@@ -749,7 +749,7 @@ describe("CLI commands", () => {
         expect(await typecheck()).toMatch(/^src\/logo\.ts\(1,25\): error TS2307: [^\n]*\n$/);
     });
 
-    it("types GSettings schema imports from declarations generated beside each schema", async () => {
+    it("types GSettings schema imports, symlinked ones included, from declarations generated beside each schema", async () => {
         using project = createProject();
         const writeTsconfig = (compilerOptions: Record<string, unknown>) =>
             project.write(
@@ -783,6 +783,13 @@ describe("CLI commands", () => {
         project.write("tests/fixtures/org.gtkx.example.gschema.xml", schema("org.gtkx.example.fixture"));
         project.write("data/retired/org.gtkx.retired.gschema.xml", schema("org.gtkx.retired"));
         project.write("data/retired/org.gtkx.custom.gschema.d.xml.ts", "export {};\n");
+        project.write("shared/org.gtkx.linked.gschema.xml", schema("org.gtkx.linked"));
+        symlinkSync("../shared/org.gtkx.linked.gschema.xml", join(project.root, "data/org.gtkx.linked.gschema.xml"));
+        project.write(
+            "src/linked.ts",
+            `import schema from "../data/org.gtkx.linked.gschema.xml";
+            export const id: "org.gtkx.linked" = schema.id;`,
+        );
         project.write(
             "src/index.ts",
             `import schema from "../data/org.gtkx.example.gschema.xml";

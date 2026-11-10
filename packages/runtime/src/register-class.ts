@@ -379,6 +379,9 @@ type SignalSpec = {
     accumulator?: "first-wins" | "true-handled";
 };
 
+/** Signal names of a spec map with their specs widened, so emitted declarations never name a parameter type's class. */
+type SignalNameSpecs<TSignals> = Record<keyof TSignals & string, SignalSpec>;
+
 /** What {@link registerClass} adds to the new GType beyond the vtable slots it discovers on the class. */
 type RegisterClassOptions<
     TInstance extends object,
@@ -493,7 +496,7 @@ function withSignals<T extends AnyClass, TSignals extends Record<string, SignalS
 ): SignalBaseClass<
     InstanceType<T>,
     ConstructorParameters<T>,
-    TSignals,
+    SignalNameSpecs<TSignals>,
     T extends new (...args: never) => unknown ? false : true
 >;
 
@@ -531,7 +534,7 @@ function registerClass<
 >(
     klass: T,
     options?: RegisterClassOptions<T["prototype"], TProperties, TSignals, TInterfaces>,
-): RegisteredClass<T, TProperties, TSignals, TInterfaces>;
+): RegisteredClass<T, TProperties, SignalNameSpecs<TSignals>, TInterfaces>;
 
 function registerClass(klass: AnyClass, options: AnyRegisterClassOptions = {}): AnyClass {
     const parentType = resolveParentType(klass);
@@ -1147,6 +1150,7 @@ export {
     registerClass,
     type RegisteredClass,
     type SignalBaseClass,
+    type SignalNameSpecs,
     type SignalGType,
     type SignalSpec,
     withSignals,

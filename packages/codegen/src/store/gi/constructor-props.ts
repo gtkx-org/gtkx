@@ -76,8 +76,12 @@ const renderConstructorPropsInterface = (context: ModuleContext, klass: GirClass
     return renderBracedOrEmpty(`export interface ${className}ConstructorProps${extendsClause}`, lines.join("\n"));
 };
 
-const isFundamentalClass = (context: ModuleContext, klass: GirClass): boolean => {
-    for (const { klass: ancestor } of ancestorChain(context.library, klass, context.namespace.name)) {
+const isFundamentalClass = (
+    context: ModuleContext,
+    klass: GirClass,
+    namespaceName: string = context.namespace.name,
+): boolean => {
+    for (const { klass: ancestor } of ancestorChain(context.library, klass, namespaceName)) {
         if (ancestor.fundamental) {
             return true;
         }
@@ -127,8 +131,12 @@ const SINGLETON_ACTIONS: Set<string> = new Set(["Gtk.ActivateAction", "Gtk.Mnemo
 const INITIALIZATION_INTERFACES: Set<string> = new Set(["AsyncInitable", "Initable"]);
 const FACTORY_INITIALIZED_CLASSES: Set<string> = new Set(["Gtk.CallbackAction"]);
 
-const requiresFactoryInitialization = (context: ModuleContext, klass: GirClass): boolean => {
-    for (const ancestor of ancestorChain(context.library, klass, context.namespace.name)) {
+const requiresFactoryInitialization = (
+    context: ModuleContext,
+    klass: GirClass,
+    namespaceName: string = context.namespace.name,
+): boolean => {
+    for (const ancestor of ancestorChain(context.library, klass, namespaceName)) {
         if (FACTORY_INITIALIZED_CLASSES.has(`${ancestor.namespaceName}.${ancestor.klass.name}`)) {
             return true;
         }
@@ -145,8 +153,14 @@ const requiresFactoryInitialization = (context: ModuleContext, klass: GirClass):
     return false;
 };
 
-const isAbstractClass = (context: ModuleContext, klass: GirClass): boolean =>
-    klass.isAbstract || isFundamentalClass(context, klass) || requiresFactoryInitialization(context, klass);
+const isAbstractClass = (
+    context: ModuleContext,
+    klass: GirClass,
+    namespaceName: string = context.namespace.name,
+): boolean =>
+    klass.isAbstract ||
+    isFundamentalClass(context, klass, namespaceName) ||
+    requiresFactoryInitialization(context, klass, namespaceName);
 
 const initializationMessage = (qualified: string, hint: string | undefined): string => {
     const reason = `Cannot construct ${qualified} with new: it must be initialized by a factory`;

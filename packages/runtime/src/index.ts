@@ -30,6 +30,7 @@ export {
     registerClass,
     type RegisteredClass,
     type SignalBaseClass,
+    type SignalNameSpecs,
     type SignalGType,
     type SignalSpec,
     withSignals,
