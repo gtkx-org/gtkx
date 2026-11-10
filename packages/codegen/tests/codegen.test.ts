@@ -1342,7 +1342,10 @@ describe("generated bindings", () => {
         const consumer = `import { Application } from "@gtkx/gi/gio";
             import { Object as GObject, TYPE_INT } from "@gtkx/gi/gobject";
             import { registerClass, withSignals } from "@gtkx/runtime";
-            class CounterBase extends withSignals(GObject, { "cycle-completed": { paramTypes: [TYPE_INT] } }) {
+            class CounterBase extends withSignals(GObject, {
+                "cycle-completed": { paramTypes: [TYPE_INT] },
+                "source-changed": { paramTypes: [GObject] },
+            }) {
                 tick(cycles: number): void {
                     this.emit("cycle-completed", cycles);
                     // @ts-expect-error unknown signal
@@ -1356,7 +1359,10 @@ describe("generated bindings", () => {
                     this.emit("activate");
                 }
             }
-            export const Service = registerClass(ServiceBase, { typeName: "ConsumerExportedService" });
+            export const Service = registerClass(ServiceBase, {
+                typeName: "ConsumerExportedService",
+                signals: { "owner-changed": { paramTypes: [Application], returnType: GObject } },
+            });
             new Counter().connect("cycle-completed", () => {});
             new Service({ applicationId: "org.example.Service" }).on("ticked", () => {});`;
         expect(diagnostics(directory.path, consumer, { declaration: true })).toEqual([]);
