@@ -65,8 +65,8 @@
         "@types/node": "catalog:",
         "fast-xml-parser": "^5.12.0",
         "fast-xml-validator": "^1.4.2",
-        "oxc-parser": "0.157.0",
-        "oxc-transform": "0.157.0",
+        "oxc-parser": "0.158.0",
+        "oxc-transform": "0.158.0",
         "typescript": "catalog:",
         "zod": "catalog:"
     },
