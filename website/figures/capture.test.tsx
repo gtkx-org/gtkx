@@ -30,6 +30,7 @@ import { NameGrid } from "./guide/components-grid.js";
 import { AccentOverride } from "./guide/css-accent.js";
 import { DueLabel } from "./guide/css-overdue.js";
 import { PreferencesForm } from "./guide/forms-preferences.js";
+import { Greeting } from "./guide/internationalization-greeting.js";
 import { App as StarterApp } from "./guide/getting-started-app.js";
 import { Sidebar } from "./guide/components-list-box.js";
 import { TaskList } from "./guide/components-list-view.js";
@@ -42,6 +43,7 @@ import { RenameDialog } from "./guide/modals-rename-dialog.js";
 import { App as DrawerApp } from "./guide/navigation-drawer.js";
 import { Mail as SplitMail } from "./guide/navigation-split-view.js";
 import { Notes } from "./guide/navigation-stack.js";
+import * as buttonStories from "./guide/storybook/button.stories.js";
 import { Documents as TabViewDocuments } from "./guide/navigation-tab-view.js";
 import { seedNotes, taggedNotes } from "./tutorial/notes.js";
 import { App as NoteEditor } from "./tutorial/the-note-editor/src/app.js";
@@ -65,6 +67,7 @@ import { App as FirstWindow } from "./tutorial/your-first-window/src/app.js";
 import { Mail as TabMail } from "./guide/navigation-tabs.js";
 
 const storyCatalog = new StoryCatalog();
+const guideStoryCatalog = new StoryCatalog();
 
 const outputDir = fileURLToPath(new URL("../public/figures/", import.meta.url));
 
@@ -444,6 +447,56 @@ const figures: [name: string, element: ReactNode, options?: FigureOptions][] = [
                 await screen.findByText("Monospace font");
             },
             after: resetSystemScheme,
+        },
+    ],
+    [
+        "guide-internationalization-greeting",
+        <SampleWindow title="Greeting" height={200}>
+            <Greeting name="Ada" />
+        </SampleWindow>,
+    ],
+    [
+        "guide-internationalization-greeting-fr",
+        <SampleWindow title="Greeting" height={200}>
+            <Greeting name="Ada" />
+        </SampleWindow>,
+        {
+            before: () => {
+                translateMessages(
+                    fileURLToPath(new URL("guide/internationalization-fr.po", import.meta.url)),
+                    "fr",
+                    "fr_FR.UTF-8",
+                );
+            },
+            prepare: async () => {
+                await screen.findByText("Bonjour, Ada !");
+            },
+            after: restoreMessages,
+        },
+    ],
+    [
+        "guide-storybook-explorer",
+        <Storybook
+            catalog={guideStoryCatalog}
+            applicationId="dev.gtkx.Figures.Storybook"
+            initialStoryId="components-button--default"
+        />,
+        {
+            prepare: async () => {
+                await act(() =>
+                    guideStoryCatalog.load([
+                        {
+                            id: "src/button.stories.tsx",
+                            title: "src/button",
+                            load: () => Promise.resolve(buttonStories),
+                        },
+                    ]),
+                );
+                const window = Gtk.Window.listToplevels().find((widget) => widget instanceof Adw.ApplicationWindow);
+                window?.setDefaultSize(880, 540);
+                await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Disabled" });
+                await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Save" }));
+            },
         },
     ],
     [

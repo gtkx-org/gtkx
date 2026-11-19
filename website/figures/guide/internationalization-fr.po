@@ -1,0 +1,19 @@
+# French translations for the GTKX guide figures.
+# Copyright (C) 2026 GTKX contributors
+# This file is distributed under the same license as the gtkx package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: dev.gtkx.Figures\n"
+"Report-Msgid-Bugs-To: \n"
+"Last-Translator: GTKX contributors\n"
+"Language-Team: French\n"
+"Language: fr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: src/greeting.tsx:7
+msgid "Hello, {{name}}!"
+msgstr "Bonjour, {{name}} !"
