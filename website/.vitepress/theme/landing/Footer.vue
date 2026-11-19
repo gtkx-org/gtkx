@@ -50,7 +50,6 @@ const cols: { h: string; items: Link[] }[] = [
 
 <template>
     <footer class="footer">
-        <span class="glow glow-soft" />
         <div class="footer__inner">
             <div class="footer__grid">
                 <div class="footer__brand">
@@ -90,16 +89,11 @@ const cols: { h: string; items: Link[] }[] = [
 
 <style scoped>
 .footer {
-  position: relative;
-  overflow: hidden;
-  margin-top: clamp(2rem, 5vw, 4rem);
   border-top: 1px solid var(--border);
   background: var(--bg-alt);
 }
 .footer__inner {
-  position: relative;
-  z-index: 1;
-  max-width: var(--container-lg);
+  max-width: calc(var(--container-xl) + 2 * clamp(1rem, 4vw, 2.5rem));
   margin: 0 auto;
   padding: clamp(2.5rem, 5vw, 4rem) clamp(1rem, 4vw, 2.5rem);
 }

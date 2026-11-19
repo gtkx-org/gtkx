@@ -13,117 +13,104 @@ const community = [
 </script>
 
 <template>
-    <section id="start" class="closing">
-        <div class="closing__panel">
-            <span class="glow glow-soft" />
-            <div class="closing__body">
-                <h2 class="section-title">Open your first window</h2>
-                <p class="section-sub">Create a project, run it, and edit it while it stays open.</p>
-                <div class="closing__install">
-                    <CodeBlock variant="terminal" :frame="false" :code="CREATE_COMMAND" />
+    <section id="start" class="section section--alt closing">
+        <div class="section__inner">
+            <div class="closing__head">
+                <div class="closing__text">
+                    <h2 class="section-title">Open your first window</h2>
+                    <p class="section-sub">Create a project, run it, and edit it while it stays open.</p>
                 </div>
-                <div class="closing__cta">
-                    <Button size="lg" :href="docsLink('guide/getting-started')">
-                        Get started
-                        <template #icon-right><Icon name="arrow" :size="17" /></template>
-                    </Button>
-                    <Button size="lg" variant="secondary" :href="docsLink('tutorial/')">Follow the tutorial</Button>
+                <div class="closing__side">
+                    <CodeBlock variant="terminal" :frame="false" :code="CREATE_COMMAND" />
+                    <div class="closing__cta">
+                        <Button size="lg" :href="docsLink('guide/getting-started')">
+                            Get started
+                            <template #icon-right><Icon name="arrow" :size="17" /></template>
+                        </Button>
+                        <Button size="lg" variant="secondary" :href="docsLink('tutorial/')">Follow the tutorial</Button>
+                    </div>
                 </div>
             </div>
+            <ul class="closing__community">
+                <li v-for="c in community" :key="c.name">
+                    <a :href="c.href">
+                        <b>{{ c.name }}</b>
+                        <span>{{ c.body }}</span>
+                    </a>
+                </li>
+            </ul>
         </div>
-        <ul class="closing__community">
-            <li v-for="c in community" :key="c.name">
-                <a :href="c.href">
-                    <b>{{ c.name }}</b>
-                    <span>{{ c.body }}</span>
-                </a>
-            </li>
-        </ul>
     </section>
 </template>
 
 <style scoped>
-.closing {
-  max-width: var(--container-lg);
-  margin: 0 auto;
-  padding: clamp(2.5rem, 5vw, 4rem) clamp(1rem, 4vw, 2.5rem);
+.section.closing {
+  border-bottom: 0;
 }
-.closing__panel {
-  position: relative;
-  overflow: hidden;
-  padding: clamp(2.2rem, 5vw, 3.5rem) clamp(1rem, 4vw, 2.5rem);
-  text-align: center;
-  background: var(--bg-alt);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
+.closing__head {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 1.75rem clamp(2rem, 5vw, 4rem);
+  align-items: end;
 }
-.closing__body {
-  position: relative;
-}
-.closing__install {
+.closing__text,
+.closing__side {
   display: flex;
-  justify-content: center;
-  margin: 1.6rem auto 1.4rem;
-  max-width: 100%;
-  text-align: left;
-}
-.closing__install > * {
-  max-width: 100%;
+  flex-direction: column;
+  gap: 0.9rem;
+  min-width: 0;
 }
 .closing__cta {
   display: flex;
-  justify-content: center;
   flex-wrap: wrap;
-  gap: 0.8rem;
+  gap: 0.75rem;
+}
+.closing__cta > .btn {
+  flex: 1 1 auto;
 }
 .closing__community {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1rem;
-  margin: 1.2rem 0 0;
+  gap: 0 1.75rem;
+  margin: clamp(2.25rem, 5vw, 3.5rem) 0 0;
   padding: 0;
   list-style: none;
 }
 .closing__community a {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
   height: 100%;
-  padding: 1rem 1.2rem;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  text-decoration: none;
-  transition: var(--transition-colors);
-}
-.closing__community a:hover {
-  border-color: var(--brand);
+  padding: 0.9rem 0 1.1rem;
+  border-top: 1px solid var(--border-strong);
 }
 .closing__community b {
-  display: block;
-  margin-bottom: 0.25rem;
   font-family: var(--font-display);
-  font-size: var(--text-md);
+  font-weight: var(--fw-bold);
   color: var(--text-1);
+  transition: var(--transition-colors);
+}
+.closing__community a:hover b {
+  color: var(--text-brand);
 }
 .closing__community span {
-  font-family: var(--font-body);
-  font-size: var(--text-sm);
-  line-height: 1.45;
+  font-size: 0.9rem;
   color: var(--text-2);
 }
-@media (max-width: 860px) {
+@media (max-width: 1080px) {
+  .closing__head {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+  .closing__side {
+    max-width: 36rem;
+  }
   .closing__community {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
-@media (max-width: 480px) {
+@media (max-width: 560px) {
   .closing__community {
-    gap: 0.6rem;
-  }
-  .closing__community a {
-    padding: 0.85rem;
-  }
-  .closing__cta {
-    display: grid;
     grid-template-columns: minmax(0, 1fr);
   }
 }
