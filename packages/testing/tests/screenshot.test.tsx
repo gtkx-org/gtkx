@@ -1,6 +1,15 @@
 import type { RefObject } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkLabel, GtkMenuButton, GtkPopover, GtkWindow } from "@gtkx/jsx/gtk";
+import {
+    GtkBox,
+    GtkGrid,
+    GtkGridLayoutChild,
+    GtkHeaderBar,
+    GtkLabel,
+    GtkMenuButton,
+    GtkPopover,
+    GtkWindow,
+} from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
 import { act, render, screen, screenshot, waitFor } from "@gtkx/testing";
 import { mkdtempDisposableSync, readFileSync } from "node:fs";
@@ -15,6 +24,14 @@ const RGBA_CHANNELS = 4;
 const WINDOW_BACKGROUND = [18, 52, 86, 255];
 const FOREGROUND_BACKGROUND = [180, 40, 70, 255];
 const TRANSLUCENT_ALPHA = 128;
+const ABOVE_BUTTON = [20, 120, 220, 255];
+const BESIDE_BUTTON = [20, 160, 90, 255];
+const IN_POPOVER = [230, 150, 20, 255];
+const IN_NESTED_POPOVER = [150, 60, 200, 255];
+const PLACEMENT_TOLERANCE = 1;
+
+type CapturedImage = ReturnType<typeof decodePng>;
+type Center = { x: number; y: number };
 
 const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -80,6 +97,82 @@ const pixelAt = (pixels: Uint8Array, width: number, x: number, y: number): numbe
 
     return [...pixels.slice(offset, offset + RGBA_CHANNELS)];
 };
+
+const cssColor = ([red, green, blue]: number[]): string => `rgb(${String(red)}, ${String(green)}, ${String(blue)})`;
+
+const centerOf = ({ pixels, width, height }: CapturedImage, color: number[]): Center => {
+    const columns: number[] = [];
+    const rows: number[] = [];
+
+    for (let y = 0; y < height; y += 1) {
+        for (let x = 0; x < width; x += 1) {
+            if (pixelAt(pixels, width, x, y).every((channel, index) => channel === color[index])) {
+                columns.push(x);
+                rows.push(y);
+            }
+        }
+    }
+
+    if (columns.length === 0) {
+        throw new Error(`The capture holds no ${cssColor(color)} pixel`);
+    }
+
+    return {
+        x: (Math.min(...columns) + Math.max(...columns) + 1) / 2,
+        y: (Math.min(...rows) + Math.max(...rows) + 1) / 2,
+    };
+};
+
+const Swatch = ({ color, width = 6, height = 6 }: { color: number[]; width?: number; height?: number }) => (
+    <GtkBox widthRequest={width} heightRequest={height} style={{ backgroundColor: cssColor(color) }} />
+);
+
+type AnchoredPopoverProps = {
+    direction: Gtk.ArrowType;
+    frameRef: RefObject<Gtk.Box | null>;
+    popoverRef: RefObject<Gtk.Popover | null>;
+    nestedPopoverRef?: RefObject<Gtk.Popover | null>;
+};
+
+const AnchoredPopover = ({ direction, frameRef, popoverRef, nestedPopoverRef }: AnchoredPopoverProps) => (
+    <GtkWindow title="Popover placement" titlebar={<GtkHeaderBar />} defaultWidth={420} defaultHeight={320}>
+        <GtkBox ref={frameRef}>
+            <GtkGrid halign={Gtk.Align.CENTER} valign={Gtk.Align.START} hexpand marginTop={12}>
+                <GtkGridLayoutChild column={1} row={0}>
+                    <Swatch color={ABOVE_BUTTON} />
+                </GtkGridLayoutChild>
+                <GtkGridLayoutChild column={0} row={1}>
+                    <Swatch color={BESIDE_BUTTON} />
+                </GtkGridLayoutChild>
+                <GtkGridLayoutChild column={1} row={1}>
+                    <GtkMenuButton label="Open" direction={direction}>
+                        <GtkPopover ref={popoverRef} hasArrow={false}>
+                            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                                <Swatch color={IN_POPOVER} width={40} height={20} />
+                                {nestedPopoverRef && (
+                                    <GtkMenuButton label="More">
+                                        <GtkPopover ref={nestedPopoverRef} hasArrow={false}>
+                                            <Swatch color={IN_NESTED_POPOVER} width={40} height={20} />
+                                        </GtkPopover>
+                                    </GtkMenuButton>
+                                )}
+                            </GtkBox>
+                        </GtkPopover>
+                    </GtkMenuButton>
+                </GtkGridLayoutChild>
+            </GtkGrid>
+        </GtkBox>
+    </GtkWindow>
+);
+
+const open = async (popoverRef: RefObject<Gtk.Popover | null>): Promise<void> => {
+    await settle(() => widgetFor(popoverRef).popup());
+    await waitFor(() => {
+        expect(widgetFor(popoverRef).getMapped()).toBe(true);
+    });
+};
+
+const capture = async (target: Gtk.Widget): Promise<CapturedImage> => decodePng((await screenshot(target)).data);
 
 describe("screenshot", () => {
     it("returns a PNG whose declared size matches the encoded one and supersamples on request", async () => {
@@ -198,6 +291,54 @@ describe("screenshot", () => {
         await clearHover(button);
         const reclosed = await screenshot(window);
         expect(reclosed.data).toBe(closedWindow.data);
+    });
+
+    it.each([
+        { side: "below", direction: Gtk.ArrowType.DOWN, axis: "x", swatch: ABOVE_BUTTON },
+        { side: "beside", direction: Gtk.ArrowType.RIGHT, axis: "y", swatch: BESIDE_BUTTON },
+    ] as const)("draws a popover that opens $side its button in line with it", async ({ direction, axis, swatch }) => {
+        const frameRef = createRef<Gtk.Box>();
+        const popoverRef = createRef<Gtk.Popover>();
+
+        await render(<AnchoredPopover direction={direction} frameRef={frameRef} popoverRef={popoverRef} />, {
+            container: rootElement,
+        });
+        await open(popoverRef);
+
+        await waitFor(async () => {
+            const captured = await capture(firstWindow());
+            const offset = centerOf(captured, IN_POPOVER)[axis] - centerOf(captured, swatch)[axis];
+            expect(Math.abs(offset)).toBeLessThanOrEqual(PLACEMENT_TOLERANCE);
+        });
+    });
+
+    it("draws a nested popover under its own button, in a window capture and in a widget capture", async () => {
+        const frameRef = createRef<Gtk.Box>();
+        const popoverRef = createRef<Gtk.Popover>();
+        const nestedPopoverRef = createRef<Gtk.Popover>();
+
+        await render(
+            <AnchoredPopover
+                direction={Gtk.ArrowType.DOWN}
+                frameRef={frameRef}
+                popoverRef={popoverRef}
+                nestedPopoverRef={nestedPopoverRef}
+            />,
+            { container: rootElement },
+        );
+        await open(popoverRef);
+        await open(nestedPopoverRef);
+
+        for (const target of [firstWindow(), widgetFor(frameRef)]) {
+            await waitFor(async () => {
+                const captured = await capture(target);
+                const button = centerOf(captured, ABOVE_BUTTON).x;
+                const popover = centerOf(captured, IN_POPOVER).x;
+                const nested = centerOf(captured, IN_NESTED_POPOVER).x;
+                expect(Math.abs(popover - button)).toBeLessThanOrEqual(PLACEMENT_TOLERANCE);
+                expect(Math.abs(nested - popover)).toBeLessThanOrEqual(PLACEMENT_TOLERANCE);
+            });
+        }
     });
 
     it("captures content the compositor never presented", async () => {
