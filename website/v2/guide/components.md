@@ -74,17 +74,13 @@ A row's content is not the row a screen reader announces: GTK names a list row o
 
 `DropDown<T, S>` takes `items`, or `sections` plus `renderHeader`, with single controlled selection through `selectedId` and `onSelectionChanged`. Primitive values display as labels by default; `null` and `undefined` leave the display empty. Objects and other structured values require `renderItem`, which draws both the selected value and the popup rows. Use `renderListItem` to override only the popup rows.
 
-```tsx
-import { DropDown } from "@gtkx/components";
+<<< @/figures/guide/components-drop-down.tsx [src/source-type-picker.tsx]
 
-<DropDown
-    items={SOURCE_TYPES.map((type) => ({ id: type, value: type }))}
-    selectedId={sourceType}
-    onSelectionChanged={(id) => {
-        if (id !== null) setSourceType(id);
-    }}
-/>
-```
+<figure class="result">
+    <img class="result-light" src="/figures/guide-components-drop-down-light.png" width="360" height="260" loading="lazy" alt="A window titled DropDown with a drop-down button reading Article and its popup open below, listing Book, Article with a check mark, and Podcast." />
+    <img class="result-dark" src="/figures/guide-components-drop-down-dark.png" width="360" height="260" loading="lazy" alt="A window titled DropDown with a drop-down button reading Article and its popup open below, listing Book, Article with a check mark, and Podcast." />
+    <figcaption>Captured from the sample above after clicking the drop-down.</figcaption>
+</figure>
 
 The callback receives `null` when the model becomes empty.
 
@@ -206,31 +202,13 @@ The switcher shows a button for each page `title`. To switch pages from state in
 
 A popover menu can show a widget in place of a menu item, as GNOME Text Editor does with its style selector. Give the item a `custom` ID and pass the widget under that ID in `customChildren` on the `GtkMenuButton`, `GtkPopoverMenu` or `GtkPopoverMenuBar` showing the menu, as GtkBuilder's `<child type="ID">` does:
 
-```tsx
-import { GMenu } from "@gtkx/jsx/gio";
-import { GtkMenuButton } from "@gtkx/jsx/gtk";
+<<< @/figures/guide/components-menu-widget.tsx [src/components/app-menu.tsx]
 
-<GtkMenuButton
-    iconName="open-menu-symbolic"
-    menuModel={
-        <GMenu
-            items={[
-                { section: [{ custom: "theme" }] },
-                {
-                    section: [
-                        {
-                            label: "Preferences",
-                            action: "win.preferences",
-                            accel: "<Control>comma",
-                        },
-                    ],
-                },
-            ]}
-        />
-    }
-    customChildren={{ theme: <ThemeSelector /> }}
-/>
-```
+<figure class="result">
+    <img class="result-light" src="/figures/guide-components-menu-widget-light.png" width="600" height="300" loading="lazy" alt="The Notes window with its main menu open: a row of linked System, Light and Dark buttons with System selected, a separator, and a Preferences item with Ctrl+,." />
+    <img class="result-dark" src="/figures/guide-components-menu-widget-dark.png" width="600" height="300" loading="lazy" alt="The Notes window with its main menu open: a row of linked System, Light and Dark buttons with System selected, a separator, and a Preferences item with Ctrl+,." />
+    <figcaption>Captured from the sample above with the menu open, in a window that declares <code>win.preferences</code>.</figcaption>
+</figure>
 
 The widget stays in its item when the model or its items change. An ID with no matching item leaves its widget out of the menu. [Menus](/v2/guide/actions#menus) covers the other item attributes, such as `hiddenWhen` and `accel`.
 
