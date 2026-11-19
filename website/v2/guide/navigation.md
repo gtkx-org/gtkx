@@ -214,7 +214,15 @@ Pushes and pops use Adwaita transitions. Replacing or resetting the stack switch
 
 ### Headers
 
-Each page gets an `AdwHeaderBar` with a title and native back button. The title defaults to the route name. Add header actions through screen options:
+Each page gets an `AdwHeaderBar` with a title and native back button. The title defaults to the route name.
+
+<figure class="result">
+    <img class="result-light" src="/figures/guide-navigation-stack-note-light.png" width="360" height="260" loading="lazy" alt="A window whose header bar shows a back button and the title Note 42, above the text Showing note 42 and a Done button." />
+    <img class="result-dark" src="/figures/guide-navigation-stack-note-dark.png" width="360" height="260" loading="lazy" alt="A window whose header bar shows a back button and the title Note 42, above the text Showing note 42 and a Done button." />
+    <figcaption>Captured from <a href="#stack-navigator">the stack sample</a> after clicking <strong>Open note 42</strong>. The pushed page gets the back button and the title from its options.</figcaption>
+</figure>
+
+Add header actions through screen options:
 
 ```tsx
 import { GtkButton } from "@gtkx/jsx/gtk";
@@ -498,56 +506,13 @@ Focus follows the selected content route even when the sidebar remains visible. 
 
 `createTabViewNavigator` renders its routes as the pages of an `AdwTabView`, with an `AdwTabBar` under the header and an optional `AdwTabOverview`. Unlike the tab navigator, it opens any number of tabs from one screen, so a document or browser window declares the screen once and opens it repeatedly:
 
-```tsx
-import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
-import {
-    createTabViewNavigator,
-    type TabViewScreenProps,
-} from "@gtkx/navigation";
+<<< @/figures/guide/navigation-tab-view.tsx [src/documents.tsx]
 
-type DocumentParams = { Document: { title: string } };
-
-const Tabs = createTabViewNavigator<DocumentParams>();
-
-const Document = ({
-    route,
-    navigation,
-}: TabViewScreenProps<DocumentParams, "Document">) => (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-        <GtkLabel label={route.params.title} />
-        <GtkButton
-            label="Open related"
-            onClicked={() =>
-                navigation.openTab(
-                    "Document",
-                    { title: "Related" },
-                    { parent: route.key },
-                )
-            }
-        />
-    </GtkBox>
-);
-
-export const Documents = () => (
-    <Tabs.Navigator
-        overview={{
-            enableNewTab: true,
-            onCreateTab: () => ({
-                name: "Document",
-                params: { title: "Untitled" },
-            }),
-        }}
-        screenOptions={({ route }) => ({ title: route.params.title })}
-    >
-        <Tabs.Screen
-            name="Document"
-            component={Document}
-            initialParams={{ title: "Untitled" }}
-        />
-    </Tabs.Navigator>
-);
-```
+<figure class="result">
+    <img class="result-light" src="/figures/guide-navigation-tab-view-light.png" width="440" height="280" loading="lazy" alt="A window titled Documents with a tab bar holding an Untitled tab and a selected Related tab, above a page showing Related and an Open related button." />
+    <img class="result-dark" src="/figures/guide-navigation-tab-view-dark.png" width="440" height="280" loading="lazy" alt="A window titled Documents with a tab bar holding an Untitled tab and a selected Related tab, above a page showing Related and an Open related button." />
+    <figcaption>Captured from the sample above after clicking <strong>Open related</strong> in the first tab.</figcaption>
+</figure>
 
 Tabs are addressed by route key. The navigation object adds [tab actions](/v2/reference/@gtkx/navigation/type-aliases/TabViewActionHelpers) such as `openTab`, `closeTab`, `selectTab` and `pinTab`, also available as `TabViewActions`. Opening with `parent` places the tab after its parent and the parent's descendants, and closing it selects that parent again. Pinned tabs stay ahead of the others; the state's `pinnedKeys` lists them.
 
