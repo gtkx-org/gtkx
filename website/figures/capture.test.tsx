@@ -8,6 +8,8 @@ import {
     AdwHeaderBar,
     AdwPreferencesGroup,
     AdwPreferencesPage,
+    AdwNavigationPage,
+    AdwNavigationSplitView,
     AdwToolbarView,
 } from "@gtkx/jsx/adw";
 import { GSimpleAction } from "@gtkx/jsx/gio";
@@ -25,6 +27,8 @@ import { MainMenu } from "./guide/actions-main-menu.js";
 import { Shortcuts } from "./guide/actions-shortcuts.js";
 import { Toolbar } from "./guide/actions-toolbar.js";
 import { EmployeeTable } from "./guide/components-column-view.js";
+import { SourceTypePicker } from "./guide/components-drop-down.js";
+import { AppMenu } from "./guide/components-menu-widget.js";
 import { Circle } from "./guide/cairo-circle.js";
 import { NameGrid } from "./guide/components-grid.js";
 import { AccentOverride } from "./guide/css-accent.js";
@@ -122,11 +126,15 @@ function ActionsWindow({
     width,
     height,
     start,
+    menu = <MainMenu />,
+    hasSidebar = false,
     children,
 }: {
     width: number;
     height: number;
     start?: ReactNode;
+    menu?: ReactNode;
+    hasSidebar?: boolean;
     children?: ReactNode;
 }) {
     return (
@@ -147,12 +155,28 @@ function ActionsWindow({
                         <GSimpleAction name="new" />
                         <GSimpleAction name="open" parameterType={GLib.VariantType.new("s")} />
                         <GSimpleAction name="preview" state={GLib.Variant.newBoolean(true)} />
+                        <GSimpleAction name="preferences" />
                         <GSimpleAction name="shortcuts" />
                         <GSimpleAction name="about" />
                     </>
                 }
             >
-                <AdwToolbarView top={<AdwHeaderBar start={start} end={<MainMenu />} />}>{children}</AdwToolbarView>
+                {hasSidebar ? (
+                    <AdwNavigationSplitView
+                        minSidebarWidth={240}
+                        sidebar={
+                            <AdwNavigationPage title="Notes">
+                                <AdwToolbarView top={<AdwHeaderBar end={menu} />} />
+                            </AdwNavigationPage>
+                        }
+                    >
+                        <AdwNavigationPage title="Welcome">
+                            <AdwToolbarView top={<AdwHeaderBar />} />
+                        </AdwNavigationPage>
+                    </AdwNavigationSplitView>
+                ) : (
+                    <AdwToolbarView top={<AdwHeaderBar start={start} end={menu} />}>{children}</AdwToolbarView>
+                )}
             </AdwApplicationWindow>
         </AdwApplication>
     );
@@ -540,6 +564,28 @@ const figures: [name: string, element: ReactNode, options?: FigureOptions][] = [
         },
     ],
     [
+        "guide-components-drop-down",
+        <SampleWindow title="DropDown">
+            <SourceTypePicker />
+        </SampleWindow>,
+        {
+            prepare: async () => {
+                await userEvent.click(screen.getByRole(Gtk.AccessibleRole.COMBO_BOX));
+                await screen.findByText("Podcast");
+            },
+        },
+    ],
+    [
+        "guide-components-menu-widget",
+        <ActionsWindow width={600} height={300} hasSidebar menu={<AppMenu />} />,
+        {
+            prepare: async () => {
+                await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Main Menu" }));
+                await screen.findByRole(Gtk.AccessibleRole.MENU_ITEM, { name: "Preferences" });
+            },
+        },
+    ],
+    [
         "guide-components-toasts",
         <SampleWindow title="Toasts">
             <Notifications />
@@ -589,7 +635,7 @@ const figures: [name: string, element: ReactNode, options?: FigureOptions][] = [
     ],
     [
         "guide-actions-main-menu",
-        <ActionsWindow width={440} height={300} />,
+        <ActionsWindow width={600} height={300} hasSidebar />,
         {
             prepare: async () => {
                 await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Main Menu" }));

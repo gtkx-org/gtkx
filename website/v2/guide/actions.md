@@ -129,8 +129,8 @@ export const NoteTab = ({
 <<< @/figures/guide/actions-main-menu.tsx [src/components/main-menu.tsx]
 
 <figure class="result">
-    <img class="result-light" src="/figures/guide-actions-main-menu-light.png" width="440" height="300" loading="lazy" alt="A window titled Notes with its main menu open below the menu button: New Note with Ctrl+N, a checked Show Preview, a separator, Keyboard Shortcuts with Ctrl+?, and About Notes." />
-    <img class="result-dark" src="/figures/guide-actions-main-menu-dark.png" width="440" height="300" loading="lazy" alt="A window titled Notes with its main menu open below the menu button: New Note with Ctrl+N, a checked Show Preview, a separator, Keyboard Shortcuts with Ctrl+?, and About Notes." />
+    <img class="result-light" src="/figures/guide-actions-main-menu-light.png" width="600" height="300" loading="lazy" alt="The Notes window with its main menu open below the menu button in the sidebar's header bar: New Note with Ctrl+N, a checked Show Preview, a separator, Keyboard Shortcuts with Ctrl+?, and About Notes." />
+    <img class="result-dark" src="/figures/guide-actions-main-menu-dark.png" width="600" height="300" loading="lazy" alt="The Notes window with its main menu open below the menu button in the sidebar's header bar: New Note with Ctrl+N, a checked Show Preview, a separator, Keyboard Shortcuts with Ctrl+?, and About Notes." />
     <figcaption>Captured from the sample above, in a window that declares its actions and their accelerators. The check mark is the state of <code>win.preview</code>.</figcaption>
 </figure>
 
