@@ -104,7 +104,7 @@ Show a clip with the `WindowClip` component in place of the two images:
 </figure>
 ```
 
-Set `width` and `height` to the window size given in `record.test.tsx`. The component plays the clip for the current theme once it scrolls into view, muted and looping. Readers who prefer reduced motion get the poster with playback controls instead.
+Set `width` and `height` to the window size given in `record.test.tsx`. The component plays the clip for the current theme once it scrolls into view, muted and looping, with a button that pauses it. Readers who prefer reduced motion get the poster with playback controls instead.
 
 ## Brand assets
 

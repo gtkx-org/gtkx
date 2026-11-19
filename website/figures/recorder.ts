@@ -144,13 +144,13 @@ const recordClip = async (files: ClipFiles, performance: () => Promise<void>): P
     try {
         const startedAt = Date.now();
         const frames = capture();
+        frames.catch(() => undefined);
 
         try {
             await performance();
         } finally {
             isRecording = false;
-            await frames;
-            encoder.stdin.end();
+            await frames.finally(() => encoder.stdin.end());
         }
 
         const captureRate = (frameCount * 1000) / (Date.now() - startedAt);
@@ -164,6 +164,8 @@ const recordClip = async (files: ClipFiles, performance: () => Promise<void>): P
         await encoded;
         await encode(raw, files, workDir);
     } finally {
+        encoder.kill();
+        await encoded.catch(() => undefined);
         rmSync(workDir, { recursive: true, force: true });
     }
 };

@@ -19,6 +19,7 @@ const video = ref<HTMLVideoElement | null>(null);
 const isInView = ref(false);
 const hasBeenInView = ref(false);
 const reducesMotion = ref(false);
+const isPaused = ref(false);
 
 const scheme = computed(() => (isDark.value ? "dark" : "light"));
 const file = (variant: string, extension: string): string => `/clips/${props.name}-${variant}.${extension}`;
@@ -58,12 +59,12 @@ onBeforeUnmount(() => {
     motion?.removeEventListener("change", onMotionChange);
 });
 
-watch([video, isInView, reducesMotion], ([element, inView, reduced]) => {
+watch([video, isInView, reducesMotion, isPaused], ([element, inView, reduced, paused]) => {
     if (element === null) {
         return;
     }
 
-    if (inView && !reduced) {
+    if (inView && !reduced && !paused) {
         element.muted = true;
         element.play().catch(() => undefined);
     } else {
@@ -94,7 +95,7 @@ watch([video, isInView, reducesMotion], ([element, inView, reduced]) => {
             :poster="file(scheme, 'png')"
             :width="width"
             :height="height"
-            :autoplay="!reducesMotion"
+            :autoplay="!reducesMotion && !isPaused"
             :controls="reducesMotion"
             :preload="reducesMotion ? 'none' : 'auto'"
             :aria-label="alt"
@@ -102,6 +103,18 @@ watch([video, isInView, reducesMotion], ([element, inView, reduced]) => {
             muted
             playsinline
         />
+        <button
+            v-if="hasBeenInView && !reducesMotion"
+            type="button"
+            class="clip__toggle"
+            :aria-label="isPaused ? 'Play the clip' : 'Pause the clip'"
+            @click="isPaused = !isPaused"
+        >
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+                <path v-if="isPaused" d="M4.5 2.5v11l9-5.5z" />
+                <path v-else d="M3.5 2.5h3v11h-3zM9.5 2.5h3v11h-3z" />
+            </svg>
+        </button>
     </div>
 </template>
 
@@ -130,5 +143,39 @@ html.dark .clip .clip__poster--light {
 }
 html.dark .clip .clip__poster--dark {
   display: block;
+}
+.clip__toggle {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.62);
+  fill: #ffffff;
+  cursor: pointer;
+  opacity: 0;
+}
+.clip:hover .clip__toggle,
+.clip__toggle:focus-visible {
+  opacity: 1;
+}
+.clip__toggle:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+@media (hover: none) {
+  .clip__toggle {
+    opacity: 0.85;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .clip__toggle {
+    transition: opacity var(--dur-fast) var(--ease-standard);
+  }
 }
 </style>
