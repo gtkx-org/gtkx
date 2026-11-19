@@ -15,6 +15,7 @@
         "preview": "vitepress preview"
     },
     "devDependencies": {
+        "@gtkx/animated": "workspace:*",
         "@gtkx/cli": "workspace:*",
         "@gtkx/components": "workspace:*",
         "@gtkx/css": "workspace:*",

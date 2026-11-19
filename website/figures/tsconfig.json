@@ -10,6 +10,7 @@
     "include": [
         "${configDir}/**/*.tsx",
         "${configDir}/setup.ts",
+        "${configDir}/recorder.ts",
         "${configDir}/guide/**/*.ts",
         "${configDir}/tutorial/**/*.ts",
         "${configDir}/tutorial/*/.storybook/*.ts",
@@ -17,6 +18,9 @@
     ],
     "exclude": ["${configDir}/node_modules", "${configDir}/out-tsc"],
     "references": [
+        {
+            "path": "../../packages/animated/tsconfig.lib.json"
+        },
         {
             "path": "../../packages/cli/tsconfig.lib.json"
         },

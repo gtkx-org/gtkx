@@ -1216,6 +1216,9 @@ importers:
 
   website:
     devDependencies:
+      '@gtkx/animated':
+        specifier: workspace:*
+        version: link:../packages/animated
       '@gtkx/cli':
         specifier: workspace:*
         version: link:../packages/cli
