@@ -33,12 +33,16 @@ import { PreferencesForm } from "./guide/forms-preferences.js";
 import { App as StarterApp } from "./guide/getting-started-app.js";
 import { Sidebar } from "./guide/components-list-box.js";
 import { TaskList } from "./guide/components-list-view.js";
+import { Editor } from "./guide/components-stack.js";
+import { Documents as TabDocuments } from "./guide/components-tabs.js";
+import { Notifications } from "./guide/components-toasts.js";
 import { About } from "./guide/modals-about-dialog.js";
 import { SystemAppearance } from "./guide/native-state-system-appearance.js";
 import { RenameDialog } from "./guide/modals-rename-dialog.js";
 import { App as DrawerApp } from "./guide/navigation-drawer.js";
 import { Mail as SplitMail } from "./guide/navigation-split-view.js";
 import { Notes } from "./guide/navigation-stack.js";
+import { Documents as TabViewDocuments } from "./guide/navigation-tab-view.js";
 import { seedNotes, taggedNotes } from "./tutorial/notes.js";
 import { App as NoteEditor } from "./tutorial/the-note-editor/src/app.js";
 import { App as NotesFolder } from "./tutorial/the-notes-folder/src/app.js";
@@ -461,6 +465,40 @@ const figures: [name: string, element: ReactNode, options?: FigureOptions][] = [
         </SampleWindow>,
     ],
     [
+        "guide-components-tabs",
+        <SampleWindow title="AdwTabView" width={400}>
+            <TabDocuments />
+        </SampleWindow>,
+        {
+            prepare: async () => {
+                await screen.findByRole(Gtk.AccessibleRole.TAB, { name: "Ideas" });
+            },
+        },
+    ],
+    [
+        "guide-components-stack",
+        <SampleWindow title="GtkStack">
+            <Editor />
+        </SampleWindow>,
+        {
+            prepare: async () => {
+                await screen.findByText("Preview");
+            },
+        },
+    ],
+    [
+        "guide-components-toasts",
+        <SampleWindow title="Toasts">
+            <Notifications />
+        </SampleWindow>,
+        {
+            prepare: async () => {
+                await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Show notification" }));
+                await screen.findByText("Task saved");
+            },
+        },
+    ],
+    [
         "guide-components-grid",
         <SampleWindow title="GtkGrid">
             <NameGrid />
@@ -523,6 +561,31 @@ const figures: [name: string, element: ReactNode, options?: FigureOptions][] = [
         <NavigationWindow title="Notes" width={360} height={260}>
             <Notes />
         </NavigationWindow>,
+    ],
+    [
+        "guide-navigation-stack-note",
+        <NavigationWindow title="Notes" width={360} height={260}>
+            <Notes />
+        </NavigationWindow>,
+        {
+            prepare: async () => {
+                await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Open note 42" }));
+                await screen.findByText("Showing note 42");
+                await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Back" });
+            },
+        },
+    ],
+    [
+        "guide-navigation-tab-view",
+        <NavigationWindow title="Documents" width={440} height={280}>
+            <TabViewDocuments />
+        </NavigationWindow>,
+        {
+            prepare: async () => {
+                await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Open related" }));
+                await screen.findByRole(Gtk.AccessibleRole.TAB, { name: "Related" });
+            },
+        },
     ],
     [
         "guide-navigation-tabs",

@@ -136,33 +136,13 @@ Ordinary `AdwTabView` children work for tabs that share their parent's React lif
 
 A JSX tab stays open while React renders it. To let the user close tabs with their close buttons or the tab overview, handle `onClosePage`: remove the page from the state that renders it and confirm the close. Without a handler, the close does nothing and GTKX warns in development; see [Closing](/v2/guide/modals-and-portals#closing).
 
-```tsx
-import { AdwTabPage, AdwTabView } from "@gtkx/jsx/adw";
-import { GtkLabel } from "@gtkx/jsx/gtk";
-import { useState } from "react";
+<<< @/figures/guide/components-tabs.tsx [src/documents.tsx]
 
-const Documents = () => {
-    const [titles, setTitles] = useState(["Notes", "Ideas"]);
-
-    return (
-        <AdwTabView
-            onClosePage={(page, view) => {
-                setTitles((current) =>
-                    current.filter((title) => title !== page.getTitle()),
-                );
-                view.closePageFinish(page, true);
-                return true;
-            }}
-        >
-            {titles.map((title) => (
-                <AdwTabPage key={title} title={title}>
-                    <GtkLabel>{title}</GtkLabel>
-                </AdwTabPage>
-            ))}
-        </AdwTabView>
-    );
-};
-```
+<figure class="result">
+    <img class="result-light" src="/figures/guide-components-tabs-light.png" width="400" height="260" loading="lazy" alt="A window titled AdwTabView with a tab bar holding a selected Notes tab with a close button and an Ideas tab, above the Notes page." />
+    <img class="result-dark" src="/figures/guide-components-tabs-dark.png" width="400" height="260" loading="lazy" alt="A window titled AdwTabView with a tab bar holding a selected Notes tab with a close button and an Ideas tab, above the Notes page." />
+    <figcaption>Captured from the sample above. The tab bar shows a tab for each page the component renders.</figcaption>
+</figure>
 
 `onNotifySelectedPage` reports the selection libadwaita makes: the first page once the view mounts, and the neighbour it selects after your state drops the selected page, so a window subtitle or per-tab action mirrored from that handler stays current.
 
@@ -212,35 +192,13 @@ The grid creates the layout child for the widget, and changing `column` or `row`
 
 `GtkStack`, `AdwViewStack` and `GtkNotebook` keep a page object for each child, which holds the child's name, title and icon, or its tab label. Wrap each child in the matching page element, `GtkStackPage`, `AdwViewStackPage` or `GtkNotebookPage`, and set those properties on it. The container creates the page object when the child is added, as a grid does for its layout children:
 
-```tsx
-import * as Gtk from "@gtkx/gi/gtk";
-import {
-    GtkBox,
-    GtkLabel,
-    GtkStack,
-    GtkStackPage,
-    GtkStackSwitcher,
-} from "@gtkx/jsx/gtk";
-import { useState } from "react";
+<<< @/figures/guide/components-stack.tsx [src/editor.tsx]
 
-export const Editor = () => {
-    const [stack, setStack] = useState<Gtk.Stack | null>(null);
-
-    return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-            <GtkStackSwitcher stack={stack} halign={Gtk.Align.CENTER} />
-            <GtkStack ref={setStack} vexpand>
-                <GtkStackPage name="source" title="Source">
-                    <GtkLabel>Markdown source</GtkLabel>
-                </GtkStackPage>
-                <GtkStackPage name="preview" title="Preview">
-                    <GtkLabel>Rendered preview</GtkLabel>
-                </GtkStackPage>
-            </GtkStack>
-        </GtkBox>
-    );
-};
-```
+<figure class="result">
+    <img class="result-light" src="/figures/guide-components-stack-light.png" width="360" height="260" loading="lazy" alt="A window titled GtkStack with a switcher of two buttons, Source selected and Preview, above the text Markdown source." />
+    <img class="result-dark" src="/figures/guide-components-stack-dark.png" width="360" height="260" loading="lazy" alt="A window titled GtkStack with a switcher of two buttons, Source selected and Preview, above the text Markdown source." />
+    <figcaption>Captured from the sample above. The switcher takes its buttons from the page titles.</figcaption>
+</figure>
 
 The switcher shows a button for each page `title`. To switch pages from state instead, set `visibleChildName` to a page's `name`, as the tutorial's [Markdown preview](/v2/tutorial/the-markdown-preview#switch-between-editor-and-preview) does. For a few peer sections with a view switcher in the header bar, the [tab navigator](/v2/guide/navigation#tab-navigator) renders the `AdwViewStack` for you.
 
@@ -280,38 +238,13 @@ The widget stays in its item when the model or its items change. An ID with no m
 
 Wrap the window's content in `AdwToastOverlay`, then share its ref through `ToastProvider`. Descendants can call `useToast()` to show a notification:
 
-```tsx
-import { ToastProvider, useToast } from "@gtkx/components";
-import type * as Adw from "@gtkx/gi/adw";
-import { AdwToastOverlay } from "@gtkx/jsx/adw";
-import { GtkButton } from "@gtkx/jsx/gtk";
-import { useRef } from "react";
+<<< @/figures/guide/components-toasts.tsx [src/notifications.tsx]
 
-const NotifyButton = () => {
-    const toast = useToast();
-
-    return (
-        <GtkButton
-            label="Show notification"
-            onClicked={() =>
-                toast.show({ title: "Task saved", useMarkup: false })
-            }
-        />
-    );
-};
-
-export const Notifications = () => {
-    const overlayRef = useRef<Adw.ToastOverlay | null>(null);
-
-    return (
-        <ToastProvider overlayRef={overlayRef}>
-            <AdwToastOverlay ref={overlayRef}>
-                <NotifyButton />
-            </AdwToastOverlay>
-        </ToastProvider>
-    );
-};
-```
+<figure class="result">
+    <img class="result-light" src="/figures/guide-components-toasts-light.png" width="360" height="260" loading="lazy" alt="A window titled Toasts with a Show notification button and, at the bottom, a toast reading Task saved with a dismiss button." />
+    <img class="result-dark" src="/figures/guide-components-toasts-dark.png" width="360" height="260" loading="lazy" alt="A window titled Toasts with a Show notification button and, at the bottom, a toast reading Task saved with a dismiss button." />
+    <figcaption>Captured from the sample above after clicking the button.</figcaption>
+</figure>
 
 Render `Notifications` inside an application window. Clicking the button shows a toast over the content. Use `useMarkup: false` for titles that should display literally, including user text.
 
