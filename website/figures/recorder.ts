@@ -98,6 +98,7 @@ const encode = async (raw: string, { video, poster }: ClipFiles, workDir: string
  *
  * Frames are stamped with their arrival time to the millisecond, so an uneven capture rate does not change the
  * clip's pace and no frame shares a timestamp with the one before it.
+ * A write error on the encoder's input is reported through its exit code.
  */
 const recordClip = async (files: ClipFiles, performance: () => Promise<void>): Promise<void> => {
     const workDir = mkdtempSync(join(tmpdir(), "gtkx-clip-"));
@@ -128,10 +129,17 @@ const recordClip = async (files: ClipFiles, performance: () => Promise<void>): P
     );
     const encoded = finished(encoder, "The frame encoder");
     let isRecording = true;
+    let hasEncoderClosed = false;
     let frameCount = 0;
 
+    encoded.catch(() => undefined);
+    encoder.stdin.on("error", () => undefined);
+    encoder.once("close", () => {
+        hasEncoderClosed = true;
+    });
+
     const capture = async (): Promise<void> => {
-        while (isRecording) {
+        while (isRecording && !hasEncoderClosed) {
             const { stdout } = await run("grim", ["-t", "ppm", "-"], {
                 encoding: "buffer",
                 maxBuffer: FRAME_BUFFER,
@@ -139,8 +147,8 @@ const recordClip = async (files: ClipFiles, performance: () => Promise<void>): P
 
             frameCount += 1;
 
-            if (!encoder.stdin.write(stdout)) {
-                await once(encoder.stdin, "drain");
+            if (!hasEncoderClosed && !encoder.stdin.write(stdout)) {
+                await Promise.race([once(encoder.stdin, "drain"), encoded]);
             }
         }
     };
