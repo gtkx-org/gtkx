@@ -45,7 +45,7 @@
         "@babel/helper-validator-identifier": "^8.0.6",
         "es-toolkit": "^1.53.2",
         "picocolors": "^1.1.1",
-        "type-fest": "^5.10.0",
+        "type-fest": "^6.0.0",
         "which": "^7.0.0"
     },
     "devDependencies": {
