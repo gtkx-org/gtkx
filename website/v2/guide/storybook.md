@@ -47,48 +47,17 @@ To browse a shared package's stories on their own, set it up as a [component lib
 
 Keep each component in its own module so that Fast Refresh updates it in place. Write a component in `src/button.tsx`:
 
-```tsx
-import { GtkButton } from "@gtkx/jsx/gtk";
-import type { ReactNode } from "react";
-
-type ButtonProps = {
-    label: string;
-    enabled: boolean;
-    onClicked?: () => void;
-};
-
-const Button = ({ label, enabled, onClicked }: ButtonProps): ReactNode => (
-    <GtkButton label={label} sensitive={enabled} onClicked={onClicked} />
-);
-
-export { Button };
-```
+<<< @/figures/guide/storybook/button.tsx [src/button.tsx]
 
 and its stories in `src/button.stories.tsx`:
 
-```tsx
-import type { Meta, StoryObj } from "@gtkx/storybook";
-import { Button } from "./button.js";
+<<< @/figures/guide/storybook/button.stories.tsx [src/button.stories.tsx]
 
-const meta = {
-    title: "Components/Button",
-    component: Button,
-    args: { label: "Save", enabled: true },
-    argTypes: {
-        label: { control: "text" },
-        enabled: { control: "boolean" },
-        onClicked: { action: "clicked" },
-    },
-} satisfies Meta<typeof Button>;
-
-type Story = StoryObj<typeof meta>;
-
-const Default = {} satisfies Story;
-const Disabled = { args: { enabled: false } } satisfies Story;
-
-export default meta;
-export { Default, Disabled };
-```
+<figure class="result">
+    <img class="result-light" src="/figures/guide-storybook-explorer-light.png" width="880" height="540" loading="lazy" alt="The GTKX Storybook window: a sidebar listing the Default and Disabled stories under Components/Button, a preview with a Save button, a Controls group with a label text row and an enabled switch, and an Actions group listing one clicked call." />
+    <img class="result-dark" src="/figures/guide-storybook-explorer-dark.png" width="880" height="540" loading="lazy" alt="The GTKX Storybook window: a sidebar listing the Default and Disabled stories under Components/Button, a preview with a Save button, a Controls group with a label text row and an enabled switch, and an Actions group listing one clicked call." />
+    <figcaption>The explorer showing these stories, captured after clicking <strong>Save</strong> in the preview. The controls come from <code>argTypes</code>, and the click is recorded under <strong>Actions</strong>.</figcaption>
+</figure>
 
 An argument gets a native control only when its `argTypes` entry sets [`control`](https://storybook.js.org/docs/api/arg-types#control): `boolean`, `text`, `number` or `range`, and `select`, `radio` or `inline-radio`. The explorer does not infer controls from the args, so an argument without `control` has none and needs no `control: false`. `argTypes.onClicked.action` records callback calls in the action panel; asynchronous callbacks are recorded once when they settle. You can also provide `action("clicked")` from `@gtkx/storybook` directly as an argument.
 

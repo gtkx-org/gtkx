@@ -108,16 +108,19 @@ const name = t("Recording {{index}}", { index });
 
 Import `useTranslation` and `Trans` from `@gtkx/i18n`, not `react-i18next`. Importing `@gtkx/i18n` configures the gettext backend, and extraction does not follow `react-i18next` imports: their messages never reach the catalogs, and the generated declarations then reject their keys.
 
-```tsx
-import { useTranslation } from "@gtkx/i18n";
-import { GtkLabel } from "@gtkx/jsx/gtk";
+<<< @/figures/guide/internationalization-greeting.tsx [src/greeting.tsx]
 
-function Greeting({ name }: { name: string }) {
-    const { t } = useTranslation();
+<figure class="result">
+    <img class="result-light" src="/figures/guide-internationalization-greeting-light.png" width="360" height="200" loading="lazy" alt="A window titled Greeting showing Hello, Ada!" />
+    <img class="result-dark" src="/figures/guide-internationalization-greeting-dark.png" width="360" height="200" loading="lazy" alt="A window titled Greeting showing Hello, Ada!" />
+    <figcaption>Captured from the sample above with <code>name</code> set to Ada, in the source language.</figcaption>
+</figure>
 
-    return <GtkLabel label={t("Hello, {{name}}!", { name })} />;
-}
-```
+<figure class="result">
+    <img class="result-light" src="/figures/guide-internationalization-greeting-fr-light.png" width="360" height="200" loading="lazy" alt="A window titled Greeting showing Bonjour, Ada !" />
+    <img class="result-dark" src="/figures/guide-internationalization-greeting-fr-dark.png" width="360" height="200" loading="lazy" alt="A window titled Greeting showing Bonjour, Ada !" />
+    <figcaption>The same component under a French locale, with a catalog that translates the message as <code v-pre>Bonjour, {{name}} !</code>.</figcaption>
+</figure>
 
 See [react-i18next's documentation](https://react.i18next.com/latest/usetranslation-hook) for its React APIs and [i18next's formatting guide](https://www.i18next.com/translation-function/formatting) for interpolation and formatting. GTKX supplies the catalog integration; gettext still uses one process-wide application domain.
 
