@@ -55,21 +55,13 @@ Use `style` for values specific to one widget, such as a color computed from pro
 
 `css` accepts a tagged template or style object and returns a class name for `cssClasses`:
 
-```tsx
-import { css } from "@gtkx/css";
-import { GtkLabel } from "@gtkx/jsx/gtk";
+<<< @/figures/guide/css-overdue.tsx [src/due-label.tsx]
 
-const overdue = css`
-    color: var(--error-color);
-    font-weight: 700;
-
-    &:hover {
-        text-decoration: underline;
-    }
-`;
-
-<GtkLabel label="Overdue" cssClasses={[overdue]} />;
-```
+<figure class="result">
+    <img class="result-light" src="/figures/guide-css-overdue-light.png" width="360" height="200" loading="lazy" alt="A window titled CSS with the word Overdue in bold red at its center." />
+    <img class="result-dark" src="/figures/guide-css-overdue-dark.png" width="360" height="200" loading="lazy" alt="A window titled CSS with the word Overdue in bold red at its center." />
+    <figcaption>Captured from the sample above. The label takes the theme's error color in each color scheme.</figcaption>
+</figure>
 
 Identical styles reuse the same class and are inserted once. Interpolating a generated class into another `css` call includes its declarations. Use these classes for styles shared by several widgets, or for rules such as `@media` and `@keyframes` that the `style` prop does not expose. Keyframe names are global, so give them an application or component prefix.
 

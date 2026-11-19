@@ -17,7 +17,10 @@ for (const [name, directory] of [
 }
 
 mkdirSync(join(home, "config", "gtk-4.0"));
-writeFileSync(join(home, "config", "gtk-4.0", "settings.ini"), "[Settings]\ngtk-decoration-layout=appmenu:close\n");
+writeFileSync(
+    join(home, "config", "gtk-4.0", "settings.ini"),
+    "[Settings]\ngtk-decoration-layout=appmenu:close\ngtk-font-name=Adwaita Sans 10\n",
+);
 
 afterAll(() => {
     rmSync(home, { recursive: true, force: true });

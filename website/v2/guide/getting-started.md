@@ -86,64 +86,15 @@ npm run dev
 
 The starter uses an Adwaita application window with a counter. Click the button to increase the count. Change its label in `src/app.tsx` and save; the open window should update.
 
+<figure class="result">
+    <img class="result-light" src="/figures/guide-getting-started-app-light.png" width="400" height="300" loading="lazy" alt="A window titled My App showing Welcome to GTKX!, Count: 0, and a blue Increment button." />
+    <img class="result-dark" src="/figures/guide-getting-started-app-dark.png" width="400" height="300" loading="lazy" alt="A window titled My App showing Welcome to GTKX!, Count: 0, and a blue Increment button." />
+    <figcaption>The starter window, captured from the <code>src/app.tsx</code> below with the display name My App.</figcaption>
+</figure>
+
 ::: details The starter `src/app.tsx`
 
-```tsx
-import * as Gtk from "@gtkx/gi/gtk";
-import {
-    AdwApplication,
-    AdwApplicationWindow,
-    AdwHeaderBar,
-    AdwToolbarView,
-} from "@gtkx/jsx/adw";
-import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
-import { quit } from "@gtkx/react";
-import { useState } from "react";
-
-const MainWindow = () => {
-    const [count, setCount] = useState(0);
-
-    return (
-        <AdwApplicationWindow
-            title={"My App"}
-            defaultWidth={400}
-            defaultHeight={300}
-            onCloseRequest={quit}
-        >
-            <AdwToolbarView top={<AdwHeaderBar />}>
-                <GtkBox
-                    orientation={Gtk.Orientation.VERTICAL}
-                    spacing={20}
-                    marginTop={40}
-                    marginBottom={40}
-                    marginStart={40}
-                    marginEnd={40}
-                    valign={Gtk.Align.CENTER}
-                    halign={Gtk.Align.CENTER}
-                >
-                    <GtkLabel cssClasses={["title-1"]}>
-                        Welcome to GTKX!
-                    </GtkLabel>
-                    <GtkLabel cssClasses={["title-2"]}>Count: {count}</GtkLabel>
-                    <GtkButton
-                        label="Increment"
-                        onClicked={() => setCount((c) => c + 1)}
-                        cssClasses={["suggested-action", "pill"]}
-                    />
-                </GtkBox>
-            </AdwToolbarView>
-        </AdwApplicationWindow>
-    );
-};
-
-export const App = () => (
-    <AdwApplication>
-        <MainWindow />
-    </AdwApplication>
-);
-
-export default App;
-```
+<<< @/figures/guide/getting-started-app.tsx [src/app.tsx]
 
 :::
 

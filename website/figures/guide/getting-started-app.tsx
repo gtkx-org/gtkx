@@ -1,0 +1,54 @@
+import * as Gtk from "@gtkx/gi/gtk";
+import {
+    AdwApplication,
+    AdwApplicationWindow,
+    AdwHeaderBar,
+    AdwToolbarView,
+} from "@gtkx/jsx/adw";
+import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
+import { quit } from "@gtkx/react";
+import { useState } from "react";
+
+const MainWindow = () => {
+    const [count, setCount] = useState(0);
+
+    return (
+        <AdwApplicationWindow
+            title={"My App"}
+            defaultWidth={400}
+            defaultHeight={300}
+            onCloseRequest={quit}
+        >
+            <AdwToolbarView top={<AdwHeaderBar />}>
+                <GtkBox
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={20}
+                    marginTop={40}
+                    marginBottom={40}
+                    marginStart={40}
+                    marginEnd={40}
+                    valign={Gtk.Align.CENTER}
+                    halign={Gtk.Align.CENTER}
+                >
+                    <GtkLabel cssClasses={["title-1"]}>
+                        Welcome to GTKX!
+                    </GtkLabel>
+                    <GtkLabel cssClasses={["title-2"]}>Count: {count}</GtkLabel>
+                    <GtkButton
+                        label="Increment"
+                        onClicked={() => setCount((c) => c + 1)}
+                        cssClasses={["suggested-action", "pill"]}
+                    />
+                </GtkBox>
+            </AdwToolbarView>
+        </AdwApplicationWindow>
+    );
+};
+
+export const App = () => (
+    <AdwApplication>
+        <MainWindow />
+    </AdwApplication>
+);
+
+export default App;

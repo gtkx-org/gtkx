@@ -142,25 +142,13 @@ An item whose action is disabled is greyed out; `hiddenWhen: "action-disabled"` 
 
 Any widget that implements `Gtk.Actionable`, such as `GtkButton`, `GtkToggleButton` or `GtkCheckButton`, runs an action through its `actionName`, and passes `actionTarget` as the parameter:
 
-```tsx
-import * as GLib from "@gtkx/gi/glib";
-import { GtkButton } from "@gtkx/jsx/gtk";
+<<< @/figures/guide/actions-toolbar.tsx [src/components/toolbar.tsx]
 
-export const Toolbar = () => (
-    <>
-        <GtkButton
-            iconName="list-add-symbolic"
-            tooltipText="New Note (Ctrl+N)"
-            actionName="win.new"
-        />
-        <GtkButton
-            label="Open To-do"
-            actionName="win.open"
-            actionTarget={GLib.Variant.newString("todo.md")}
-        />
-    </>
-);
-```
+<figure class="result">
+    <img class="result-light" src="/figures/guide-actions-toolbar-light.png" width="440" height="200" loading="lazy" alt="A window titled Notes whose header bar starts with a plus icon button and an Open To-do button." />
+    <img class="result-dark" src="/figures/guide-actions-toolbar-dark.png" width="440" height="200" loading="lazy" alt="A window titled Notes whose header bar starts with a plus icon button and an Open To-do button." />
+    <figcaption>Captured from the sample above at the start of a header bar, in a window that declares <code>win.new</code> and <code>win.open</code>.</figcaption>
+</figure>
 
 The button follows the action's `enabled` state. A toggle button for a stateful action shows the action's state.
 

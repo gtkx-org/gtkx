@@ -18,19 +18,19 @@
     "exclude": ["node_modules", ".vitepress/cache", ".vitepress/dist", "figures"],
     "references": [
         {
-            "path": "../packages/css"
+            "path": "../packages/runtime"
         },
         {
             "path": "../packages/cli"
         },
         {
-            "path": "../packages/storybook"
-        },
-        {
-            "path": "../packages/runtime"
-        },
-        {
             "path": "../packages/i18n"
+        },
+        {
+            "path": "../packages/forms"
+        },
+        {
+            "path": "../packages/css"
         },
         {
             "path": "../packages/components"
@@ -40,6 +40,9 @@
         },
         {
             "path": "../packages/testing"
+        },
+        {
+            "path": "../packages/storybook"
         },
         {
             "path": "../packages/react"
