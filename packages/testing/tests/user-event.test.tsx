@@ -672,6 +672,53 @@ describe("userEvent.click", () => {
         expect(presses).toEqual(["outer primary", "outer secondary"]);
     });
 
+    it("runs an outside gesture whose propagation limit is none for a press inside a popover, at GTK's point", async () => {
+        const presses: [string, number, number][] = [];
+        const listen = (name: string, button: number, phase: Gtk.PropagationPhase) => (
+            <GtkGestureClick
+                key={name}
+                button={button}
+                propagationPhase={phase}
+                propagationLimit={Gtk.PropagationLimit.NONE}
+                onPressed={(_nPress, x, y) => presses.push([name, x, y])}
+            />
+        );
+
+        const { findByName } = await renderScoped(
+            <GtkBox
+                name="canvas"
+                controllers={[
+                    listen("bubbling primary", Gdk.BUTTON_PRIMARY, Gtk.PropagationPhase.BUBBLE),
+                    listen("capturing secondary", Gdk.BUTTON_SECONDARY, Gtk.PropagationPhase.CAPTURE),
+                ]}
+            >
+                <GtkMenuButton
+                    label="Menu"
+                    popover={
+                        <GtkPopover>
+                            <GtkLabel label="Inside" />
+                        </GtkPopover>
+                    }
+                />
+            </GtkBox>,
+        );
+
+        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Menu" }));
+        const inside = await screen.findByText("Inside");
+        presses.length = 0;
+        await userEvent.click(inside);
+        await userEvent.pointer(inside, "[MouseRight]");
+
+        const [isComputed, bounds] = inside.computeBounds(await findByName("canvas", { as: Gtk.Box }));
+        const x = bounds.getX() + bounds.getWidth() / 2;
+        const y = bounds.getY() + bounds.getHeight() / 2;
+        expect(isComputed).toBe(true);
+        expect(presses).toEqual([
+            ["bubbling primary", x, y],
+            ["capturing secondary", x, y],
+        ]);
+    });
+
     it("rejects a pointer input it does not know", async () => {
         const { button } = await renderClickButton();
         const input: string = "[MouseBack]";
