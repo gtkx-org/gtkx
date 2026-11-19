@@ -19,51 +19,7 @@ The rows use the generated `@gtkx/jsx/adw` bindings included in GTKX 2 projects.
 
 Pass `control={form.control}` to infer the row's field names from your form type. GTK buttons submit through `onClicked`:
 
-```tsx
-import { ComboRow, EntryRow, useForm } from "@gtkx/forms";
-import * as Gtk from "@gtkx/gi/gtk";
-import { AdwPreferencesGroup } from "@gtkx/jsx/adw";
-import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
-
-type Preferences = { displayName: string; theme: string };
-
-const themes = [
-    { id: "system", value: "Follow system" },
-    { id: "light", value: "Light" },
-    { id: "dark", value: "Dark" },
-];
-
-export const PreferencesForm = ({
-    onSave,
-}: {
-    onSave: (values: Preferences) => void;
-}) => {
-    const form = useForm<Preferences>({
-        defaultValues: { displayName: "", theme: "system" },
-    });
-    const submit = form.handleSubmit(onSave);
-
-    return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={18}>
-            <AdwPreferencesGroup title="Preferences">
-                <EntryRow
-                    control={form.control}
-                    name="displayName"
-                    title="Display name"
-                    rules={{ required: "Enter a display name" }}
-                />
-                <ComboRow
-                    control={form.control}
-                    name="theme"
-                    title="Theme"
-                    items={themes}
-                />
-            </AdwPreferencesGroup>
-            <GtkButton label="Save" onClicked={() => { void submit(); }} />
-        </GtkBox>
-    );
-};
-```
+<<< @/figures/guide/forms-preferences.tsx [src/preferences-form.tsx]
 
 You can also import `FormProvider` from `@gtkx/forms` to supply the control to rows below it. When a row relies on the provider, give it the form type explicitly, such as `<EntryRow<Preferences> name="displayName" />`, to check its field name.
 
@@ -123,6 +79,12 @@ A form `ComboRow` uses a non-nullable string field. Supply an explicit default I
 ## Native validation feedback
 
 An invalid row gains Adwaita's `error` CSS class. The row and, for text and spin rows, the field that receives focus expose an accessible invalid state. When validation supplies a message, the row uses it as its tooltip. Correcting the field restores the caller's classes and tooltip.
+
+<figure class="result">
+    <img class="result-light" src="/figures/guide-forms-preferences-light.png" width="420" height="300" loading="lazy" alt="A window titled Forms with a Preferences group: an empty Display name row outlined in red with the text cursor in it, a Theme row set to Follow system, and a Save button." />
+    <img class="result-dark" src="/figures/guide-forms-preferences-dark.png" width="420" height="300" loading="lazy" alt="A window titled Forms with a Preferences group: an empty Display name row outlined in red with the text cursor in it, a Theme row set to Follow system, and a Save button." />
+    <figcaption>Captured from <a href="#connect-a-form">the form above</a> after clicking <strong>Save</strong> with an empty display name. The row has the <code>error</code> class and the focus.</figcaption>
+</figure>
 
 The rows do not add a persistent error label. Render one beside the row when your application needs visible feedback. Native handlers such as `onNotifyText` still run after the form receives an edit.
 

@@ -30,6 +30,9 @@
             "path": "../../packages/css/tsconfig.lib.json"
         },
         {
+            "path": "../../packages/forms/tsconfig.lib.json"
+        },
+        {
             "path": "../../packages/i18n/tsconfig.lib.json"
         },
         {

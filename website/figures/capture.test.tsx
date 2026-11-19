@@ -2,7 +2,14 @@ import * as Adw from "@gtkx/gi/adw";
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
-import { AdwApplication, AdwApplicationWindow, AdwHeaderBar, AdwToolbarView } from "@gtkx/jsx/adw";
+import {
+    AdwApplication,
+    AdwApplicationWindow,
+    AdwHeaderBar,
+    AdwPreferencesGroup,
+    AdwPreferencesPage,
+    AdwToolbarView,
+} from "@gtkx/jsx/adw";
 import { GSimpleAction } from "@gtkx/jsx/gio";
 import { GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { NavigationContainer } from "@gtkx/navigation";
@@ -16,13 +23,18 @@ import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 import { MainMenu } from "./guide/actions-main-menu.js";
 import { Shortcuts } from "./guide/actions-shortcuts.js";
+import { Toolbar } from "./guide/actions-toolbar.js";
 import { EmployeeTable } from "./guide/components-column-view.js";
 import { Circle } from "./guide/cairo-circle.js";
 import { NameGrid } from "./guide/components-grid.js";
 import { AccentOverride } from "./guide/css-accent.js";
+import { DueLabel } from "./guide/css-overdue.js";
+import { PreferencesForm } from "./guide/forms-preferences.js";
+import { App as StarterApp } from "./guide/getting-started-app.js";
 import { Sidebar } from "./guide/components-list-box.js";
 import { TaskList } from "./guide/components-list-view.js";
 import { About } from "./guide/modals-about-dialog.js";
+import { SystemAppearance } from "./guide/native-state-system-appearance.js";
 import { RenameDialog } from "./guide/modals-rename-dialog.js";
 import { App as DrawerApp } from "./guide/navigation-drawer.js";
 import { Mail as SplitMail } from "./guide/navigation-split-view.js";
@@ -99,7 +111,17 @@ function NavigationWindow({
     );
 }
 
-function ActionsWindow({ width, height, children }: { width: number; height: number; children?: ReactNode }) {
+function ActionsWindow({
+    width,
+    height,
+    start,
+    children,
+}: {
+    width: number;
+    height: number;
+    start?: ReactNode;
+    children?: ReactNode;
+}) {
     return (
         <AdwApplication
             actionAccels={[
@@ -116,13 +138,14 @@ function ActionsWindow({ width, height, children }: { width: number; height: num
                 actions={
                     <>
                         <GSimpleAction name="new" />
+                        <GSimpleAction name="open" parameterType={GLib.VariantType.new("s")} />
                         <GSimpleAction name="preview" state={GLib.Variant.newBoolean(true)} />
                         <GSimpleAction name="shortcuts" />
                         <GSimpleAction name="about" />
                     </>
                 }
             >
-                <AdwToolbarView top={<AdwHeaderBar end={<MainMenu />} />}>{children}</AdwToolbarView>
+                <AdwToolbarView top={<AdwHeaderBar start={start} end={<MainMenu />} />}>{children}</AdwToolbarView>
             </AdwApplicationWindow>
         </AdwApplication>
     );
@@ -141,6 +164,15 @@ function seedNotesWithSettings() {
     settings.setString("color-scheme", isDark ? "dark" : "light");
     settings.setInt("window-width", 720);
     settings.setInt("window-height", 480);
+}
+
+function preferSystemScheme() {
+    const isDark = Adw.StyleManager.getDefault().getColorScheme() === Adw.ColorScheme.FORCE_DARK;
+    Gio.Settings.new("org.gnome.desktop.interface").setEnum("color-scheme", isDark ? 1 : 0);
+}
+
+function resetSystemScheme() {
+    Gio.Settings.new("org.gnome.desktop.interface").reset("color-scheme");
 }
 
 const figures: [name: string, element: ReactNode, options?: FigureOptions][] = [
@@ -378,6 +410,38 @@ const figures: [name: string, element: ReactNode, options?: FigureOptions][] = [
             },
         },
     ],
+    ["guide-getting-started-app", <StarterApp />],
+    [
+        "guide-forms-preferences",
+        <SampleWindow title="Forms" width={420} height={300}>
+            <PreferencesForm onSave={() => {}} />
+        </SampleWindow>,
+        {
+            prepare: async () => {
+                await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Save" }));
+                await waitFor(() => {
+                    expect(screen.getByRole(Gtk.AccessibleRole.TEXT_BOX, { name: "Display name" })).toBeInvalid();
+                });
+            },
+        },
+    ],
+    [
+        "guide-native-state-system-appearance",
+        <SampleWindow title="Appearance" width={420} height={260}>
+            <AdwPreferencesPage>
+                <AdwPreferencesGroup title="System">
+                    <SystemAppearance />
+                </AdwPreferencesGroup>
+            </AdwPreferencesPage>
+        </SampleWindow>,
+        {
+            before: preferSystemScheme,
+            prepare: async () => {
+                await screen.findByText("Monospace font");
+            },
+            after: resetSystemScheme,
+        },
+    ],
     [
         "guide-components-list-view",
         <SampleWindow title="ListView">
@@ -409,6 +473,12 @@ const figures: [name: string, element: ReactNode, options?: FigureOptions][] = [
         </SampleWindow>,
     ],
     [
+        "guide-css-overdue",
+        <SampleWindow title="CSS" height={200}>
+            <DueLabel />
+        </SampleWindow>,
+    ],
+    [
         "guide-cairo-circle",
         <SampleWindow title="Cairo">
             <Circle />
@@ -436,6 +506,7 @@ const figures: [name: string, element: ReactNode, options?: FigureOptions][] = [
             },
         },
     ],
+    ["guide-actions-toolbar", <ActionsWindow width={440} height={200} start={<Toolbar />} />],
     [
         "guide-actions-shortcuts",
         <ActionsWindow width={480} height={520}>

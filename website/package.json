@@ -18,6 +18,7 @@
         "@gtkx/cli": "workspace:*",
         "@gtkx/components": "workspace:*",
         "@gtkx/css": "workspace:*",
+        "@gtkx/forms": "workspace:*",
         "@gtkx/i18n": "workspace:*",
         "@gtkx/navigation": "workspace:*",
         "@gtkx/storybook": "workspace:*",

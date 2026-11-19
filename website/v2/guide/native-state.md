@@ -261,62 +261,13 @@ The bind waits for the mounted window, restores the saved width, and writes chan
 
 Schema imports type only the schemas the project ships. To read a schema installed on the system, such as `org.gnome.desktop.interface` for the desktop's fonts and color scheme, describe the keys the app uses in an object that satisfies `SettingsSchema`:
 
-```tsx [src/components/system-appearance.tsx]
-import type * as Gio from "@gtkx/gi/gio";
-import { AdwActionRow } from "@gtkx/jsx/adw";
-import { GSettings } from "@gtkx/jsx/gio";
-import {
-    createPortal,
-    rootElement,
-    type SettingsSchema,
-    useSetting,
-} from "@gtkx/react";
-import { useState } from "react";
+<<< @/figures/guide/native-state-system-appearance.tsx [src/components/system-appearance.tsx]
 
-const desktopInterface = {
-    id: "org.gnome.desktop.interface",
-    path: null,
-    keys: { "monospace-font-name": "s", "color-scheme": "enum" },
-    values: {
-        "color-scheme": { default: 0, "prefer-dark": 1, "prefer-light": 2 },
-    },
-} as const satisfies SettingsSchema;
-
-const AppearanceRows = ({ settings }: { settings: Gio.Settings }) => {
-    const [font] = useSetting(
-        settings,
-        desktopInterface,
-        "monospace-font-name",
-    );
-    const [scheme] = useSetting(settings, desktopInterface, "color-scheme");
-    const prefersDark =
-        scheme === desktopInterface.values["color-scheme"]["prefer-dark"];
-
-    return (
-        <>
-            <AdwActionRow title="Monospace font" subtitle={font} />
-            <AdwActionRow
-                title="Dark style"
-                subtitle={prefersDark ? "Preferred" : "Not preferred"}
-            />
-        </>
-    );
-};
-
-export const SystemAppearance = () => {
-    const [settings, setSettings] = useState<Gio.Settings | null>(null);
-
-    return (
-        <>
-            {createPortal(
-                <GSettings ref={setSettings} schemaId={desktopInterface.id} />,
-                rootElement,
-            )}
-            {settings !== null && <AppearanceRows settings={settings} />}
-        </>
-    );
-};
-```
+<figure class="result">
+    <img class="result-light" src="/figures/guide-native-state-system-appearance-light.png" width="420" height="260" loading="lazy" alt="A window titled Appearance with a System group of two rows: Monospace font, showing the desktop's font name, and Dark style, showing whether the desktop prefers it." />
+    <img class="result-dark" src="/figures/guide-native-state-system-appearance-dark.png" width="420" height="260" loading="lazy" alt="A window titled Appearance with a System group of two rows: Monospace font, showing the desktop's font name, and Dark style, showing whether the desktop prefers it." />
+    <figcaption>Captured from the sample above, with its rows inside an <code>AdwPreferencesGroup</code>. The subtitles are the values of the two desktop keys.</figcaption>
+</figure>
 
 `keys` maps each key to its GVariant type string, or to `enum` or `flags` for a key declared with those attributes; `values` gives the number of each enum nick, or the allowed strings of a key with choices. Copy the key types from the installed `.gschema.xml` under `/usr/share/glib-2.0/schemas`, and the enum numbers from the `.enums.xml` file that declares the enum, here `org.gnome.desktop.enums.xml`. Keep `as const satisfies SettingsSchema` so the hooks see literal types: `font` is a `string`, `scheme` is `0 | 1 | 2`, and a key the object does not list fails `tsc`.
 
