@@ -53,12 +53,6 @@
     margin: 1rem 0 0;
 }
 
-@media (max-width: 860px) {
-    .stack-md {
-        grid-template-columns: 1fr !important;
-    }
-}
-
 .tcmd {
     color: rgba(235, 235, 245, 0.9);
 }
