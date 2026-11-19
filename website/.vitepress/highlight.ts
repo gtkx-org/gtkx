@@ -57,16 +57,46 @@ const THEME: ThemeRegistrationRaw = {
     ],
 };
 
-const highlight = async ([id, snippet]: [string, Snippet]): Promise<[string, { code: string; html: string }]> => {
-    const code = snippet.code.replace(/\n$/, "");
-    const markStart = snippet.mark ? code.indexOf(snippet.mark) : -1;
-    const decorations =
-        snippet.mark && markStart >= 0
-            ? [{ start: markStart, end: markStart + snippet.mark.length, properties: { class: "mark" } }]
-            : [];
-    const html = await codeToHtml(code, { lang: snippet.lang, theme: THEME, decorations });
+const SPOT_MARKER = /\[\[(\w+):([^\]]+)\]\]/g;
 
-    return [id, { code: snippet.code, html }];
+type Spot = { id: string; start: number; end: number };
+
+const extractSpots = (source: string): { code: string; spots: Spot[] } => {
+    const spots: Spot[] = [];
+    let code = "";
+    let cursor = 0;
+
+    for (const match of source.matchAll(SPOT_MARKER)) {
+        const [marker, id, text] = match;
+
+        if (id === undefined || text === undefined) {
+            continue;
+        }
+
+        code += source.slice(cursor, match.index);
+        spots.push({ id, start: code.length, end: code.length + text.length });
+        code += text;
+        cursor = match.index + marker.length;
+    }
+
+    return { code: code + source.slice(cursor), spots };
+};
+
+const highlight = async ([id, snippet]: [string, Snippet]): Promise<[string, { code: string; html: string }]> => {
+    const { code, spots } = extractSpots(snippet.code);
+    const html = await codeToHtml(code.replace(/\n$/, ""), {
+        lang: snippet.lang,
+        theme: THEME,
+        decorations: spots.map((spot) => ({
+            start: spot.start,
+            end: spot.end,
+            tagName: "button",
+            alwaysWrap: true,
+            properties: { type: "button", class: "spot", "data-spot": spot.id, "aria-pressed": "false" },
+        })),
+    });
+
+    return [id, { code, html }];
 };
 
 const loadSnippets = async (): Promise<string> => {

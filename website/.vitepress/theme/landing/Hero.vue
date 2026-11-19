@@ -1,25 +1,32 @@
 <script setup lang="ts">
-import snippets from "virtual:gtkx-snippets";
 import { currentVersion, documentationLink, featuredVersion } from "../../versioning.js";
 import Button from "../components/Button.vue";
 import CodeBlock from "../components/CodeBlock.vue";
 import Icon from "../components/Icon.vue";
 import { CREATE_COMMAND, docsLink, REPO_URL } from "./content";
+import HeroStage from "./HeroStage.vue";
 </script>
 
 <template>
     <section id="top" class="hero">
-        <span class="glow" />
-        <div class="hero__grid stack-md">
-            <div class="hero__col">
-                <p class="overline hero__eyebrow">// React · Node.js · TypeScript · libadwaita · GTK 4</p>
-                <h1 class="hero__title">The React framework for <span class="gtkx-gradient-text">Linux</span></h1>
-                <p class="hero__lede">
-                    Build native Adwaita and GTK apps with the workflow of modern web development: React components,
-                    Fast Refresh, native UI tests, and packaging, on Node.js.
-                </p>
-                <a class="hero__why" :href="docsLink('guide/why-gtkx')"> Why GTKX <Icon name="arrow" :size="15" /> </a>
-                <div class="hero__actions">
+        <div class="hero__inner">
+            <div class="hero__head">
+                <div class="hero__main">
+                    <a class="hero__news" href="/blog/gtkx-2-0-beta-1">
+                        <span class="hero__news-tag">NEW</span>
+                        <span class="hero__news-txt">GTKX 2.0 beta is available</span>
+                        <span class="hero__news-arrow" aria-hidden="true">→</span>
+                    </a>
+                    <h1 class="hero__title">The React framework for <span class="gtkx-gradient-text">Linux</span></h1>
+                    <p class="hero__lede">
+                        Build native Adwaita and GTK apps with the workflow of modern web development: React components,
+                        Fast Refresh, native UI tests, and packaging, on Node.js.
+                        <a class="hero__why" :href="docsLink('guide/why-gtkx')"
+                            >Why GTKX <Icon name="arrow" :size="15"
+                        /></a>
+                    </p>
+                </div>
+                <div class="hero__side">
                     <div id="install" class="hero__install">
                         <CodeBlock variant="terminal" :frame="false" :code="CREATE_COMMAND" />
                     </div>
@@ -30,7 +37,7 @@ import { CREATE_COMMAND, docsLink, REPO_URL } from "./content";
                         </Button>
                         <Button size="lg" variant="secondary" :href="REPO_URL">
                             <template #icon-left><Icon name="github" /></template>
-                            View on GitHub
+                            GitHub
                         </Button>
                     </div>
                     <p v-if="featuredVersion.status === 'prerelease'" class="hero__version">
@@ -41,260 +48,143 @@ import { CREATE_COMMAND, docsLink, REPO_URL } from "./content";
                     </p>
                 </div>
             </div>
-            <figure class="hero__col hero__visual">
-                <div class="shot">
-                    <div class="shot__frame">
-                        <img
-                            class="shot__img shot__img--light"
-                            src="/notes-screenshot-light.png"
-                            width="960"
-                            height="640"
-                            alt="The Notes app from the GTKX tutorial: an Adwaita window with a list of notes next to a note rendered as Markdown."
-                        />
-                        <img
-                            class="shot__img shot__img--dark"
-                            src="/notes-screenshot-dark.png"
-                            width="960"
-                            height="640"
-                            alt="The Notes app from the GTKX tutorial: an Adwaita window with a list of notes next to a note rendered as Markdown."
-                        />
-                        <span class="shot__ring" aria-hidden="true"><span class="shot__tag">NoteRow</span></span>
-                    </div>
-                    <CodeBlock
-                        class="shot__code"
-                        title="src/components/notes-screen.tsx"
-                        :snippet="snippets.noteList"
-                    />
-                </div>
-                <figcaption class="shot__caption">
-                    <a :href="docsLink('tutorial/')"
-                        >The Notes app you build in the tutorial <Icon name="arrow" :size="15"
-                    /></a>
-                </figcaption>
-            </figure>
+            <HeroStage class="hero__stage" />
+            <p class="hero__under">
+                <span>Point at a component in the code to find it in the window.</span>
+                <a :href="docsLink('tutorial/')"
+                    >The Notes app you build in the tutorial <Icon name="arrow" :size="15"
+                /></a>
+            </p>
         </div>
     </section>
 </template>
 
 <style scoped>
 .hero {
-  position: relative;
-  overflow: hidden;
-  padding: clamp(3rem, 9vw, 7rem) 0 clamp(2rem, 5vw, 4rem);
+  padding: clamp(2rem, 5vw, 3.25rem) 0 clamp(2.5rem, 6vw, 4.75rem);
 }
-.hero__grid {
-  position: relative;
-  z-index: 1;
-  max-width: var(--container-lg);
+.hero__inner {
+  max-width: calc(var(--container-xl) + 2 * clamp(1rem, 4vw, 2.5rem));
   margin: 0 auto;
   padding: 0 clamp(1rem, 4vw, 2.5rem);
+}
+.hero__head {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: clamp(2rem, 5vw, 4rem);
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 1.75rem clamp(2rem, 5vw, 4rem);
+  align-items: end;
+}
+.hero__main,
+.hero__side {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.hero__main {
+  align-items: flex-start;
+  gap: 1.4rem;
+}
+.hero__side {
+  gap: 1rem;
+}
+a.hero__news {
+  display: inline-flex;
   align-items: center;
+  gap: 0.55rem;
+  max-width: 100%;
+  padding: 0.25rem 0.75rem 0.25rem 0.3rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--bg-alt);
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
 }
-.hero__eyebrow {
-  margin-bottom: 1.4rem;
-  color: var(--text-brand);
-}
-.hero__title {
-  font-family: var(--font-display);
-  font-weight: 900;
-  font-size: clamp(2.4rem, 5.2vw, 4rem);
-  line-height: 1.02;
-  letter-spacing: -0.035em;
-  margin: 0;
+a.hero__news:hover {
+  border-color: var(--border-strong);
   color: var(--text-1);
 }
+.hero__news-tag {
+  padding: 0.1rem 0.5rem;
+  border-radius: var(--radius-pill);
+  background: var(--brand-strong);
+  color: var(--brand-contrast);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.04em;
+}
+.hero__news-txt {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hero__news-arrow {
+  color: var(--text-brand);
+}
+.hero .hero__title {
+  font-weight: var(--fw-extrabold);
+  font-size: clamp(2.5rem, 5vw, 3.7rem);
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
 .hero__lede {
-  font-family: var(--font-body);
-  font-size: clamp(1.05rem, 1.6vw, 1.28rem);
-  line-height: 1.5;
+  margin: 0;
+  max-width: 36rem;
+  font-size: var(--text-md);
   color: var(--text-2);
-  margin: 1.4rem 0 0.8rem;
-  max-width: 32rem;
 }
 .hero__why {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  margin-bottom: 1.8rem;
-  font-family: var(--font-body);
+  gap: 0.3rem;
   font-weight: var(--fw-semibold);
-  color: var(--text-brand);
-  text-decoration: none;
-  transition: var(--transition-colors);
-}
-.hero__why:hover {
-  color: var(--brand-hover);
-}
-.hero__actions {
-  width: max-content;
-  max-width: 100%;
-}
-.hero__install {
-  margin-bottom: 1.6rem;
+  white-space: nowrap;
 }
 .hero__cta {
   display: flex;
-  gap: 0.8rem;
   flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.hero__cta > .btn {
+  flex: 1 1 auto;
 }
 .hero__version {
-  margin: 1rem 0 0;
-  color: var(--text-2);
-  font-size: var(--text-sm);
-}
-.hero__version a {
-  color: var(--text-brand);
-}
-.hero__col {
-  min-width: 0;
-}
-.hero__visual {
   margin: 0;
-}
-.shot {
-  position: relative;
-  padding-bottom: 8.5rem;
-}
-.shot__frame {
-  position: relative;
-  width: 100%;
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-lg);
-}
-.shot__frame img {
-  display: block;
-  width: 100%;
-  height: auto;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
-}
-.shot__frame .shot__img--dark,
-html.dark .shot__frame .shot__img--light {
-  display: none;
-}
-html.dark .shot__frame .shot__img--dark {
-  display: block;
-}
-.shot__ring {
-  position: absolute;
-  left: 0.4%;
-  top: 21.3%;
-  width: 29.2%;
-  height: 8.4%;
-  border: 2px solid var(--brand);
-  border-radius: var(--radius-pill);
-  box-shadow: 0 0 0 4px var(--brand-soft);
-}
-.shot__tag {
-  position: absolute;
-  right: 12px;
-  top: 0;
-  transform: translateY(-55%);
-  white-space: nowrap;
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  font-weight: var(--fw-medium);
-  color: var(--brand-contrast);
-  background: var(--brand-strong);
-  padding: 0.1rem 0.5rem;
-  border-radius: var(--radius-sm);
-}
-.shot__code {
-  position: absolute;
-  left: -2.5rem;
-  bottom: 0;
-  width: min(27rem, 100%);
-  box-shadow: var(--shadow-lg);
-}
-.shot__code :deep(.shiki) {
-  padding: 0.8rem 0.9rem;
-  font-size: var(--text-xs);
-}
-.shot__code :deep(.mark) {
-  background: var(--brand-soft);
-  outline: 1.5px solid var(--brand);
-  border-radius: var(--radius-sm);
-}
-.shot__caption {
-  margin-top: 1rem;
-  text-align: right;
-  font-family: var(--font-body);
+  color: var(--text-3);
   font-size: var(--text-sm);
 }
-.shot__caption a {
+.hero__stage {
+  margin-top: clamp(1.9rem, 4vw, 2.75rem);
+}
+.hero__under {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.4rem 1.5rem;
+  margin: 1rem 0 0;
+  color: var(--text-3);
+  font-size: var(--text-sm);
+}
+.hero__under a {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
   font-weight: var(--fw-semibold);
-  color: var(--text-brand);
-  text-decoration: none;
-  transition: var(--transition-colors);
 }
-.shot__caption a:hover {
-  color: var(--brand-hover);
-}
-@media (min-width: 1200px) {
-  .hero__grid {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+@media (max-width: 1080px) {
+  .hero__head {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
   }
-}
-@media (max-width: 860px) {
-  .shot {
-    padding-bottom: 0;
-  }
-  .shot__code {
-    position: relative;
-    left: auto;
-    bottom: auto;
-    width: auto;
-    margin: -1.5rem 0.75rem 0;
-  }
-  .shot__caption {
-    text-align: left;
+  .hero__side {
+    max-width: 36rem;
   }
 }
 @media (max-width: 480px) {
-  .hero__eyebrow {
-    display: none;
-  }
-  .hero__actions {
-    width: auto;
-  }
-  .hero__cta {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.6rem;
-  }
   .hero__cta > .btn {
     gap: 0.4rem;
     padding-inline: 0.5rem;
     font-size: 0.9375rem;
-  }
-  .hero__cta :deep(svg) {
-    flex: none;
-  }
-  .shot__frame {
-    height: 300px;
-    overflow: hidden;
-    border: 1px solid var(--border);
-  }
-  .shot__frame img {
-    width: 960px;
-    max-width: none;
-    border: 0;
-    border-radius: 0;
-  }
-  .shot__ring {
-    left: 4px;
-    top: 136px;
-    width: 280px;
-    height: 54px;
-  }
-  .shot__code {
-    margin: 0.9rem 0 0;
   }
 }
 </style>
