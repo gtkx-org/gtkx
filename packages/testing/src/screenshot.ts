@@ -75,18 +75,72 @@ const getMappedPopovers = (widget: Gtk.Widget): Gtk.Popover[] => {
     return popovers;
 };
 
+const getOriginInParentNative = (popover: Gtk.Popover, parentNative: Gtk.Native): Graphene.Point | null => {
+    const surface = popover.getSurface();
+
+    if (!(surface instanceof Gdk.Popup)) {
+        return null;
+    }
+
+    const [offsetX, offsetY] = popover.getSurfaceTransform();
+    const [parentOffsetX, parentOffsetY] = parentNative.getSurfaceTransform();
+
+    return new Graphene.Point({
+        x: surface.getPositionX() + offsetX - parentOffsetX,
+        y: surface.getPositionY() + offsetY - parentOffsetY,
+    });
+};
+
+const getOriginInNative = (popover: Gtk.Popover, native: Gtk.Native): Graphene.Point | null => {
+    const parentNative = popover.getParent()?.getNative() ?? null;
+
+    if (parentNative === null) {
+        return null;
+    }
+
+    const origin = getOriginInParentNative(popover, parentNative);
+
+    if (origin === null || parentNative === native) {
+        return origin;
+    }
+
+    const parentOrigin = parentNative instanceof Gtk.Popover ? getOriginInNative(parentNative, native) : null;
+
+    return parentOrigin === null
+        ? null
+        : new Graphene.Point({ x: parentOrigin.x + origin.x, y: parentOrigin.y + origin.y });
+};
+
+/**
+ * Locates a popover from its popup surface. `Gtk.Widget.computeBounds` across surfaces returns the popup's
+ * position in its parent surface, which ignores the parent's shadow margin and, for a nested popover, where
+ * the parent popover is.
+ */
+const getOriginInTarget = (popover: Gtk.Popover, target: Gtk.Widget): Graphene.Point | null => {
+    const native = target.getNative();
+    const origin = native === null ? null : getOriginInNative(popover, native);
+
+    if (origin === null || !(native instanceof Gtk.Widget)) {
+        return null;
+    }
+
+    const [hasPoint, point] = native.computePoint(target, origin);
+
+    return hasPoint ? point : null;
+};
+
 const appendPopover = (snapshot: Gtk.Snapshot, target: Gtk.Widget, popover: Gtk.Popover): void => {
-    const [hasBounds, bounds] = popover.computeBounds(target);
+    const origin = getOriginInTarget(popover, target);
     const paintable = new Gtk.WidgetPaintable({ widget: popover });
     const width = paintable.getIntrinsicWidth();
     const height = paintable.getIntrinsicHeight();
 
-    if (!hasBounds || width <= 0 || height <= 0) {
+    if (origin === null || width <= 0 || height <= 0) {
         return;
     }
 
     snapshot.save();
-    snapshot.translate(new Graphene.Point({ x: bounds.origin.x, y: bounds.origin.y }));
+    snapshot.translate(origin);
     paintable.snapshot(snapshot, width, height);
     snapshot.restore();
 };
