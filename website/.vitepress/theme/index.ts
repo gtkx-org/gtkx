@@ -2,6 +2,7 @@ import type { Theme } from "vitepress";
 import DefaultTheme from "vitepress/theme-without-fonts";
 import BlogPosts from "./components/BlogPosts.vue";
 import VersionsTable from "./components/VersionsTable.vue";
+import WindowClip from "./components/WindowClip.vue";
 import Layout from "./Layout.vue";
 import "virtual:group-icons.css";
 import "./styles/index.css";
@@ -12,5 +13,6 @@ export default {
     enhanceApp({ app }) {
         app.component("BlogPosts", BlogPosts);
         app.component("VersionsTable", VersionsTable);
+        app.component("WindowClip", WindowClip);
     },
 } satisfies Theme;

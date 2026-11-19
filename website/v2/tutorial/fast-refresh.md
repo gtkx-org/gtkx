@@ -49,7 +49,6 @@ A component whose hook calls change, for example one that gains a `useState`, is
 With `npm run dev` running, open Meeting notes and press the eye button in its header bar. Save each change to `markdown-preview.tsx`: the code block moves into a card, the quote gets its bar, and the note stays open in the preview.
 
 <figure class="result">
-    <img class="result-light" src="/figures/tutorial-fast-refresh-light.png" width="720" height="480" loading="lazy" alt="The Notes window with Meeting notes shown as a rendered preview: a dimmed quote with a bar beside it and a code block with two npm commands in a card." />
-    <img class="result-dark" src="/figures/tutorial-fast-refresh-dark.png" width="720" height="480" loading="lazy" alt="The Notes window with Meeting notes shown as a rendered preview: a dimmed quote with a bar beside it and a code block with two npm commands in a card." />
-    <figcaption>Captured from <a href="#restyle-the-preview"><code>src/preview/markdown-preview.tsx</code></a> above, after opening Meeting notes and turning on the preview.</figcaption>
+    <WindowClip name="tutorial-fast-refresh" :width="720" :height="480" alt="The Notes window showing Meeting notes as a rendered preview while two edits are saved: the code block moves into a card, then the quote gets a bar beside it." />
+    <figcaption>Recorded under <code>npm run dev</code> while saving each change to <a href="#restyle-the-preview"><code>src/preview/markdown-preview.tsx</code></a> above.</figcaption>
 </figure>

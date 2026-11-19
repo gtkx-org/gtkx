@@ -77,6 +77,35 @@ Place the figure where the text says what the reader should see. Its two images 
 
 Set `width` and `height` to half the PNG's pixel size, and describe the window in `alt`. Keep `class`, `src` and `width` in this order on one line: the site finds them there to link each image wider than 400 to the PNG, so phone readers can open it at full size.
 
+## Recorded samples
+
+A sample whose result is motion shows a short looping clip. Keep the sample under `website/figures/` as a pictured sample is, and add it to the `clips` list in `website/figures/record.test.tsx` with its window size and a `play` function. `play` sets the stage, then calls `take` around the part to record. `playSample` covers the common case: it renders a component in a window and turns one boolean prop on, then off.
+
+The Fast Refresh clip records the real dev server. It copies the chapter as it stands before its edit to `website/figures/.clips/`, runs `gtkx dev` on `website/figures/clips/fast-refresh.tsx`, which opens the pictured note, and saves the chapter's changes while recording.
+
+Regenerate the clips after changing a recorded sample:
+
+```bash
+pnpm nx run @gtkx/website:clips
+```
+
+The target records each clip on the test worker's headless display, in Adwaita's light and dark styles, with the same isolated directories and pinned font as the figures. It sizes the display to the window at scale 2, captures frames with `grim`, and encodes them as VP9 with `ffmpeg`. Each clip is written to `website/public/clips/` as `<name>-light.webm` and `<name>-dark.webm`, with its last frame as a `.png` poster. Besides the fonts the figures need, install `grim` and an `ffmpeg` built with `libvpx-vp9`. Commit the files: the site build reads them and needs none of these tools.
+
+A take fails when the machine captures fewer than 30 frames a second or the clip is larger than 400 KB. Shorten the clip before lowering its quality. Two recordings never have the same bytes, so commit new ones only when a recorded sample changed, and play them before committing.
+
+Show a clip with the `WindowClip` component in place of the two images:
+
+```html
+<figure class="result">
+    <WindowClip name="<name>" :width="360" :height="160" alt="…" />
+    <figcaption>
+        Recorded from <a href="#section">the sample</a> above.
+    </figcaption>
+</figure>
+```
+
+Set `width` and `height` to the window size given in `record.test.tsx`. The component plays the clip for the current theme once it scrolls into view, muted and looping. Readers who prefer reduced motion get the poster with playback controls instead.
+
 ## Brand assets
 
 The mark and the wordmark live in `website/public/`. Use these files instead of setting the name in text next to the mark.

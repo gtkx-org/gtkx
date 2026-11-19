@@ -36,6 +36,9 @@
             "path": "../packages/components"
         },
         {
+            "path": "../packages/animated"
+        },
+        {
             "path": "../packages/config"
         },
         {

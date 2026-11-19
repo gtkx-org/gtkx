@@ -49,22 +49,12 @@ A custom component that forwards its `ref` to the native object receives the sam
 
 The [`style` prop](/v2/guide/css#style-one-widget) accepts springs too. GTKX writes animated declarations into its shared `Gtk.CssProvider` without re-rendering the component, and reloads the provider once for all the updates of one frame. A spring can drive the whole object or one declaration:
 
-```tsx
-import { animated, useSpring } from "@gtkx/animated";
-import { GtkLabel } from "@gtkx/jsx/gtk";
+<<< @/figures/guide/animations-deadline.tsx [src/deadline.tsx]
 
-const AnimatedLabel = animated(GtkLabel);
-
-const overdueColor = (value: number) => ({
-    color: `mix(var(--window-fg-color), var(--error-color), ${value})`,
-});
-
-export const Deadline = ({ isOverdue }: { isOverdue: boolean }) => {
-    const { level } = useSpring({ level: isOverdue ? 1 : 0 });
-
-    return <AnimatedLabel label="Due today" style={level.to(overdueColor)} />;
-};
-```
+<figure class="result">
+    <WindowClip name="guide-animations-deadline" :width="360" :height="160" alt="A window with the label Due today, whose color moves from the text color to red and back." />
+    <figcaption>Recorded from <a href="#animated-styles">the sample</a> above while <code>isOverdue</code> turns on, then off.</figcaption>
+</figure>
 
 The spring carries a number and the interpolation builds the declaration around it. A spring returned by `useSpring` can also be passed directly as the style object or placed on one declaration:
 
@@ -86,29 +76,12 @@ A provider reload invalidates styling across the display. Prefer a native proper
 
 To animate position, use a container that exposes it. Inside a `GtkFixed`, the `transform` of a `GtkFixedLayoutChild` is a `Gsk.Transform`, and an interpolation builds one from the spring:
 
-```tsx
-import { animated, useSpring } from "@gtkx/animated";
-import * as Graphene from "@gtkx/gi/graphene";
-import * as Gsk from "@gtkx/gi/gsk";
-import { GtkButton, GtkFixed, GtkFixedLayoutChild } from "@gtkx/jsx/gtk";
+<<< @/figures/guide/animations-slide.tsx [src/slide.tsx]
 
-const AnimatedFixedLayoutChild = animated(GtkFixedLayoutChild);
-
-const translate = (x: number): Gsk.Transform | null =>
-    Gsk.Transform.new().translate(new Graphene.Point({ x, y: 0 }));
-
-export const Slide = ({ isOpen }: { isOpen: boolean }) => {
-    const { x } = useSpring({ x: isOpen ? 240 : 0 });
-
-    return (
-        <GtkFixed>
-            <AnimatedFixedLayoutChild transform={x.to(translate)}>
-                <GtkButton label="Slide" />
-            </AnimatedFixedLayoutChild>
-        </GtkFixed>
-    );
-};
-```
+<figure class="result">
+    <WindowClip name="guide-animations-slide" :width="360" :height="160" alt="A window with a button labeled Slide that moves to the right and back." />
+    <figcaption>Recorded from <a href="#moving-widgets">the sample</a> above while <code>isOpen</code> turns on, then off.</figcaption>
+</figure>
 
 Elsewhere, animate the margins, the size requests, a `Gtk.Paned`'s `position`, or a CSS `transform` through `style`, which changes the painted position without changing layout.
 

@@ -2,9 +2,10 @@
 import snippets from "virtual:gtkx-snippets";
 import Icon from "../components/Icon.vue";
 import { docsLink } from "./content";
+import WindowClip from "../components/WindowClip.vue";
 import WindowShot from "./WindowShot.vue";
 
-const REFRESH_EDIT = ["<GtkBox spacing={12}>", "  <GtkSeparator orientation={Gtk.Orientation.VERTICAL} />"];
+const REFRESH_EDIT = ['<GtkBox cssClasses={["card"]}>', "<GtkSeparator orientation={Gtk.Orientation.VERTICAL} />"];
 
 const TOOLS = [
     { name: "gtkx_query_widgets", use: "Find widgets by role, text, accessible name or label" },
@@ -48,13 +49,15 @@ const PACKAGES = [
                             <figcaption>src/preview/markdown-preview.tsx</figcaption>
                             <pre><code><span v-for="line in REFRESH_EDIT" :key="line" class="refresh__added">{{ line }}</span></code></pre>
                         </figure>
-                        <p class="refresh__note">Saved. The quote gets its bar, and the note stays open.</p>
-                        <WindowShot
-                            class="refresh__shot"
-                            image="/figures/tutorial-fast-refresh"
+                        <p class="refresh__note">
+                            Saved twice. The code moves into a card, the quote gets its bar, and the note stays open.
+                        </p>
+                        <WindowClip
+                            class="refresh__clip"
+                            name="tutorial-fast-refresh"
                             :width="720"
                             :height="480"
-                            alt="The Notes window with Meeting notes shown as a rendered preview: a dimmed quote with a bar beside it and a code block with two npm commands in a card."
+                            alt="The Notes window showing Meeting notes as a rendered preview while two edits are saved: the code block moves into a card, then the quote gets a bar beside it."
                         />
                     </div>
                 </article>
@@ -282,9 +285,9 @@ const PACKAGES = [
   color: var(--text-2);
   text-align: center;
 }
-.refresh__shot {
-  width: 100%;
-  max-width: 520px;
+.refresh__clip {
+  --clip-shadow: 0 16px 26px var(--wall-shadow);
+  --clip-max-width: 520px;
 }
 
 .widgets {

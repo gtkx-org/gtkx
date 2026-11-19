@@ -98,6 +98,14 @@
                 "cwd": "{projectRoot}/figures"
             }
         },
+        "clips": {
+            "cache": false,
+            "dependsOn": ["^build", "gtkx:bindings"],
+            "command": "vitest run --config vitest.clips.config.ts",
+            "options": {
+                "cwd": "{projectRoot}/figures"
+            }
+        },
         "dev": {
             "cache": false,
             "continuous": true,
