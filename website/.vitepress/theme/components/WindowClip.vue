@@ -66,7 +66,9 @@ watch([video, isInView, reducesMotion, isPaused], ([element, inView, reduced, pa
 
     if (inView && !reduced && !paused) {
         element.muted = true;
-        element.play().catch(() => undefined);
+        element.play().catch(() => {
+            isPaused.value = true;
+        });
     } else {
         element.pause();
     }
