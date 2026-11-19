@@ -2,7 +2,8 @@
 import Closing from "./Closing.vue";
 import Footer from "./Footer.vue";
 import Hero from "./Hero.vue";
-import Showcase from "./Showcase.vue";
+import Packages from "./Packages.vue";
+import Tutorial from "./Tutorial.vue";
 import Why from "./Why.vue";
 import Workflow from "./Workflow.vue";
 </script>
@@ -12,8 +13,9 @@ import Workflow from "./Workflow.vue";
         <main>
             <Hero />
             <Workflow />
+            <Packages />
             <Why />
-            <Showcase />
+            <Tutorial />
             <Closing />
         </main>
         <Footer />

@@ -4,16 +4,23 @@
     overflow-x: clip;
 }
 
-.glow {
-    position: absolute;
-    inset: 0;
-    background: var(--gradient-glow);
-    pointer-events: none;
-    z-index: 0;
+.section {
+    padding: clamp(3.5rem, 7vw, 5.25rem) 0;
 }
 
-.glow-soft {
-    opacity: 0.55;
+.section--alt {
+    background: var(--bg-alt);
+    border-block: 1px solid var(--border);
+}
+
+.section--joined {
+    padding-top: 0;
+}
+
+.section__inner {
+    max-width: calc(var(--container-xl) + 2 * clamp(1rem, 4vw, 2.5rem));
+    margin: 0 auto;
+    padding: 0 clamp(1rem, 4vw, 2.5rem);
 }
 
 .overline {
@@ -22,46 +29,48 @@
     font-weight: var(--fw-medium);
     letter-spacing: var(--tracking-caps);
     text-transform: uppercase;
-    color: var(--text-3);
+    color: var(--text-brand);
     margin: 0;
 }
 
 .section-head {
-    text-align: center;
-    max-width: 42rem;
-    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-width: 46rem;
+    margin-bottom: clamp(1.75rem, 4vw, 2.5rem);
 }
 
-.section-head .overline {
-    color: var(--text-brand);
-    margin-bottom: 0.7rem;
-}
-
-.section-title {
-    font-family: var(--font-display);
+.landing .section-title {
     font-weight: var(--fw-extrabold);
-    font-size: clamp(1.9rem, 4vw, 3rem);
-    letter-spacing: -0.025em;
-    margin: 0;
-    color: var(--text-1);
+    font-size: clamp(1.9rem, 3.6vw, 2.75rem);
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+}
+
+.landing .section-title code {
+    font-weight: var(--fw-bold);
+    font-size: 0.84em;
+    letter-spacing: -0.05em;
 }
 
 .section-sub {
-    font-family: var(--font-body);
-    font-size: clamp(1rem, 1.4vw, 1.18rem);
+    max-width: 40rem;
+    margin: 0;
+    font-size: clamp(1rem, 1.4vw, 1.1rem);
     color: var(--text-2);
-    margin: 1rem 0 0;
 }
 
-.tcmd {
-    color: rgba(235, 235, 245, 0.9);
+.more {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-weight: var(--fw-semibold);
 }
-.tprompt {
-    color: var(--red-400);
-    padding-right: 0.5em;
-}
-.tdim {
-    color: var(--text-3);
+
+.wall {
+    background: var(--gradient-wall);
 }
 
 .landing-page .VPHome {

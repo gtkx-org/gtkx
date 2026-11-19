@@ -61,7 +61,13 @@
     --syntax-punctuation: var(--text-2);
     --syntax-comment: var(--text-3);
 
-    --gradient-glow: radial-gradient(60% 60% at 50% 0%, rgba(224, 58, 62, 0.28) 0%, rgba(224, 58, 62, 0) 70%);
+    --wall-a: #fbd5d6;
+    --wall-b: #f3e9ee;
+    --wall-c: #e7e9f2;
+    --wall-shadow: rgba(40, 16, 20, 0.28);
+    --gradient-wall:
+        radial-gradient(70% 90% at 8% 0%, var(--wall-a) 0%, transparent 62%),
+        radial-gradient(60% 80% at 100% 100%, var(--wall-c) 0%, transparent 70%), var(--wall-b);
     --gradient-text: linear-gradient(92deg, #e03a3e 0%, #971018 100%);
 
     --font-display: "Red Hat Display", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -98,8 +104,6 @@
     --shadow-lg: 0 12px 32px rgba(15, 15, 20, 0.12), 0 4px 8px rgba(15, 15, 20, 0.05);
     --shadow-brand: 0 8px 28px rgba(224, 58, 62, 0.32);
 
-    --container-md: 860px;
-    --container-lg: 1100px;
     --container-xl: 1240px;
 
     --dur-fast: 140ms;
@@ -140,7 +144,10 @@ html.dark {
 
     --syntax-string: var(--green-500);
 
-    --gradient-glow: radial-gradient(60% 60% at 50% 0%, rgba(224, 58, 62, 0.34) 0%, rgba(224, 58, 62, 0) 70%);
+    --wall-a: #5a1218;
+    --wall-b: #2a1520;
+    --wall-c: #16171f;
+    --wall-shadow: rgba(0, 0, 0, 0.6);
     --gradient-text: linear-gradient(92deg, #ff9a9c 0%, #ee5a5d 100%);
 
     --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);

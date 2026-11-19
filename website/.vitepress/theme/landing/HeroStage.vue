@@ -8,12 +8,18 @@ type Example = {
     file: string;
     snippet: HighlightedSnippet;
     image: string;
+    corner: string;
     alt: string;
     initial: string;
     regions: Region[];
 };
 
 const percent = (value: number, total: number): string => `${(value / total) * 100}%`;
+
+const WINDOW_RADIUS = 15;
+
+const corner = (width: number, height: number): string =>
+    `${percent(WINDOW_RADIUS, width)} / ${percent(WINDOW_RADIUS, height)}`;
 
 const regions = (width: number, height: number, boxes: [id: string, label: string, box: Box][]): Region[] =>
     boxes.map(([id, label, [left, top, right, bottom]]) => ({
@@ -32,6 +38,7 @@ const EXAMPLES: [Example, ...Example[]] = [
         file: "notes-screen.tsx",
         snippet: snippets.notesScreen,
         image: "/notes-screenshot",
+        corner: corner(960, 640),
         alt: "The Notes app from the GTKX tutorial: a sidebar with a search entry, a tag filter and a list of notes, next to a note rendered as Markdown.",
         initial: "row",
         regions: regions(960, 640, [
@@ -45,6 +52,7 @@ const EXAMPLES: [Example, ...Example[]] = [
         file: "note-editor.tsx",
         snippet: snippets.noteEditor,
         image: "/notes-editor",
+        corner: corner(960, 640),
         alt: "Notes editing a Markdown note in GtkSourceView, with highlighted headings, emphasis, links, and front matter.",
         initial: "language",
         regions: regions(960, 640, [
@@ -56,6 +64,7 @@ const EXAMPLES: [Example, ...Example[]] = [
         file: "preferences.tsx",
         snippet: snippets.preferences,
         image: "/figures/tutorial-preferences-and-theming",
+        corner: corner(720, 480),
         alt: "The Notes preferences dialog: an Appearance group with a Style row and a Storage group with a Notes Folder row.",
         initial: "combo",
         regions: regions(1440, 960, [
@@ -181,6 +190,7 @@ onMounted(syncCodeSpots);
                     <img
                         class="window__img window__img--light"
                         :src="`${e.image}-light.png`"
+                        :style="{ borderRadius: e.corner }"
                         width="960"
                         height="640"
                         :loading="i === 0 ? 'eager' : 'lazy'"
@@ -189,6 +199,7 @@ onMounted(syncCodeSpots);
                     <img
                         class="window__img window__img--dark"
                         :src="`${e.image}-dark.png`"
+                        :style="{ borderRadius: e.corner }"
                         width="960"
                         height="640"
                         :loading="i === 0 ? 'eager' : 'lazy'"
@@ -215,28 +226,17 @@ onMounted(syncCodeSpots);
 
 <style scoped>
 .stage {
-  --stage-wall-a: #fbd5d6;
-  --stage-wall-b: #f3e9ee;
-  --stage-wall-c: #e7e9f2;
   --stage-bar: var(--gray-850);
   --stage-tabs: var(--gray-100);
-  --stage-shadow: rgba(40, 16, 20, 0.28);
   --stage-ring: rgba(224, 58, 62, 0.22);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
   overflow: hidden;
-  background:
-    radial-gradient(70% 90% at 8% 0%, var(--stage-wall-a) 0%, transparent 62%),
-    radial-gradient(60% 80% at 100% 100%, var(--stage-wall-c) 0%, transparent 70%),
-    var(--stage-wall-b);
+  background: var(--gradient-wall);
 }
 html.dark .stage {
-  --stage-wall-a: #5a1218;
-  --stage-wall-b: #2a1520;
-  --stage-wall-c: #16171f;
   --stage-bar: #0a0a0c;
   --stage-tabs: var(--gray-900);
-  --stage-shadow: rgba(0, 0, 0, 0.6);
   --stage-ring: rgba(224, 58, 62, 0.35);
 }
 .bar {
@@ -297,7 +297,7 @@ html.dark .stage {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: 0 18px 44px -18px var(--stage-shadow);
+  box-shadow: 0 18px 44px -18px var(--wall-shadow);
 }
 .editor__tabs {
   display: flex;
@@ -411,7 +411,7 @@ html.dark .stage {
   display: block;
   width: 100%;
   height: 100%;
-  filter: drop-shadow(0 22px 34px var(--stage-shadow));
+  box-shadow: 0 22px 34px var(--wall-shadow);
 }
 .window__img--dark,
 html.dark .window__img--light {

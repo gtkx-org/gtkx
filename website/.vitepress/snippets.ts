@@ -84,68 +84,35 @@ const PREFERENCES = `<[[dialog:AdwPreferencesDialog]]
 </AdwPreferencesDialog>
 `;
 
-const APP = `<AdwToolbarView
-  top={<AdwHeaderBar />}
->
-  <GtkScale
-    adjustment={
-      <GtkAdjustment upper={100} />
-    }
-    drawValue
-    onValueChanged={(scale) =>
-      setVolume(scale.getValue())
-    }
-  />
-</AdwToolbarView>
+const LIBRARIES = `libraries: ["WebKit-6.0"],
 `;
 
-const TEST = `it("saves the name", async () => {
-  await render(<SettingsPanel />);
-
-  const name = screen.getByRole(
-    Gtk.AccessibleRole.TEXT_BOX,
-    { name: "Display name" },
-  );
-  await userEvent.type(name, "Ada");
-  await userEvent.click(
-    screen.getByRole(
-      Gtk.AccessibleRole.BUTTON,
-      { name: "Save" },
-    ),
-  );
-
-  expect(
-    await screen.findByText(
-      "Settings saved",
-    ),
-  ).toBeVisible();
-});
+const WEB_VIEW = `<WebKitWebView
+  accessibleLabel="Web page"
+  onNotifyUri={handleUri}
+  onNotifyIsLoading={handleIsLoading}
+/>
 `;
 
-const DEPLOY = `export default defineConfig({
-  applicationId: "dev.gtkx.Notes",
-  applicationIcon: "data/icons",
-  deploy: {
-    name: "Notes",
-    genericName: "Markdown Notes",
-    categories: [
-      "Utility", "TextEditor",
-    ],
-    targets: [
-      "flatpak", "deb",
-      "rpm", "appimage",
-    ],
-  },
-});
+const TEST = `await userEvent.type(name, "Ada");
+await userEvent.click(
+  screen.getByRole(
+    Gtk.AccessibleRole.BUTTON,
+    { name: "Save" },
+  ),
+);
+expect(
+  await screen.findByText("Settings saved"),
+).toBeVisible();
 `;
 
 const SNIPPETS = {
     notesScreen: { lang: "tsx", code: NOTES_SCREEN },
     noteEditor: { lang: "tsx", code: NOTE_EDITOR },
     preferences: { lang: "tsx", code: PREFERENCES },
-    app: { lang: "tsx", code: APP },
+    libraries: { lang: "ts", code: LIBRARIES },
+    webView: { lang: "tsx", code: WEB_VIEW },
     test: { lang: "tsx", code: TEST },
-    deploy: { lang: "ts", code: DEPLOY },
 } satisfies Record<string, Snippet>;
 
 export { type Snippet, SNIPPETS };
