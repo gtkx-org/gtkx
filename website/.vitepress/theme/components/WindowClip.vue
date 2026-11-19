@@ -66,8 +66,8 @@ watch([video, isInView, reducesMotion, isPaused], ([element, inView, reduced, pa
 
     if (inView && !reduced && !paused) {
         element.muted = true;
-        element.play().catch(() => {
-            isPaused.value = true;
+        element.play().catch((error: unknown) => {
+            isPaused.value = error instanceof DOMException && error.name === "NotAllowedError";
         });
     } else {
         element.pause();
