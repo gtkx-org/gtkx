@@ -44,7 +44,7 @@ const community = [
 </template>
 
 <style scoped>
-.closing {
+.section.closing {
   border-bottom: 0;
 }
 .closing__head {
