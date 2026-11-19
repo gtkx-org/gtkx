@@ -85,6 +85,7 @@ watch([video, isInView, reducesMotion, isPaused], ([element, inView, reduced, pa
             :height="height"
             loading="lazy"
             :alt="alt"
+            :aria-hidden="hasBeenInView ? 'true' : undefined"
         />
         <video
             v-if="hasBeenInView"

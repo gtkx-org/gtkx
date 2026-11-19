@@ -10,6 +10,7 @@ const run = promisify(execFile);
 const OUTPUT = "HEADLESS-1";
 const SCALE = 2;
 const FRAME_RATE = 30;
+const TIMESTAMPS_PER_SECOND = 1000;
 const QUALITY = 36;
 const FRAME_BUFFER = 64 * 1024 * 1024;
 
@@ -95,7 +96,8 @@ const encode = async (raw: string, { video, poster }: ClipFiles, workDir: string
 /**
  * Records the headless output while `performance` runs, then writes the clip and its last frame as a poster.
  *
- * Frames are stamped with their arrival time, so an uneven capture rate does not change the clip's pace.
+ * Frames are stamped with their arrival time to the millisecond, so an uneven capture rate does not change the
+ * clip's pace and no frame shares a timestamp with the one before it.
  */
 const recordClip = async (files: ClipFiles, performance: () => Promise<void>): Promise<void> => {
     const workDir = mkdtempSync(join(tmpdir(), "gtkx-clip-"));
@@ -110,6 +112,8 @@ const recordClip = async (files: ClipFiles, performance: () => Promise<void>): P
             "1",
             "-f",
             "image2pipe",
+            "-framerate",
+            String(TIMESTAMPS_PER_SECOND),
             "-c:v",
             "ppm",
             "-i",
