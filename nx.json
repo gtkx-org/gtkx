@@ -19,7 +19,7 @@
             "{workspaceRoot}/scripts/resolve-workspace-aliases.ts",
             "{workspaceRoot}/scripts/register-workspace-loader.ts",
             "{workspaceRoot}/.github/ci/Dockerfile",
-            "{workspaceRoot}/.nx/workflows/agents.yaml",
+            "{workspaceRoot}/.github/workflows/ci.yml",
             "{workspaceRoot}/scripts/compute-environment-hash.ts",
             {
                 "runtime": "node scripts/compute-environment-hash.ts runtime"
