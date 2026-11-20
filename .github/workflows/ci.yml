@@ -18,7 +18,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  CI_IMAGE: ghcr.io/gtkx-org/gtkx-ci:ubuntu26-v5
+  CI_IMAGE: ghcr.io/gtkx-org/gtkx-ci:ubuntu26-v6
   NODE_OPTIONS: --max-old-space-size=8192
 
 defaults:
@@ -120,18 +120,21 @@ jobs:
       matrix:
         include:
           - name: Build and typecheck
-            targets: build,typecheck
+            args: -t build,typecheck
           - name: Lint
-            targets: lint
+            args: -t lint
           - name: Test
-            targets: test
+            args: -t test --exclude=@gtkx/cli
+          - name: Test CLI
+            args: -t test --exclude=*,!@gtkx/cli
           - name: End-to-end
-            targets: test-asan,e2e
+            args: -t test-asan,e2e
+            user: root
     env:
       SWC_NATIVE_BINDING_CACHE: /tmp/swc-native-cache
     container:
       image: ${{ needs.image.outputs.image }}
-      options: --user 0 --privileged --shm-size=2g
+      options: --user ${{ matrix.user || 'workflows' }} --privileged --shm-size=2g
     steps:
       - name: Report image preparation failure
         if: needs.image.result != 'success'
@@ -147,7 +150,7 @@ jobs:
 
       - name: Trust container workspace
         if: needs.image.outputs.image != ''
-        run: git config --system --add safe.directory "$GITHUB_WORKSPACE"
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Determine affected commit range
         uses: nrwl/nx-set-shas@e602fada7ad5987b0f7b1905e7a99ea1c661514c
@@ -179,7 +182,7 @@ jobs:
 
       - name: Check release plans
         if: >-
-          matrix.targets == 'lint' &&
+          matrix.name == 'Lint' &&
           github.event_name == 'pull_request' &&
           github.event.pull_request.user.type != 'Bot' &&
           !(github.event.pull_request.head.ref == 'release/next' &&
@@ -204,16 +207,17 @@ jobs:
       - name: Run workspace checks
         env:
           EVENT_NAME: ${{ github.event_name }}
-          TARGETS: ${{ matrix.targets }}
+          NX_ARGS: ${{ matrix.args }}
         run: |
+          read -ra args <<< "$NX_ARGS"
           if [[ "$EVENT_NAME" == workflow_dispatch ]]; then
-            pnpm exec nx run-many -t "$TARGETS"
+            pnpm exec nx run-many "${args[@]}"
           else
-            pnpm exec nx affected -t "$TARGETS"
+            pnpm exec nx affected "${args[@]}"
           fi
 
       - name: Check current Rust advisories
-        if: ${{ matrix.targets == 'lint' && !cancelled() && (steps.install.outcome == 'success' || steps.fallback.outcome == 'success') }}
+        if: ${{ matrix.name == 'Lint' && !cancelled() && (steps.install.outcome == 'success' || steps.fallback.outcome == 'success') }}
         run: |
           if ! command -v cargo-audit > /dev/null; then
             cargo install cargo-audit --version 0.22.2 --locked

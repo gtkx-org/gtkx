@@ -46,14 +46,15 @@ COPY --from=node /usr/local/bin/node /usr/local/bin/node
 COPY --from=node /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/npm
 COPY --from=go /usr/local/go /usr/local/go
 
+# GitHub-hosted runners own the mounted workspace as UID 1001, so the image user shares it.
 RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && \
     ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx && \
     if getent passwd ubuntu >/dev/null; then userdel --remove ubuntu; fi && \
     if getent group ubuntu >/dev/null; then groupdel ubuntu; fi && \
-    groupadd --gid 10001 workflows && \
-    useradd --create-home --uid 10000 --gid workflows --home-dir /home/workflows --shell /bin/bash workflows && \
+    groupadd --gid 1001 workflows && \
+    useradd --create-home --uid 1001 --gid workflows --home-dir /home/workflows --shell /bin/bash workflows && \
     mkdir -p /home/workflows/workspace /home/workflows/.npm-global/{bin,lib} /home/workflows/.nvm && \
-    chown -R 10000:10001 /home/workflows
+    chown -R workflows:workflows /home/workflows
 
 COPY rust-toolchain.toml /opt/gtkx-toolchains/rust-toolchain.toml
 COPY packages/native/tools/rust-toolchain.toml /opt/gtkx-toolchains/native/rust-toolchain.toml
@@ -96,7 +97,7 @@ RUN package_manager="$(node --input-type=module -e 'import { readFileSync } from
     npm install --global --cache /tmp/gtkx-npm-cache "$package_manager" && \
     rm -rf /tmp/gtkx-npm-cache
 
-RUN chown -R 10000:10001 /home/workflows/.npm-global
+RUN chown -R workflows:workflows /home/workflows/.npm-global
 
 USER workflows
 WORKDIR /home/workflows/workspace
