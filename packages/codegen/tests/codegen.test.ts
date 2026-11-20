@@ -287,6 +287,25 @@ describe("generated bindings", () => {
         expect(readFileSync(join(gi.linkDir, "package.json"), "utf8")).toContain("@gtkx/gi");
     });
 
+    it("publishes unchanged bindings at the path they had and changed or damaged bindings afresh", async () => {
+        using directory = createProject();
+        const { gi } = resolveStore(directory.path);
+        const options = { libraries: ["GLib-2.0"], girPath: resolveGirPath(undefined, directory.path), gi };
+        await runCodegen(options);
+        const published = realpathSync(gi.linkDir);
+
+        expect(await runCodegen({ ...options, isForced: true })).toMatchObject({ isRegenerated: true });
+        expect(realpathSync(gi.linkDir)).toBe(published);
+
+        writeFileSync(join(gi.storeDir, ".codegen-fingerprint.json"), "{}");
+        expect(await runCodegen(options)).toMatchObject({ isRegenerated: true });
+        expect(realpathSync(gi.linkDir)).toBe(published);
+        expect(await runCodegen(options)).toMatchObject({ isRegenerated: false });
+
+        await runCodegen({ ...options, libraries: ["Gio-2.0"] });
+        expect(realpathSync(gi.linkDir)).not.toBe(published);
+    });
+
     it("adds and removes JSX while preserving published bindings through failed generation", async () => {
         using directory = createProject();
         const { gi, jsx } = resolveStore(directory.path);

@@ -1,5 +1,5 @@
 import { errorMessage } from "@gtkx/utils";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import {
     chmodSync,
     cpSync,
@@ -7,11 +7,14 @@ import {
     lstatSync,
     mkdirSync,
     readdirSync,
+    readFileSync,
+    readlinkSync,
     realpathSync,
     renameSync,
     rmSync,
     statSync,
     symlinkSync,
+    utimesSync,
     writeFileSync,
 } from "node:fs";
 import { basename, dirname, join, relative } from "node:path";
@@ -76,6 +79,9 @@ const jsxManifestSchema = z.object({ name: z.literal("@gtkx/jsx") });
 const STORE_DIR_MODE = 0o755;
 const FAILED_STORE_SUFFIX = ".failed";
 const RETAINED_GENERATIONS = 3;
+const GENERATION_PREFIX = ".generation-";
+const GENERATION_STAGING_NAME = ".generation";
+const GENERATION_DIGEST_LENGTH = 32;
 
 const subpathExport = (stem: string): { types: string; import: string; require: null; default: string } => ({
     types: `./${stem}.d.ts`,
@@ -186,7 +192,7 @@ const hasStoreLayout = (gi: StoreLink, jsx?: StoreLink): boolean => {
     return (
         current !== null &&
         dirname(current) === root &&
-        basename(current).startsWith(".generation-") &&
+        basename(current).startsWith(GENERATION_PREFIX) &&
         realpathOrNull(gi.storeDir) === join(current, "gi") &&
         existsSync(join(current, "gi", "package.json")) &&
         (jsx === undefined
@@ -211,17 +217,80 @@ const replaceStoreLink = (linkPath: string, target: string): void => {
     symlinkRelative(linkPath, target);
 };
 
+const compareCodeUnits = (left: string, right: string): number => {
+    if (left === right) {
+        return 0;
+    }
+
+    return left < right ? -1 : 1;
+};
+
+const listGenerationEntries = (directory: string): { path: string; isLink: boolean }[] =>
+    readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+        const path = join(directory, entry.name);
+
+        if (entry.isDirectory()) {
+            return listGenerationEntries(path);
+        }
+
+        return entry.isSymbolicLink() || entry.isFile() ? [{ path, isLink: entry.isSymbolicLink() }] : [];
+    });
+
+const digestGeneration = (generation: string): string => {
+    const hash = createHash("sha256");
+    const entries = listGenerationEntries(generation).toSorted((left, right) =>
+        compareCodeUnits(left.path, right.path),
+    );
+
+    for (const { path, isLink } of entries) {
+        const name = relative(generation, path);
+
+        if (isLink) {
+            hash.update(`link\0${name}\0${readlinkSync(path)}\0`);
+        } else {
+            const content = readFileSync(path);
+            hash.update(`file\0${name}\0${String(content.length)}\0`);
+            hash.update(content);
+        }
+    }
+
+    return hash.digest("hex").slice(0, GENERATION_DIGEST_LENGTH);
+};
+
+/**
+ * Moves a staged generation to the directory named after its contents and returns that directory, so identical
+ * bindings are always published at the same path. A generation already there with those contents is kept and
+ * marked as the most recent one, which keeps the generations retained for running processes in publication order.
+ */
+const adoptGeneration = (root: string, staged: string): string => {
+    const digest = digestGeneration(staged);
+    const generation = join(root, `${GENERATION_PREFIX}${digest}`);
+
+    if (existsSync(generation) && digestGeneration(generation) === digest) {
+        const now = new Date();
+        rmSync(staged, { recursive: true });
+        utimesSync(generation, now, now);
+
+        return generation;
+    }
+
+    rmSync(generation, { recursive: true, force: true });
+    renameSync(staged, generation);
+
+    return generation;
+};
+
 const reclaimStoreArtifacts = (gi: StoreLink): void => {
     const root = storeRoot(gi);
     const current = realpathOrNull(join(root, "current"));
 
-    if (current === null || !basename(current).startsWith(".generation-")) {
+    if (current === null || !basename(current).startsWith(GENERATION_PREFIX)) {
         return;
     }
 
     const entries = readdirSync(root, { withFileTypes: true }).filter((entry) => entry.isDirectory());
     const previous = entries
-        .filter((entry) => entry.name.startsWith(".generation-") && join(root, entry.name) !== current)
+        .filter((entry) => entry.name.startsWith(GENERATION_PREFIX) && join(root, entry.name) !== current)
         .map((entry) => ({ path: join(root, entry.name), modifiedAt: statSync(join(root, entry.name)).mtimeMs }))
         .toSorted((left, right) => right.modifiedAt - left.modifiedAt);
     for (const entry of previous.slice(RETAINED_GENERATIONS - 1)) {
@@ -249,17 +318,18 @@ const publishStores = (input: {
               )
             : [];
 
-    const generation = join(root, `.generation-${String(Date.now())}-${randomUUID()}`);
-    mkdirSync(generation, { recursive: true });
+    const staged = createTempStore(join(root, GENERATION_STAGING_NAME));
 
     try {
-        materializeStore(join(generation, "gi"), giLink, input.gi);
+        materializeStore(join(staged, "gi"), giLink, input.gi);
 
         if (jsxLink !== undefined) {
-            materializeStore(join(generation, "jsx"), jsxLink, input.jsx);
-            const giPin = join(generation, "jsx", "node_modules", "@gtkx", "gi");
-            replaceStoreLink(giPin, join(generation, "gi"));
+            materializeStore(join(staged, "jsx"), jsxLink, input.jsx);
+            const giPin = join(staged, "jsx", "node_modules", "@gtkx", "gi");
+            replaceStoreLink(giPin, join(staged, "gi"));
         }
+
+        const generation = adoptGeneration(root, staged);
 
         for (const [name, link] of [
             ["gi", giLink],
@@ -273,7 +343,7 @@ const publishStores = (input: {
 
         symlinkRelative(current, generation);
     } catch (error) {
-        rmSync(generation, { recursive: true, force: true });
+        rmSync(staged, { recursive: true, force: true });
         throw error;
     }
 
