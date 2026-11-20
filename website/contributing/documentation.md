@@ -77,6 +77,8 @@ Place the figure where the text says what the reader should see. Its two images 
 
 Set `width` and `height` to half the PNG's pixel size, and describe the window in `alt`. Keep `class`, `src` and `width` in this order on one line: the site finds them there to link each image wider than 400 to the PNG, so phone readers can open it at full size.
 
+The landing page's hero and the tutorial introduction show the `landing-*` captures of the finished Notes app. A capture can also measure parts of its window: give its entry a `regions` function that returns the bounds of the widgets to mark. The target writes them to `website/.vitepress/theme/landing/hero-regions.json`, which the hero reads to place its hotspots over the image. Commit that file with the images so the two never drift apart.
+
 ## Recorded samples
 
 A sample whose result is motion shows a short looping clip. Keep the sample under `website/figures/` as a pictured sample is, and add it to the `clips` list in `website/figures/record.test.tsx` with its window size and a `play` function. `play` sets the stage, then calls `take` around the part to record. `playSample` covers the common case: it renders a component in a window and turns one boolean prop on, then off.

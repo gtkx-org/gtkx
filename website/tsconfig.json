@@ -24,6 +24,9 @@
             "path": "../packages/cli"
         },
         {
+            "path": "../packages/gl"
+        },
+        {
             "path": "../packages/i18n"
         },
         {

@@ -17,23 +17,13 @@ This guide covers GTKX integration. Use the [Khronos OpenGL reference](https://r
 
 Place a `GtkGLArea` inside your application's JSX tree. Its `onRender` handler runs with the area's GL context and framebuffer ready for drawing:
 
-```tsx
-import * as Gdk from "@gtkx/gi/gdk";
-import * as gl from "@gtkx/gl";
-import { GtkGLArea } from "@gtkx/jsx/gtk";
+<<< @/figures/guide/opengl-color-area.tsx [src/color-area.tsx]
 
-export const ColorArea = () => (
-    <GtkGLArea
-        hexpand
-        vexpand
-        onRender={() => {
-            gl.clearColor(0.5, 0.5, 0.5, 1);
-            gl.clear(gl.COLOR_BUFFER_BIT);
-            return Gdk.EVENT_STOP;
-        }}
-    />
-);
-```
+<figure class="result">
+    <img class="result-light" src="/figures/guide-opengl-color-area-light.png" width="360" height="260" loading="lazy" alt="A window titled OpenGL whose content area is filled with a flat mid gray." />
+    <img class="result-dark" src="/figures/guide-opengl-color-area-dark.png" width="360" height="260" loading="lazy" alt="A window titled OpenGL whose content area is filled with a flat mid gray." />
+    <figcaption>Captured from the sample above. The handler clears the framebuffer to gray, and GTK draws it below the header bar.</figcaption>
+</figure>
 
 GTK presents the result as part of the surrounding widget tree. Returning `Gdk.EVENT_STOP` marks the render signal as handled. Like every signal handler, `onRender` also receives the area as its last argument (see the [JSX prop model](/v2/guide/jsx-elements#the-jsx-prop-model)).
 
