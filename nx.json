@@ -74,19 +74,9 @@
         }
     ],
     "targetDefaults": {
-        "build": [
-            {
-                "inputs": ["...", "sharedGlobals"]
-            },
-            {
-                "filter": {
-                    "plugin": "@nx/js/typescript"
-                },
-                "options": {
-                    "args": ["--noCheck"]
-                }
-            }
-        ],
+        "build": {
+            "inputs": ["...", "sharedGlobals"]
+        },
         "lint": {
             "executor": "nx:noop",
             "cache": true,
