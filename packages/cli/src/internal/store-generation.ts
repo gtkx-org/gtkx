@@ -24,8 +24,8 @@ const storeLinkDirs = (projectRoot: string): string[] => {
 };
 
 /**
- * Identifies the generated stores the links currently lead to. Codegen publishes each regeneration as a new
- * directory, so the identity changes whenever any project sharing the stores regenerates them.
+ * Identifies the generated stores the links currently lead to. Codegen publishes bindings in a directory named after
+ * their contents, so the identity changes whenever a project sharing the stores regenerates them differently.
  */
 const storeGeneration = (linkDirs: string[]): string =>
     linkDirs.map((linkDir) => (existsSync(linkDir) ? realpathSync(linkDir) : "")).join("\n");

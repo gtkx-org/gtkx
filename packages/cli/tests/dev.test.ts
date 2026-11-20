@@ -769,11 +769,15 @@ describe("gtkx dev", () => {
             `import { execFileSync } from "node:child_process";
             import { existsSync, writeFileSync } from "node:fs";
             if (!existsSync(${JSON.stringify(regenerated)})) {
-                execFileSync(process.execPath, [${JSON.stringify(workspace.cli("editor"))}, "codegen", "--force"], {
+                execFileSync(process.execPath, [${JSON.stringify(workspace.cli("editor"))}, "codegen"], {
                     cwd: ${JSON.stringify(appDir("editor"))},
                 });
                 writeFileSync(${JSON.stringify(regenerated)}, "");
             }`,
+        );
+        workspace.write(
+            "apps/editor/gtkx.config.ts",
+            `export default ${JSON.stringify({ agents: { reference: false, rules: false }, applicationId: "org.gtkx.editor", codegen: true })};`,
         );
         renameSync(join(appDir("journal"), "src/index.tsx"), join(appDir("journal"), "src/app.tsx"));
         workspace.write("apps/journal/src/index.tsx", 'import "./regenerate.ts";\nimport "./app.tsx";\n');
