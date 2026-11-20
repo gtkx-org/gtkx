@@ -40,7 +40,7 @@ The React suite covers the `GtkDragSource` `icon` prop but has no case for a liv
 
 ## CI verification and failure reproduction
 
-Rely on the normal CI workflow for verification. CI distributes affected `build`, `test`, `typecheck`, `lint` and `test-asan` targets through Nx Agents, then runs affected `e2e` targets on the GitHub coordinator with Nx caching. The coordinator container allows nested namespaces and mounts needed by WebKit's Bubblewrap sandbox; managed agent templates do not expose these container permissions. A manual CI dispatch runs all projects. CI also runs the current Rust advisory audit. The `verify` GitHub job reports the combined result as `Verify workspace`, the only check the `main` branch ruleset requires.
+Rely on the normal CI workflow for verification. CI runs the affected targets as parallel GitHub jobs: `build` with `typecheck`, `lint`, `test`, and `test-asan` with `e2e`. The job containers allow nested namespaces and mounts needed by WebKit's Bubblewrap sandbox. A manual CI dispatch runs all projects. CI also runs the current Rust advisory audit. The `verify` GitHub job reports the combined result as `Verify workspace`, the only check the `main` branch ruleset requires.
 
 Package `test` targets run integration and unit tests. The `@gtkx/e2e:e2e` target runs the React suite and depends on `@gtkx/native:test-asan`, which runs the sanitized native suite once. Native tests have no ordinary unsanitized test target. Nx prepares prerequisite builds and generated bindings and caches each suite.
 
@@ -50,7 +50,7 @@ When diagnosing a CI failure, reproduce the owning target and optionally pass a 
 pnpm exec nx run @gtkx/components:test -- tests/drop-down.test.tsx
 ```
 
-Nx and Vitest run with their default concurrency; Nx Cloud schedules distributed tasks on the agents.
+Nx and Vitest run with their default concurrency.
 
 ## Native fixtures and sanitizers
 

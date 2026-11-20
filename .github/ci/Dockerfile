@@ -100,4 +100,3 @@ RUN chown -R 10000:10001 /home/workflows/.npm-global
 
 USER workflows
 WORKDIR /home/workflows/workspace
-ENTRYPOINT ["/home/workflows/executor-binary/nx-cloud-workflow-executor"]

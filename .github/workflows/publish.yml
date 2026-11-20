@@ -11,9 +11,6 @@ concurrency:
   cancel-in-progress: false
   queue: max
 
-env:
-  NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_READ_TOKEN }}
-
 jobs:
   validate-release:
     runs-on: ubuntu-26.04

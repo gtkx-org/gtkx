@@ -18,8 +18,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  NX_CLOUD_ACCESS_TOKEN: ${{ github.ref == 'refs/heads/main' && secrets.NX_WRITE_TOKEN || secrets.NX_READ_TOKEN }}
-  NX_NO_CLOUD: ${{ (github.ref == 'refs/heads/main' && secrets.NX_WRITE_TOKEN || secrets.NX_READ_TOKEN) == '' && 'true' || 'false' }}
+  CI_IMAGE: ghcr.io/gtkx-org/gtkx-ci:ubuntu26-v5
   NODE_OPTIONS: --max-old-space-size=8192
 
 defaults:
@@ -51,8 +50,8 @@ jobs:
         env:
           TRUSTED_CHECKOUT: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
         run: |
-          if [[ -n "$NX_CLOUD_ACCESS_TOKEN" && "$TRUSTED_CHECKOUT" == true ]]; then
-            echo "image=$(awk '$1 == "image:" { print $2; exit }' .nx/workflows/agents.yaml)" >> "$GITHUB_OUTPUT"
+          if [[ "$TRUSTED_CHECKOUT" == true ]]; then
+            echo "image=$CI_IMAGE" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Set up Docker Buildx
@@ -71,7 +70,6 @@ jobs:
         id: existing
         if: steps.environment.outputs.image != ''
         env:
-          CI_IMAGE: ${{ steps.environment.outputs.image }}
           GH_TOKEN: ${{ github.token }}
         run: |
           if gh api --paginate /orgs/gtkx-org/packages/container/gtkx-ci/versions --jq '.[].metadata.container.tags[]' > "$RUNNER_TEMP/image-tags" 2> "$RUNNER_TEMP/image-error"; then
@@ -102,23 +100,33 @@ jobs:
       - name: Resolve public image digest
         id: ready
         if: steps.environment.outputs.image != ''
-        env:
-          CI_IMAGE: ${{ steps.environment.outputs.image }}
         run: |
           docker logout ghcr.io
           if ! manifest="$(docker buildx imagetools inspect "$CI_IMAGE" --format '{{json .Manifest}}')"; then
-            echo '::error::Make the gtkx-ci GHCR package public so Nx Agents can pull it, then rerun CI.'
+            echo '::error::Make the gtkx-ci GHCR package public so CI jobs can pull it, then rerun CI.'
             exit 1
           fi
           digest="$(jq -er '.digest' <<< "$manifest")"
           echo "image=${CI_IMAGE%:*}@$digest" >> "$GITHUB_OUTPUT"
 
-  verify:
-    name: Verify workspace
+  checks:
+    name: ${{ matrix.name }}
     needs: image
     if: ${{ !cancelled() }}
     runs-on: ubuntu-26.04
-    timeout-minutes: 120
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Build and typecheck
+            targets: build,typecheck
+          - name: Lint
+            targets: lint
+          - name: Test
+            targets: test
+          - name: End-to-end
+            targets: test-asan,e2e
     env:
       SWC_NATIVE_BINDING_CACHE: /tmp/swc-native-cache
     container:
@@ -171,6 +179,7 @@ jobs:
 
       - name: Check release plans
         if: >-
+          matrix.targets == 'lint' &&
           github.event_name == 'pull_request' &&
           github.event.pull_request.user.type != 'Bot' &&
           !(github.event.pull_request.head.ref == 'release/next' &&
@@ -192,56 +201,37 @@ jobs:
           done < <(git ls-files -z -- '.nx/version-plans/*.md')
           pnpm exec nx release plan:check --base="$NX_BASE" --head="$NX_HEAD"
 
-      - name: Start Nx CI run
-        id: cloud
-        if: env.NX_CLOUD_ACCESS_TOKEN != ''
-        env:
-          CI_IMAGE: ${{ needs.image.outputs.image }}
-        run: |
-          if [[ -n "$CI_IMAGE" ]]; then
-            pnpm exec nx-cloud start-ci-run --distribute-on=.nx/workflows/distribution-config.yaml --require-explicit-completion --with-env-vars=NODE_OPTIONS
-          else
-            pnpm exec nx-cloud start-ci-run --no-distribution --require-explicit-completion
-          fi
-
       - name: Run workspace checks
         env:
           EVENT_NAME: ${{ github.event_name }}
+          TARGETS: ${{ matrix.targets }}
         run: |
           if [[ "$EVENT_NAME" == workflow_dispatch ]]; then
-            pnpm exec nx run-many -t build,test,typecheck,lint,test-asan
+            pnpm exec nx run-many -t "$TARGETS"
           else
-            pnpm exec nx affected -t build,test,typecheck,lint,test-asan
-          fi
-
-      - name: Run end-to-end checks
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          NX_CLOUD_DISTRIBUTED_EXECUTION: "false"
-        run: |
-          if [[ "$EVENT_NAME" == workflow_dispatch ]]; then
-            pnpm exec nx run-many -t e2e
-          else
-            pnpm exec nx affected -t e2e
+            pnpm exec nx affected -t "$TARGETS"
           fi
 
       - name: Check current Rust advisories
-        if: ${{ !cancelled() && (steps.install.outcome == 'success' || steps.fallback.outcome == 'success') }}
+        if: ${{ matrix.targets == 'lint' && !cancelled() && (steps.install.outcome == 'success' || steps.fallback.outcome == 'success') }}
         run: |
           if ! command -v cargo-audit > /dev/null; then
             cargo install cargo-audit --version 0.22.2 --locked
           fi
-          if [[ -n "$NX_CLOUD_ACCESS_TOKEN" ]]; then
-            pnpm exec nx-cloud record -- cargo audit --file packages/native/Cargo.lock --deny unsound
-          else
-            cargo audit --file packages/native/Cargo.lock --deny unsound
+          cargo audit --file packages/native/Cargo.lock --deny unsound
+
+  verify:
+    name: Verify workspace
+    needs: checks
+    if: ${{ always() }}
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    steps:
+      - name: Require every check to pass
+        env:
+          RESULT: ${{ needs.checks.result }}
+        run: |
+          if [[ "$RESULT" != success ]]; then
+            echo "::error::Workspace checks finished with result: $RESULT"
+            exit 1
           fi
-
-      - name: Request Nx CI fixes
-        if: always() && steps.cloud.outcome == 'success'
-        run: pnpm exec nx fix-ci
-
-      - name: Complete Nx CI run
-        if: always() && steps.cloud.outcome != 'skipped' && env.NX_CLOUD_ACCESS_TOKEN != ''
-        timeout-minutes: 2
-        run: pnpm exec nx-cloud complete-ci-run
