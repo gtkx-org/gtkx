@@ -12,6 +12,9 @@ concurrency:
   group: pages
   cancel-in-progress: true
 
+env:
+  NX_CLOUD_ACCESS_TOKEN: ${{ github.ref == 'refs/heads/main' && secrets.NX_WRITE_TOKEN || secrets.NX_READ_TOKEN }}
+
 jobs:
   build:
     runs-on: ubuntu-26.04
