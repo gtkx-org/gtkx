@@ -37,6 +37,9 @@
             "path": "../../packages/forms/tsconfig.lib.json"
         },
         {
+            "path": "../../packages/gl/tsconfig.lib.json"
+        },
+        {
             "path": "../../packages/i18n/tsconfig.lib.json"
         },
         {

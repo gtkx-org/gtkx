@@ -1,0 +1,80 @@
+{
+    "tutorial-preferences-and-theming": {
+        "width": 720,
+        "height": 480,
+        "regions": {
+            "dialog": {
+                "x": 40,
+                "y": 87,
+                "width": 640,
+                "height": 306
+            },
+            "storage": {
+                "x": 94,
+                "y": 275,
+                "width": 532,
+                "height": 94
+            },
+            "combo": {
+                "x": 94,
+                "y": 197,
+                "width": 532,
+                "height": 54
+            },
+            "folder": {
+                "x": 94,
+                "y": 315,
+                "width": 532,
+                "height": 54
+            }
+        }
+    },
+    "landing-notes-preview": {
+        "width": 720,
+        "height": 480,
+        "regions": {
+            "list": {
+                "x": 6,
+                "y": 138,
+                "width": 208,
+                "height": 263
+            },
+            "search": {
+                "x": 6,
+                "y": 52,
+                "width": 208,
+                "height": 34
+            },
+            "filter": {
+                "x": 6,
+                "y": 92,
+                "width": 208,
+                "height": 34
+            },
+            "row": {
+                "x": 6,
+                "y": 138,
+                "width": 208,
+                "height": 51
+            }
+        }
+    },
+    "landing-notes-editor": {
+        "width": 720,
+        "height": 480,
+        "regions": {
+            "view": {
+                "x": 220,
+                "y": 46,
+                "width": 500,
+                "height": 434
+            },
+            "language": {
+                "x": 232,
+                "y": 58,
+                "width": 138,
+                "height": 76
+            }
+        }
+    }
+}

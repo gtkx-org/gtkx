@@ -1,78 +1,95 @@
 <script setup lang="ts">
 import snippets, { type HighlightedSnippet } from "virtual:gtkx-snippets";
 import { computed, onMounted, ref, watch } from "vue";
+import measured from "./hero-regions.json";
 
-type Box = [left: number, top: number, right: number, bottom: number];
+type Box = { x: number; y: number; width: number; height: number };
+type Measurement = { width: number; height: number; regions: Record<string, Box> };
+type Spot = [id: string, label: string];
 type Region = { id: string; label: string; style: Record<string, string> };
-type Example = {
-    file: string;
-    snippet: HighlightedSnippet;
-    image: string;
-    corner: string;
-    alt: string;
-    initial: string;
-    regions: Region[];
-};
+type Capture = { image: string; width: number; height: number; corner: string; regions: Region[] };
+type Example = Capture & { file: string; snippet: HighlightedSnippet; alt: string; initial: string };
+
+const MEASUREMENTS: Record<string, Measurement> = measured;
+const WINDOW_RADIUS = 15;
+const EDGE_INSET = 4;
 
 const percent = (value: number, total: number): string => `${(value / total) * 100}%`;
 
-const WINDOW_RADIUS = 15;
+const capture = (name: string, spots: Spot[]): Capture => {
+    const measurement = MEASUREMENTS[name];
 
-const corner = (width: number, height: number): string =>
-    `${percent(WINDOW_RADIUS, width)} / ${percent(WINDOW_RADIUS, height)}`;
+    if (measurement === undefined) {
+        throw new Error(`The figures capture measured no regions for ${name}`);
+    }
 
-const regions = (width: number, height: number, boxes: [id: string, label: string, box: Box][]): Region[] =>
-    boxes.map(([id, label, [left, top, right, bottom]]) => ({
-        id,
-        label,
-        style: {
-            left: percent(left, width),
-            top: percent(top, height),
-            width: percent(right - left, width),
-            height: percent(bottom - top, height),
-        },
-    }));
+    const { width, height } = measurement;
+
+    return {
+        image: `/figures/${name}`,
+        width,
+        height,
+        corner: `${percent(WINDOW_RADIUS, width)} / ${percent(WINDOW_RADIUS, height)}`,
+        regions: spots.map(([id, label]) => {
+            const box = measurement.regions[id];
+
+            if (box === undefined) {
+                throw new Error(`The figures capture measured no "${id}" region for ${name}`);
+            }
+
+            const left = Math.max(box.x, EDGE_INSET);
+            const top = Math.max(box.y, EDGE_INSET);
+            const right = Math.min(box.x + box.width, width - EDGE_INSET);
+            const bottom = Math.min(box.y + box.height, height - EDGE_INSET);
+
+            return {
+                id,
+                label,
+                style: {
+                    left: percent(left, width),
+                    top: percent(top, height),
+                    width: percent(right - left, width),
+                    height: percent(bottom - top, height),
+                },
+            };
+        }),
+    };
+};
 
 const EXAMPLES: [Example, ...Example[]] = [
     {
         file: "notes-screen.tsx",
         snippet: snippets.notesScreen,
-        image: "/notes-screenshot",
-        corner: corner(960, 640),
+        ...capture("landing-notes-preview", [
+            ["list", "ListView"],
+            ["search", "GtkSearchEntry"],
+            ["filter", "TagFilter"],
+            ["row", "NoteRow"],
+        ]),
         alt: "The Notes app from the GTKX tutorial: a sidebar with a search entry, a tag filter and a list of notes, next to a note rendered as Markdown.",
         initial: "row",
-        regions: regions(960, 640, [
-            ["list", "ListView", [6, 136, 282, 398]],
-            ["search", "GtkSearchEntry", [6, 52, 282, 86]],
-            ["filter", "TagFilter", [6, 92, 282, 126]],
-            ["row", "NoteRow", [6, 138, 282, 189]],
-        ]),
     },
     {
         file: "note-editor.tsx",
         snippet: snippets.noteEditor,
-        image: "/notes-editor",
-        corner: corner(960, 640),
+        ...capture("landing-notes-editor", [
+            ["view", "GtkSourceView"],
+            ["language", "markdown"],
+        ]),
         alt: "Notes editing a Markdown note in GtkSourceView, with highlighted headings, emphasis, links, and front matter.",
         initial: "language",
-        regions: regions(960, 640, [
-            ["view", "GtkSourceView", [292, 52, 956, 636]],
-            ["language", "markdown", [296, 60, 500, 136]],
-        ]),
     },
     {
         file: "preferences.tsx",
         snippet: snippets.preferences,
-        image: "/figures/tutorial-preferences-and-theming",
-        corner: corner(720, 480),
+        ...capture("tutorial-preferences-and-theming", [
+            ["dialog", "AdwPreferencesDialog"],
+            ["storage", "AdwPreferencesGroup"],
+            ["combo", "ComboRow"],
+            ["folder", "FolderRow"],
+        ]),
         alt: "The Notes preferences dialog: an Appearance group with a Style row and a Storage group with a Notes Folder row.",
         initial: "combo",
-        regions: regions(1440, 960, [
-            ["dialog", "AdwPreferencesDialog", [80, 174, 1360, 786]],
-            ["storage", "AdwPreferencesGroup", [176, 556, 1264, 750]],
-            ["combo", "ComboRow", [188, 394, 1252, 502]],
-            ["folder", "FolderRow", [188, 630, 1252, 738]],
-        ]),
     },
 ];
 
@@ -191,8 +208,8 @@ onMounted(syncCodeSpots);
                         class="window__img window__img--light"
                         :src="`${e.image}-light.png`"
                         :style="{ borderRadius: e.corner }"
-                        width="960"
-                        height="640"
+                        :width="e.width"
+                        :height="e.height"
                         :loading="i === 0 ? 'eager' : 'lazy'"
                         :alt="e.alt"
                     />
@@ -200,8 +217,8 @@ onMounted(syncCodeSpots);
                         class="window__img window__img--dark"
                         :src="`${e.image}-dark.png`"
                         :style="{ borderRadius: e.corner }"
-                        width="960"
-                        height="640"
+                        :width="e.width"
+                        :height="e.height"
                         :loading="i === 0 ? 'eager' : 'lazy'"
                         :alt="e.alt"
                     />

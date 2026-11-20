@@ -1231,6 +1231,9 @@ importers:
       '@gtkx/forms':
         specifier: workspace:*
         version: link:../packages/forms
+      '@gtkx/gl':
+        specifier: workspace:*
+        version: link:../packages/gl
       '@gtkx/i18n':
         specifier: workspace:*
         version: link:../packages/i18n

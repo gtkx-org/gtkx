@@ -42,11 +42,11 @@ const PICKS: Pick[] = [
     },
     {
         path: "tutorial/internationalization",
-        image: "/notes-i18n-fr",
-        width: 960,
-        height: 640,
-        caption: "The interface and the rendered note in French.",
-        alt: "Notes translated into French, showing a French note rendered as Markdown.",
+        image: "/figures/tutorial-internationalization",
+        width: 720,
+        height: 480,
+        caption: "The interface in French, with the main menu open.",
+        alt: "Notes translated into French: the main menu lists Nouvelle note, Préférences, Raccourcis clavier and À propos de Notes, and the empty state reads Aucune note sélectionnée.",
     },
     {
         path: "tutorial/packaging",

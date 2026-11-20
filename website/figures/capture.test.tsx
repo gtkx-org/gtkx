@@ -18,11 +18,11 @@ import { NavigationContainer } from "@gtkx/navigation";
 import { rootElement } from "@gtkx/react";
 import { StoryCatalog, Storybook } from "@gtkx/storybook/explorer";
 import { act, render, screen, userEvent, waitFor, within } from "@gtkx/testing";
-import { writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ReactNode } from "react";
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 import { MainMenu } from "./guide/actions-main-menu.js";
 import { Shortcuts } from "./guide/actions-shortcuts.js";
 import { Toolbar } from "./guide/actions-toolbar.js";
@@ -31,6 +31,7 @@ import { SourceTypePicker } from "./guide/components-drop-down.js";
 import { AppMenu } from "./guide/components-menu-widget.js";
 import { Circle } from "./guide/cairo-circle.js";
 import { NameGrid } from "./guide/components-grid.js";
+import { ColorArea } from "./guide/opengl-color-area.js";
 import { AccentOverride } from "./guide/css-accent.js";
 import { DueLabel } from "./guide/css-overdue.js";
 import { PreferencesForm } from "./guide/forms-preferences.js";
@@ -54,7 +55,6 @@ import { App as NoteEditor } from "./tutorial/the-note-editor/src/app.js";
 import { App as NotesFolder } from "./tutorial/the-notes-folder/src/app.js";
 import { App as SavingAndWatching } from "./tutorial/saving-and-watching/src/app.js";
 import { App as MarkdownPreview } from "./tutorial/the-markdown-preview/src/app.js";
-import { App as FastRefresh } from "./tutorial/fast-refresh/src/app.js";
 import { App as AdaptiveLayout } from "./tutorial/an-adaptive-layout/src/app.js";
 import { App as SearchInAWorker } from "./tutorial/search-in-a-worker/src/app.js";
 import { App as TagsAndFrontMatter } from "./tutorial/tags-and-front-matter/src/app.js";
@@ -74,6 +74,7 @@ const storyCatalog = new StoryCatalog();
 const guideStoryCatalog = new StoryCatalog();
 
 const outputDir = fileURLToPath(new URL("../public/figures/", import.meta.url));
+const regionsFile = fileURLToPath(new URL("../.vitepress/theme/landing/hero-regions.json", import.meta.url));
 
 const schemes = [
     ["light", Adw.ColorScheme.FORCE_LIGHT],
@@ -182,10 +183,94 @@ function ActionsWindow({
     );
 }
 
+type Box = { x: number; y: number; width: number; height: number };
+type Regions = Record<string, Box>;
+type Measurement = { width: number; height: number; regions: Regions };
+
 type FigureOptions = {
     before?: () => void;
     prepare?: () => Promise<void>;
+    regions?: () => Regions;
     after?: () => void;
+};
+
+const appWindow = (): Adw.ApplicationWindow => {
+    const window = Gtk.Window.listToplevels().find((widget) => widget instanceof Adw.ApplicationWindow);
+
+    if (window === undefined) {
+        throw new TypeError("No application window is open");
+    }
+
+    return window;
+};
+
+const round = (value: number): number => Math.round(value * 2) / 2;
+
+const boundsOf = (widget: Gtk.Widget): Box => {
+    const [isComputed, bounds] = widget.computeBounds(appWindow());
+
+    if (!isComputed) {
+        throw new TypeError("The widget is not inside the application window");
+    }
+
+    return {
+        x: round(bounds.getX()),
+        y: round(bounds.getY()),
+        width: round(bounds.getWidth()),
+        height: round(bounds.getHeight()),
+    };
+};
+
+const union = (boxes: Box[]): Box => {
+    const x = Math.min(...boxes.map((box) => box.x));
+    const y = Math.min(...boxes.map((box) => box.y));
+
+    return {
+        x,
+        y,
+        width: Math.max(...boxes.map((box) => box.x + box.width)) - x,
+        height: Math.max(...boxes.map((box) => box.y + box.height)) - y,
+    };
+};
+
+const closest = <T extends Gtk.Widget>(widget: Gtk.Widget, type: abstract new (...args: never[]) => T): T => {
+    for (let current: Gtk.Widget | null = widget; current !== null; current = current.getParent()) {
+        if (current instanceof type) {
+            return current;
+        }
+    }
+
+    throw new TypeError(`The widget has no ${type.name} ancestor`);
+};
+
+const LINE_PADDING = 6;
+
+const linesBox = (view: Gtk.TextView, lineCount: number): Box => {
+    const buffer = view.getBuffer();
+    const origin = boundsOf(view);
+    const edges = { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity };
+
+    for (let line = 0; line < lineCount; line++) {
+        const [, start] = buffer.getIterAtLine(line);
+        const end = start.copy();
+        end.forwardToLineEnd();
+        const first = view.getIterLocation(start);
+        const last = view.getIterLocation(end);
+        edges.left = Math.min(edges.left, first.x);
+        edges.top = Math.min(edges.top, first.y);
+        edges.right = Math.max(edges.right, last.x + last.width);
+        edges.bottom = Math.max(edges.bottom, first.y + first.height);
+    }
+
+    const [left, top] = view.bufferToWindowCoords(Gtk.TextWindowType.WIDGET, edges.left, edges.top);
+    const [right, bottom] = view.bufferToWindowCoords(Gtk.TextWindowType.WIDGET, edges.right, edges.bottom);
+
+    return {
+        x: round(origin.x + left - LINE_PADDING),
+        y: round(origin.y + top - LINE_PADDING),
+        width: round(right - left + LINE_PADDING * 2),
+        height: round(bottom - top + LINE_PADDING * 2),
+    };
 };
 
 function seedNotesWithSettings() {
@@ -258,19 +343,6 @@ const figures: [name: string, element: ReactNode, options?: FigureOptions][] = [
                 await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, { name: "Preview" }));
                 const preview = within(await screen.findByRole(Gtk.AccessibleRole.DOCUMENT, { name: "Preview" }));
                 await preview.findByRole(Gtk.AccessibleRole.HEADING, { name: "Milestones" });
-            },
-        },
-    ],
-    [
-        "tutorial-fast-refresh",
-        <FastRefresh />,
-        {
-            before: () => seedNotes(defaultFolder()),
-            prepare: async () => {
-                await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Meeting notes" }));
-                await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, { name: "Preview" }));
-                const preview = within(await screen.findByRole(Gtk.AccessibleRole.DOCUMENT, { name: "Preview" }));
-                await preview.findByText("Launch when the content is ready, not before.");
             },
         },
     ],
@@ -369,6 +441,21 @@ const figures: [name: string, element: ReactNode, options?: FigureOptions][] = [
                 await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.MENU_ITEM, { name: "Preferences" }));
                 await screen.findByText("Notes Folder");
             },
+            regions: () => {
+                const folder = closest(screen.getByText("Notes Folder"), Adw.ActionRow);
+                const sheet = closest(folder, Adw.Dialog).getChild();
+
+                if (sheet === null) {
+                    throw new TypeError("The preferences dialog has no content");
+                }
+
+                return {
+                    dialog: boundsOf(sheet),
+                    storage: boundsOf(closest(folder, Adw.PreferencesGroup)),
+                    combo: boundsOf(closest(screen.getByText("Style"), Adw.ComboRow)),
+                    folder: boundsOf(folder),
+                };
+            },
         },
     ],
     [
@@ -441,7 +528,67 @@ const figures: [name: string, element: ReactNode, options?: FigureOptions][] = [
             },
         },
     ],
+    [
+        "landing-notes-preview",
+        <Packaging />,
+        {
+            before: () => {
+                seedNotesWithSettings();
+                Gio.Settings.new("dev.gtkx.Notes").setBoolean("preview", true);
+            },
+            prepare: async () => {
+                await userEvent.click(
+                    await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Website relaunch" }),
+                );
+                const preview = within(await screen.findByRole(Gtk.AccessibleRole.DOCUMENT, { name: "Preview" }));
+                await preview.findByRole(Gtk.AccessibleRole.HEADING, { name: "Milestones" });
+            },
+            regions: () => {
+                const row = screen.getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Website relaunch" });
+
+                return {
+                    list: union(screen.getAllByRole(Gtk.AccessibleRole.LIST_ITEM).map(boundsOf)),
+                    search: boundsOf(screen.getByRole(Gtk.AccessibleRole.SEARCH_BOX, { name: "Search Notes" })),
+                    filter: boundsOf(screen.getByRole(Gtk.AccessibleRole.COMBO_BOX, { name: "All Notes" })),
+                    row: boundsOf(row),
+                };
+            },
+            after: () => {
+                Gio.Settings.new("dev.gtkx.Notes").reset("preview");
+            },
+        },
+    ],
+    [
+        "landing-notes-editor",
+        <Packaging />,
+        {
+            before: seedNotesWithSettings,
+            prepare: async () => {
+                await userEvent.click(
+                    await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Website relaunch" }),
+                );
+                await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { name: "Note text" });
+            },
+            regions: () => {
+                const view = screen.getByRole(Gtk.AccessibleRole.TEXT_BOX, { name: "Note text", as: Gtk.TextView });
+                const [start, end] = view.getBuffer().getBounds();
+                const heading = view
+                    .getBuffer()
+                    .getText(start, end, false)
+                    .split("\n")
+                    .findIndex((line) => line.startsWith("# "));
+
+                return { view: boundsOf(view), language: linesBox(view, heading + 1) };
+            },
+        },
+    ],
     ["guide-getting-started-app", <StarterApp />],
+    [
+        "guide-opengl-color-area",
+        <SampleWindow title="OpenGL">
+            <ColorArea />
+        </SampleWindow>,
+    ],
     [
         "guide-forms-preferences",
         <SampleWindow title="Forms" width={420} height={300}>
@@ -707,17 +854,53 @@ const figures: [name: string, element: ReactNode, options?: FigureOptions][] = [
 ];
 
 const captures = figures.flatMap(([name, element, options]) =>
-    schemes.map(([scheme, colorScheme]) => ({ file: `${name}-${scheme}.png`, element, options, colorScheme })),
+    schemes.map(([scheme, colorScheme]) => ({ name, file: `${name}-${scheme}.png`, element, options, colorScheme })),
 );
 
+const measurements = new Map<string, Measurement>();
+
+const recordMeasurement = (name: string, regions: Regions): void => {
+    const window = appWindow();
+    const measured = { width: window.getWidth(), height: window.getHeight(), regions };
+    const previous = measurements.get(name);
+
+    if (previous !== undefined && JSON.stringify(previous) !== JSON.stringify(measured)) {
+        throw new Error(`${name} measures differently in the light and dark styles`);
+    }
+
+    measurements.set(name, measured);
+};
+
+const storedMeasurements = (): object => {
+    if (!existsSync(regionsFile)) {
+        return {};
+    }
+
+    const stored: unknown = JSON.parse(readFileSync(regionsFile, "utf8"));
+
+    return typeof stored === "object" && stored !== null ? stored : {};
+};
+
 describe("documentation figures", () => {
-    it.each(captures)("captures $file", async ({ file, element, options, colorScheme }) => {
+    afterAll(() => {
+        if (measurements.size > 0) {
+            const merged = { ...storedMeasurements(), ...Object.fromEntries(measurements) };
+            writeFileSync(regionsFile, `${JSON.stringify(merged, null, 4)}\n`);
+        }
+    });
+
+    it.each(captures)("captures $file", async ({ name, file, element, options, colorScheme }) => {
         Adw.StyleManager.getDefault().setColorScheme(colorScheme);
         try {
             options?.before?.();
             await render(element, { container: rootElement });
             await options?.prepare?.();
             expect(Adw.StyleManager.getDefault().getDark()).toBe(colorScheme === Adw.ColorScheme.FORCE_DARK);
+
+            if (options?.regions) {
+                recordMeasurement(name, options.regions());
+            }
+
             await screen.screenshot({ scale: 2, path: `${outputDir}${file}` });
         } finally {
             options?.after?.();
