@@ -19,6 +19,8 @@ concurrency:
 
 env:
   CI_IMAGE: ghcr.io/gtkx-org/gtkx-ci:ubuntu26-v6
+  NX_CLOUD_ACCESS_TOKEN: ${{ github.ref == 'refs/heads/main' && secrets.NX_WRITE_TOKEN || secrets.NX_READ_TOKEN }}
+  NX_CLOUD_DISABLE_METRICS_COLLECTION: "true"
   NODE_OPTIONS: --max-old-space-size=8192
 
 defaults:

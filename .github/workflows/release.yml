@@ -23,6 +23,9 @@ concurrency:
   cancel-in-progress: false
   queue: max
 
+env:
+  NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_READ_TOKEN }}
+
 jobs:
   release-pr:
     if: github.event_name == 'workflow_dispatch'
