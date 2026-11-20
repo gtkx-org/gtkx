@@ -595,8 +595,8 @@ importers:
         specifier: ^10.1.1
         version: 10.1.1
       i18next-cli:
-        specifier: 1.88.1
-        version: 1.88.1(@types/node@26.5.1)(@types/react@19.3.0)(react@19.3.1)(typescript@6.0.3)
+        specifier: 1.91.0
+        version: 1.91.0(@types/node@26.5.1)(@types/react@19.3.0)(react@19.3.1)(typescript@6.0.3)
       markdown-table:
         specifier: ^3.1.0
         version: 3.1.0
@@ -625,8 +625,8 @@ importers:
         specifier: 'catalog:'
         version: 8.3.8(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1)
       vitefu:
-        specifier: ^1.1.3
-        version: 1.1.3(vite@8.3.8(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
+        specifier: ^1.1.4
+        version: 1.1.4(vite@8.3.8(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
       yaml:
         specifier: 'catalog:'
         version: 2.9.1
@@ -969,14 +969,14 @@ importers:
         specifier: workspace:^
         version: link:../runtime
       i18next:
-        specifier: ^27.1.3
-        version: 27.1.3(typescript@6.0.3)
+        specifier: ^27.1.5
+        version: 27.1.5(typescript@6.0.3)
       react:
         specifier: ^19.3
         version: 19.3.1
       react-i18next:
         specifier: ^18.0.2
-        version: 18.0.2(@types/react@19.3.0)(i18next@27.1.3(typescript@6.0.3))(react@19.3.1)(typescript@6.0.3)
+        version: 18.0.2(@types/react@19.3.0)(i18next@27.1.5(typescript@6.0.3))(react@19.3.1)(typescript@6.0.3)
     devDependencies:
       '@gtkx/config':
         specifier: workspace:*
@@ -1185,8 +1185,8 @@ importers:
         specifier: ^1.1.1
         version: 1.1.1
       type-fest:
-        specifier: ^6.0.0
-        version: 6.0.0
+        specifier: ^6.0.1
+        version: 6.0.1
       which:
         specifier: ^7.0.0
         version: 7.0.0
@@ -5674,8 +5674,8 @@ packages:
     resolution: {integrity: sha512-dFcAjpTQFgoLMzC2VwU+C/CbS7uRL0lWmxDITmqm7C+7F0Odmj6s9l6alZc6AELXhrnggM2CeWSXHGOdX2YtwA==}
     engines: {node: '>= 6'}
 
-  i18next-cli@1.88.1:
-    resolution: {integrity: sha512-++RdKasalL3j824jxmZS7C7Ji1HEWrIARPmR2xkxoLMJ+aBZaC/3nyhVpWy2HXc76XVikwzWAu+gI9M145YMyQ==}
+  i18next-cli@1.91.0:
+    resolution: {integrity: sha512-WIHzhKGBL4f4NMw+UqP5nPyIptY6K0YnNusAVDSoguNhWj5IisXC+J3mK2GxT0heoIrNyFFmcrZV8SSklN4S4A==}
     engines: {node: '>=22'}
     hasBin: true
 
@@ -5683,8 +5683,8 @@ packages:
     resolution: {integrity: sha512-1SwWSlbgpMx/AyWYJvPrg2ns1CzXsaM0olmqfDSm2fIzwbChdkxeaiAXw0xhdNPuo/v8nuwxVTLfpf8NxrdlNw==}
     hasBin: true
 
-  i18next@27.1.3:
-    resolution: {integrity: sha512-Qih5Erw8m9qJPmuNUjoSiBctutYkfgg+mhzLaQ7xbn2Y9e2tsB8dNhYyMB00fUfBRt6v0UTFjPPCSROJPn93JQ==}
+  i18next@27.1.5:
+    resolution: {integrity: sha512-KLrH2SWYWiI8Rx+ZbJ4+fdl5Ny2i8V9bJ6TkJ5YFrSyHgeUIGxoueQTZaafcHZcr1ENFqBicpu7ofr3SCSYDgA==}
     engines: {node: '>=22'}
     peerDependencies:
       typescript: ^5 || ^6 || ^7
@@ -6814,8 +6814,8 @@ packages:
     resolution: {integrity: sha512-XleUoc9uwGXqjWwXaUTZAmzMcFZ5858QA2vvx1Ur5xIcixXIP+8LnFDgRplU30us6teqdlskFfu+ae4K79Ooew==}
     engines: {node: '>= 0.8.0'}
 
-  type-fest@6.0.0:
-    resolution: {integrity: sha512-cFOr1/4SZf98P0WMLb1X+RJNZrZI9Wf4xT0bjdH8OP2tJmUcuJ6jyLE8i10ecq1m/7ObGbXNa7QEF2LCXKVLqg==}
+  type-fest@6.0.1:
+    resolution: {integrity: sha512-nnRRKEpyNxX4XkeR6dpMy27ZNT5/nE3D73fs5FcKW/+OtqwSmdshWUw5azvpsMzjst5rAUe61ZxilQ70YFS9yA==}
     engines: {node: '>=22'}
 
   type-is@2.1.0:
@@ -6991,8 +6991,8 @@ packages:
       yaml:
         optional: true
 
-  vitefu@1.1.3:
-    resolution: {integrity: sha512-ub4okH7Z5KLjb6hDyjqrGXqWtWvoYdU3IGm/NorpgHncKoLTCfRIbvlhBm7r0YstIaQRYlp4yEbFqDcKSzXSSg==}
+  vitefu@1.1.4:
+    resolution: {integrity: sha512-qbEIDswfXH3x3IYRMScl/bf1AVW0dn7Z8qkr7g7nohkusfuC7tcFa7t5EoTOz60AunosLM9sDrDjHxsX+Up+CQ==}
     peerDependencies:
       vite: ^3.0.0 || ^4.0.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0
     peerDependenciesMeta:
@@ -11494,7 +11494,7 @@ snapshots:
       - supports-color
     optional: true
 
-  i18next-cli@1.88.1(@types/node@26.5.1)(@types/react@19.3.0)(react@19.3.1)(typescript@6.0.3):
+  i18next-cli@1.91.0(@types/node@26.5.1)(@types/react@19.3.0)(react@19.3.1)(typescript@6.0.3):
     dependencies:
       '@croct/json5-parser': 0.2.2
       '@formatjs/icu-messageformat-parser': 3.5.22
@@ -11506,7 +11506,8 @@ snapshots:
       chokidar: 5.0.0
       commander: 15.0.0
       glob: 14.0.3
-      i18next: 27.1.3(typescript@6.0.3)
+      html-parse-stringify: 4.0.1
+      i18next: 27.1.5(typescript@6.0.3)
       i18next-resources-for-ts: 2.1.2
       jiti: 2.7.0
       jsonc-parser: 3.3.1
@@ -11514,7 +11515,7 @@ snapshots:
       messageformat: 4.1.0
       minimatch: 11.0.8
       nano-spawn: 2.1.0
-      react-i18next: 18.0.2(@types/react@19.3.0)(i18next@27.1.3(typescript@6.0.3))(react@19.3.1)(typescript@6.0.3)
+      react-i18next: 18.0.2(@types/react@19.3.0)(i18next@27.1.5(typescript@6.0.3))(react@19.3.1)(typescript@6.0.3)
       yaml: 2.9.1
       yocto-spinner: 1.2.2
     transitivePeerDependencies:
@@ -11533,7 +11534,7 @@ snapshots:
     transitivePeerDependencies:
       - '@swc/helpers'
 
-  i18next@27.1.3(typescript@6.0.3):
+  i18next@27.1.5(typescript@6.0.3):
     optionalDependencies:
       typescript: 6.0.3
 
@@ -12459,10 +12460,10 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.3.0
 
-  react-i18next@18.0.2(@types/react@19.3.0)(i18next@27.1.3(typescript@6.0.3))(react@19.3.1)(typescript@6.0.3):
+  react-i18next@18.0.2(@types/react@19.3.0)(i18next@27.1.5(typescript@6.0.3))(react@19.3.1)(typescript@6.0.3):
     dependencies:
       html-parse-stringify: 4.0.1
-      i18next: 27.1.3(typescript@6.0.3)
+      i18next: 27.1.5(typescript@6.0.3)
       react: 19.3.1
     optionalDependencies:
       '@types/react': 19.3.0
@@ -12847,7 +12848,7 @@ snapshots:
     dependencies:
       prelude-ls: 1.2.1
 
-  type-fest@6.0.0:
+  type-fest@6.0.1:
     dependencies:
       tagged-tag: 1.0.0
 
@@ -13009,7 +13010,7 @@ snapshots:
       tsx: 4.23.15
       yaml: 2.9.1
 
-  vitefu@1.1.3(vite@8.3.8(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1)):
+  vitefu@1.1.4(vite@8.3.8(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1)):
     optionalDependencies:
       vite: 8.3.8(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1)
 
