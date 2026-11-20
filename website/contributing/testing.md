@@ -40,7 +40,7 @@ The React suite covers the `GtkDragSource` `icon` prop but has no case for a liv
 
 ## CI verification and failure reproduction
 
-Rely on the normal CI workflow for verification. CI runs the affected targets as parallel GitHub jobs: `build` with `typecheck`, `lint`, `test` for the CLI, `test` for every other project, and `test-asan` with `e2e`. The job containers allow nested namespaces and mounts needed by WebKit's Bubblewrap sandbox. A manual CI dispatch runs all projects. CI also runs the current Rust advisory audit. The `verify` GitHub job reports the combined result as `Verify workspace`, the only check the `main` branch ruleset requires.
+Rely on the normal CI workflow for verification. CI runs the affected targets as parallel GitHub jobs: `build` with `typecheck`, `lint`, `test` in separate jobs for the CLI, codegen and the remaining projects, and `test-asan` with `e2e`. The job containers allow nested namespaces and mounts needed by WebKit's Bubblewrap sandbox. A manual CI dispatch runs all projects. CI also runs the current Rust advisory audit. The `verify` GitHub job reports the combined result as `Verify workspace`, the only check the `main` branch ruleset requires.
 
 Package `test` targets run integration and unit tests. The `@gtkx/e2e:e2e` target runs the React suite and depends on `@gtkx/native:test-asan`, which runs the sanitized native suite once. Native tests have no ordinary unsanitized test target. Nx prepares prerequisite builds and generated bindings and caches each suite.
 
