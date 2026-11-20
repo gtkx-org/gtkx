@@ -89,6 +89,8 @@ The first publication creates a private GHCR package: make the `gtkx-ci` package
 
 Fork pull requests run the same jobs directly on Ubuntu 26.04 runners. The shared `.github/actions/setup-ci` action installs that fallback environment, selects Node.js from `engines.node` in the root `package.json`, and restores package and Rust caches. The publishing workflow selects Node.js the same way. Nx schedules independent tasks in parallel within each job. With an Nx Cloud token, jobs restore task results from the [remote cache](https://nx.dev/docs/features/ci-features/remote-cache), which only runs on `main` write to; no tasks are distributed to Nx agents. Fork pull requests run without the cache. Runtime and native environment fingerprints are included in cache inputs so system library and toolchain changes invalidate the relevant tasks.
 
+The native package's TypeScript project holds only `main.d.ts` and has no `tsc` build of its own, so the first dependent build or typecheck that reaches it writes its build info. It sets `emitDeclarationOnly` so that file is identical whichever task writes it; otherwise the typecheck tasks that hash it would miss the cache depending on task order.
+
 Typed Oxlint and scoped ESLint checks depend on built package declarations. Their cache inputs include dependent declarations and the lockfile; the shared compiler-version input also invalidates tasks when the native TypeScript compiler changes.
 
 Nx's standard TypeScript, Oxlint, ESLint, and Vitest plugins infer package targets. Other project commands run directly and declare their dependencies and cache outputs in `project.json`.
