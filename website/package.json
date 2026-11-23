@@ -38,7 +38,7 @@
         "vite": "catalog:",
         "vitepress": "^2.0.0-alpha.21",
         "vitepress-plugin-group-icons": "^1.8.2",
-        "vue": "^3.5.45",
+        "vue": "^3.5.46",
         "vue-tsc": "^3.3.14",
         "yaml": "catalog:"
     }
