@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdtempDisposableSync, readdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { inc, satisfies, type ReleaseType } from "semver";
+import { inc, prerelease, satisfies, type ReleaseType } from "semver";
 import { beforeAll, expect, test } from "vitest";
 
 type Manifest = {
@@ -68,14 +68,9 @@ const releaseAfter = (version: string, type: ReleaseType): string => {
 
 const laterReleases = (version: string): string[] => {
     const patch = releaseAfter(version, "patch");
+    const nextPrerelease = prerelease(version) === null ? [] : [releaseAfter(version, "prerelease")];
 
-    return [
-        version,
-        releaseAfter(version, "prerelease"),
-        patch,
-        releaseAfter(patch, "patch"),
-        releaseAfter(patch, "minor"),
-    ];
+    return [version, ...nextPrerelease, patch, releaseAfter(patch, "patch"), releaseAfter(patch, "minor")];
 };
 
 test("published packages accept later GTKX releases of the same major only", () => {
