@@ -3,7 +3,7 @@ import { execFile } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { lt, prerelease, valid } from "semver";
+import { gt, lt, prerelease, valid } from "semver";
 import { z } from "zod";
 import { isGtkxPackage } from "./manifest.js";
 
@@ -129,9 +129,18 @@ const distTagOf = (version: string): string => {
     return typeof identifier === "string" ? identifier : "next";
 };
 
-const newestOnTag = (releases: RegistryDocument, currentVersion: string): string => {
+/**
+ * The newest release a project on `currentVersion` follows: the newest on its own dist-tag, or the `latest`
+ * release once that one is newer, so that a prerelease moves on to the stable release superseding it.
+ */
+const newestFollowedRelease = (releases: RegistryDocument, currentVersion: string): string => {
     const tag = distTagOf(currentVersion);
     const newest = releases["dist-tags"][tag];
+    const stable = releases["dist-tags"].latest;
+
+    if (stable !== undefined && gt(stable, currentVersion) && (newest === undefined || gt(stable, newest))) {
+        return stable;
+    }
 
     if (newest === undefined) {
         throw new Error(`The registry has no ${tag} release of GTKX. Pass the version to upgrade to.`);
@@ -148,7 +157,7 @@ const newestOnTag = (releases: RegistryDocument, currentVersion: string): string
 
 /**
  * Resolves the release an upgrade moves to: `requested` when it names a published version or a dist-tag,
- * otherwise the newest release on the dist-tag of `currentVersion`.
+ * otherwise the newest release that `currentVersion` follows.
  */
 const resolveTargetVersion = async (
     installer: Installer,
@@ -158,7 +167,7 @@ const resolveTargetVersion = async (
     const releases = await readReleases(installer);
 
     if (requested === undefined) {
-        return newestOnTag(releases, currentVersion);
+        return newestFollowedRelease(releases, currentVersion);
     }
 
     if (valid(requested) !== null && releases.versions.includes(requested)) {
