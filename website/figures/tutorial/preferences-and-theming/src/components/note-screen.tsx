@@ -9,14 +9,14 @@ import type { RootParamList } from "../navigation.js";
 import { linkedNoteName } from "../notes/files.js";
 import { useNotes } from "../notes/notes-provider.js";
 import { MarkdownPreview } from "../preview/markdown-preview.js";
-import { schema, useAppSettings } from "../settings.js";
+import { schema } from "../settings.js";
 
 type NoteScreenProps = SplitViewScreenProps<RootParamList, "Note">;
 
 const NoteScreen = ({ route, navigation }: NoteScreenProps) => {
     const { t } = useTranslation();
     const { notes, edit } = useNotes();
-    const [preview] = useSetting(useAppSettings(), schema, "preview");
+    const [preview] = useSetting(schema, "preview");
     const { name } = route.params;
     const note = notes?.get(name);
 

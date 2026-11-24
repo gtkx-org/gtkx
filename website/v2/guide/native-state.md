@@ -151,64 +151,44 @@ import schema from "../data/com.example.Notes.gschema.xml";
 
 GTKX installs schemas by file name, so imported schema files that share a name must be identical, including [copies in workspace packages](/v2/guide/workspaces#workspace-sources); otherwise GTKX stops with an error naming both.
 
-A schema without a `path` attribute is relocatable: give `GSettings` a `path` too, and each path keeps its own values.
+A schema without a `path` attribute is relocatable: its import has an `at(path)` method, and each path keeps its own values. Pass what `at` returns wherever a schema is expected.
 
 [Translate settings schemas](/v2/guide/internationalization#translate-settings-schemas) covers the schema text, and [Test data and settings](/v2/guide/testing#test-data-and-settings) how tests start from the defaults.
 
 ### The settings instance
 
-The hooks take a `Gio.Settings` instance. Render `GSettings` at the top level with a portal, keep the instance in state, and share it with [React context](https://react.dev/learn/passing-data-deeply-with-context):
+`SettingsProvider` creates the `Gio.Settings` instance of a schema and owns it. Wrap the windows inside the application element in it:
 
-```tsx [src/settings.tsx]
-import type * as Gio from "@gtkx/gi/gio";
-import { GSettings } from "@gtkx/jsx/gio";
-import { createPortal, rootElement } from "@gtkx/react";
-import { createContext, type ReactNode, use, useState } from "react";
+```tsx [src/app.tsx]
+import { AdwApplication } from "@gtkx/jsx/adw";
+import { SettingsProvider } from "@gtkx/react";
 import schema from "../data/com.example.Notes.gschema.xml";
+import { Window } from "./components/window.js";
 
-const SettingsContext = createContext<Gio.Settings | null>(null);
-
-export const SettingsProvider = ({ children }: { children: ReactNode }) => {
-    const [settings, setSettings] = useState<Gio.Settings | null>(null);
-
-    return (
-        <>
-            {createPortal(
-                <GSettings ref={setSettings} schemaId={schema.id} />,
-                rootElement,
-            )}
-            {settings !== null && (
-                <SettingsContext value={settings}>{children}</SettingsContext>
-            )}
-        </>
-    );
-};
-
-export const useAppSettings = (): Gio.Settings => {
-    const settings = use(SettingsContext);
-    if (settings === null) throw new Error("SettingsProvider is required");
-    return settings;
-};
+export const App = () => (
+    <AdwApplication applicationId="com.example.Notes">
+        <SettingsProvider schema={schema}>
+            <Window />
+        </SettingsProvider>
+    </AdwApplication>
+);
 ```
 
-Wrap the windows inside the application element in `SettingsProvider`. The provider renders its children once the instance exists, so `useAppSettings()` always returns one.
+The provider renders its children once the instance exists. `useSetting` and `useBindSetting` find the instance by the schema they are given, and throw when no provider for that schema is rendered above them. An app that reads several schemas, or several paths of a relocatable one, nests a provider for each.
+
+The provider's `ref` receives the instance, for calls the hooks do not cover, such as `reset` and `createAction`. Changing `schema` to another id or path creates another instance and remounts the children.
 
 ### Reading and writing a key
 
-`useSetting(settings, schema, key)` returns the key's value and a setter, and re-renders when the value changes, including from another instance or `gsettings set`:
+`useSetting(schema, key)` returns the key's value and a setter, and re-renders when the value changes, including from another instance or `gsettings set`:
 
 ```tsx [src/components/dark-style-row.tsx]
 import { AdwSwitchRow } from "@gtkx/jsx/adw";
 import { useSetting } from "@gtkx/react";
 import schema from "../../data/com.example.Notes.gschema.xml";
-import { useAppSettings } from "../settings.js";
 
 export const DarkStyleRow = () => {
-    const [scheme, setScheme] = useSetting(
-        useAppSettings(),
-        schema,
-        "color-scheme",
-    );
+    const [scheme, setScheme] = useSetting(schema, "color-scheme");
 
     return (
         <AdwSwitchRow
@@ -232,13 +212,10 @@ import { AdwApplicationWindow } from "@gtkx/jsx/adw";
 import { quit, useBindSetting } from "@gtkx/react";
 import { useState } from "react";
 import schema from "../../data/com.example.Notes.gschema.xml";
-import { useAppSettings } from "../settings.js";
 
 export const Window = () => {
-    const settings = useAppSettings();
     const [window, setWindow] = useState<Adw.ApplicationWindow | null>(null);
     useBindSetting({
-        settings,
         schema,
         key: "window-width",
         object: window,
@@ -271,4 +248,4 @@ Schema imports type only the schemas the project ships. To read a schema install
 
 `keys` maps each key to its GVariant type string, or to `enum` or `flags` for a key declared with those attributes; `values` gives the number of each enum nick, or the allowed strings of a key with choices. Copy the key types from the installed `.gschema.xml` under `/usr/share/glib-2.0/schemas`, and the enum numbers from the `.enums.xml` file that declares the enum, here `org.gnome.desktop.enums.xml`. Keep `as const satisfies SettingsSchema` so the hooks see literal types: `font` is a `string`, `scheme` is `0 | 1 | 2`, and a key the object does not list fails `tsc`.
 
-GTKX does not bundle or compile a system schema; the app reads the copy installed on the user's machine. TypeScript cannot check the object against that copy. As in GJS, `GSettings` throws when the schema is not installed, and reading a key the installed schema does not declare throws, so an [error boundary](/v2/guide/error-handling#react-error-boundaries) can handle a missing package or a misspelled name.
+GTKX does not bundle or compile a system schema; the app reads the copy installed on the user's machine. TypeScript cannot check the object against that copy. As in GJS, creating the instance throws when the schema is not installed, and reading a key the installed schema does not declare throws, so an [error boundary](/v2/guide/error-handling#react-error-boundaries) can handle a missing package or a misspelled name.

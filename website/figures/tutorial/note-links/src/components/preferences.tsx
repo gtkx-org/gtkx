@@ -17,12 +17,7 @@ import {
 } from "@gtkx/react";
 import { useState } from "react";
 import { defaultFolder, displayFolder } from "../notes/files.js";
-import {
-    colorSchemeItems,
-    schema,
-    toColorScheme,
-    useAppSettings,
-} from "../settings.js";
+import { colorSchemeItems, schema, toColorScheme } from "../settings.js";
 
 const isDismissal = (error: unknown): boolean =>
     error instanceof Gtk.DialogError &&
@@ -30,9 +25,8 @@ const isDismissal = (error: unknown): boolean =>
         error.code === Gtk.DialogError.CANCELLED);
 
 const FolderRow = ({ onError }: { onError: (error: unknown) => void }) => {
-    const settings = useAppSettings();
     const parentWindow = useParentWindow();
-    const [folder, setFolder] = useSetting(settings, schema, "folder");
+    const [folder, setFolder] = useSetting(schema, "folder");
     const [dialog, setDialog] = useState<Gtk.FileDialog | null>(null);
 
     const choose = async (fileDialog: Gtk.FileDialog): Promise<void> => {
@@ -102,12 +96,7 @@ type PreferencesProps = {
 };
 
 const Preferences = ({ onClose, onError }: PreferencesProps) => {
-    const settings = useAppSettings();
-    const [colorScheme, setColorScheme] = useSetting(
-        settings,
-        schema,
-        "color-scheme",
-    );
+    const [colorScheme, setColorScheme] = useSetting(schema, "color-scheme");
 
     return (
         <AdwPreferencesDialog onClosed={onClose} title={t("Preferences")}>

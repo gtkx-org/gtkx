@@ -3,9 +3,9 @@ import type { SettingsSchemaKeys, SettingsSchemaValues, SettingValue } from "@gt
 import type { RenderHookResult } from "@gtkx/testing";
 import { GSettings } from "@gtkx/jsx/gio";
 import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
-import { createPortal, rootElement, type SettingsSchema, useSetting } from "@gtkx/react";
+import { createPortal, rootElement, SettingsProvider, type SettingsSchema, useSetting } from "@gtkx/react";
 import { act, render, renderHook, waitFor } from "@gtkx/testing";
-import { createRef } from "react";
+import { createRef, type ReactNode } from "react";
 import { expect } from "vitest";
 
 const renderSettings = async (schemaId: string, path?: string | null): Promise<Gio.Settings> => {
@@ -23,6 +23,14 @@ const renderSettings = async (schemaId: string, path?: string | null): Promise<G
     return ref.current;
 };
 
+const settingsWrapper =
+    (...schemas: SettingsSchema[]) =>
+    ({ children }: { children: ReactNode }): ReactNode =>
+        schemas.reduceRight<ReactNode>(
+            (node, schema) => <SettingsProvider schema={schema}>{node}</SettingsProvider>,
+            children,
+        );
+
 const resetSettingsKey = async (schemaId: string, key: string): Promise<void> => {
     const settings = await renderSettings(schemaId);
 
@@ -32,10 +40,27 @@ const resetSettingsKey = async (schemaId: string, key: string): Promise<void> =>
 const renderSetting = async <K extends SettingsSchemaKeys, P extends keyof K, V extends SettingsSchemaValues>(
     schema: SettingsSchema<K, V>,
     key: P & string,
-): Promise<RenderHookResult<[SettingValue<K, P, V>, (value: SettingValue<K, P, V>) => void], undefined>> => {
-    const settings = await renderSettings(schema.id, schema.path);
+): Promise<RenderHookResult<[SettingValue<K, P, V>, (value: SettingValue<K, P, V>) => void], undefined>> =>
+    renderHook(() => useSetting(schema, key), { wrapper: settingsWrapper(schema) });
 
-    return renderHook(() => useSetting(settings, schema, key));
+const renderHookWithSettings = async <Result,>(
+    schema: SettingsSchema,
+    callback: () => Result,
+): Promise<RenderHookResult<Result, undefined> & { settings: Gio.Settings }> => {
+    const ref = createRef<Gio.Settings>();
+    const rendered = await renderHook(callback, {
+        wrapper: ({ children }: { children: ReactNode }) => (
+            <SettingsProvider schema={schema} ref={ref}>
+                {children}
+            </SettingsProvider>
+        ),
+    });
+
+    if (ref.current === null) {
+        throw new Error("Settings did not mount");
+    }
+
+    return { ...rendered, settings: ref.current };
 };
 
 const expectSettingRoundTrip = async <K extends SettingsSchemaKeys, P extends keyof K, V extends SettingsSchemaValues>(
@@ -57,4 +82,11 @@ const expectSettingRoundTrip = async <K extends SettingsSchemaKeys, P extends ke
     });
 };
 
-export { renderSettings, renderSetting, resetSettingsKey, expectSettingRoundTrip };
+export {
+    expectSettingRoundTrip,
+    renderHookWithSettings,
+    renderSetting,
+    renderSettings,
+    resetSettingsKey,
+    settingsWrapper,
+};

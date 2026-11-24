@@ -3,6 +3,7 @@ import * as Gio from "@gtkx/gi/gio";
 import { kebabCase } from "@gtkx/utils";
 import { useLayoutEffect } from "react";
 import type { SettingsSchema, SettingsSchemaKeys } from "../utils/settings.js";
+import { useSettingsScope } from "../components/settings-context.js";
 import { getPropertyName } from "../reconciler/metadata.js";
 import type { WritablePropertyName } from "./use-property.js";
 
@@ -11,7 +12,7 @@ type UseBindSettingOptions<
     K extends SettingsSchemaKeys,
     T extends Pick<GObject.Object, "__properties__" | "__type__">,
 > = {
-    settings: Gio.Settings;
+    /** Schema declaring the key, whose instance the nearest `SettingsProvider` for it supplies. */
     schema: SettingsSchema<K>;
     /** Key of that schema to bind. */
     key: keyof K & string;
@@ -26,14 +27,18 @@ type UseBindSettingOptions<
 /**
  * Binds a GSettings key to a property of a GObject, keeping the two in sync until the component unmounts.
  * `property` is given in camelCase, and `flags` defaults to `Gio.SettingsBindFlags.DEFAULT`, a two-way bind.
+ *
+ * @throws When no `SettingsProvider` for the schema is rendered above.
  */
 function useBindSetting<K extends SettingsSchemaKeys, T extends Pick<GObject.Object, "__properties__" | "__type__">>({
-    settings,
+    schema,
     key,
     object,
     property,
     flags = Gio.SettingsBindFlags.DEFAULT,
 }: UseBindSettingOptions<K, T>): void {
+    const { settings } = useSettingsScope(schema);
+
     useLayoutEffect(() => {
         if (object == null) {
             return;

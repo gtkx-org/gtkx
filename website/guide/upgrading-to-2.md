@@ -70,7 +70,7 @@ The generated wrapper-retention helper `retainWrapperClasses` now belongs to `@g
 
 ## Move GObject ownership into JSX
 
-The settings hooks no longer create a `Gio.Settings` instance. Render `GSettings` from `@gtkx/jsx/gio` in the root portal, capture the instance with a state callback ref, and mount its consumers once it is available. Pass that instance first to `useSetting`, and add it as the `settings` option to `useBindSetting`. The [2.0 settings tutorial](/v2/tutorial/preferences-and-theming#create-the-settings-instance) shows the complete ownership pattern.
+The settings hooks no longer create a `Gio.Settings` instance. Wrap the components that call them in `<SettingsProvider schema={schema}>` from `@gtkx/react`, which owns the instance and renders its children once it exists. `useSetting(schema, key)` and `useBindSetting({ schema, key, object, property })` keep their arguments and take the instance from the provider. [The settings instance](/v2/guide/native-state#the-settings-instance) shows the provider.
 
 `useProperty`, `useSignal`, and `useBindSetting` now take a mounted instance rather than a mutable ref object. Store callback-ref values in state and pass the value to the hook so subscriptions follow replacement and unmounting. Remove imports of the deleted `RefProp` type. See [Properties and the hooks](/v2/guide/subclassing#properties-and-the-hooks) for the pattern.
 
