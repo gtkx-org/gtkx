@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: dev.gtkx.Notes\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-07 23:52+0100\n"
+"POT-Creation-Date: 2026-11-24 21:58+0100\n"
 "PO-Revision-Date: 2026-11-07 17:58+0100\n"
 "Last-Translator: GTKX contributors\n"
 "Language-Team: French\n"
@@ -19,7 +19,7 @@ msgstr ""
 
 #: src/components/about.tsx:10 src/components/notes-screen.tsx:79
 #: src/components/shortcuts.tsx:12 src/components/window.tsx:36
-#: src/components/window.tsx:80
+#: src/components/window.tsx:79
 #: po/.gtkx-metadata/dev.gtkx.Notes.template.desktop:3
 #: po/.gtkx-metadata/dev.gtkx.Notes.template.metainfo.xml:4
 #: po/.gtkx-metadata/dev.gtkx.Notes.template.metainfo.xml:25
@@ -42,7 +42,7 @@ msgstr "Menu principal"
 msgid "New Note"
 msgstr "Nouvelle note"
 
-#: src/components/main-menu.tsx:16 src/components/preferences.tsx:82
+#: src/components/main-menu.tsx:16 src/components/preferences.tsx:80
 #: src/components/shortcuts.tsx:8
 msgid "Preferences"
 msgstr "Préférences"
@@ -109,35 +109,35 @@ msgstr "Rechercher dans les notes"
 msgid "No Results Found"
 msgstr "Aucun résultat"
 
-#: src/components/preferences.tsx:41
+#: src/components/preferences.tsx:40
 msgid "Choose a Notes Folder"
 msgstr "Choisir un dossier de notes"
 
-#: src/components/preferences.tsx:43
+#: src/components/preferences.tsx:42
 msgid "Notes Folder"
 msgstr "Dossier de notes"
 
-#: src/components/preferences.tsx:50
+#: src/components/preferences.tsx:49
 msgid "Use the Default Folder"
 msgstr "Utiliser le dossier par défaut"
 
-#: src/components/preferences.tsx:58
+#: src/components/preferences.tsx:57
 msgid "Choose Folder"
 msgstr "Choisir le dossier"
 
-#: src/components/preferences.tsx:83 src/components/shortcuts.tsx:6
+#: src/components/preferences.tsx:81 src/components/shortcuts.tsx:6
 msgid "General"
 msgstr "Général"
 
-#: src/components/preferences.tsx:84
+#: src/components/preferences.tsx:82
 msgid "Appearance"
 msgstr "Apparence"
 
-#: src/components/preferences.tsx:86
+#: src/components/preferences.tsx:84
 msgid "Style"
 msgstr "Style"
 
-#: src/components/preferences.tsx:97
+#: src/components/preferences.tsx:95
 msgid "Storage"
 msgstr "Stockage"
 
@@ -209,15 +209,15 @@ msgstr "Impossible d’enregistrer « {{name}} »"
 msgid "Preview"
 msgstr "Aperçu"
 
-#: src/settings.tsx:12
+#: src/settings.tsx:8
 msgid "Follow System"
 msgstr "Suivre le système"
 
-#: src/settings.tsx:13
+#: src/settings.tsx:9
 msgid "Light"
 msgstr "Clair"
 
-#: src/settings.tsx:14
+#: src/settings.tsx:10
 msgid "Dark"
 msgstr "Sombre"
 
