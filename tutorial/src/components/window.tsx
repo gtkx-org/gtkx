@@ -9,7 +9,7 @@ import { type RefObject, useEffect, useRef, useState } from "react";
 import { navigationRef, openNoteName, Split } from "../navigation.js";
 import { defaultFolder } from "../notes/files.js";
 import { NotesProvider } from "../notes/notes-provider.js";
-import { COLOR_SCHEMES, schema, useAppSettings } from "../settings.js";
+import { COLOR_SCHEMES, schema } from "../settings.js";
 import { type Dialog, Dialogs } from "./dialogs.js";
 import { MainMenu } from "./main-menu.js";
 import { NoteMenu, PreviewToggle } from "./note-menu.js";
@@ -65,14 +65,13 @@ const NoteNavigation = ({ onOpenNameChange }: { onOpenNameChange: (name: string 
 
 const NotesWindow = ({ toastOverlayRef }: { toastOverlayRef: RefObject<Adw.ToastOverlay | null> }) => {
     const { t } = useTranslation();
-    const settings = useAppSettings();
     const { renameNote, showError } = useNoteCommands();
     const [window, setWindow] = useState<Adw.ApplicationWindow | null>(null);
     const [dialog, setDialog] = useState<Dialog>({ kind: "none" });
     const [openName, setOpenName] = useState<string | null>(null);
 
-    useBindSetting({ settings, schema, key: "window-width", object: window, property: "defaultWidth" });
-    useBindSetting({ settings, schema, key: "window-height", object: window, property: "defaultHeight" });
+    useBindSetting({ schema, key: "window-width", object: window, property: "defaultWidth" });
+    useBindSetting({ schema, key: "window-height", object: window, property: "defaultHeight" });
 
     return (
         <AdwApplicationWindow
@@ -97,9 +96,8 @@ const NotesWindow = ({ toastOverlayRef }: { toastOverlayRef: RefObject<Adw.Toast
 };
 
 const Window = () => {
-    const settings = useAppSettings();
-    const [folderSetting] = useSetting(settings, schema, "folder");
-    const [colorScheme] = useSetting(settings, schema, "color-scheme");
+    const [folderSetting] = useSetting(schema, "folder");
+    const [colorScheme] = useSetting(schema, "color-scheme");
     const toastOverlayRef = useRef<Adw.ToastOverlay | null>(null);
     const folder = folderSetting === "" ? defaultFolder() : folderSetting;
 

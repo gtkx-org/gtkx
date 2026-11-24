@@ -2,11 +2,19 @@ import type { SettingValue } from "@gtkx/react/internal";
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as GObject from "@gtkx/gi/gobject";
-import { type SettingsSchema, useSetting } from "@gtkx/react";
-import { act, renderHook, waitFor } from "@gtkx/testing";
+import { SettingsProvider, type SettingsSchema, useSetting } from "@gtkx/react";
+import { act, render, renderHook, waitFor } from "@gtkx/testing";
+import { createRef } from "react";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import schema, { com_gtkx_test_useSetting_profile as profile } from "../fixtures/com.gtkx.test.useSetting.gschema.xml";
-import { expectSettingRoundTrip, renderSetting, renderSettings, resetSettingsKey } from "../helpers/settings.js";
+import {
+    expectSettingRoundTrip,
+    renderHookWithSettings,
+    renderSetting,
+    renderSettings,
+    resetSettingsKey,
+    settingsWrapper,
+} from "../helpers/settings.js";
 
 type TestSchemaKeys = typeof schema.keys;
 type Value<P extends keyof TestSchemaKeys> = SettingValue<TestSchemaKeys, P, typeof schema.values>;
@@ -51,13 +59,11 @@ describe("useSetting", () => {
     });
 
     it("disconnects the signal handler on unmount", async () => {
-        const settings = await renderSettings(SCHEMA_ID);
-        settings.reset("count");
+        await resetSettingsKey(SCHEMA_ID, "count");
         const changedSignal = GObject.signalLookup("changed", Gio.Settings);
         const countDetail = GLib.quarkFromString("count");
-        expect(GObject.signalHasHandlerPending(settings, changedSignal, countDetail, true)).toBe(false);
 
-        const { result, unmount } = await renderHook(() => useSetting(settings, schema, "count"));
+        const { result, settings, unmount } = await renderHookWithSettings(schema, () => useSetting(schema, "count"));
         expect(result.current[0]).toBe(0);
         expect(GObject.signalHasHandlerPending(settings, changedSignal, countDetail, true)).toBe(true);
         await unmount();
@@ -65,6 +71,34 @@ describe("useSetting", () => {
 
         await act(() => settings.setInt("count", 7));
         expect(settings.getInt("count")).toBe(7);
+    });
+
+    it("updates every reader of a key when one of them writes it", async () => {
+        await resetSettingsKey(SCHEMA_ID, "tags");
+        const { result } = await renderHook(
+            () => ({ first: useSetting(schema, "tags"), second: useSetting(schema, "tags") }),
+            { wrapper: settingsWrapper(schema) },
+        );
+
+        await act(() => {
+            result.current.first[1](["shared"]);
+        });
+
+        await waitFor(() => {
+            expect(result.current.second[0]).toEqual(["shared"]);
+        });
+        expect(result.current.second[0]).toBe(result.current.first[0]);
+    });
+
+    it("rejects a schema no provider above supplies", async () => {
+        await expect(renderHook(() => useSetting(schema, "count"))).rejects.toThrow(
+            /No SettingsProvider for schema "com.gtkx.test.useSetting"/,
+        );
+        await expect(
+            renderHook(() => useSetting(profile.at("/com/gtkx/test/useSetting/profiles/a/"), "title"), {
+                wrapper: settingsWrapper(profile.at("/com/gtkx/test/useSetting/profiles/b/")),
+            }),
+        ).rejects.toThrow(/at "\/com\/gtkx\/test\/useSetting\/profiles\/a\/"/);
     });
 });
 
@@ -193,12 +227,13 @@ describe("useSetting (typed refs: relocatable paths)", () => {
         const pathA = "/com/gtkx/test/useSetting/profiles/a/";
         const pathB = "/com/gtkx/test/useSetting/profiles/b/";
 
-        const first = await renderSettings(profile.id, pathA);
-        const second = await renderSettings(profile.id, pathB);
-        const { result } = await renderHook(() => ({
-            a: useSetting(first, profile.at(pathA), "title"),
-            b: useSetting(second, profile.at(pathB), "title"),
-        }));
+        const { result } = await renderHook(
+            () => ({
+                a: useSetting(profile.at(pathA), "title"),
+                b: useSetting(profile.at(pathB), "title"),
+            }),
+            { wrapper: settingsWrapper(profile.at(pathA), profile.at(pathB)) },
+        );
 
         await act(() => {
             result.current.a[1]("alpha");
@@ -211,7 +246,7 @@ describe("useSetting (typed refs: relocatable paths)", () => {
         expect(result.current.b[0]).toBe("untitled");
     });
 
-    it("follows a replacement settings instance and disconnects the previous one", async () => {
+    it("follows a replacement schema path and disconnects the previous instance", async () => {
         const firstPath = "/com/gtkx/test/useSetting/replacement/first/";
         const secondPath = "/com/gtkx/test/useSetting/replacement/second/";
         const first = await renderSettings(profile.id, firstPath);
@@ -220,32 +255,50 @@ describe("useSetting (typed refs: relocatable paths)", () => {
         second.setString("title", "second");
         const changedSignal = GObject.signalLookup("changed", Gio.Settings);
         const titleDetail = GLib.quarkFromString("title");
-        expect(GObject.signalHasHandlerPending(first, changedSignal, titleDetail, true)).toBe(false);
-        expect(GObject.signalHasHandlerPending(second, changedSignal, titleDetail, true)).toBe(false);
-        const { result, rerender, unmount } = await renderHook(
-            ({ settings, schema }: { settings: Gio.Settings; schema: SettingsSchema<{ title: "s" }> }) =>
-                useSetting(settings, schema, "title"),
-            { initialProps: { settings: first, schema: profile.at(firstPath) } },
-        );
-        expect(result.current[0]).toBe("first");
-        expect(GObject.signalHasHandlerPending(first, changedSignal, titleDetail, true)).toBe(true);
-        expect(GObject.signalHasHandlerPending(second, changedSignal, titleDetail, true)).toBe(false);
-        await rerender({ settings: second, schema: profile.at(secondPath) });
+        const isWatched = (settings: Gio.Settings): boolean =>
+            GObject.signalHasHandlerPending(settings, changedSignal, titleDetail, true);
+        const provided = createRef<Gio.Settings>();
+        const providedSettings = (): Gio.Settings => {
+            if (provided.current === null) {
+                throw new Error("Settings did not mount");
+            }
 
-        expect(result.current[0]).toBe("second");
-        expect(GObject.signalHasHandlerPending(first, changedSignal, titleDetail, true)).toBe(false);
-        expect(GObject.signalHasHandlerPending(second, changedSignal, titleDetail, true)).toBe(true);
+            return provided.current;
+        };
+        const latest: { current: [string, (value: string) => void] | null } = { current: null };
+        const Reader = ({ path }: { path: string }): null => {
+            latest.current = useSetting(profile.at(path), "title");
+
+            return null;
+        };
+        const tree = (path: string) => (
+            <SettingsProvider schema={profile.at(path)} ref={provided}>
+                <Reader path={path} />
+            </SettingsProvider>
+        );
+
+        const { rerender, unmount } = await render(tree(firstPath));
+        const firstProvided = providedSettings();
+        expect(latest.current?.[0]).toBe("first");
+        expect(isWatched(firstProvided)).toBe(true);
+        await rerender(tree(secondPath));
+
+        const secondProvided = providedSettings();
+        expect(secondProvided).not.toBe(firstProvided);
+        expect(latest.current?.[0]).toBe("second");
+        expect(isWatched(firstProvided)).toBe(false);
+        expect(isWatched(secondProvided)).toBe(true);
         await act(() => {
             first.setString("title", "old target");
         });
-        expect(result.current[0]).toBe("second");
+        expect(latest.current?.[0]).toBe("second");
         await act(() => {
-            result.current[1]("updated");
+            latest.current?.[1]("updated");
         });
         expect(second.getString("title")).toBe("updated");
         expect(first.getString("title")).toBe("old target");
         await unmount();
-        expect(GObject.signalHasHandlerPending(second, changedSignal, titleDetail, true)).toBe(false);
+        expect(isWatched(secondProvided)).toBe(false);
     });
 });
 
@@ -260,11 +313,13 @@ describe("useSetting (hand-written schema objects)", () => {
     it("types reads of a schema the project does not import", async () => {
         await resetSettingsKey(handWritten.id, "label");
         await resetSettingsKey(handWritten.id, "wrap-mode");
-        const settings = await renderSettings(handWritten.id);
-        const { result } = await renderHook(() => ({
-            label: useSetting(settings, handWritten, "label"),
-            wrapMode: useSetting(settings, handWritten, "wrap-mode"),
-        }));
+        const { result } = await renderHook(
+            () => ({
+                label: useSetting(handWritten, "label"),
+                wrapMode: useSetting(handWritten, "wrap-mode"),
+            }),
+            { wrapper: settingsWrapper(handWritten) },
+        );
 
         expectTypeOf(result.current.label[0]).toEqualTypeOf<string>();
         expectTypeOf(result.current.wrapMode[0]).toEqualTypeOf<0 | 7 | 42>();
@@ -273,14 +328,14 @@ describe("useSetting (hand-written schema objects)", () => {
     });
 
     it("rejects keys the hand-written object does not declare", async () => {
-        const settings = await renderSettings(handWritten.id);
-
         await expect(
-            renderHook(() =>
-                // @ts-expect-error "count" is installed but the hand-written object does not declare it
-                useSetting(settings, handWritten, "count"),
+            renderHook(
+                () =>
+                    // @ts-expect-error "count" is installed but the hand-written object does not declare it
+                    useSetting(handWritten, "count"),
+                { wrapper: settingsWrapper(handWritten) },
             ),
-        ).rejects.toThrow();
+        ).rejects.toThrow(/Key "count" is not defined/);
     });
 });
 

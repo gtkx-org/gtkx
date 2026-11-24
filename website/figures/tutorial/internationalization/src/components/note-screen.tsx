@@ -9,7 +9,7 @@ import { openNote, type RootParamList } from "../navigation.js";
 import { linkedNoteName } from "../notes/files.js";
 import { useNotes } from "../notes/notes-provider.js";
 import { MarkdownPreview } from "../preview/markdown-preview.js";
-import { schema, useAppSettings } from "../settings.js";
+import { schema } from "../settings.js";
 import { NoteEditor } from "../editor/note-editor.js";
 
 const openLinkedNote = (uri: string): boolean => {
@@ -25,7 +25,7 @@ const openLinkedNote = (uri: string): boolean => {
 const NoteScreen = ({ route }: SplitViewScreenProps<RootParamList, "Note">) => {
     const { t } = useTranslation();
     const { notes, edit } = useNotes();
-    const [preview] = useSetting(useAppSettings(), schema, "preview");
+    const [preview] = useSetting(schema, "preview");
     const { name } = route.params;
     const note = notes?.get(name);
     const linkTargets = useMemo(

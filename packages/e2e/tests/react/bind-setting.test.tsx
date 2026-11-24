@@ -5,7 +5,7 @@ import { type SettingsSchema, useBindSetting } from "@gtkx/react";
 import { act, render, renderHook, waitFor } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, expectTypeOf, it } from "vitest";
-import { renderSettings, resetSettingsKey } from "../helpers/settings.js";
+import { renderHookWithSettings, resetSettingsKey } from "../helpers/settings.js";
 
 const SCHEMA_ID = "com.gtkx.test.useSetting";
 
@@ -15,13 +15,13 @@ const SCHEMA: SettingsSchema<{ enabled: "b" }> = {
     keys: { enabled: "b" },
 };
 
-const useMisspelledProperty = (settings: Gio.Settings, toggle: Gtk.Switch) =>
+const useMisspelledProperty = (toggle: Gtk.Switch) =>
     // @ts-expect-error "activ" is not a property of Gtk.Switch
-    useBindSetting({ settings, schema: SCHEMA, key: "enabled", object: toggle, property: "activ" });
+    useBindSetting({ schema: SCHEMA, key: "enabled", object: toggle, property: "activ" });
 
-const useReadOnlyProperty = (settings: Gio.Settings, toggle: Gtk.Switch) =>
+const useReadOnlyProperty = (toggle: Gtk.Switch) =>
     // @ts-expect-error "scaleFactor" is readable but not writable
-    useBindSetting({ settings, schema: SCHEMA, key: "enabled", object: toggle, property: "scaleFactor" });
+    useBindSetting({ schema: SCHEMA, key: "enabled", object: toggle, property: "scaleFactor" });
 
 describe("useBindSetting", () => {
     it("keeps the bound property in sync with the settings key", async () => {
@@ -32,10 +32,8 @@ describe("useBindSetting", () => {
         if (toggle === null) {
             throw new Error("Switch did not mount");
         }
-        const settings = await renderSettings(SCHEMA_ID);
-
-        await renderHook(() => {
-            useBindSetting({ settings, schema: SCHEMA, key: "enabled", object: toggle, property: "active" });
+        const { settings } = await renderHookWithSettings(SCHEMA, () => {
+            useBindSetting({ schema: SCHEMA, key: "enabled", object: toggle, property: "active" });
         });
 
         await act(() => {
@@ -61,10 +59,8 @@ describe("useBindSetting", () => {
         if (toggle === null) {
             throw new Error("Switch did not mount");
         }
-        const settings = await renderSettings(SCHEMA_ID);
-
-        const { unmount } = await renderHook(() => {
-            useBindSetting({ settings, schema: SCHEMA, key: "enabled", object: toggle, property: "active" });
+        const { settings, unmount } = await renderHookWithSettings(SCHEMA, () => {
+            useBindSetting({ schema: SCHEMA, key: "enabled", object: toggle, property: "active" });
         });
 
         await unmount();
@@ -78,8 +74,7 @@ describe("useBindSetting", () => {
     });
 
     it("keeps a GET binding from writing widget changes back to settings", async () => {
-        const settings = await renderSettings(SCHEMA_ID);
-        settings.reset("enabled");
+        await resetSettingsKey(SCHEMA_ID, "enabled");
         const ref = createRef<Gtk.Switch>();
         await render(<GtkSwitch ref={ref} />);
         const toggle = ref.current;
@@ -87,9 +82,8 @@ describe("useBindSetting", () => {
             throw new Error("Switch did not mount");
         }
 
-        await renderHook(() => {
+        const { settings } = await renderHookWithSettings(SCHEMA, () => {
             useBindSetting({
-                settings,
                 schema: SCHEMA,
                 key: "enabled",
                 object: toggle,
@@ -111,7 +105,6 @@ describe("useBindSetting", () => {
 
     it("binds nothing to a property the native target does not provide", async () => {
         await resetSettingsKey(SCHEMA_ID, "enabled");
-        const settings = await renderSettings(SCHEMA_ID);
         const ref = createRef<Gtk.Switch>();
         await render(<GtkSwitch ref={ref} />);
         const toggle = ref.current;
@@ -119,9 +112,8 @@ describe("useBindSetting", () => {
             throw new Error("Switch did not mount");
         }
 
-        await renderHook(() => {
+        const { settings } = await renderHookWithSettings(SCHEMA, () => {
             useBindSetting({
-                settings,
                 schema: SCHEMA,
                 key: "enabled",
                 object: toggle,
@@ -141,6 +133,17 @@ describe("useBindSetting", () => {
         });
         expect(settings.getBoolean("enabled")).toBe(false);
         await resetSettingsKey(SCHEMA_ID, "enabled");
+    });
+
+    it("rejects a schema no provider above supplies", async () => {
+        const ref = createRef<Gtk.Switch>();
+        await render(<GtkSwitch ref={ref} />);
+
+        await expect(
+            renderHook(() => {
+                useBindSetting({ schema: SCHEMA, key: "enabled", object: ref.current, property: "active" });
+            }),
+        ).rejects.toThrow(/No SettingsProvider for schema "com.gtkx.test.useSetting"/);
     });
 
     it("accepts only the object's writable property names", () => {

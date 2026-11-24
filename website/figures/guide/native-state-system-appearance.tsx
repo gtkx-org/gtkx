@@ -1,13 +1,5 @@
-import type * as Gio from "@gtkx/gi/gio";
 import { AdwActionRow } from "@gtkx/jsx/adw";
-import { GSettings } from "@gtkx/jsx/gio";
-import {
-    createPortal,
-    rootElement,
-    type SettingsSchema,
-    useSetting,
-} from "@gtkx/react";
-import { useState } from "react";
+import { SettingsProvider, type SettingsSchema, useSetting } from "@gtkx/react";
 
 const desktopInterface = {
     id: "org.gnome.desktop.interface",
@@ -18,13 +10,9 @@ const desktopInterface = {
     },
 } as const satisfies SettingsSchema;
 
-const AppearanceRows = ({ settings }: { settings: Gio.Settings }) => {
-    const [font] = useSetting(
-        settings,
-        desktopInterface,
-        "monospace-font-name",
-    );
-    const [scheme] = useSetting(settings, desktopInterface, "color-scheme");
+const AppearanceRows = () => {
+    const [font] = useSetting(desktopInterface, "monospace-font-name");
+    const [scheme] = useSetting(desktopInterface, "color-scheme");
     const prefersDark =
         scheme === desktopInterface.values["color-scheme"]["prefer-dark"];
 
@@ -39,16 +27,8 @@ const AppearanceRows = ({ settings }: { settings: Gio.Settings }) => {
     );
 };
 
-export const SystemAppearance = () => {
-    const [settings, setSettings] = useState<Gio.Settings | null>(null);
-
-    return (
-        <>
-            {createPortal(
-                <GSettings ref={setSettings} schemaId={desktopInterface.id} />,
-                rootElement,
-            )}
-            {settings !== null && <AppearanceRows settings={settings} />}
-        </>
-    );
-};
+export const SystemAppearance = () => (
+    <SettingsProvider schema={desktopInterface}>
+        <AppearanceRows />
+    </SettingsProvider>
+);

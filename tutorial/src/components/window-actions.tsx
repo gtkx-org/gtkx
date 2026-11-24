@@ -5,7 +5,7 @@ import { GSimpleAction } from "@gtkx/jsx/gio";
 import { useSetting } from "@gtkx/react";
 import { closeNoteIfOpen, openNote } from "../navigation.js";
 import { useNotes } from "../notes/notes-provider.js";
-import { schema, useAppSettings } from "../settings.js";
+import { schema } from "../settings.js";
 import type { Dialog } from "./dialogs.js";
 
 const message = (error: unknown): string => (error instanceof Error ? error.message : String(error));
@@ -57,7 +57,7 @@ type WindowActionsProps = {
 const WindowActions = ({ openName, onShowDialog }: WindowActionsProps) => {
     const { notes } = useNotes();
     const { newNote, trashNote } = useNoteCommands();
-    const [preview, setPreview] = useSetting(useAppSettings(), schema, "preview");
+    const [preview, setPreview] = useSetting(schema, "preview");
 
     return (
         <>

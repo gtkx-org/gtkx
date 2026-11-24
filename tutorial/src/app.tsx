@@ -1,8 +1,8 @@
 import { AdwApplication } from "@gtkx/jsx/adw";
 import { GSimpleAction } from "@gtkx/jsx/gio";
-import { quit } from "@gtkx/react";
+import { quit, SettingsProvider } from "@gtkx/react";
 import { Window } from "./components/window.js";
-import { SettingsProvider } from "./settings.js";
+import { schema } from "./settings.js";
 
 function App() {
     return (
@@ -18,7 +18,7 @@ function App() {
             ]}
             actions={<GSimpleAction name="quit" onActivate={() => quit()} />}
         >
-            <SettingsProvider>
+            <SettingsProvider schema={schema}>
                 <Window />
             </SettingsProvider>
         </AdwApplication>

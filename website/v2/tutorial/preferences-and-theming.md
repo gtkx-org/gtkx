@@ -17,26 +17,26 @@ GSettings stores each preference under a key, and a schema declares each key's t
 - `color-scheme` is a string limited to its `<choices>`. `default` follows the system style.
 - `gettext-domain` names the catalog that translates the summaries and descriptions. See [Translate settings schemas](/v2/guide/internationalization#translate-settings-schemas).
 
-A module that imports the schema is enough for GTKX to compile it and type its keys. `src/settings.tsx` imports it and shares one `Gio.Settings` instance with the app:
+A module that imports the schema is enough for GTKX to compile it and type its keys. `src/settings.tsx` imports it and describes the color scheme's choices:
 
 <<< @/figures/tutorial/preferences-and-theming/src/settings.tsx [src/settings.tsx]
 
-- `SettingsProvider` renders a `GSettings` element through a portal, keeps the instance in state, and renders its children once the instance exists, so `useAppSettings` always returns one. [The settings instance](/v2/guide/native-state#the-settings-instance) explains the pattern.
 - `schema.values["color-scheme"]` lists the key's choices, so `ColorScheme` is `"default" | "light" | "dark"`.
 - `COLOR_SCHEMES` gives each choice a label and its [`Adw.ColorScheme`](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/enum.ColorScheme.html). As a `Record<ColorScheme, …>`, it fails to typecheck if the schema gains a choice without an entry. Each label is a function, so `t` translates it when the dialog renders.
 - `colorSchemeItems` builds the items of the dialog's Style row, and `toColorScheme` turns the row's selected ID back into a choice, or `undefined` for any other string.
+- The module exports `schema`, which the rest of the app passes to the settings provider and hooks.
 
-`SettingsProvider` wraps the window in `src/app.tsx`. Ctrl+, runs the `win.preferences` action from [The preferences dialog](#the-preferences-dialog), the [GNOME HIG](https://developer.gnome.org/hig/reference/keyboard.html)'s shortcut for Preferences:
+`SettingsProvider` from `@gtkx/react` wraps the window in `src/app.tsx`. It owns the schema's `Gio.Settings` instance and renders its children once the instance exists. See [The settings instance](/v2/guide/native-state#the-settings-instance). Ctrl+, runs the `win.preferences` action from [The preferences dialog](#the-preferences-dialog), the [GNOME HIG](https://developer.gnome.org/hig/reference/keyboard.html)'s shortcut for Preferences:
 
-<<< @/figures/tutorial/preferences-and-theming/src/app.tsx{5,17-20,29-31} [src/app.tsx]
+<<< @/figures/tutorial/preferences-and-theming/src/app.tsx{3,5,17-20,29-31} [src/app.tsx]
 
 ## Read and bind settings
 
 The window reads the folder and color scheme, and saves its size:
 
-<<< @/figures/tutorial/preferences-and-theming/src/components/window.tsx{2,11-12,16,66,76,88-90,93-107,111,117,121,127,134-136,138-150,154} [src/components/window.tsx]
+<<< @/figures/tutorial/preferences-and-theming/src/components/window.tsx{2,11-12,16,66,76,88-89,92-104,108,114,118,124,131-132,134-146,150} [src/components/window.tsx]
 
-- `Window` reads `folder` and `color-scheme` with `useSetting`, which re-renders when a key changes. See [Reading and writing a key](/v2/guide/native-state#reading-and-writing-a-key).
+- `Window` reads `folder` and `color-scheme` with `useSetting`. The hook takes the schema and a key, finds the instance in the provider above, and re-renders when the key changes. See [Reading and writing a key](/v2/guide/native-state#reading-and-writing-a-key).
 - The first effect applies the color scheme with [`Adw.StyleManager`](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/property.StyleManager.color-scheme.html). Every Adwaita widget follows it, and so do media queries in the app's own styles. See [Follow appearance preferences](/v2/guide/css#follow-appearance-preferences).
 - The second effect closes the open note when the folder changes, because the note belongs to the old folder.
 - The `useBindSetting` calls keep `window-width` and `window-height` in step with the window's `defaultWidth` and `defaultHeight`, which GTK updates as the window is resized. They replace the fixed 720 by 480 from [Two screens in a split view](/v2/tutorial/the-note-editor#two-screens-in-a-split-view): the window opens at the size it had when it closed, and at 960 by 640 the first time. GNOME's [Saving and Loading Window State](https://developer.gnome.org/documentation/tutorials/save-state.html) describes the same bind. See [Binding a key to a property](/v2/guide/native-state#binding-a-key-to-a-property).
@@ -54,7 +54,7 @@ The preview state moves from the window to the `preview` key, so a note opens th
 
 <<< @/figures/tutorial/preferences-and-theming/src/components/note-screen.tsx{6,12,14,16,19} [src/components/note-screen.tsx]
 
-<<< @/figures/tutorial/preferences-and-theming/src/components/window-actions.tsx{5,8,50,59,62-66,98,102-105} [src/components/window-actions.tsx]
+<<< @/figures/tutorial/preferences-and-theming/src/components/window-actions.tsx{5,8,50,59,62,94,98-101} [src/components/window-actions.tsx]
 
 - `onChangeState` writes the key instead of the window's state, and the toggle button follows the action as before.
 - With no state left to pass down, `NoteScreen` becomes the screen's `component` instead of a render callback, which keeps the optimizations that React Navigation [drops for render callbacks](https://reactnavigation.org/docs/hello-react-navigation/#passing-additional-data).
