@@ -1,3 +1,20 @@
+## 2.0.0-beta.15 (2026-11-24)
+
+### ⚠️  Breaking Changes
+
+- `SettingsProvider` from `@gtkx/react` owns the `Gio.Settings` instance of a schema: wrap the app's windows in `<SettingsProvider schema={schema}>`. `useSetting(schema, key)` and `useBindSetting({ schema, key, object, property })` take the instance from the nearest provider for that schema, so the beta signature `useSetting(settings, schema, key)` and the `settings` option of `useBindSetting` are removed, along with the app code that rendered `GSettings` in a portal and shared the instance through context. All readers of a key share one signal connection and one cached value. ([#1060](https://github.com/gtkx-org/gtkx/pull/1060))
+
+### 🩹 Fixes
+
+- A class whose signals take or return generated classes, declared through `registerClass` or `withSignals`, can be exported from a project that emits declarations. A GSettings schema imported through a file symlink gets its `.gschema.d.xml.ts` beside the link, so the import typechecks. ([#1016](https://github.com/gtkx-org/gtkx/pull/1016))
+- Codegen publishes generated bindings in a directory named after their contents, so regenerating unchanged bindings keeps their path. Build caches keyed on those paths, such as Nx task inputs, stay valid across regenerations. ([#1050](https://github.com/gtkx-org/gtkx/pull/1050))
+- `gtkx upgrade` moves a project on a prerelease to the stable release once that release supersedes it. It used to follow only the prerelease's own dist-tag, so a beta project never reached the stable release unless the version was passed. ([#1058](https://github.com/gtkx-org/gtkx/pull/1058))
+- `screenshot` and `screen.screenshot` draw an open popover where it appears on screen. In a window with client-side decorations the popover was drawn offset by the window's shadow margin, and a popover opened from another popover was drawn away from its button. The MCP `gtkx_take_screenshot` tool captures through the same code. ([#1040](https://github.com/gtkx-org/gtkx/pull/1040))
+
+### ❤️ Thank You
+
+- Eugenio Depalo @eugeniodepalo
+
 ## 2.0.0-beta.14 (2026-11-09)
 
 ### ⚠️  Breaking Changes
