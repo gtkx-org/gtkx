@@ -170,8 +170,10 @@ Complete promotion on the prepared release branch before advancing `main`. That 
      --to /v1 --examples-ref v2.0.0
    ```
 
+   Then run `pnpm format`: the rewritten links change the width of Markdown tables, and the script writes `versions.json` and `project.json` unformatted, so the release branch fails `Verify workspace` without it.
+
 4. Review release copy in the promoted `website/guide`, `website/tutorial`, contributor pages, landing components, the [Releases](/releases) page, root `README.md`, and `packages/*/README.md`. Replace beta installation commands and current-release status text with stable equivalents. Point 2.0 links at the new root paths and 1.x links at `/v1`; retain historical release names in dated posts and changelogs. Archived 1.x installation commands must remain pinned to 1.x. Point the root README's version and Node.js badges at the `latest` dist-tag instead of `beta`, and keep its link to `FUNDING.md`.
-5. Review the release's announcement post, `website/blog/gtkx-2-0.md`. A post whose `date` is later than the build day (UTC) is left out of the build, the blog index, the sidebar and the RSS feed, so it goes live with the first deploy on or after its date, and a preview before that day doesn't show it. Its date must be the release day, its release-notes link must name the tag being published, and its summary of changes must match the changelog.
+5. Review the release's announcement post, `website/blog/gtkx-2-0.md`. A post whose `date` is later than the build day (UTC) is left out of the build, the blog index, the sidebar and the RSS feed, so it goes live with the first deploy on or after its date, and a preview before that day doesn't show it. To read it in the preview before then, build once with its `date` set to the current day and restore the date afterwards. Its date must be the release day, its release-notes link must name the tag being published, and its summary of changes must match the changelog.
 6. Regenerate both API references, build the site, and serve the build:
 
    ```bash

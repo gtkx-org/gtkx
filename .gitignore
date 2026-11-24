@@ -21,4 +21,4 @@ packages/gl/src/generated/
 packages/native/npm/*/package.json
 packages/native/npm/*/README.md
 website/reference/
-website/v2/reference/
+website/v*/reference/

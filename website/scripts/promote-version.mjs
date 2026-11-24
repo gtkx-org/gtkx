@@ -68,10 +68,15 @@ const markdownFiles = (directory) => {
     });
 };
 
+const referenceReadmes = () =>
+    readdirSync(join(website, ".vitepress"), { withFileTypes: true })
+        .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
+        .map((entry) => join(website, ".vitepress", entry.name));
+
 const rewriteLinks = (rewrite) => {
     let changed = 0;
 
-    for (const file of markdownFiles(website)) {
+    for (const file of [...markdownFiles(website), ...referenceReadmes()]) {
         const source = readFileSync(file, "utf8");
         const updated = source.replaceAll(LINK_PATTERN, (match, target) => {
             const rewritten = rewrite(target);

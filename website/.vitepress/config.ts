@@ -459,8 +459,9 @@ const canonicalRoute = (route: string): string => {
     }
 
     const path = normalizeDocumentationPath(`/${route}`);
+    const counterpart = documentationLink(currentVersion, path).replace(/^\//, "");
 
-    return hasCanonicalPage(currentVersion, path) ? documentationLink(currentVersion, path).replace(/^\//, "") : route;
+    return hasCanonicalPage(currentVersion, path) && !isTutorialPointer(counterpart) ? counterpart : route;
 };
 
 const loadDocumentationSources = async (
