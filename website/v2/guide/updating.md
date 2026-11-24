@@ -11,7 +11,7 @@ GTKX packages are released together under one version. To move a project to the 
 npx gtkx upgrade
 ```
 
-Pass a version or dist-tag to choose one, as in `npx gtkx upgrade 2.0.1`, and [`--cwd <dir>`](/v2/guide/cli#gtkx-upgrade) to upgrade a project outside the current directory. To move a 1.x project to 2.0, follow [Upgrading to 2.0](/v2/guide/upgrading-to-2) instead.
+A project on a prerelease moves to the stable release once that release supersedes it. Pass a version or dist-tag to choose one, as in `npx gtkx upgrade 2.0.1`, and [`--cwd <dir>`](/v2/guide/cli#gtkx-upgrade) to upgrade a project outside the current directory. To move a 1.x project to 2.0, follow [Upgrading to 2.0](/v2/guide/upgrading-to-2) instead.
 
 Read the [changelog](https://github.com/gtkx-org/gtkx/releases) before you update: it lists each release's changes, with breaking changes apart. A prerelease can remove an API that an earlier prerelease added, as [Releases](/releases#prereleases) explains, along with how to pin an exact release.
 

@@ -12,14 +12,14 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { stdout, stderr } from "test-console";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { prerelease } from "semver";
+import { inc, prerelease } from "semver";
 import { parse } from "yaml";
 import { createCommand } from "../dist/command.js";
 import { createProject } from "./project.js";
 
 type LoggedCommand = { name: string; cwd: string; args: string[]; settings: Record<string, string> };
 
-type ProjectOptions = { yarnVersion?: string; isInstallFailing?: boolean };
+type ProjectOptions = { yarnVersion?: string; isInstallFailing?: boolean; latest?: string };
 
 const SETTINGS_FILES = [".npmrc", ".yarnrc.yml", "pnpm-workspace.yaml"];
 
@@ -31,11 +31,13 @@ const { version: CLI_VERSION } = JSON.parse(readFileSync(new URL("../package.jso
 
 const CLI_DIST_TAG = prerelease(CLI_VERSION)?.[0] ?? "latest";
 
-const REGISTRY_DOCUMENT = {
+const STABLE_VERSION = CLI_DIST_TAG === "latest" ? CLI_VERSION : "1.6.0";
+
+const registryDocument = (latest: string) => ({
     name: "@gtkx/cli",
-    "dist-tags": { latest: "1.6.0", [CLI_DIST_TAG]: CLI_VERSION },
-    versions: [...new Set(["1.6.0", "2.0.0-beta.11", "2.0.0-beta.12", "2.0.0-beta.13", CLI_VERSION])],
-};
+    "dist-tags": { [CLI_DIST_TAG]: CLI_VERSION, latest },
+    versions: [...new Set(["1.6.0", "2.0.0-beta.11", "2.0.0-beta.12", "2.0.0-beta.13", CLI_VERSION, latest])],
+});
 
 const invoke = async (args: string[]) => {
     let output = "";
@@ -50,21 +52,22 @@ const invoke = async (args: string[]) => {
     return output + errors;
 };
 
-const registryOutput = (name: string, yarnVersion: string): string => {
-    if (name === "npm") return JSON.stringify([REGISTRY_DOCUMENT], null, 2);
-    if (name === "pnpm") return JSON.stringify(REGISTRY_DOCUMENT, null, 2);
+const registryOutput = (name: string, yarnVersion: string, latest: string): string => {
+    const document = registryDocument(latest);
+    if (name === "npm") return JSON.stringify([document], null, 2);
+    if (name === "pnpm") return JSON.stringify(document, null, 2);
     if (yarnVersion.startsWith("1.")) {
         return [
             JSON.stringify({ type: "warning", data: "package.json: No license field" }),
-            JSON.stringify({ type: "inspect", data: REGISTRY_DOCUMENT }),
+            JSON.stringify({ type: "inspect", data: document }),
         ].join("\n");
     }
-    return JSON.stringify(REGISTRY_DOCUMENT);
+    return JSON.stringify(document);
 };
 
 const createTemporaryProject = (
     files: Record<string, string>,
-    { yarnVersion = "4.18.1", isInstallFailing = false }: ProjectOptions = {},
+    { yarnVersion = "4.18.1", isInstallFailing = false, latest = STABLE_VERSION }: ProjectOptions = {},
 ) => {
     const directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-cli-upgrade-"));
     const root = join(directory.path, "project");
@@ -90,7 +93,7 @@ const settings = Object.fromEntries(
     ${JSON.stringify(SETTINGS_FILES)}.filter((file) => existsSync(file)).map((file) => [file, readFileSync(file, "utf8")]),
 );
 appendFileSync(${JSON.stringify(log)}, JSON.stringify({ name: ${JSON.stringify(name)}, cwd: process.cwd(), args, settings }) + "\\n");
-if (args.includes("view") || args.includes("info")) console.log(${JSON.stringify(registryOutput(name, yarnVersion))});
+if (args.includes("view") || args.includes("info")) console.log(${JSON.stringify(registryOutput(name, yarnVersion, latest))});
 if (${JSON.stringify(isInstallFailing)} && args[0] === "install") {
     writeFileSync(${JSON.stringify(LOCKFILES[name])}, "partial");
     process.exit(1);
@@ -441,6 +444,19 @@ describe("gtkx upgrade", () => {
             }
         },
     );
+
+    it("moves to the stable release once it supersedes the project's own release", async () => {
+        const stable = inc(CLI_VERSION, "patch") ?? CLI_VERSION;
+        using project = createTemporaryProject(
+            { "package.json": manifest({ "@gtkx/react": `^${CLI_VERSION}` }), "package-lock.json": "{}" },
+            { latest: stable },
+        );
+
+        await invoke(["upgrade", "--cwd", project.root]);
+
+        expect(stable).not.toBe(CLI_VERSION);
+        expect(project.read("package.json")).toBe(manifest({ "@gtkx/react": `^${stable}` }));
+    });
 
     it("leaves the project untouched when the registry has no such release", async () => {
         const original = manifest({ "@gtkx/react": "^2.0.0-beta.11" });
