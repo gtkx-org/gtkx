@@ -82,7 +82,7 @@
         "fast-xml-builder": "^1.3.2",
         "gettext-parser": "^10.0.0",
         "hosted-git-info": "^10.1.1",
-        "i18next-cli": "1.93.1",
+        "i18next-cli": "1.93.2",
         "markdown-table": "^3.1.0",
         "mrmime": "^2.0.1",
         "nypm": "^0.6.12",

@@ -595,8 +595,8 @@ importers:
         specifier: ^10.1.1
         version: 10.1.1
       i18next-cli:
-        specifier: 1.93.1
-        version: 1.93.1(@types/node@26.5.1)(@types/react@19.3.0)(react@19.3.1)(typescript@6.0.3)
+        specifier: 1.93.2
+        version: 1.93.2(@types/node@26.5.1)(@types/react@19.3.0)(react@19.3.1)(typescript@6.0.3)
       markdown-table:
         specifier: ^3.1.0
         version: 3.1.0
@@ -969,14 +969,14 @@ importers:
         specifier: workspace:^
         version: link:../runtime
       i18next:
-        specifier: ^27.2.3
-        version: 27.2.3(typescript@6.0.3)
+        specifier: ^27.2.4
+        version: 27.2.4(typescript@6.0.3)
       react:
         specifier: ^19.3
         version: 19.3.1
       react-i18next:
         specifier: ^18.0.2
-        version: 18.0.3(@types/react@19.3.0)(i18next@27.2.3(typescript@6.0.3))(react@19.3.1)(typescript@6.0.3)
+        version: 18.0.3(@types/react@19.3.0)(i18next@27.2.4(typescript@6.0.3))(react@19.3.1)(typescript@6.0.3)
     devDependencies:
       '@gtkx/config':
         specifier: workspace:*
@@ -5755,8 +5755,8 @@ packages:
     resolution: {integrity: sha512-dFcAjpTQFgoLMzC2VwU+C/CbS7uRL0lWmxDITmqm7C+7F0Odmj6s9l6alZc6AELXhrnggM2CeWSXHGOdX2YtwA==}
     engines: {node: '>= 6'}
 
-  i18next-cli@1.93.1:
-    resolution: {integrity: sha512-d7V3JO0uaXY5KzvDQJXVDX8esUhIImNc6o3CKBiLcpuijntEZCKIaGH/mQHNQmMRj83Ca2kNcWRqg1IsfUg7hg==}
+  i18next-cli@1.93.2:
+    resolution: {integrity: sha512-mfnWXWJGpDtEo37m7j3hHAYznjPjhtmGX1TzY111xZT5/hTQrS23ntaqqOy4PxN+8uzUKi82mcNmmaqjka3XKg==}
     engines: {node: '>=22'}
     hasBin: true
 
@@ -5773,8 +5773,8 @@ packages:
       typescript:
         optional: true
 
-  i18next@27.2.3:
-    resolution: {integrity: sha512-14wcQLAu5Aykwk4scBGl8tosKYth4S2PQDcusbES/bUsQ7X7DbcPygMzCe298U/NcAvDpqr+CX6oygbQoyLBRA==}
+  i18next@27.2.4:
+    resolution: {integrity: sha512-Twhl6dx3IznvyQEv7rrYH2xBMAmOIjNuj/lPicevTa0d/fxg4Km315MlAI07SOWQcw2pypA4qf39RoMJgJ8WEQ==}
     engines: {node: '>=22'}
     peerDependencies:
       typescript: ^5 || ^6 || ^7
@@ -11663,7 +11663,7 @@ snapshots:
       - supports-color
     optional: true
 
-  i18next-cli@1.93.1(@types/node@26.5.1)(@types/react@19.3.0)(react@19.3.1)(typescript@6.0.3):
+  i18next-cli@1.93.2(@types/node@26.5.1)(@types/react@19.3.0)(react@19.3.1)(typescript@6.0.3):
     dependencies:
       '@croct/json5-parser': 0.2.2
       '@formatjs/icu-messageformat-parser': 3.5.23
@@ -11707,7 +11707,7 @@ snapshots:
     optionalDependencies:
       typescript: 6.0.3
 
-  i18next@27.2.3(typescript@6.0.3):
+  i18next@27.2.4(typescript@6.0.3):
     optionalDependencies:
       typescript: 6.0.3
 
@@ -12649,10 +12649,10 @@ snapshots:
       '@types/react': 19.3.0
       typescript: 6.0.3
 
-  react-i18next@18.0.3(@types/react@19.3.0)(i18next@27.2.3(typescript@6.0.3))(react@19.3.1)(typescript@6.0.3):
+  react-i18next@18.0.3(@types/react@19.3.0)(i18next@27.2.4(typescript@6.0.3))(react@19.3.1)(typescript@6.0.3):
     dependencies:
       html-parse-stringify: 4.0.1
-      i18next: 27.2.3(typescript@6.0.3)
+      i18next: 27.2.4(typescript@6.0.3)
       react: 19.3.1
     optionalDependencies:
       '@types/react': 19.3.0
