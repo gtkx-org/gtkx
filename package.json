@@ -54,5 +54,5 @@
     "engines": {
         "node": ">=26.7.0"
     },
-    "packageManager": "pnpm@12.4.2+sha512.08adc6613180275c7c9edada39dcf08c9c61ad4e7eaf330a4f3461f102b0f907423454d117f98e72d47fef0616070644d7bffc973a6a57f5090a6d7c368b07c9"
+    "packageManager": "pnpm@12.23.0+sha512.02da94ffaf133f46074322afe552f90d40b5f71ae259aefbccdacc5085b1d617e98d65e0131f5748b9b67445978ee5055d7d59a473f1eef0d504854fefcd5975"
 }
