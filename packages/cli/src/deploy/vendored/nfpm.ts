@@ -3,7 +3,7 @@ import { join, resolve } from "node:path";
 import { runCliTool } from "../../internal/run-cli-tool.js";
 import { cacheDir, downloadFile } from "../download.js";
 
-const NFPM_VERSION = "2.47.0";
+const NFPM_VERSION = "2.49.0";
 const NFPM_BASE_URL = `https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}`;
 
 const NFPM_ASSET_ARCH: Record<string, string> = {
@@ -12,8 +12,8 @@ const NFPM_ASSET_ARCH: Record<string, string> = {
 };
 
 const NFPM_DIGESTS: Record<string, string> = {
-    arm64: "1c0f5f2999b9a974bfb04fdb0cc3306096de530ac5dbb25d739cc5f5219c919c",
-    x86_64: "0660ca602b2d2d2ae4781a06c692b3eeb9d437ffea05b831d76e41f4a3188783",
+    arm64: "d4eee71839e92c68cbd3b101640bad32d2856fc551acae0635be9118e48c9d9c",
+    x86_64: "2afaa5ffb5e3493402e31e7c67a5a1fb42133e3f66fc315ca0051934125561c7",
 };
 
 const assetArchFor = (arch: string): string => {
