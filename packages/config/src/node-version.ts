@@ -1,7 +1,7 @@
 const MINIMUM_NODE_MAJOR = 26;
 const MINIMUM_NODE_MINOR = 7;
 const MINIMUM_NODE_VERSION = "26.7.0";
-const DEFAULT_NODE_VERSION = "26.8.2";
+const DEFAULT_NODE_VERSION = "26.13.1";
 
 const assertSupportedNodeVersion = (): void => {
     const [major = 0, minor = 0] = process.versions.node.split(".").map(Number);

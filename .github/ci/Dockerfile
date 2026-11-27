@@ -1,4 +1,4 @@
-FROM node:26.8.2-bookworm-slim AS node
+FROM node:26.13.1-bookworm-slim AS node
 FROM golang:1.26.6-bookworm AS go
 FROM docker:28.3.1-cli AS docker
 FROM ubuntu:26.04
