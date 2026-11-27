@@ -4,12 +4,6 @@ import { initReactI18next } from "react-i18next";
 import { GETTEXT_RESOURCE_KEY, gettextBackend, type GettextCatalog, isGettextCatalog } from "./backend.js";
 import { locale } from "./locale.js";
 
-type GettextFormat = I18nFormatModule & {
-    addLookupKeys(): void;
-    getResource(language: string, namespace: string, msgid: string, options: TOptions): string | undefined;
-    handleAsObject: boolean;
-};
-
 type PluralLookup = {
     catalog: GettextCatalog;
     context: string | undefined;
@@ -18,13 +12,13 @@ type PluralLookup = {
     msgidPlural: string;
 };
 
-const gettextFormat: GettextFormat = {
+const gettextFormat: I18nFormatModule = {
     type: "i18nFormat",
     handleAsObject: false,
     addLookupKeys() {
         return;
     },
-    getResource(language, namespace, msgid, options) {
+    getResource(language: string, namespace: string, msgid: string, options: TOptions): string | undefined {
         const resource: unknown = i18next.getResource(language, namespace, GETTEXT_RESOURCE_KEY, {
             keySeparator: false,
         });
