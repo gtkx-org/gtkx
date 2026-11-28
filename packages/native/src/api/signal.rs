@@ -7,7 +7,7 @@ use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
 use crate::api::value_pointer::value_ptr;
-use crate::handle::{Handle, LeaseScope};
+use crate::handle::LeaseScope;
 use crate::host::callback_error::CallbackErrorScope;
 
 thread_local! {
@@ -62,14 +62,14 @@ pub fn emit_signal(
     let parameters = values
         .iter()
         .map(|value| {
-            let handle: &External<Handle> = crate::value::read_napi(*value)?;
+            let handle = crate::value::read_handle(*value)?;
             let value = value_ptr(handle)?;
             Ok(unsafe { ptr::read(value) })
         })
         .collect::<Result<Vec<_>>>()?;
     let result = match return_value {
         Some(value) => {
-            let handle: &External<Handle> = crate::value::read_napi(value)?;
+            let handle = crate::value::read_handle(value)?;
             value_ptr(handle)?
         }
         None => ptr::null_mut(),

@@ -16,8 +16,8 @@ pub struct FunctionSignature(Rc<FunctionPlan>);
 
 impl FromNapiValue for FunctionSignature {
     unsafe fn from_napi_value(env: sys::napi_env, value: sys::napi_value) -> Result<Self> {
-        let signature = unsafe { <&External<Self>>::from_napi_value(env, value)? };
-        Ok((**signature).clone())
+        let value = unsafe { Unknown::from_napi_value(env, value)? };
+        crate::value::read_external::<Self>(value).cloned()
     }
 }
 

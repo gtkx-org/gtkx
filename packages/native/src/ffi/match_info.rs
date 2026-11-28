@@ -5,7 +5,7 @@ use std::sync::OnceLock;
 
 use glib::translate::FromGlib as _;
 use napi::ValueType;
-use napi::bindgen_prelude::{External, Unknown};
+use napi::bindgen_prelude::Unknown;
 
 use crate::ffi::codec::Codec;
 use crate::handle::{Boxed as NativeBoxed, Handle};
@@ -136,11 +136,11 @@ impl<'a> SubjectScope<'a> {
             value.get_type()? == ValueType::External,
             "MatchInfo requires native-owned regex subject storage"
         );
-        let handle: &External<Handle> = crate::value::read_napi(value)?;
+        let handle = crate::value::read_handle(value)?;
         let pointer = subject_pointer(handle)?;
         SUBJECTS.with_borrow_mut(|frames| {
             if let Some(frame) = frames.get_mut(self.frame_index) {
-                frame.subjects.push((pointer, (**handle).clone()));
+                frame.subjects.push((pointer, handle.clone()));
             }
         });
         Ok(())

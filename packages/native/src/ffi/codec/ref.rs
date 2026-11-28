@@ -94,7 +94,7 @@ impl RefCodec {
                 allocation.caller_allocated = false;
                 return allocation.encode_owned(env, value::js_array(env, Vec::new())?);
             }
-            let handle: &External<crate::handle::Handle> = value::read_napi(seed)?;
+            let handle = value::read_handle(seed)?;
             let byte_len = handle.allocated_bytes().ok_or_else(|| {
                 anyhow::anyhow!("Caller-allocated arrays require a bounded allocation")
             })?;
@@ -110,7 +110,7 @@ impl RefCodec {
             let retained = if independent {
                 handle.retain_owned()?
             } else {
-                (**handle).clone()
+                handle.clone()
             };
             return Ok(ffi::Stash::Storage(
                 StashStorage::new(ptr, StashData::Handle(retained)).with_reference_extent(byte_len),
@@ -210,7 +210,7 @@ impl RefCodec {
         if matches!(value.get_type()?, ValueType::Null | ValueType::Undefined) {
             return Ok(ffi::Stash::Ptr(std::ptr::null_mut()));
         }
-        let handle: &External<crate::handle::Handle> = value::read_napi(value)?;
+        let handle = value::read_handle(value)?;
         let size = self
             .inner_codec
             .field_size()
@@ -219,7 +219,7 @@ impl RefCodec {
         let retained = if retain_for_async {
             handle.retain_owned()?
         } else {
-            (**handle).clone()
+            handle.clone()
         };
 
         Ok(ffi::Stash::Storage(StashStorage::new(

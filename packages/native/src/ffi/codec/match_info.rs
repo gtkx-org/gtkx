@@ -45,10 +45,10 @@ impl Encoder for MatchInfoCodec {
         if pointer.is_null() {
             return Ok(ffi::Stash::Ptr(pointer));
         }
-        let holder: &External<Handle> = value::read_napi(value)?;
+        let holder = value::read_handle(value)?;
         Ok(ffi::Stash::Storage(ffi::StashStorage::new(
             pointer,
-            ffi::StashData::Handle((**holder).clone()),
+            ffi::StashData::Handle(holder.clone()),
         )))
     }
 

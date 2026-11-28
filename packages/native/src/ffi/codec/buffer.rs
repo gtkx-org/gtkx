@@ -36,7 +36,7 @@ impl Encoder for BufferCodec {
             Some(view) => Ok(ffi::Stash::Storage(owned_view_storage(&view))),
             None if value.get_type()? == ValueType::External => {
                 let pointer = value::opaque_ptr(value, "buffer")?;
-                let handle: &External<crate::handle::Handle> = value::read_napi(value)?;
+                let handle = value::read_handle(value)?;
                 if handle.is_process_static() {
                     return Ok(ffi::Stash::Ptr(pointer));
                 }
