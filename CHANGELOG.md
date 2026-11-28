@@ -1,3 +1,13 @@
+## 2.0.0-beta.16 (2026-11-28)
+
+### 🩹 Fixes
+
+- Deployed applications bundle Node.js 26.13.1 by default. A source Flatpak of a pnpm project without a `packageManager` pin installs with pnpm 12.23.0. Debian and RPM packages are built with nfpm 2.49.0, which fixes two security advisories in package generation. ([#1071](https://github.com/gtkx-org/gtkx/pull/1071))
+
+### ❤️ Thank You
+
+- Eugenio Depalo @eugeniodepalo
+
 ## 2.0.0-beta.15 (2026-11-24)
 
 ### ⚠️  Breaking Changes

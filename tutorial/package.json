@@ -20,11 +20,11 @@
         "deploy": "gtkx deploy"
     },
     "dependencies": {
-        "@gtkx/components": "^2.0.0-beta.15",
-        "@gtkx/i18n": "^2.0.0-beta.15",
-        "@gtkx/navigation": "^2.0.0-beta.15",
-        "@gtkx/react": "^2.0.0-beta.15",
-        "@gtkx/runtime": "^2.0.0-beta.15",
+        "@gtkx/components": "^2.0.0-beta.16",
+        "@gtkx/i18n": "^2.0.0-beta.16",
+        "@gtkx/navigation": "^2.0.0-beta.16",
+        "@gtkx/react": "^2.0.0-beta.16",
+        "@gtkx/runtime": "^2.0.0-beta.16",
         "@react-navigation/core": "^7.25.0",
         "mdast-util-from-markdown": "^2.1.0",
         "minisearch": "^7.2.0",
@@ -32,11 +32,11 @@
         "yaml": "^2.9.1"
     },
     "devDependencies": {
-        "@gtkx/cli": "^2.0.0-beta.15",
-        "@gtkx/config": "^2.0.0-beta.15",
-        "@gtkx/mcp": "^2.0.0-beta.15",
-        "@gtkx/storybook": "^2.0.0-beta.15",
-        "@gtkx/testing": "^2.0.0-beta.15",
+        "@gtkx/cli": "^2.0.0-beta.16",
+        "@gtkx/config": "^2.0.0-beta.16",
+        "@gtkx/mcp": "^2.0.0-beta.16",
+        "@gtkx/storybook": "^2.0.0-beta.16",
+        "@gtkx/testing": "^2.0.0-beta.16",
         "@types/mdast": "^4.0.4",
         "@types/node": "^26.6.6",
         "@types/react": "^19.3.0",

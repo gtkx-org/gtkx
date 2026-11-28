@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/components",
-    "version": "2.0.0-beta.15",
+    "version": "2.0.0-beta.16",
     "description": "GTK collection views, selection controls, and toasts for React.",
     "keywords": [
         "gtkx",
