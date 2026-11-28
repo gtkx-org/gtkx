@@ -42,7 +42,7 @@ runs:
           libasan8 adwaita-icon-theme gsettings-desktop-schemas shared-mime-info \
           hicolor-icon-theme librsvg2-common desktop-file-utils espeak-ng \
           flatpak-builder appstream dpkg-dev rpm pipx fontconfig fonts-noto-core fonts-dejavu-core
-        pipx install 'git+https://github.com/flatpak/flatpak-builder-tools.git@de2225a6dee4818c1339b3cdbf29f90c471fcb7e#subdirectory=node'
+        pipx install 'git+https://github.com/flatpak/flatpak-builder-tools.git@9d86d336a39b9af38b86f114b6ce5820fe260f91#subdirectory=node'
         echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
     - name: Select repository Rust toolchains

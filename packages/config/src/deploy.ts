@@ -316,7 +316,7 @@ type DeployNodeOptions = {
     /**
      * Expected Node.js version. Only a downloaded runtime uses it.
      *
-     * @defaultValue `"26.8.2"` for a downloaded runtime
+     * @defaultValue `"26.13.1"` for a downloaded runtime
      */
     version?: string | undefined;
     /**
@@ -1171,7 +1171,7 @@ type DeployOptions = {
     /**
      * Node.js runtime bundled with prebuilt packages and launcher compile-cache settings.
      *
-     * @defaultValue `{}`: a downloaded Node.js `26.8.2`, stripped, with the compile cache on
+     * @defaultValue `{}`: a downloaded Node.js `26.13.1`, stripped, with the compile cache on
      */
     node?: DeployNodeOptions | undefined;
     /**

@@ -105,7 +105,7 @@
                 "parallel": false,
                 "commands": [
                     "go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 -pyflakes=",
-                    "bash -euo pipefail -c 'for action in .github/actions/*/action.yml .github/actions/*/action.yaml; do if [ -f \"$action\" ]; then go run github.com/mikefarah/yq/v4@v4.54.1 \"{\\\"on\\\":{\\\"workflow_dispatch\\\":{\\\"inputs\\\":((.inputs // {}) | with_entries(.value.type = \\\"string\\\"))}},\\\"jobs\\\":{\\\"composite\\\":{\\\"runs-on\\\":\\\"ubuntu-latest\\\",\\\"steps\\\":.runs.steps}}}\" \"$action\" | go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 -pyflakes= -stdin-filename \"$action\" -; fi; done'"
+                    "bash -euo pipefail -c 'for action in .github/actions/*/action.yml .github/actions/*/action.yaml; do if [ -f \"$action\" ]; then go run github.com/mikefarah/yq/v4@v4.54.3 \"{\\\"on\\\":{\\\"workflow_dispatch\\\":{\\\"inputs\\\":((.inputs // {}) | with_entries(.value.type = \\\"string\\\"))}},\\\"jobs\\\":{\\\"composite\\\":{\\\"runs-on\\\":\\\"ubuntu-latest\\\",\\\"steps\\\":.runs.steps}}}\" \"$action\" | go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 -pyflakes= -stdin-filename \"$action\" -; fi; done'"
                 ]
             }
         },

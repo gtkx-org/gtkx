@@ -264,13 +264,13 @@ describe("gtkx deploy", () => {
         expect(nativeBinaries).toEqual([
             {
                 type: "archive",
-                url: "https://registry.npmjs.org/@pnpm/exe.linux-arm64/-/exe.linux-arm64-12.4.2.tgz",
+                url: "https://registry.npmjs.org/@pnpm/exe.linux-arm64/-/exe.linux-arm64-12.23.0.tgz",
                 hasDigest: true,
                 onlyArches: ["aarch64"],
             },
             {
                 type: "archive",
-                url: "https://registry.npmjs.org/@pnpm/exe.linux-x64/-/exe.linux-x64-12.4.2.tgz",
+                url: "https://registry.npmjs.org/@pnpm/exe.linux-x64/-/exe.linux-x64-12.23.0.tgz",
                 hasDigest: true,
                 onlyArches: ["x86_64"],
             },

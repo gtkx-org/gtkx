@@ -1,6 +1,6 @@
-FROM node:26.8.2-bookworm-slim AS node
-FROM golang:1.26.6-bookworm AS go
-FROM docker:28.3.1-cli AS docker
+FROM node:26.13.1-bookworm-slim AS node
+FROM golang:1.27.4-bookworm AS go
+FROM docker:29.10.1-cli AS docker
 FROM ubuntu:26.04
 
 LABEL org.opencontainers.image.source="https://github.com/gtkx-org/gtkx"
@@ -63,13 +63,13 @@ USER workflows
 WORKDIR /opt/gtkx-toolchains
 
 RUN case "$(dpkg --print-architecture)" in \
-        amd64) rust_target=x86_64-unknown-linux-gnu; rustup_sha=20a06e644b0d9bd2fbdbfd52d42540bdde820ea7df86e92e533c073da0cdd43c ;; \
-        arm64) rust_target=aarch64-unknown-linux-gnu; rustup_sha=e3853c5a252fca15252d07cb23a1bdd9377a8c6f3efa01531109281ae47f841c ;; \
+        amd64) rust_target=x86_64-unknown-linux-gnu; rustup_sha=b1c8cb14e30889e7e2999e6b69e62d9e9b9ffc0f4df8180564d306d9680e6c55 ;; \
+        arm64) rust_target=aarch64-unknown-linux-gnu; rustup_sha=9f608c142e0e38a78957d0661ba1dfaf0b6fb37184cfaa4b9a0aa57af6184282 ;; \
         *) exit 1 ;; \
     esac && \
     rustup_download="$(mktemp -d)" && \
     curl --fail --show-error --silent --location \
-        "https://static.rust-lang.org/rustup/archive/1.28.2/$rust_target/rustup-init" \
+        "https://static.rust-lang.org/rustup/archive/1.29.3/$rust_target/rustup-init" \
         --output "$rustup_download/rustup-init" && \
     printf '%s  %s\n' "$rustup_sha" "$rustup_download/rustup-init" | sha256sum --check && \
     chmod +x "$rustup_download/rustup-init" && \
@@ -82,13 +82,13 @@ RUN rustup show
 
 WORKDIR /opt/gtkx-toolchains
 RUN rustup default "$(python3 -c 'import tomllib; print(tomllib.load(open("rust-toolchain.toml", "rb"))["toolchain"]["channel"])')" && \
-    cargo install cargo-audit --version 0.22.2 --locked
+    cargo install cargo-audit --version 0.23.0 --locked
 
 WORKDIR /home/workflows
 
-RUN pipx install 'git+https://github.com/flatpak/flatpak-builder-tools.git@de2225a6dee4818c1339b3cdbf29f90c471fcb7e#subdirectory=node' && \
+RUN pipx install 'git+https://github.com/flatpak/flatpak-builder-tools.git@9d86d336a39b9af38b86f114b6ce5820fe260f91#subdirectory=node' && \
     go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 -version && \
-    go run github.com/mikefarah/yq/v4@v4.54.1 --version
+    go run github.com/mikefarah/yq/v4@v4.54.3 --version
 
 USER 0:0
 COPY package.json /opt/gtkx-toolchains/package.json

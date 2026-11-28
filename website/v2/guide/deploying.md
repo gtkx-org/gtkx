@@ -157,7 +157,7 @@ matching Node.js runtime and native addon.
 ## Runtime and library requirements
 
 For prebuilt deployments, GTKX bundles Node.js with the application. The default download is pinned to
-26.8.2, verified, and cached. Use `deploy.node.version` to choose another supported version. The `host` and `path` sources use an existing
+26.13.1, verified, and cached. Use `deploy.node.version` to choose another supported version. The `host` and `path` sources use an existing
 runtime; GTKX checks its version and portability. See [DeployNodeOptions](/v2/reference/@gtkx/config/index/type-aliases/DeployNodeOptions).
 
 GTK, libadwaita, and other native libraries come from the host system or the Flatpak runtime. Generated GTKX

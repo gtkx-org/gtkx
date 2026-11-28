@@ -150,8 +150,7 @@ impl<'a> SubjectScope<'a> {
         let subjects = SUBJECTS.with_borrow(|frames| {
             frames
                 .get(self.frame_index)
-                .map(|frame| frame.subjects.clone())
-                .unwrap_or_default()
+                .map_or_default(|frame| frame.subjects.clone())
         });
         for (pointer, subject) in subjects {
             anyhow::ensure!(

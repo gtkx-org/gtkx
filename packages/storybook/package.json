@@ -62,7 +62,7 @@
         "@gtkx/components": "workspace:^",
         "@gtkx/react": "workspace:^",
         "@gtkx/utils": "workspace:^",
-        "storybook": "10.6.8"
+        "storybook": "10.6.9"
     },
     "peerDependencies": {
         "@types/react": "^19.3",

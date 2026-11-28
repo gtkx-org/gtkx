@@ -5,13 +5,13 @@ packages:
 
 catalog:
   "@types/ejs": ^3.1.5
-  "@types/node": ^26.5.1
-  "@types/react": ^19.3.0
+  "@types/node": ^26.6.11
+  "@types/react": ^19.3.3
   ejs: ^7.0.2
   react: ^19.3.1
   typescript: npm:@typescript/typescript6@^6.0.2
-  vite: ^8.3.8
-  vitest: 5.1.1
+  vite: ^8.4.0
+  vitest: 5.1.2
   yaml: ^2.9.1
   zod: ^4.6.7
 
@@ -21,6 +21,6 @@ allowBuilds:
   nx: true
 
 overrides:
-  "nx>smol-toml": ^1.8.0
-  axios: ^1.20.0
-  brace-expansion: ^5.0.12
+  "nx>smol-toml": ^1.9.1
+  axios: ^1.21.1
+  brace-expansion: ^5.1.0

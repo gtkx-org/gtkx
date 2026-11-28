@@ -18,7 +18,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  CI_IMAGE: ghcr.io/gtkx-org/gtkx-ci:ubuntu26-v6
+  CI_IMAGE: ghcr.io/gtkx-org/gtkx-ci:ubuntu26-v7
   NX_CLOUD_ACCESS_TOKEN: ${{ github.ref == 'refs/heads/main' && secrets.NX_WRITE_TOKEN || secrets.NX_READ_TOKEN }}
   NX_CLOUD_DISABLE_METRICS_COLLECTION: "true"
   NODE_OPTIONS: --max-old-space-size=8192
@@ -172,7 +172,7 @@ jobs:
         if: needs.image.outputs.image == ''
         uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5
         with:
-          go-version: "1.26.6"
+          go-version: "1.27.4"
           cache: false
 
       - name: Cache pnpm downloads
@@ -228,7 +228,7 @@ jobs:
         if: ${{ matrix.name == 'Lint' && !cancelled() && (steps.install.outcome == 'success' || steps.fallback.outcome == 'success') }}
         run: |
           if ! command -v cargo-audit > /dev/null; then
-            cargo install cargo-audit --version 0.22.2 --locked
+            cargo install cargo-audit --version 0.23.0 --locked
           fi
           cargo audit --file packages/native/Cargo.lock --deny unsound
 
