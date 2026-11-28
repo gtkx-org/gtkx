@@ -17,8 +17,8 @@ impl<'codec, 'env> ReferenceRequest<'codec, 'env> {
         let seed: Unknown<'env> = cell.get_named_property("value")?;
         let mut owners = Vec::new();
         if codec.is_caller_allocated_buffer() {
-            let handle: &External<Handle> = crate::value::read_napi(seed)?;
-            owners.push((**handle).clone());
+            let handle = crate::value::read_handle(seed)?;
+            owners.push(handle.clone());
         } else {
             collect_seed_owners(codec.inner_codec(), seed, &mut owners, true)?;
         }
@@ -66,9 +66,9 @@ pub(crate) fn collect_seed_owners(
         return Ok(());
     }
     if codec.is_handle_backed() {
-        let handle: &External<Handle> = crate::value::read_napi(seed)?;
+        let handle = crate::value::read_handle(seed)?;
         if include_transferred || codec.transfer().is_borrowed() {
-            owners.push((**handle).clone());
+            owners.push(handle.clone());
         }
         return Ok(());
     }

@@ -963,7 +963,7 @@ impl ArrayCodec {
                 .read(env, ReadCtx::value(item_ptr, "array element"))
         }?;
         if !item_ptr.is_null() && self.item_codec.is_handle_backed() {
-            let handle: &External<crate::handle::Handle> = value::read_napi(decoded)?;
+            let handle = value::read_handle(decoded)?;
             Ok(value::handle_to_unknown(env, handle.retain_owned()?)?)
         } else {
             Ok(decoded)

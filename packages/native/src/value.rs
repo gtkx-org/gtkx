@@ -21,6 +21,29 @@ pub fn read_napi<T: FromNapiValue>(value: Unknown<'_>) -> Result<T> {
     T::from_unknown(value)
 }
 
+/// Borrows the payload of an `External<T>` without registering it with napi's borrow tracking,
+/// which rejects reference conversions outside generated argument conversion. Payloads are only
+/// ever shared, so no exclusive reference can alias the result.
+pub fn read_external<T: 'static>(value: Unknown<'_>) -> Result<&T> {
+    let mut payload = std::ptr::null_mut();
+    check_status!(
+        unsafe { sys::napi_get_value_external(value.value().env, value.raw(), &raw mut payload) },
+        "Failed to get external value"
+    )?;
+    // SAFETY: napi validates that the payload is a live `External<T>`, and this crate never
+    // creates a mutable reference to one.
+    unsafe { External::<T>::inner_from_raw(payload) }.ok_or_else(|| {
+        Error::new(
+            Status::InvalidArg,
+            format!("Expected an External<{}>", std::any::type_name::<T>()),
+        )
+    })
+}
+
+pub fn read_handle(value: Unknown<'_>) -> Result<&Handle> {
+    read_external(value)
+}
+
 pub fn handle_ptr(value: Unknown<'_>, type_name: &str) -> anyhow::Result<*mut c_void> {
     handle_ptr_checked(value, type_name, |_| Ok(()))
 }
@@ -52,7 +75,7 @@ fn extract_handle_ptr(
 ) -> anyhow::Result<*mut c_void> {
     match value.get_type()? {
         ValueType::External => {
-            let external: &External<Handle> = read_napi(value)?;
+            let external = read_handle(value)?;
             external.retain_lease()?;
             anyhow::ensure!(
                 !external.is_invalidated(),

@@ -106,7 +106,7 @@ pub fn set_value_pointer<'e>(
 ) -> Result<()> {
     let _errors = CallbackErrorScope::open(*env);
     let _leases = LeaseScope::open();
-    let handle: &External<Handle> = crate::value::read_napi(value_handle)?;
+    let handle = crate::value::read_handle(value_handle)?;
     let target = value_ptr(handle)?;
     if unsafe { glib::gobject_ffi::g_type_fundamental((*target).g_type) }
         != glib::gobject_ffi::G_TYPE_POINTER
@@ -201,7 +201,7 @@ impl<'e> PropertyValueScope<'e> {
     pub(crate) fn for_values(env: &'e Env, values: &[Unknown<'e>]) -> Result<Self> {
         let mut retained = Vec::new();
         for value in values {
-            let handle: &External<Handle> = crate::value::read_napi(*value)?;
+            let handle = crate::value::read_handle(*value)?;
             if let Some(storage) = handle.pointer_storage() {
                 retained.push((storage, roots::get(env, *value, "pointer")?));
             }
@@ -479,7 +479,7 @@ pub(crate) fn retain_property_value<'e>(
     name: &str,
     value: Unknown<'e>,
 ) -> Result<()> {
-    let handle: &External<Handle> = crate::value::read_napi(value)?;
+    let handle = crate::value::read_handle(value)?;
     let storage = handle.pointer_storage();
     let previous = property_callbacks(env, object, name)?;
     let mut candidates = previous.values;
@@ -543,7 +543,7 @@ pub fn set_object_property<'e>(
     let object = object
         .as_gobject_ptr()
         .ok_or_else(|| Error::from_reason("Expected a live GObject"))?;
-    let handle: &External<Handle> = crate::value::read_napi(value)?;
+    let handle = crate::value::read_handle(value)?;
     let value_ptr = value_ptr(handle)?;
     let name_c =
         CString::new(name.as_str()).map_err(|error| Error::from_reason(error.to_string()))?;

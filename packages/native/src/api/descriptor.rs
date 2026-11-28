@@ -11,8 +11,8 @@ pub struct CompiledDescriptor(Codec);
 
 impl FromNapiValue for CompiledDescriptor {
     unsafe fn from_napi_value(env: sys::napi_env, value: sys::napi_value) -> Result<Self> {
-        let descriptor = unsafe { <&External<Self>>::from_napi_value(env, value)? };
-        Ok((**descriptor).clone())
+        let value = unsafe { Unknown::from_napi_value(env, value)? };
+        crate::value::read_external::<Self>(value).cloned()
     }
 }
 

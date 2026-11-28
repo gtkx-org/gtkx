@@ -160,9 +160,10 @@ impl FunctionResolver {
     /// remains executable after the resolver or its Node environment has been released.
     pub(crate) unsafe fn get<T: Copy>(&self) -> anyhow::Result<T> {
         if self.0.resolved.get().is_none() {
-            let handle: &External<Handle> = self.0.callback.call()?;
+            let value: Unknown<'_> = self.0.callback.call()?;
+            let handle = crate::value::read_handle(value)?;
             handle.lifecycle_function_ptr()?;
-            let _ = self.0.resolved.set((**handle).clone());
+            let _ = self.0.resolved.set(handle.clone());
         }
         let handle = self
             .0

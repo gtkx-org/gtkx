@@ -41,11 +41,9 @@ macro_rules! handle_newtype {
                 env: ::napi::sys::napi_env,
                 napi_val: ::napi::sys::napi_value,
             ) -> ::napi::Result<Self> {
-                let external = unsafe {
-                    <&::napi::bindgen_prelude::External<$crate::handle::Handle>>::from_napi_value(
-                        env, napi_val,
-                    )?
-                };
+                let external = $crate::value::read_handle(unsafe {
+                    ::napi::bindgen_prelude::Unknown::from_napi_value(env, napi_val)?
+                })?;
                 let _scope = $crate::handle::LeaseScope::open();
                 let lease =
                     $crate::api::native_result(stringify!($name), external.acquire_lease())?;
