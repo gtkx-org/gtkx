@@ -26,6 +26,10 @@ updates:
     directory: "/packages/native"
     schedule:
       interval: "daily"
+    ignore:
+      - dependency-name: "napi"
+        versions:
+          - "3.16.3"
     groups:
       native-patches:
         patterns:
