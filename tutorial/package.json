@@ -38,8 +38,8 @@
         "@gtkx/storybook": "^2.0.0-beta.15",
         "@gtkx/testing": "^2.0.0-beta.15",
         "@types/mdast": "^4.0.4",
-        "@types/node": "^26.6.6",
-        "@types/react": "^19.3.0",
+        "@types/node": "^26.6.10",
+        "@types/react": "^19.3.2",
         "typescript": "^6.0.3",
         "vite": "^8.3.7",
         "vitest": "^5.1.1"
